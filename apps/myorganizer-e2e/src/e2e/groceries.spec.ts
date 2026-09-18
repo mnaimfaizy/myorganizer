@@ -3,6 +3,7 @@ import {
   E2E_USER_ID,
   gotoStable,
   routeApi,
+  routeVaultBlobInventory,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobRouteRelative,
@@ -330,6 +331,16 @@ async function setupRoutes(page: import('@playwright/test').Page) {
     }
 
     await route.fulfill({ status: 405, headers });
+  });
+
+  await routeVaultBlobInventory(page, {
+    headers: () =>
+      corsHeaders(new URL(page.url() || 'http://localhost:3000').origin),
+    state: () => ({
+      blobs: serverBlobs,
+      etags: serverBlobEtags,
+      updatedAt: serverBlobUpdatedAt,
+    }),
   });
 
   return {

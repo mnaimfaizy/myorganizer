@@ -97,6 +97,27 @@ request can leak to a real backend, or a stub that never records PUT will later 
 with `data: {}`. Do not seed a recovery key into every vault spec — only the flow that is proving
 recovery-key evidence needs one.
 
+Stub the Vault Blob Inventory too, with `routeVaultBlobInventory` from
+`helpers/vaultBlobInventoryRoute.ts`, derived from the same in-memory maps the per-blob stub reads.
+A Vault Pull Pass reads `GET /vault/blobs` **first** and has no fallback: a spec that stubs only the
+per-blob routes converges nothing, and the unstubbed inventory request is the one that leaks
+([ADR 0087](../../../../docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md)).
+Note that the pull pass no longer GETs every Vault Blob Type — it asks only about the ones the
+inventory names with an ETag this device has not already bookmarked — so a per-blob stub that is
+never hit is now a normal result rather than a sign the route pattern is wrong.
+
+```typescript
+await routeVaultBlobInventory(page, {
+  headers: () => corsHeaders(new URL(page.url() || 'http://localhost:3000').origin),
+  // Read live, never snapshotted: the inventory has to see the spec's own PUTs.
+  state: () => ({
+    blobs: serverBlobs,
+    etags: serverBlobEtags,
+    updatedAt: serverBlobUpdatedAt,
+  }),
+});
+```
+
 ---
 
 ## Vault reconcile and claim leftovers

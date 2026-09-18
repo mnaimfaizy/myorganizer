@@ -87,13 +87,44 @@ const debounceAfterDelay: VaultPullTriggerScheduler = (run) => {
   setTimeout(run, VAULT_PULL_DEBOUNCE_MS);
 };
 
+/**
+ * Whether a pass left nothing for the next one to do — the condition for
+ * reusing its inventory ETag.
+ *
+ * Stricter than "every type was answered", and deliberately so. A type in
+ * `failed` was left unanswered and a pass that stopped on a 401/403 never
+ * reached the types after it, but a type that was *converged* can also be left
+ * owing work: convergence that refused a differing Vault Identity, deferred a
+ * conflict, or found the Vault locked writes nothing and leaves the Sync
+ * Bookmark where it was. The server has not moved for any of those, so the
+ * next pass would be answered 304 and would never look at that type again —
+ * a remote change pulled while the Vault was locked would still be unapplied
+ * after the User unlocked.
+ *
+ * So the ETag carries only from a pass that converged nothing, which is
+ * exactly the pass [ADR 0087](../../../../../docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md)
+ * calls the steady state. The pass after a convergence costs one inventory
+ * body instead of one 304, and re-derives every skip from the Sync Bookmarks
+ * this device actually holds.
+ */
+function leftNothingToDo(result: VaultPullCheckResult): boolean {
+  return (
+    !result.stoppedUnauthenticated &&
+    result.failed.length === 0 &&
+    result.checked.every(({ outcome }) => outcome.kind !== 'converged')
+  );
+}
+
 export function createVaultPullTrigger(options: {
   /**
    * What the pass below uses. `getVaultMeta` is read-only evidence for the
    * Vault Identity guard, never a Vault Meta convergence — see
    * `vaultPullCheck.ts`.
    */
-  api: Pick<VaultApi, 'getVaultBlob' | 'putVaultBlob' | 'getVaultMeta'>;
+  api: Pick<
+    VaultApi,
+    'getVaultBlob' | 'putVaultBlob' | 'getVaultMeta' | 'getVaultBlobInventory'
+  >;
   prompt: VaultBlobConvergePrompt;
   schedule?: VaultPullTriggerScheduler;
 }): VaultPullTrigger {
@@ -102,6 +133,20 @@ export function createVaultPullTrigger(options: {
   let stopped = false;
   let scheduled = false;
   let lastHandle: ConvergingVaultHandle | null = null;
+  /**
+   * The ETag the last pass's Vault Blob Inventory read answered with, so the
+   * next pass can be answered 304 and read nothing at all.
+   *
+   * Held in memory for as long as the trigger is — one browser session — and
+   * never stored: losing it costs one inventory body, never an answer.
+   *
+   * Kept only when the pass it came from left nothing to do — see
+   * {@link leftNothingToDo}. A 304 says the server has not moved, not that
+   * this device acted on what it last said, so carrying an ETag across a pass
+   * that left a type unanswered or unconverged would skip that type for as
+   * long as the server stayed still.
+   */
+  let inventoryEtag: string | undefined;
   /**
    * The tail of the check chain. Passes are serialised the same reason
    * `vaultSyncQueue`'s drains are: two at once would race two conditional
@@ -117,12 +162,18 @@ export function createVaultPullTrigger(options: {
   function runPass(
     handle: ConvergingVaultHandle,
   ): Promise<VaultPullCheckResult> {
-    const pass = () =>
-      checkVaultBlobsForUpdates({
+    const pass = async () => {
+      const result = await checkVaultBlobsForUpdates({
         api: options.api,
         handle,
         prompt: options.prompt,
+        inventoryEtag,
       });
+      inventoryEtag = leftNothingToDo(result)
+        ? result.inventoryEtag
+        : undefined;
+      return result;
+    };
     const result = tail.then(pass, pass);
     tail = result.then(
       () => undefined,

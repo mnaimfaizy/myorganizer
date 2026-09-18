@@ -1,5 +1,6 @@
 import {
   EncryptedBlobV1,
+  GetVaultBlobInventoryResponse,
   GetVaultBlobResponse,
   GetVaultMetaResponse,
   PutVaultBlobResponse,
@@ -11,7 +12,11 @@ import {
 
 type VaultApiLike = Pick<
   VaultApi,
-  'getVaultMeta' | 'putVaultMeta' | 'getVaultBlob' | 'putVaultBlob'
+  | 'getVaultMeta'
+  | 'putVaultMeta'
+  | 'getVaultBlob'
+  | 'putVaultBlob'
+  | 'getVaultBlobInventory'
 >;
 
 export type ServerVaultMeta = {
@@ -172,6 +177,76 @@ export async function checkServerVaultBlob(
     const status = getHttpStatus(error);
     if (status === 304) return { kind: 'not-modified' };
     if (status === 404) return { kind: 'absent' };
+    throw error;
+  }
+}
+
+/** One Vault Blob Type the Vault Blob Inventory says the server holds. */
+export type ServerVaultBlobInventoryEntry = {
+  type: VaultBlobType;
+  /** The identity of that type's Ciphertext, comparable to a Sync Bookmark's. */
+  etag: string;
+  updatedAt: string;
+};
+
+/**
+ * What the server says it holds for one User: which Vault Blob Types exist and
+ * the identity of each one's Ciphertext.
+ *
+ * It describes Ciphertext and carries none, so it needs no unlock
+ * ([ADR 0068](../../../../../docs/adr/0068-a-locked-vault-blocks-exactly-the-operations-that-need-the-master-key.md)).
+ * A Vault Blob Type missing from `blobs` means there is nothing to pull for it,
+ * never that anything should be deleted — see `vaultPullCheck.ts`.
+ */
+export type ServerVaultBlobInventory = {
+  /** The whole inventory's ETag, for the next read's `If-None-Match`. */
+  etag: string;
+  blobs: ServerVaultBlobInventoryEntry[];
+};
+
+/** What a conditional read of the Vault Blob Inventory found. */
+export type ServerVaultBlobInventoryCheck =
+  /** `ifNoneMatch` matched — no Vault Blob Type moved since it was read. */
+  | { kind: 'not-modified' }
+  /** The inventory as the server now holds it. */
+  | { kind: 'inventory'; inventory: ServerVaultBlobInventory };
+
+/**
+ * Read the Vault Blob Inventory, conditionally on `ifNoneMatch` — the ETag a
+ * previous read answered with, or `undefined` when this device holds none.
+ *
+ * The inventory's ETag is derived from its members', so it moves exactly when
+ * some Vault Blob did: a 304 here is the whole of "nothing changed anywhere",
+ * which is what makes the steady state of a Vault Pull Pass one request
+ * ([ADR 0087](../../../../../docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md),
+ * decision 3).
+ *
+ * Only 304 is read as an answer. Every other failure — including a 401/403 —
+ * is re-thrown for the caller to classify, because there is no fallback to
+ * fall back to: a pass that cannot read the inventory asks about nothing
+ * (decision 6).
+ */
+export async function checkServerVaultBlobInventory(
+  // Narrower than `VaultApiLike` for the same reason every other read here is.
+  api: Pick<VaultApiLike, 'getVaultBlobInventory'>,
+  ifNoneMatch: string | undefined,
+): Promise<ServerVaultBlobInventoryCheck> {
+  try {
+    const response = await api.getVaultBlobInventory({ ifNoneMatch });
+    const data = response.data as GetVaultBlobInventoryResponse;
+    return {
+      kind: 'inventory',
+      inventory: {
+        etag: data.etag,
+        blobs: data.blobs.map((entry) => ({
+          type: entry.type,
+          etag: entry.etag,
+          updatedAt: entry.updatedAt,
+        })),
+      },
+    };
+  } catch (error) {
+    if (getHttpStatus(error) === 304) return { kind: 'not-modified' };
     throw error;
   }
 }

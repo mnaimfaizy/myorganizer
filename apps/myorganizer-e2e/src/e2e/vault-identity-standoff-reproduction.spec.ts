@@ -5,6 +5,7 @@ import {
   gotoStable,
   readOwnedVault,
   routeApi,
+  routeVaultBlobInventory,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobRouteRelative,
@@ -275,6 +276,16 @@ test.describe('Vault Identity Standoff Reproduction (E2E)', () => {
         }
 
         await route.fulfill({ status: 405, headers });
+      });
+
+      await routeVaultBlobInventory(page, {
+        headers: () =>
+          corsHeaders(new URL(page.url() || 'http://localhost:3000').origin),
+        state: () => ({
+          blobs: serverBlobs,
+          etags: serverBlobEtags,
+          updatedAt: serverBlobUpdatedAt,
+        }),
       });
     }
 

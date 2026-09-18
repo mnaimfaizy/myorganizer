@@ -17,6 +17,7 @@ import {
   type VaultPullTriggerScheduler,
   VAULT_PULL_DEBOUNCE_MS,
 } from './vaultPullTrigger';
+import { VAULT_BLOB_TYPES } from './vaultBlobFields';
 import { localToServerMeta } from './vaultShapes';
 
 beforeEach(() => {
@@ -28,6 +29,19 @@ describe('createVaultPullTrigger', () => {
   const passphrase = 'test pass 2026';
 
   /**
+   * An axios-shaped 200 response, which is all any double here answers with.
+   */
+  function axiosOk<T>(data: T): AxiosResponse<T> {
+    return {
+      data,
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: { headers: {} },
+    } as unknown as AxiosResponse<T>;
+  }
+
+  /**
    * Helper to create a properly typed API double for vault operations.
    */
   function createApiDouble(handle?: Awaited<ReturnType<typeof setupHandle>>) {
@@ -36,6 +50,8 @@ describe('createVaultPullTrigger', () => {
       getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, []>(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultBlobInventory: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
       putVaultBlob: jest.fn<
         Promise<
           AxiosResponse<{
@@ -50,22 +66,30 @@ describe('createVaultPullTrigger', () => {
       >(),
     };
 
+    // Default getVaultBlobInventory returns an inventory naming EVERY type
+    // with etags differing from any Sync Bookmark, so per-type reads happen
+    api.getVaultBlobInventory.mockResolvedValue(
+      axiosOk({
+        etag: 'inventory-etag-v1',
+        blobs: VAULT_BLOB_TYPES.map((type) => ({
+          type,
+          etag: `server-etag-${type}`,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      }),
+    );
+
     // Default getVaultMeta returns server meta matching local vault identity
     if (handle) {
       const localVault = handle.loadVault();
       if (localVault) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        api.getVaultMeta.mockResolvedValue({
-          data: {
+        api.getVaultMeta.mockResolvedValue(
+          axiosOk({
             etag: 'meta-etag',
             updatedAt: '2026-01-01T00:00:00.000Z',
             meta: localToServerMeta(localVault),
-          },
-          status: 200,
-          statusText: 'OK',
-          headers: {},
-          config: { headers: {} as any },
-        } as unknown as AxiosResponse<any>);
+          }),
+        );
       }
     }
 
@@ -145,11 +169,13 @@ describe('createVaultPullTrigger', () => {
     // Only one callback scheduled
     expect(scheduledCallbacks).toHaveLength(1);
 
-    // Run the scheduled callback
+    // Run the scheduled callback and wait for the async check() to complete
     const callback = scheduledCallbacks[0];
     expect(callback).toBeDefined();
     if (callback) {
-      await callback();
+      callback();
+      // Give the event loop a chance to run the async check()
+      await new Promise((resolve) => setTimeout(resolve, 0));
     }
 
     // Verify that handleB (the most recent) was used
@@ -527,7 +553,6 @@ describe('createVaultPullTrigger', () => {
     const api = createApiDouble(handle);
 
     // Mock getVaultMeta to return the different vault's meta
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     api.getVaultMeta.mockResolvedValue({
       data: {
         etag: 'different-meta-etag',
@@ -841,5 +866,236 @@ describe('createVaultPullTrigger', () => {
 
     // Listener should not have been called again
     expect(listener).toHaveBeenCalledTimes(1);
+  });
+
+  // ===== ETag Carry Tests (ADR 0087, vaultPullTrigger contract) =====
+
+  test('first pass carries inventoryEtag to second pass when all types answered', async () => {
+    // Matrix row: "ETag carry on full pass"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+    // All types answer 404 (not an error, so all types are answered)
+    api.getVaultBlob.mockRejectedValue({
+      response: { status: 404 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // First pass: should send ifNoneMatch undefined (no prior etag)
+    const result1 = await trigger.check(handle);
+    expect(result1.inventoryEtag).toBe('inventory-etag-v1');
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
+      ifNoneMatch: undefined,
+    });
+
+    // Reset mocks to count second pass separately
+    api.getVaultBlobInventory.mockClear();
+
+    // Second pass: should send ifNoneMatch with the first pass's etag
+    const result2 = await trigger.check(handle);
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
+      ifNoneMatch: 'inventory-etag-v1',
+    });
+    // Second pass also echoes back the same etag
+    expect(result2.inventoryEtag).toBe('inventory-etag-v1');
+  });
+
+  test('etag NOT carried to next pass when first pass left a type in failed', async () => {
+    // Matrix row: "ETag not carried when types unanswered"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    let callCount = 0;
+    api.getVaultBlob.mockImplementation(async () => {
+      callCount++;
+      // First call fails with 500, leaving type unanswered
+      if (callCount === 1) {
+        throw { response: { status: 500 } };
+      }
+      throw { response: { status: 404 } };
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // First pass: leaves a type in failed
+    const result1 = await trigger.check(handle);
+    expect(result1.failed.length).toBeGreaterThan(0);
+    // Verify etag was set
+    expect(result1.inventoryEtag).toBe('inventory-etag-v1');
+
+    // Reset to count second pass calls
+    api.getVaultBlobInventory.mockClear();
+    callCount = 0;
+
+    // Second pass: should NOT carry etag (types were left unanswered)
+    await trigger.check(handle);
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
+      ifNoneMatch: undefined,
+    });
+  });
+
+  test('401 on inventory stops trigger; no later pass reaches network', async () => {
+    // Matrix row: "ETag not carried on 401/403"
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    api.getVaultBlobInventory.mockRejectedValue({
+      response: { status: 401 },
+    });
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // First pass: hits 401 on inventory
+    const result1 = await trigger.check(handle);
+    expect(result1.stoppedUnauthenticated).toBe(true);
+    // No etag when pass stopped
+    expect(result1.inventoryEtag).toBeUndefined();
+
+    // Reset for second pass
+    api.getVaultBlobInventory.mockClear();
+
+    // Trigger is stopped, so second check returns immediately without calling api
+    const result2 = await trigger.check(handle);
+    expect(result2.stoppedUnauthenticated).toBe(true);
+    // No API call since trigger is stopped
+    expect(api.getVaultBlobInventory).not.toHaveBeenCalled();
+  });
+
+  test('first pass converging one type does NOT carry etag to second pass', async () => {
+    // Matrix row: "ETag not carried when type converged"
+    // A type that converges (even with a successful outcome) leaves work for the next pass,
+    // so the etag must not carry. The next pass re-asks the inventory.
+    const handle = await setupHandle('user-1');
+    const api = createApiDouble(handle);
+
+    // Override inventory to only list one type, so only that type is asked about
+    api.getVaultBlobInventory.mockResolvedValue(
+      axiosOk({
+        etag: 'inventory-etag-v1',
+        blobs: [
+          {
+            type: VAULT_BLOB_TYPES[0],
+            etag: `server-etag-${VAULT_BLOB_TYPES[0]}`,
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+        ],
+      }),
+    );
+
+    // Mock getVaultBlob to return a blob (triggers convergeVaultBlob)
+    api.getVaultBlob.mockResolvedValue(
+      axiosOk({
+        etag: 'blob-etag-1',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        type: VAULT_BLOB_TYPES[0],
+        blob: { version: 1, iv: 'some-iv', ciphertext: 'some-ct' },
+      }),
+    );
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // First pass
+    const result1 = await trigger.check(handle);
+
+    // Verify at least one type converged
+    const converged = result1.checked.filter(
+      (entry) => entry.outcome.kind === 'converged',
+    );
+    expect(converged.length).toBeGreaterThan(0);
+
+    // Verify no failed types (all answered or converged)
+    expect(result1.failed).toHaveLength(0);
+
+    // Reset mocks for second pass
+    api.getVaultBlobInventory.mockClear();
+
+    // Second pass: etag should NOT be carried because first pass converged a type
+    await trigger.check(handle);
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
+      ifNoneMatch: undefined,
+    });
+  });
+
+  test('first pass converging to refusal does NOT carry etag to second pass', async () => {
+    // Matrix row: "ETag not carried when type converged (refused)"
+    // A type converged to refusal (different vault) is left unanswered, so the etag must not carry.
+    // The next pass re-evaluates that type instead of being answered 304 and skipping it forever.
+    const handle = await setupHandle('user-1');
+
+    // Create a different vault to simulate a different vault on the server
+    const differentVaultHandle = createVaultHandle({ owner: 'user-2' });
+    await differentVaultHandle.initialize({ passphrase: 'different key' });
+    const differentVault = differentVaultHandle.loadVault();
+    if (!differentVault) {
+      throw new Error('Vault failed to load');
+    }
+    const differentVaultMeta = localToServerMeta(differentVault);
+
+    const api = createApiDouble(handle);
+
+    // Mock getVaultMeta to return the different vault's meta
+    api.getVaultMeta.mockResolvedValue(
+      axiosOk({
+        etag: 'different-meta-etag',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        meta: differentVaultMeta,
+      }),
+    );
+
+    // Mock getVaultBlob to return a blob (triggers convergeVaultBlob, which will refuse)
+    api.getVaultBlob.mockResolvedValue(
+      axiosOk({
+        etag: 'blob-etag',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        type: VAULT_BLOB_TYPES[0],
+        blob: { version: 1, iv: 'some-iv', ciphertext: 'some-ct' },
+      }),
+    );
+
+    const trigger = createVaultPullTrigger({
+      api,
+      prompt: jest.fn(),
+      schedule: jest.fn(),
+    });
+
+    // First pass: converges with refusal
+    const result1 = await trigger.check(handle);
+
+    // Verify convergence with refusal
+    const converged = result1.checked.filter(
+      (entry) => entry.outcome.kind === 'converged',
+    );
+    expect(converged.length).toBeGreaterThan(0);
+    converged.forEach((entry) => {
+      expect(entry.outcome).toEqual({
+        kind: 'converged',
+        outcome: { kind: 'refused', reason: 'different-vault' },
+      });
+    });
+
+    // Reset mocks for second pass
+    api.getVaultBlobInventory.mockClear();
+
+    // Second pass: etag should NOT be carried (so refusal is re-evaluated, not skipped)
+    await trigger.check(handle);
+    expect(api.getVaultBlobInventory).toHaveBeenNthCalledWith(1, {
+      ifNoneMatch: undefined,
+    });
   });
 });

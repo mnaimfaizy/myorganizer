@@ -5,8 +5,10 @@ import {
   gotoStable,
   removeOwnedVault,
   routeApi,
+  routeVaultBlobInventory,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobInventoryRouteAbsolute,
   vaultBlobRouteAbsolute,
   vaultBlobTypeExtractor,
   waitForOwnedVault,
@@ -310,6 +312,17 @@ function setupBackend(page: Page) {
       return;
     }
     await route.fulfill({ status: 405, headers });
+  });
+
+  routeVaultBlobInventory(page, {
+    url: vaultBlobInventoryRouteAbsolute(),
+    headers: () =>
+      headersFor(new URL(page.url() || 'http://localhost:3000').origin),
+    state: () => ({
+      blobs: serverBlobs,
+      etags: serverBlobEtags,
+      updatedAt: serverBlobUpdatedAt,
+    }),
   });
 
   return { backupRecords };

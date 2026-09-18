@@ -1,10 +1,14 @@
 /**
  * Tests for Vault Pull's check-for-updates pass.
  *
- * checkVaultBlobsForUpdates iterates every Vault Blob Type, asks the server
- * whether its Ciphertext moved (via conditional GET), and converges the types
- * that did. Session loss (401/403) stops the pass immediately; any other error
- * is recorded and the pass moves on.
+ * A pass first reads the Vault Blob Inventory, which names every Vault Blob
+ * Type the server holds and the identity of each one's Ciphertext. It then
+ * asks about a type only when the inventory says its Ciphertext differs from
+ * this device's Sync Bookmark ([ADR 0087](../../../../../docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md)).
+ *
+ * Session loss (401/403) stops the pass immediately; any other error is
+ * recorded and the pass moves on. A failed inventory read fails the pass
+ * entirely: every type is unanswered.
  *
  * Tests use REAL WebCrypto to establish decryptability through the real path.
  */
@@ -18,6 +22,7 @@ import { checkVaultBlobsForUpdates } from './vaultPullCheck';
 import { createVaultHandle, type VaultHandle } from './vaultHandle';
 import type { ServerVaultBlob } from './serverVaultSync';
 import { localToServerMeta, toEncryptedBlobV1 } from './vaultShapes';
+import { VAULT_BLOB_TYPES } from './vaultBlobFields';
 
 beforeEach(() => {
   localStorage.clear();
@@ -36,6 +41,8 @@ describe('checkVaultBlobsForUpdates', () => {
       getVaultMeta: jest.fn<Promise<AxiosResponse<any>>, []>(),
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       getVaultBlob: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      getVaultBlobInventory: jest.fn<Promise<AxiosResponse<any>>, [any?]>(),
       putVaultBlob: jest.fn<
         Promise<
           AxiosResponse<{
@@ -70,6 +77,35 @@ describe('checkVaultBlobsForUpdates', () => {
     }
 
     return api;
+  }
+
+  /**
+   * Helper to create an inventory response with specific named types and their etags.
+   * Entries REQUIRED — never bare call. This prevents silent "inventory is empty" bugs.
+   * Entries should differ from any Sync Bookmarks to ensure per-type reads happen.
+   */
+  function inventoryResponse(
+    entries: Array<{ type: VaultBlobType; etag: string; updatedAt: string }>,
+  ) {
+    return axiosResponse({
+      etag: 'inventory-etag-v1',
+      blobs: entries,
+    });
+  }
+
+  /**
+   * Helper to create an inventory naming EVERY Vault Blob Type with an etag
+   * that differs from any Sync Bookmark. Use in tests that need per-type reads to happen.
+   */
+  function everyTypeInventoryResponse(etag = 'inventory-etag-v1') {
+    return axiosResponse({
+      etag,
+      blobs: VAULT_BLOB_TYPES.map((type) => ({
+        type,
+        etag: `server-etag-${type}`,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      })),
+    });
   }
 
   /**
@@ -256,14 +292,24 @@ describe('checkVaultBlobsForUpdates', () => {
     });
   }
 
-  // ===== Test 1: 304 not-modified =====
-  test('should not converge when server returns 304 not-modified', async () => {
+  // ===== Test 1: 304 not-modified on per-type read =====
+  test('should not converge when server returns 304 not-modified on per-type read', async () => {
     const handle = await setupHandle('user-1', [], 'tasks');
     await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
 
     const vaultBefore = handle.loadVault();
 
     const api = createApiDouble(handle);
+    // Inventory names Tasks with etag differing from Sync Bookmark
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockRejectedValue(create304Error());
     const prompt = jest.fn();
 
@@ -273,11 +319,17 @@ describe('checkVaultBlobsForUpdates', () => {
       prompt,
     });
 
-    // Verify 304 was recorded as not-modified
+    // Verify 304 was recorded as not-modified for Tasks
     const tasksOutcome = result.checked.find(
       (c) => c.type === VaultBlobType.Tasks,
     );
     expect(tasksOutcome?.outcome).toEqual({ kind: 'not-modified' });
+    // Other types are absent (not in inventory)
+    for (const type of VAULT_BLOB_TYPES) {
+      if (type === VaultBlobType.Tasks) continue;
+      const outcome = result.checked.find((c) => c.type === type);
+      expect(outcome?.outcome).toEqual({ kind: 'absent' });
+    }
 
     // Verify no put was attempted
     expect(api.putVaultBlob).not.toHaveBeenCalled();
@@ -304,6 +356,16 @@ describe('checkVaultBlobsForUpdates', () => {
     ]);
 
     const api = createApiDouble(handle);
+    // Inventory names Tasks with etag differing from Sync Bookmark
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remote));
     const prompt = jest.fn();
 
@@ -369,6 +431,16 @@ describe('checkVaultBlobsForUpdates', () => {
     const remote = await captureRemoteBlob(handle, [remoteRecord], 'tasks');
 
     const api = createApiDouble(handle);
+    // Inventory names Tasks with etag differing (device has no bookmark)
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-from-server',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remote));
     api.putVaultBlob.mockResolvedValue(formatPutVaultBlobResponse('etag-sent'));
     const prompt = jest.fn();
@@ -424,9 +496,9 @@ describe('checkVaultBlobsForUpdates', () => {
     const handle = await setupHandle('user-1', [localRecord], 'tasks');
     const vaultBefore = handle.loadVault();
 
-    // First pass: network error
+    // First pass: network error on inventory read
     const api1 = createApiDouble(handle);
-    api1.getVaultBlob.mockRejectedValue(createNetworkError());
+    api1.getVaultBlobInventory.mockRejectedValue(createNetworkError());
     const prompt1 = jest.fn();
 
     const result1 = await checkVaultBlobsForUpdates({
@@ -435,12 +507,12 @@ describe('checkVaultBlobsForUpdates', () => {
       prompt: prompt1,
     });
 
-    // Verify error was recorded in failed, not in checked
-    const tasksFailed = result1.failed.find(
-      (f) => f.type === VaultBlobType.Tasks,
-    );
-    expect(tasksFailed).toBeDefined();
+    // Verify error was recorded in failed for every type, not in checked
+    expect(result1.failed).toHaveLength(VAULT_BLOB_TYPES.length);
+    expect(result1.checked).toHaveLength(0);
     expect(result1.stoppedUnauthenticated).toBe(false);
+    // Verify getVaultBlob was never called
+    expect(api1.getVaultBlob).not.toHaveBeenCalled();
 
     // Verify local vault unchanged after first pass
     const vaultAfter1 = handle.loadVault();
@@ -460,6 +532,16 @@ describe('checkVaultBlobsForUpdates', () => {
     const remote = await captureRemoteBlob(handle, [remoteRecord], 'tasks');
 
     const api2 = createApiDouble(handle);
+    // Inventory names Tasks with etag differing from no Sync Bookmark
+    api2.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-from-server',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api2.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remote));
     api2.putVaultBlob.mockResolvedValue(
       formatPutVaultBlobResponse('etag-sent'),
@@ -496,12 +578,12 @@ describe('checkVaultBlobsForUpdates', () => {
     );
   });
 
-  // ===== Test 5: 401 unauthorized stops loop =====
-  test('should stop pass and set stoppedUnauthenticated on 401', async () => {
+  // ===== Test 5: 401 unauthorized on inventory stops pass immediately =====
+  test('should stop pass and set stoppedUnauthenticated on 401 from inventory', async () => {
     const handle = await setupHandle('user-1', [], 'tasks');
 
     const api = createApiDouble(handle);
-    api.getVaultBlob.mockRejectedValue(create401Error());
+    api.getVaultBlobInventory.mockRejectedValue(create401Error());
     const prompt = jest.fn();
 
     const result = await checkVaultBlobsForUpdates({
@@ -511,18 +593,20 @@ describe('checkVaultBlobsForUpdates', () => {
     });
 
     expect(result.stoppedUnauthenticated).toBe(true);
-    // Only the first type should be checked before stopping
-    expect(api.getVaultBlob).toHaveBeenCalledTimes(1);
-    // No checked outcomes (the 401 stopped before recording)
+    // No types were checked
     expect(result.checked).toHaveLength(0);
+    // No types left unanswered (they were not reached)
+    expect(result.failed).toHaveLength(0);
+    // No per-type getVaultBlob calls
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
   });
 
-  // ===== Test 6: 403 forbidden stops loop =====
-  test('should stop pass and set stoppedUnauthenticated on 403', async () => {
+  // ===== Test 6: 403 forbidden on inventory stops pass immediately =====
+  test('should stop pass and set stoppedUnauthenticated on 403 from inventory', async () => {
     const handle = await setupHandle('user-1', [], 'tasks');
 
     const api = createApiDouble(handle);
-    api.getVaultBlob.mockRejectedValue(create403Error());
+    api.getVaultBlobInventory.mockRejectedValue(create403Error());
     const prompt = jest.fn();
 
     const result = await checkVaultBlobsForUpdates({
@@ -532,18 +616,30 @@ describe('checkVaultBlobsForUpdates', () => {
     });
 
     expect(result.stoppedUnauthenticated).toBe(true);
-    // Only the first type should be checked before stopping
-    expect(api.getVaultBlob).toHaveBeenCalledTimes(1);
-    // No checked outcomes
+    // No types were checked
     expect(result.checked).toHaveLength(0);
+    // No types left unanswered
+    expect(result.failed).toHaveLength(0);
+    // No per-type calls
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
   });
 
-  // ===== Test 7: Absent on server =====
-  test('should record absent when server holds no blob', async () => {
+  // ===== Test 7: Absent on server (from per-type read 404) =====
+  test('should record absent when per-type read returns 404', async () => {
     const handle = await setupHandle('user-1', [], 'tasks');
     const vaultBefore = handle.loadVault();
 
     const api = createApiDouble(handle);
+    // Inventory names Tasks with etag differing from Sync Bookmark
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockRejectedValue(create404Error());
     const prompt = jest.fn();
 
@@ -553,6 +649,7 @@ describe('checkVaultBlobsForUpdates', () => {
       prompt,
     });
 
+    // Tasks recorded as absent (404 from per-type read)
     const tasksOutcome = result.checked.find(
       (c) => c.type === VaultBlobType.Tasks,
     );
@@ -586,6 +683,15 @@ describe('checkVaultBlobsForUpdates', () => {
     );
 
     const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultMeta.mockResolvedValue(
       axiosResponse({
         etag: 'meta-etag',
@@ -620,6 +726,15 @@ describe('checkVaultBlobsForUpdates', () => {
     );
 
     const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remote));
     const prompt = jest.fn();
 
@@ -664,6 +779,20 @@ describe('checkVaultBlobsForUpdates', () => {
     );
 
     const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        {
+          type: VaultBlobType.Groceries,
+          etag: 'groceries-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockImplementation(async (_opts: unknown) => {
       const optsAny = _opts as any;
       if (optsAny?.type === VaultBlobType.Tasks)
@@ -679,21 +808,35 @@ describe('checkVaultBlobsForUpdates', () => {
     expect(api.getVaultMeta).toHaveBeenCalledTimes(1);
   });
 
-  test('all types 304 never fetches meta', async () => {
+  test('inventory 304 never fetches meta or per-type reads', async () => {
     const handle = await setupHandle('user-1', [], 'tasks');
-    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
 
     const api = createApiDouble(handle);
-    api.getVaultBlob.mockRejectedValue(create304Error());
+    // Inventory answers 304 directly (not-modified)
+    const passedEtag = 'inv-etag-from-last-pass';
+    api.getVaultBlobInventory.mockRejectedValue(
+      Object.assign(new Error('not modified'), { response: { status: 304 } }),
+    );
     const prompt = jest.fn();
 
-    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+    const result = await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt,
+      inventoryEtag: passedEtag,
+    });
 
+    // No meta read
     expect(api.getVaultMeta).not.toHaveBeenCalled();
-    const tasksOutcome = result.checked.find(
-      (c) => c.type === VaultBlobType.Tasks,
-    );
-    expect(tasksOutcome?.outcome).toEqual({ kind: 'not-modified' });
+    // No per-type reads
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    // Every type is recorded as not-modified
+    for (const type of VAULT_BLOB_TYPES) {
+      const outcome = result.checked.find((c) => c.type === type);
+      expect(outcome?.outcome).toEqual({ kind: 'not-modified' });
+    }
+    // Inventory ETag echoed back (it was passed in as ifNoneMatch)
+    expect(result.inventoryEtag).toBe(passedEtag);
   });
 
   test('getVaultMeta 500 error puts changed types in failed', async () => {
@@ -707,6 +850,15 @@ describe('checkVaultBlobsForUpdates', () => {
     );
 
     const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remoteBlob));
     // Override getVaultMeta to reject with 500
     api.getVaultMeta.mockRejectedValue(create500Error());
@@ -742,6 +894,15 @@ describe('checkVaultBlobsForUpdates', () => {
     );
 
     const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remoteBlob));
     // Override getVaultMeta to reject with 401
     api.getVaultMeta.mockRejectedValue(create401Error());
@@ -751,10 +912,11 @@ describe('checkVaultBlobsForUpdates', () => {
 
     // Pass stops immediately with stoppedUnauthenticated
     expect(result.stoppedUnauthenticated).toBe(true);
-
-    // Nothing was checked or recorded
-    expect(result.checked).toHaveLength(0);
+    // No failure entries (getVaultMeta error doesn't record failures)
     expect(result.failed).toHaveLength(0);
+    // Types before Tasks are recorded as absent (not in inventory)
+    // Then Tasks would be attempted but getVaultMeta throws 401, stopping the pass
+    expect(result.checked.length).toBeGreaterThan(0);
   });
 
   test('locked vault with different identity refuses', async () => {
@@ -776,6 +938,15 @@ describe('checkVaultBlobsForUpdates', () => {
     const lockedHandle = createVaultHandle({ owner: 'user-1' });
 
     const api = createApiDouble();
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
     api.getVaultBlob.mockResolvedValue(formatGetVaultBlobResponse(remoteBlob));
     // Override getVaultMeta to return different identity
     api.getVaultMeta.mockResolvedValue(await createDifferentIdentityMeta());
@@ -800,5 +971,409 @@ describe('checkVaultBlobsForUpdates', () => {
         }),
       }),
     );
+  });
+
+  // ===== NEW TEST CASES FOR ADR 0087 =====
+
+  // Test 1: Inventory entries matching local Sync Bookmarks → no per-type reads for those types
+  test('inventory etags matching Sync Bookmarks → no per-type reads for matched types', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    // Set Sync Bookmarks matching what inventory will say
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'tasks-etag-v1' });
+
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-v1',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Only inventory read, no per-type reads
+    expect(api.getVaultBlobInventory).toHaveBeenCalledTimes(1);
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    expect(api.getVaultMeta).not.toHaveBeenCalled();
+
+    // Tasks is answered as not-modified
+    const tasksOutcome = result.checked.find(
+      (c) => c.type === VaultBlobType.Tasks,
+    );
+    expect(tasksOutcome?.outcome).toEqual({ kind: 'not-modified' });
+
+    // inventoryEtag recorded
+    expect(result.inventoryEtag).toBe('inventory-etag-v1');
+  });
+
+  // Test 2: Inventory answers 304 — all types not-modified, nothing else read
+  test('inventory answers 304 → all types recorded not-modified, no other reads', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockRejectedValue(
+      Object.assign(new Error('not modified'), { response: { status: 304 } }),
+    );
+    // Pass in an etag for the inventory to echo back
+    const passedEtag = 'inventory-etag-from-last-pass';
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({
+      api,
+      handle,
+      prompt,
+      inventoryEtag: passedEtag,
+    });
+
+    // Only inventory read, with ifNoneMatch sent
+    expect(api.getVaultBlobInventory).toHaveBeenCalledWith({
+      ifNoneMatch: passedEtag,
+    });
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    expect(api.getVaultMeta).not.toHaveBeenCalled();
+
+    // Every type is answered as not-modified
+    expect(result.checked).toHaveLength(VAULT_BLOB_TYPES.length);
+    for (const type of VAULT_BLOB_TYPES) {
+      const outcome = result.checked.find((c) => c.type === type);
+      expect(outcome?.outcome).toEqual({ kind: 'not-modified' });
+    }
+
+    // inventoryEtag echoed back
+    expect(result.inventoryEtag).toBe(passedEtag);
+  });
+
+  // Test 3: Type in inventory but no Sync Bookmark on this device → read and converge
+  test('type in inventory but no Sync Bookmark → per-type read happens and converges', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    // Deliberately NO Sync Bookmark for Groceries — cross-device discovery
+
+    const remote = await captureRemoteBlob(
+      handle,
+      [{ id: 'groc-from-other-device' }],
+      'groceries',
+    );
+
+    const api = createApiDouble(handle);
+    // Use inventory naming every type so Groceries is readable
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    api.getVaultBlob.mockImplementation(async (_opts: unknown) => {
+      const optsAny = _opts as any;
+      if (optsAny?.type === VaultBlobType.Groceries) {
+        return formatGetVaultBlobResponse(remote);
+      }
+      throw create404Error();
+    });
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Groceries was read (cross-device discovery)
+    expect(api.getVaultBlob).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: VaultBlobType.Groceries,
+        ifNoneMatch: undefined,
+      }),
+    );
+
+    // Groceries converged
+    const groc = result.checked.find((c) => c.type === VaultBlobType.Groceries);
+    expect(groc?.outcome.kind).toBe('converged');
+
+    // Remote records now in local vault
+    const decrypted = await handle.loadDecryptedData({
+      type: 'groceries',
+      defaultValue: null,
+    });
+    if (!decrypted) throw new Error('Failed to decrypt groceries');
+
+    const records = readVaultBlobRecords(decrypted);
+    expect(records).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'groc-from-other-device',
+        }),
+      ]),
+    );
+
+    // Sync Bookmark advanced
+    expect(handle.lastPushedEtag('groceries')).toBe(remote.etag);
+  });
+
+  // Test 4: Type ABSENT from inventory while local blob EXISTS → never read, byte-identical
+  test('type absent from inventory but local blob exists → recorded absent, local vault unchanged', async () => {
+    const localGroceries = { id: 'local-groc', title: 'Milk' };
+    const handle = await setupHandle('user-1', [], 'tasks');
+    await handle.saveEncryptedData({
+      type: 'groceries',
+      value: { records: [localGroceries], deletions: {} },
+    });
+    const vaultBefore = handle.loadVault();
+    const localGroceriesBlobBefore = vaultBefore?.data.groceries;
+
+    const api = createApiDouble(handle);
+    // Inventory names only Tasks, not Groceries (absence means nothing to pull)
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Groceries never read (absent from inventory)
+    expect(api.getVaultBlob).not.toHaveBeenCalledWith(
+      expect.objectContaining({ type: VaultBlobType.Groceries }),
+    );
+
+    // Groceries recorded as absent
+    const groc = result.checked.find((c) => c.type === VaultBlobType.Groceries);
+    expect(groc?.outcome).toEqual({ kind: 'absent' });
+
+    // Local vault byte-identical (ADR 0087 decision 5)
+    const vaultAfter = handle.loadVault();
+    expect(vaultAfter?.data.groceries).toEqual(localGroceriesBlobBefore);
+
+    // Local data still decryptable to the same record
+    const decrypted = await handle.loadDecryptedData({
+      type: 'groceries',
+      defaultValue: null,
+    });
+    if (!decrypted) throw new Error('Failed to decrypt groceries');
+
+    const records = readVaultBlobRecords(decrypted);
+    expect(records).toEqual([localGroceries]);
+  });
+
+  // Test 5: Inventory 500 → every type in failed, no per-type reads
+  test('inventory 500 error → every type in failed, no per-type reads', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockRejectedValue(create500Error());
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Every type in failed
+    expect(result.failed).toHaveLength(VAULT_BLOB_TYPES.length);
+    for (const type of VAULT_BLOB_TYPES) {
+      const failed = result.failed.find((f) => f.type === type);
+      expect(failed).toBeDefined();
+      expect(failed?.error).toBeDefined();
+    }
+
+    // No types checked
+    expect(result.checked).toHaveLength(0);
+    // No per-type reads
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    // No meta reads
+    expect(api.getVaultMeta).not.toHaveBeenCalled();
+  });
+
+  // Test 6: Inventory network error → every type in failed, no per-type reads
+  test('inventory network error → every type in failed, no per-type reads', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockRejectedValue(createNetworkError());
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Every type in failed
+    expect(result.failed).toHaveLength(VAULT_BLOB_TYPES.length);
+    expect(result.checked).toHaveLength(0);
+    // No per-type reads
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+  });
+
+  // Test 7: Inventory per-type 401 → per-type read stops pass immediately
+  test('per-type read 401 stops pass (types after it are not read)', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    const api = createApiDouble(handle);
+    // Name every type so the loop actually tries to read them
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    // First type gets 401, second type should not be read
+    api.getVaultBlob.mockRejectedValue(create401Error());
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Pass stopped
+    expect(result.stoppedUnauthenticated).toBe(true);
+    // No types were answered
+    expect(result.checked).toHaveLength(0);
+    // Only the first type should have been attempted (stopsat first one with 401)
+    expect(api.getVaultBlob).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 8: Inventory per-type 403 → per-type read stops pass immediately
+  test('per-type read 403 stops pass (types after it are not read)', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    const api = createApiDouble(handle);
+    // Name every type so the loop actually tries to read them
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    // First type gets 403, second type should not be read
+    api.getVaultBlob.mockRejectedValue(create403Error());
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Pass stopped
+    expect(result.stoppedUnauthenticated).toBe(true);
+    // No types were answered
+    expect(result.checked).toHaveLength(0);
+    // Only the first type should have been attempted (stops at first one with 403)
+    expect(api.getVaultBlob).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 9: Two types named with differing etags → both read and converged, meta once
+  test('two types named with differing etags → both read and converged, meta called exactly once', async () => {
+    const handle = await setupHandle('user-1', [{ id: 'task1' }], 'tasks');
+    const groceriesEnvelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'groc1' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({
+      type: 'groceries',
+      value: groceriesEnvelope,
+    });
+
+    const remoteBlob1 = await captureRemoteBlob(
+      handle,
+      [{ id: 'remote1' }],
+      'tasks',
+    );
+    const remoteBlob2 = await captureRemoteBlob(
+      handle,
+      [{ id: 'remote-groc' }],
+      'groceries',
+    );
+
+    const api = createApiDouble(handle);
+    // Use every-type inventory so all types are readable
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    api.getVaultBlob.mockImplementation(async (_opts: unknown) => {
+      const optsAny = _opts as any;
+      if (optsAny?.type === VaultBlobType.Tasks)
+        return formatGetVaultBlobResponse(remoteBlob1);
+      if (optsAny?.type === VaultBlobType.Groceries)
+        return formatGetVaultBlobResponse(remoteBlob2);
+      throw create404Error();
+    });
+    const prompt = jest.fn();
+
+    await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Meta called once for convergence
+    expect(api.getVaultMeta).toHaveBeenCalledTimes(1);
+  });
+
+  // Test 10: Type named with differing etag, per-type GET answers 404 → recorded absent
+  test('per-type GET 404 → recorded as absent (genuine race)', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    const api = createApiDouble(handle);
+    // Name every type so they are all readable (inventory exists for them)
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    // Per-type GETs all answer 404 (genuine race: was in inventory, but disappeared)
+    api.getVaultBlob.mockRejectedValue(create404Error());
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // All types were attempted (getVaultBlob called for each)
+    expect(api.getVaultBlob).toHaveBeenCalledTimes(VAULT_BLOB_TYPES.length);
+    // All types recorded as absent (per-type read got 404)
+    for (const type of VAULT_BLOB_TYPES) {
+      const outcome = result.checked.find((c) => c.type === type);
+      expect(outcome?.outcome).toEqual({ kind: 'absent' });
+    }
+  });
+
+  // Test 11: Per-type GET 304 → recorded as not-modified (even though inventory said it differs)
+  test('per-type GET 304 → recorded as not-modified', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    const api = createApiDouble(handle);
+    api.getVaultBlobInventory.mockResolvedValue(
+      inventoryResponse([
+        {
+          type: VaultBlobType.Tasks,
+          etag: 'tasks-etag-differs',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ]),
+    );
+    // Per-type read gets 304
+    api.getVaultBlob.mockRejectedValue(create304Error());
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // Tasks recorded as not-modified
+    const tasksOutcome = result.checked.find(
+      (c) => c.type === VaultBlobType.Tasks,
+    );
+    expect(tasksOutcome?.outcome).toEqual({ kind: 'not-modified' });
+  });
+
+  // Test 12: Per-type non-auth failure recorded in failed, pass continues
+  test('per-type non-auth failure recorded in failed, pass continues to later types', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    let callCount = 0;
+    const api = createApiDouble(handle);
+    // Name every type so all are readable
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    api.getVaultBlob.mockImplementation(async () => {
+      callCount++;
+      // First type fails with 500, later types should still be read
+      if (callCount === 1) {
+        throw create500Error();
+      }
+      throw create404Error();
+    });
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // First type (earliest in VAULT_BLOB_TYPES) in failed
+    expect(result.failed).toHaveLength(1);
+    const firstType = VAULT_BLOB_TYPES[0];
+    expect(result.failed[0].type).toBe(firstType);
+    // Remaining types were read and recorded as absent (404)
+    expect(result.checked.length).toBe(VAULT_BLOB_TYPES.length - 1);
+    // getVaultBlob called for all types
+    expect(api.getVaultBlob).toHaveBeenCalledTimes(VAULT_BLOB_TYPES.length);
+  });
+
+  // Test 13: result.inventoryEtag on 200 read is inventory's own etag
+  test('result.inventoryEtag on 200 read is inventory etag', async () => {
+    const handle = await setupHandle('user-1', [], 'tasks');
+
+    const api = createApiDouble(handle);
+    // Inventory with every type so the pass completes normally
+    api.getVaultBlobInventory.mockResolvedValue(everyTypeInventoryResponse());
+    api.getVaultBlob.mockRejectedValue(create404Error());
+    const prompt = jest.fn();
+
+    const result = await checkVaultBlobsForUpdates({ api, handle, prompt });
+
+    // inventoryEtag returned from inventory response
+    expect(result.inventoryEtag).toBe('inventory-etag-v1');
   });
 });
