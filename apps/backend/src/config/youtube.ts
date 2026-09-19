@@ -1,9 +1,4 @@
-export type Env = Record<string, string | undefined>;
-
-function parseBoolean(value: string | undefined): boolean {
-  const raw = (value ?? '').trim().toLowerCase();
-  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
-}
+import { Env, parseBoolean } from './env';
 
 /**
  * Explicit backend switch for YouTube (ADR 0091). Defaults to unavailable

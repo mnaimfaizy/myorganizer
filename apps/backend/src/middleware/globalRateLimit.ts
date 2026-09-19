@@ -1,7 +1,6 @@
 import type { RequestHandler } from 'express';
 import rateLimit from 'express-rate-limit';
-
-type Env = Record<string, string | undefined>;
+import { Env, parseBoolean } from '../config/env';
 
 export type GlobalRateLimitConfig = {
   enabled: boolean;
@@ -9,14 +8,9 @@ export type GlobalRateLimitConfig = {
   max: number;
 };
 
-function parseBoolean(value: string | undefined): boolean {
-  const raw = (value ?? '').trim().toLowerCase();
-  return raw === '1' || raw === 'true' || raw === 'yes' || raw === 'on';
-}
-
 function parsePositiveIntOr(
   value: string | undefined,
-  fallback: number
+  fallback: number,
 ): number {
   const raw = (value ?? '').trim();
   if (!raw) return fallback;
@@ -28,7 +22,7 @@ function parsePositiveIntOr(
 }
 
 export function getGlobalRateLimitConfigFromEnv(
-  env: Env = process.env
+  env: Env = process.env,
 ): GlobalRateLimitConfig {
   return {
     enabled: parseBoolean(env.ENABLE_GLOBAL_RATE_LIMIT),
@@ -38,7 +32,7 @@ export function getGlobalRateLimitConfigFromEnv(
 }
 
 export function createGlobalApiRateLimiter(
-  config: GlobalRateLimitConfig
+  config: GlobalRateLimitConfig,
 ): RequestHandler | null {
   if (!config.enabled) return null;
 
@@ -52,7 +46,7 @@ export function createGlobalApiRateLimiter(
 }
 
 export function maybeCreateGlobalApiRateLimiterFromEnv(
-  env: Env = process.env
+  env: Env = process.env,
 ): RequestHandler | null {
   return createGlobalApiRateLimiter(getGlobalRateLimitConfigFromEnv(env));
 }

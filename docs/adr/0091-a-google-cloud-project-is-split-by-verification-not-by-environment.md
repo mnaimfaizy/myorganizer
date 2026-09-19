@@ -38,11 +38,11 @@ and a review measured in weeks.
   secrets that no repository gate can read, and asserting them in CI would print secret-derived
   values into logs.
 
-**Not yet implemented.** When this ADR was accepted, neither the switch nor the boot check existed:
-YouTube routes are always mounted and `GOOGLE_REDIRECT_URI` is passed to the OAuth client
-unvalidated. The work is tracked in PRD #844: the switch and the boot check in #846, the web side
-in #847, and the Cloud projects themselves in #848. Until #846 lands, nothing stops production from
-serving YouTube, so do not deploy production YouTube credentials before then.
+The switch (`YOUTUBE_AVAILABLE`) and the boot check landed in #846: `apps/backend/src/config/youtube.ts`,
+`apps/backend/src/config/youtubeRedirectUri.ts`, and `apps/backend/src/middleware/youtubeAvailabilityGate.ts`.
+The web side (#847) and the Cloud projects themselves (#848), tracked in PRD #844, remain open. Until
+#848 lands, `YOUTUBE_AVAILABLE` must stay unset or `false` in production, so do not deploy production
+YouTube credentials before then.
 
 ## Consequences
 
