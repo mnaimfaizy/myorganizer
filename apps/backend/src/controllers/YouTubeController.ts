@@ -14,6 +14,7 @@ import {
   Security,
   Tags,
 } from 'tsoa';
+import { isYouTubeAvailable } from '../config/youtube';
 import { requireUserId } from '../guards/AuthGuard';
 import youTubeDigestService from '../services/YouTubeDigestService';
 import youTubeSyncWorkerService from '../services/YouTubeSyncWorkerService';
@@ -35,6 +36,10 @@ interface AuthUrlResponse {
 interface StatusResponse {
   connected: boolean;
   status: string;
+}
+
+interface YouTubeAvailabilityResponse {
+  available: boolean;
 }
 
 interface SubscriptionResponse {
@@ -466,6 +471,16 @@ export class YouTubeController extends Controller {
   }
 
   /**
+   * Public availability report (ADR 0091): whether YouTube is available right
+   * now. Unauthenticated and reports booleans only — never configuration
+   * values — so the web can hide the feature without needing a session.
+   */
+  @Get('/availability')
+  public async getAvailability(): Promise<YouTubeAvailabilityResponse> {
+    return { available: isYouTubeAvailable() };
+  }
+
+  /**
    * Turns the weekly digest off from the link carried by every digest email.
    * Unauthenticated by design — the opaque token is the only credential a
    * mail client can present.
@@ -489,6 +504,15 @@ export class YouTubeController extends Controller {
   @Post('/cron/sync')
   @Security('cron-secret')
   public async cronSync(): Promise<CronSyncResponse | YouTubeErrorResponse> {
+    if (!isYouTubeAvailable()) {
+      return {
+        ran: false,
+        processed: 0,
+        usersSynced: 0,
+        failed: 0,
+        done: true,
+      };
+    }
     const result = await youTubeSyncWorkerService.runSyncWorker();
     return {
       ran: result.ran,
@@ -508,6 +532,18 @@ export class YouTubeController extends Controller {
   public async cronDigest(): Promise<
     CronDigestResponse | YouTubeErrorResponse
   > {
+    if (!isYouTubeAvailable()) {
+      return {
+        ran: false,
+        processed: 0,
+        sent: 0,
+        skippedEmpty: 0,
+        notDue: 0,
+        duplicates: 0,
+        failed: 0,
+        done: true,
+      };
+    }
     const result = await youTubeDigestService.runDigestWorker();
     return {
       ran: result.ran,

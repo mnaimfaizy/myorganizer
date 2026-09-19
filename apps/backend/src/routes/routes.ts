@@ -180,6 +180,14 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "YouTubeAvailabilityResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "available": {"dataType":"boolean","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "UnsubscribeResponse": {
         "dataType": "refObject",
         "properties": {
@@ -927,6 +935,35 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'updateNotificationSettings',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_getAvailability: Record<string, TsoaRoute.ParameterSchema> = {
+        };
+        app.get('/youtube/availability',
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getAvailability)),
+
+            async function YouTubeController_getAvailability(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_getAvailability, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'getAvailability',
                 controller,
                 response,
                 next,

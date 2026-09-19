@@ -81,6 +81,18 @@ jest.mock('../services/YouTubeSyncService', () => ({
   __esModule: true,
   default: {
     getAuthUrl: jest.fn(),
+    handleOAuthCallback: jest.fn(),
+    getStatus: jest.fn(),
+    disconnect: jest.fn(),
+    getSubscriptions: jest.fn(),
+    manualRefresh: jest.fn(),
+    getVideos: jest.fn(),
+    getNotificationSettings: jest.fn(),
+    updateNotificationSettings: jest.fn(),
+    getSyncStatus: jest.fn(),
+    toggleSubscription: jest.fn(),
+    setVideoWatched: jest.fn(),
+    getVideosGroupedByChannel: jest.fn(),
   },
 }));
 
@@ -103,9 +115,13 @@ function makeApp() {
   jest.resetModules();
 
   const { RegisterRoutes } = require('../routes/routes');
+  const {
+    createYouTubeAvailabilityGate,
+  } = require('../middleware/youtubeAvailabilityGate');
 
   const app = express();
   app.use(bodyParser.json({ limit: '2mb' }));
+  app.use('/youtube', createYouTubeAvailabilityGate());
   RegisterRoutes(app);
 
   app.use(function tsoaErrorHandler(
@@ -142,6 +158,7 @@ function makeApp() {
 
 describe('YouTubeController (HTTP integration)', () => {
   const originalCronSecret = process.env.YOUTUBE_CRON_SECRET;
+  const originalYouTubeAvailable = process.env.YOUTUBE_AVAILABLE;
   let app: express.Application;
 
   beforeAll(() => {
@@ -150,6 +167,7 @@ describe('YouTubeController (HTTP integration)', () => {
 
   beforeEach(() => {
     process.env.YOUTUBE_CRON_SECRET = CRON_SECRET;
+    process.env.YOUTUBE_AVAILABLE = 'true';
     jest.resetAllMocks();
   });
 
@@ -158,6 +176,11 @@ describe('YouTubeController (HTTP integration)', () => {
       delete process.env.YOUTUBE_CRON_SECRET;
     } else {
       process.env.YOUTUBE_CRON_SECRET = originalCronSecret;
+    }
+    if (originalYouTubeAvailable === undefined) {
+      delete process.env.YOUTUBE_AVAILABLE;
+    } else {
+      process.env.YOUTUBE_AVAILABLE = originalYouTubeAvailable;
     }
   });
 
@@ -344,5 +367,255 @@ describe('YouTubeController (HTTP integration)', () => {
     expect(Object.keys(jwtRes.body).sort()).toEqual(
       Object.keys(cronRes.body).sort(),
     );
+  });
+
+  test('GET /youtube/availability returns true when switch is on', async () => {
+    const res = await request(app).get('/youtube/availability');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ available: true });
+  });
+});
+
+describe('YouTube availability switch — off', () => {
+  const originalCronSecret = process.env.YOUTUBE_CRON_SECRET;
+  const originalYouTubeAvailable = process.env.YOUTUBE_AVAILABLE;
+  let app: express.Application;
+
+  beforeAll(() => {
+    app = makeApp();
+  });
+
+  beforeEach(() => {
+    process.env.YOUTUBE_CRON_SECRET = CRON_SECRET;
+    process.env.YOUTUBE_AVAILABLE = 'false';
+    jest.resetAllMocks();
+  });
+
+  afterEach(() => {
+    if (originalCronSecret === undefined) {
+      delete process.env.YOUTUBE_CRON_SECRET;
+    } else {
+      process.env.YOUTUBE_CRON_SECRET = originalCronSecret;
+    }
+    if (originalYouTubeAvailable === undefined) {
+      delete process.env.YOUTUBE_AVAILABLE;
+    } else {
+      process.env.YOUTUBE_AVAILABLE = originalYouTubeAvailable;
+    }
+  });
+
+  test('GET /youtube/auth-url returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .get('/youtube/auth-url')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.getAuthUrl).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/callback returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .post('/youtube/callback')
+      .set('Authorization', 'Bearer test')
+      .send({ code: 'auth-code' });
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.handleOAuthCallback).not.toHaveBeenCalled();
+  });
+
+  test('GET /youtube/status returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .get('/youtube/status')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.getStatus).not.toHaveBeenCalled();
+  });
+
+  test('DELETE /youtube/disconnect returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .delete('/youtube/disconnect')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.disconnect).not.toHaveBeenCalled();
+  });
+
+  test('GET /youtube/subscriptions returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .get('/youtube/subscriptions')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.getSubscriptions).not.toHaveBeenCalled();
+  });
+
+  test('PUT /youtube/subscriptions/sync returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .put('/youtube/subscriptions/sync')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.manualRefresh).not.toHaveBeenCalled();
+  });
+
+  test('GET /youtube/videos returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .get('/youtube/videos')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.getVideos).not.toHaveBeenCalled();
+  });
+
+  test('GET /youtube/notification-settings returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .get('/youtube/notification-settings')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.getNotificationSettings).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/digest/unsubscribe returns 404 when switch is off', async () => {
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    const res = await request(app)
+      .post('/youtube/digest/unsubscribe')
+      .send({ token: 'unsubscribe-token' });
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youTubeDigestService.unsubscribe).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/cron/sync returns 200 with no-op body when switch is off', async () => {
+    const youTubeSyncWorkerService =
+      require('../services/YouTubeSyncWorkerService').default;
+
+    const res = await request(app)
+      .post('/youtube/cron/sync')
+      .set('X-Cron-Secret', CRON_SECRET);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      ran: false,
+      processed: 0,
+      usersSynced: 0,
+      failed: 0,
+      done: true,
+    });
+    expect(youTubeSyncWorkerService.runSyncWorker).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/cron/sync returns 401 on missing X-Cron-Secret when switch is off', async () => {
+    const youTubeSyncWorkerService =
+      require('../services/YouTubeSyncWorkerService').default;
+
+    const res = await request(app).post('/youtube/cron/sync');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Unauthorized' });
+    expect(youTubeSyncWorkerService.runSyncWorker).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/cron/sync returns 401 on wrong X-Cron-Secret when switch is off', async () => {
+    const youTubeSyncWorkerService =
+      require('../services/YouTubeSyncWorkerService').default;
+
+    const res = await request(app)
+      .post('/youtube/cron/sync')
+      .set('X-Cron-Secret', 'wrong-secret');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Unauthorized' });
+    expect(youTubeSyncWorkerService.runSyncWorker).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/cron/digest returns 200 with no-op body when switch is off', async () => {
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    const res = await request(app)
+      .post('/youtube/cron/digest')
+      .set('X-Cron-Secret', CRON_SECRET);
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      ran: false,
+      processed: 0,
+      sent: 0,
+      skippedEmpty: 0,
+      notDue: 0,
+      duplicates: 0,
+      failed: 0,
+      done: true,
+    });
+    expect(youTubeDigestService.runDigestWorker).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/cron/digest returns 401 on missing X-Cron-Secret when switch is off', async () => {
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    const res = await request(app).post('/youtube/cron/digest');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Unauthorized' });
+    expect(youTubeDigestService.runDigestWorker).not.toHaveBeenCalled();
+  });
+
+  test('POST /youtube/cron/digest returns 401 on wrong X-Cron-Secret when switch is off', async () => {
+    const youTubeDigestService =
+      require('../services/YouTubeDigestService').default;
+
+    const res = await request(app)
+      .post('/youtube/cron/digest')
+      .set('X-Cron-Secret', 'wrong-secret');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Unauthorized' });
+    expect(youTubeDigestService.runDigestWorker).not.toHaveBeenCalled();
+  });
+
+  test('GET /youtube/availability returns false when switch is off', async () => {
+    const res = await request(app).get('/youtube/availability');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ available: false });
   });
 });

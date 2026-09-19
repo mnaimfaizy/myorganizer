@@ -421,6 +421,18 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"YouTubeAvailabilityResponse": {
+				"properties": {
+					"available": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"available"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"UnsubscribeResponse": {
 				"properties": {
 					"ok": {
@@ -1881,6 +1893,29 @@
 						}
 					}
 				}
+			}
+		},
+		"/youtube/availability": {
+			"get": {
+				"operationId": "GetAvailability",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/YouTubeAvailabilityResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Public availability report (ADR 0091): whether YouTube is available right\nnow. Unauthenticated and reports booleans only — never configuration\nvalues — so the web can hide the feature without needing a session.",
+				"tags": [
+					"YouTube"
+				],
+				"security": [],
+				"parameters": []
 			}
 		},
 		"/youtube/digest/unsubscribe": {
