@@ -1,4 +1,5 @@
 import vaultService from '../services/VaultService';
+import { runBootTask } from './runBootTask';
 
 /**
  * Idempotent boot cleanup for superseded `'todos'` EncryptedVaultBlob rows.
@@ -6,14 +7,15 @@ import vaultService from '../services/VaultService';
  * already exists for the same user.
  */
 export async function deleteSupersededTodosBlobsOnBoot(): Promise<void> {
-  try {
-    const deleted = await vaultService.deleteSupersededTodosBlobs();
-    if (deleted > 0) {
-      console.log(
-        `[bootstrap] Deleted ${deleted} superseded todos vault blob(s).`,
-      );
-    }
-  } catch (err) {
-    console.error('[bootstrap] Failed to delete superseded todos blobs:', err);
-  }
+  await runBootTask(
+    '[bootstrap] Failed to delete superseded todos blobs:',
+    async () => {
+      const deleted = await vaultService.deleteSupersededTodosBlobs();
+      if (deleted > 0) {
+        console.log(
+          `[bootstrap] Deleted ${deleted} superseded todos vault blob(s).`,
+        );
+      }
+    },
+  );
 }
