@@ -3036,7 +3036,7 @@ class Component extends DCLogic {
       body: 'The five types are encrypted independently, so a change to one is a change to one. The other four were not read, not rewritten, and not even decrypted to get here.',
       nodes: [n('enc', 'op', CA, R2, WIDE, 58, 'AES-256-GCM · encrypt', '')].concat(typeBlobs('groceries')),
       edges: [e('enc', 'b2', 'replaces')],
-      add: { device: [{ t: '6 encrypted blobs', k: 'opaque', d: 'on disk — one per record type' }] },
+      add: { device: [{ t: '5 encrypted blobs', k: 'opaque', d: 'on disk — one per record type' }] },
       ledgerNote: 'Still nothing remote. That was a local write; the network has not been touched yet.' });
 
     // ---------------- SCENE 3 ----------------
@@ -3069,7 +3069,7 @@ class Component extends DCLogic {
     // ---------------- SCENE 4 ----------------
     push({ scene: 4, title: 'An envelope is built, on the device.',
       body: 'Everything needed to restore, sealed into one file: the KDF parameters, both wrapped master keys, and the five ciphertext blobs. Self-contained, portable, and useless to anyone without the passphrase.',
-      nodes: [n('env', 'cipher', CA, R2, WIDE, 88, 'vault envelope', 'schemaVersion · exportId · exportedAt · meta · 6 blobs')] });
+      nodes: [n('env', 'cipher', CA, R2, WIDE, 88, 'vault envelope', 'schemaVersion · exportId · exportedAt · meta · 5 blobs')] });
 
     push({ scene: 4, title: 'An audit record is posted to the backend.',
       body: 'Metadata about a backup, never the backup. And it is broader than it looks — the same reporter fires on every import too, success and failure alike, so the backend learns that something went wrong and which classified code it hit.',
