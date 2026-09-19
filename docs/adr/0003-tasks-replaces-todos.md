@@ -33,13 +33,15 @@ WHERE t.type = 'todos'
 
 ### Exit record (issue #841, 2026-09-19)
 
-| Predicate | Environment | Result | Recorded by |
-| --- | --- | --- | --- |
-| (1) Unmigrated live Ciphertext is zero | production | `0` | maintainer |
-| (1) Unmigrated live Ciphertext is zero | staging | `0` | maintainer |
-| (2) A warning release has already shipped | — | **waived** | maintainer |
+Operator record on the cleanup issue: [ADR 0003 exit record — 2026-09-19](https://github.com/mnaimfaizy/myorganizer/issues/841#issuecomment-5740823613). The table below is a durable copy of that comment, not a substitute for it.
 
-Predicate (2) was waived, not met. No release carried the warning before the removal. The maintainer accepted the residual it guarded: a `'todos'`-only Local Vault or export file that never reached a server is no longer readable after this change. Query (1) cannot see that residual, so the waiver is a decision, not a measurement.
+| Predicate                                 | Environment | Result     | Recorded by |
+| ----------------------------------------- | ----------- | ---------- | ----------- |
+| (1) Unmigrated live Ciphertext is zero    | production  | `0`        | maintainer  |
+| (1) Unmigrated live Ciphertext is zero    | staging     | `0`        | maintainer  |
+| (2) A warning release has already shipped | —           | **waived** | maintainer  |
+
+Predicate (2) was waived, not met. No release carried the warning before the removal. The maintainer accepted the residual it guarded: a `'todos'`-only Local Vault or export file that never reached a server is no longer readable after this change. Query (1) cannot see that residual, so the waiver is a decision, not a measurement. That waiver is recorded on #841 in the comment linked above, in a commit that only documents the exit record (it does not perform the plumbing deletion).
 
 ## Considered Options
 
