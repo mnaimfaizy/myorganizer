@@ -71,7 +71,7 @@ type MappedVaultRecordType = (typeof VAULT_BLOB_FIELDS)[VaultBlobType];
  * A Local Vault write names a field; convergence names a Vault Blob Type. The
  * Vault Handle's sync sink is handed the first and has to report the second,
  * and inverting the pin is how it does that. A hand-written second table would
- * be exactly the shape ADR 0053 forbids: a seventh member could be present in
+ * be exactly the shape ADR 0053 forbids: a sixth member could be present in
  * one direction and missing from the other, and the missing direction is the
  * one that silently stops synchronising.
  *
@@ -80,7 +80,7 @@ type MappedVaultRecordType = (typeof VAULT_BLOB_FIELDS)[VaultBlobType];
  * `Record<VaultRecordType, …>` here would be an assertion the compiler never
  * checks — and an uncovered field would reach the sink as `type: undefined`,
  * which is a Vault Blob Type that silently never synchronises. Declared this
- * way, a field no Vault Blob Type maps onto — a seventh field, or two blob
+ * way, a field no Vault Blob Type maps onto — a sixth field, or two blob
  * types collapsed onto one field — instead fails to compile at the call site
  * that indexes this table with a `VaultRecordType`.
  */

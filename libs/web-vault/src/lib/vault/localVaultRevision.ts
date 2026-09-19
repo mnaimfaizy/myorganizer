@@ -23,7 +23,7 @@
  * A number rather than an event payload, and no Vault Blob Type on it. Readers
  * re-read what they already know how to read, which keeps this incapable of
  * carrying plaintext, incapable of disagreeing with the Local Vault about what
- * changed, and correct for a seventh Vault Blob Type nobody has told it about.
+ * changed, and correct for a sixth Vault Blob Type nobody has told it about.
  * An extra read costs one decrypt of data this device already holds.
  *
  * Lives beside the Vault Sync Queue rather than on the Vault Handle, because
