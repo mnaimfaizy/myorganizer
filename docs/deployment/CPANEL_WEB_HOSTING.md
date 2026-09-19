@@ -45,6 +45,13 @@ The app reads its API location at **runtime** from `API_BASE_URL`, so changing
 the API endpoint does not need a rebuild. `NEXT_PUBLIC_API_BASE_URL` is still
 honoured as a build-time fallback for local development.
 
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Vault Cloud Backup) is **not** a cPanel runtime
+variable. Next inlines it when CI runs `yarn package:myorganizer:web`. Set it
+as the GitHub Environment **variable** of the same name on `production` before
+that package step; putting it only in this Node.js app panel leaves the baked
+bundle unchanged. The value is sticky after first production enable — see
+[Vault Cloud Backup](../features/vault-cloud-backup-google-drive.md#sticky-client-id).
+
 ## One-time setup
 
 cPanel → **Setup Node.js App** → **Create Application**:

@@ -95,6 +95,35 @@ Set the values in **Vercel Project → Settings → Environment Variables** and 
 
 If you also set `NEXT_PUBLIC_API_BASE_URL`, keep it aligned with `API_BASE_URL` for each environment.
 
+### `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Vault Cloud Backup)
+
+Public Google Identity Services client id for Vault Cloud Backup (`drive.appdata`).
+It is **inlined at build time**. Empty means the vault page shows
+_"Cloud backup is not configured"_ — that is the off switch; there is no
+YouTube-style availability flag.
+
+Set it in **Vercel Project → Settings → Environment Variables** on the
+environment this project's `--prod` deploy uses (this repo's staging
+workflow deploys the staging frontend as that Vercel project's Production
+environment).
+
+- **Staging (this Vercel project):** the shared **Testing** Cloud project's
+  client. Add this Vercel origin under **Authorized JavaScript origins** on
+  that client. It may share YouTube's Testing client
+  ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
+- **Production frontend is not hosted here.** Production is packaged in
+  GitHub Actions and uploaded to cPanel. Its client id lives as the GitHub
+  Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `production`
+  — see [CI/CD](CI_CD_AND_RELEASE_PROCESS.md) and
+  [Vault Cloud Backup](../features/vault-cloud-backup-google-drive.md).
+
+That production value is **sticky**. Drive `appDataFolder` is per OAuth
+application, so changing the client after Users have copies makes those
+copies invisible to the new client.
+
+`window.__MYORG_GOOGLE_CLIENT_ID__` is an E2E/dev fallback. Do not use it
+as the Vercel (or production) configuration path.
+
 ## Where to get the values (in our setup)
 
 ### `API_BASE_URL` / `NEXT_PUBLIC_API_BASE_URL`
@@ -133,6 +162,10 @@ If you are hosting manually from the Vercel dashboard (no GitHub Actions deploym
   - backend sets cookies for the correct domain,
   - CORS is configured with `credentials: true`,
   - frontend requests include credentials.
+- **Vault Cloud Backup GIS origin**: add this Vercel origin under the Testing
+  client's **Authorized JavaScript origins**. A missing origin surfaces as
+  Google `Error 400: redirect_uri_mismatch` even though Drive uses no
+  redirect — see [Vault Cloud Backup](../features/vault-cloud-backup-google-drive.md).
 
 ## Verifying the deployment
 

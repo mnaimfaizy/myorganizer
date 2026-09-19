@@ -27,6 +27,9 @@ export function VaultPageClient() {
     VAULT_OPERATIONS.CloudBackup,
   );
   const clientId =
+    // Production and staging bake NEXT_PUBLIC_GOOGLE_CLIENT_ID in at
+    // build time. window.__MYORG_GOOGLE_CLIENT_ID__ is an E2E/dev fallback
+    // only — not a hosted configuration path (issue #751).
     typeof process !== 'undefined' && process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
       ? process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID
       : typeof window !== 'undefined'

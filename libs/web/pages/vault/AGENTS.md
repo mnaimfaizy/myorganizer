@@ -12,9 +12,12 @@ Consolidated dashboard vault page (`/dashboard/vault`): cloud backup, export, an
 - Keep cloud backup on the browser Google Identity Services implicit flow; tokens stay in memory.
 - Treat Drive `appDataFolder` snapshots as ciphertext plus metadata only.
 - Feature behaviour for humans lives in `docs/features/vault-cloud-backup-google-drive.md`.
+- Production Drive uses its own Cloud project (ADR 0091). The client id is
+  build-time `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and sticky after first enable.
 
 ## Do Not
 
 - Do not display, log, or upload decrypted vault contents.
 - Do not reuse YouTube OAuth, scopes, or backend token storage for Drive backup.
 - Do not render the cross-source last-backup summary card here — it belongs to the account page.
+- Do not use `window.__MYORG_GOOGLE_CLIENT_ID__` as a hosted configuration path.
