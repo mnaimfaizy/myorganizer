@@ -82,7 +82,7 @@ routing them through the table would make the test assert the table instead of t
 A module that **declares** the member names is exempt, because it is the list rather than a use of
 it — but only where the Pinned Table ties it back. The table satisfies `Record<VaultBlobType,
 VaultRecordType>`, `Record<VaultExportBlobType, VaultRecordType>`, and `Record<VaultBlobType,
-CoreVaultRecordType>` at once, so a seventh blob type missing from the Local Vault's field union,
+CoreVaultRecordType>` at once, so a sixth blob type missing from the Local Vault's field union,
 from the envelope schema, or from `vault-core`'s separate copy of the field names fails to compile
 at the pin. Each exemption carries a written reason in the checker, and one naming a file that no
 longer exists is a hard error — the same contract `tools/config/gate-coverage-optout.json` uses.
@@ -103,5 +103,5 @@ short on purpose.
 - A legitimate hand-enumeration must say so in code, by carrying its own `satisfies` clause. There
   is no comment-based suppression, deliberately: a fan-out that cannot state its exhaustiveness in
   the type system is the case this ADR exists to stop.
-- Adding a seventh Vault Blob Type now fails to compile in one place, with the table naming every
+- Adding a sixth Vault Blob Type now fails to compile in one place, with the table naming every
   path that needs it, rather than passing everywhere and losing data in four.
