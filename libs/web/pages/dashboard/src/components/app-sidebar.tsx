@@ -11,6 +11,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@myorganizer/web-ui';
+import { useYouTubeAvailability } from '@myorganizer/web/pages/youtube';
 import {
   ClipboardList,
   CreditCard,
@@ -24,7 +25,7 @@ import {
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 
-const navMain = [
+const allNavItems = [
   {
     title: 'Home',
     url: '/dashboard',
@@ -75,6 +76,13 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: '',
   };
   const { state } = useSidebar();
+  const { available, loading, error } = useYouTubeAvailability();
+
+  const navMain = allNavItems.filter(
+    (item) =>
+      item.title !== 'YouTube' ||
+      (available === true && loading === false && error === null),
+  );
 
   return (
     <Sidebar collapsible="icon" {...props}>

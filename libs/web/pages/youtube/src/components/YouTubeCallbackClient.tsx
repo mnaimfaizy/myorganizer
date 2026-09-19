@@ -4,19 +4,30 @@ import { getAccessToken } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useYouTubeAvailability } from '../hooks';
 
 export default function YouTubeCallbackClient() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const didRun = useRef(false);
+  const {
+    available,
+    loading: availabilityLoading,
+    error: availabilityError,
+  } = useYouTubeAvailability();
 
   const handleBack = useCallback(() => {
-    router.replace('/dashboard/youtube');
+    router.replace('/dashboard');
   }, [router]);
+
+  const isUnavailable =
+    availabilityError !== null || availabilityLoading || available === false;
 
   useEffect(() => {
     if (didRun.current) return;
+    if (isUnavailable) return;
+
     didRun.current = true;
 
     (async () => {
@@ -55,7 +66,21 @@ export default function YouTubeCallbackClient() {
         setError('Something went wrong while connecting YouTube.');
       }
     })();
-  }, [searchParams, router]);
+  }, [searchParams, router, isUnavailable]);
+
+  if (isUnavailable) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
+        <p className="text-muted-foreground text-lg font-medium">
+          YouTube is not available right now.
+        </p>
+        <p className="text-muted-foreground text-sm">Please try again later.</p>
+        <button className="text-primary underline text-sm" onClick={handleBack}>
+          Back to Dashboard
+        </button>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -65,7 +90,7 @@ export default function YouTubeCallbackClient() {
         </p>
         <p className="text-muted-foreground text-sm">{error}</p>
         <button className="text-primary underline text-sm" onClick={handleBack}>
-          Back to YouTube
+          Back to Dashboard
         </button>
       </div>
     );

@@ -51,6 +51,7 @@ jest.mock('@myorganizer/web-ui', () => ({
 }));
 
 // Mock hooks
+const mockUseYouTubeAvailability = jest.fn();
 const mockUseYouTubeStatus = jest.fn();
 const mockUseYouTubeConnect = jest.fn();
 const mockUseYouTubeSubscriptions = jest.fn();
@@ -60,6 +61,7 @@ const mockUseVideoQueue = jest.fn();
 const mockUseChannelUploads = jest.fn();
 
 jest.mock('../hooks', () => ({
+  useYouTubeAvailability: () => mockUseYouTubeAvailability(),
   useYouTubeStatus: () => mockUseYouTubeStatus(),
   useYouTubeConnect: () => mockUseYouTubeConnect(),
   useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
@@ -110,6 +112,11 @@ describe('YouTubePageClient', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearchParams.value = new URLSearchParams();
+    mockUseYouTubeAvailability.mockReturnValue({
+      available: true,
+      loading: false,
+      error: null,
+    });
     mockUseChannelUploads.mockReturnValue(defaultChannelUploads);
     mockUseYouTubeConnect.mockReturnValue(defaultConnect);
     mockUseYouTubeSubscriptions.mockReturnValue(defaultSubs);
@@ -698,6 +705,134 @@ describe('YouTubePageClient', () => {
       // At t=3000ms with 1s intervals starting from t=0:
       // calls execute at t=0, t=1000, t=2000 = 3 calls total (not doubled)
       expect(refreshSync.mock.calls.length).toBe(3);
+    });
+  });
+
+  describe('YouTube availability gate', () => {
+    it('should show unavailable when explicitly false', () => {
+      mockUseYouTubeAvailability.mockReturnValue({
+        available: false,
+        loading: false,
+        error: null,
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole('link', { name: /Back to Dashboard/i }),
+      ).toBeInTheDocument();
+    });
+
+    it('should show unavailable while loading availability', () => {
+      mockUseYouTubeAvailability.mockReturnValue({
+        available: null,
+        loading: true,
+        error: null,
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('should show unavailable on availability error', () => {
+      mockUseYouTubeAvailability.mockReturnValue({
+        available: null,
+        loading: false,
+        error: new Error('Service unavailable'),
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('should show unavailable when available is null and not loading', () => {
+      mockUseYouTubeAvailability.mockReturnValue({
+        available: null,
+        loading: false,
+        error: null,
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+    });
+
+    it('should show dashboard when available and connected', () => {
+      mockUseYouTubeAvailability.mockReturnValue({
+        available: true,
+        loading: false,
+        error: null,
+      });
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(screen.getByText('Videos')).toBeInTheDocument();
+      expect(
+        screen.queryByRole('heading', {
+          name: /YouTube is not available/i,
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show unavailable even when user is connected', () => {
+      mockUseYouTubeAvailability.mockReturnValue({
+        available: false,
+        loading: false,
+        error: null,
+      });
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+
+      render(<YouTubePageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+      expect(screen.queryByText('Videos')).not.toBeInTheDocument();
+    });
+
+    it('should link back to /dashboard in unavailable state', () => {
+      mockUseYouTubeAvailability.mockReturnValue({
+        available: false,
+        loading: false,
+        error: null,
+      });
+
+      render(<YouTubePageClient />);
+
+      const backLink = screen.getByRole('link', {
+        name: /Back to Dashboard/i,
+      });
+      expect(backLink).toHaveAttribute('href', '/dashboard');
     });
   });
 });

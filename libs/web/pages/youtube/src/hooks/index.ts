@@ -546,3 +546,37 @@ export async function updateVideoWatched(
     },
   );
 }
+
+export function useYouTubeAvailability() {
+  const [available, setAvailable] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  const didMount = useRef(false);
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${getYouTubeApiBase()}/availability`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch availability: ${response.status}`);
+      }
+      const data = (await response.json()) as { available: boolean };
+      setAvailable(data.available);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+      setAvailable(false);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!didMount.current) {
+      didMount.current = true;
+      void fetch_();
+    }
+  }, [fetch_]);
+
+  return { available, loading, error };
+}
