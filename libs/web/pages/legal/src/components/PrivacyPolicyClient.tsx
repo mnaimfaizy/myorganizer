@@ -1,5 +1,6 @@
 import { Button, Card, CardContent } from '@myorganizer/web-ui';
 import Link from 'next/link';
+import { OperatorContact } from './OperatorContact';
 
 export default function PrivacyPolicyClient() {
   const operatorName = process.env.OPERATOR_NAME;
@@ -94,25 +95,10 @@ export default function PrivacyPolicyClient() {
             </p>
           </section>
 
-          {operatorName && (
-            <section className="mt-6">
-              <h2 className="text-base font-semibold">Operator & Contact</h2>
-              <p className="mt-3 text-sm text-muted-foreground">
-                <strong>Operator:</strong> {operatorName}
-              </p>
-              {operatorContactEmail && (
-                <p className="mt-2 text-sm text-muted-foreground">
-                  <strong>Contact:</strong>{' '}
-                  <a
-                    href={`mailto:${operatorContactEmail}`}
-                    className="font-medium underline hover:text-foreground"
-                  >
-                    {operatorContactEmail}
-                  </a>
-                </p>
-              )}
-            </section>
-          )}
+          <OperatorContact
+            operatorName={operatorName}
+            operatorContactEmail={operatorContactEmail}
+          />
 
           <section className="mt-6">
             <h2 className="text-base font-semibold">Policy Changes</h2>

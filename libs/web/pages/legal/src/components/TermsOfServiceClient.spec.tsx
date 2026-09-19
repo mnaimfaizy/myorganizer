@@ -93,7 +93,7 @@ describe('TermsOfServiceClient', () => {
       process.env.OPERATOR_NAME = 'Acme Ops';
       const { container } = render(<TermsOfServiceClient />);
       const text = container.textContent || '';
-      expect(text).toMatch(/Operator and Contact/i);
+      expect(text).toMatch(/Operator & Contact/i);
       expect(text).toMatch(/Acme Ops/);
     });
 
@@ -116,10 +116,17 @@ describe('TermsOfServiceClient', () => {
       expect(text).not.toMatch(/mailto:/);
     });
 
+    it('should render contact email when only OPERATOR_CONTACT_EMAIL is set (no OPERATOR_NAME)', () => {
+      process.env.OPERATOR_CONTACT_EMAIL = 'legal@acme.test';
+      render(<TermsOfServiceClient />);
+      const emailLink = screen.getByRole('link', { name: /legal@acme\.test/i });
+      expect(emailLink).toHaveAttribute('href', 'mailto:legal@acme.test');
+    });
+
     it('should not render Operator section when OPERATOR_NAME is not set', () => {
       const { container } = render(<TermsOfServiceClient />);
       const text = container.textContent || '';
-      expect(text).not.toMatch(/Operator and Contact/i);
+      expect(text).not.toMatch(/Operator & Contact/i);
       // Ensure no placeholder text like "Your Company" or "[operator name]"
       expect(text).not.toMatch(/\[operator name\]/i);
       expect(text).not.toMatch(/Your Company/i);
@@ -129,7 +136,7 @@ describe('TermsOfServiceClient', () => {
       process.env.OPERATOR_NAME = '';
       const { container } = render(<TermsOfServiceClient />);
       const text = container.textContent || '';
-      expect(text).not.toMatch(/Operator and Contact/i);
+      expect(text).not.toMatch(/Operator & Contact/i);
     });
   });
 

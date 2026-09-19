@@ -1,5 +1,6 @@
 import { Button, Card, CardContent } from '@myorganizer/web-ui';
 import Link from 'next/link';
+import { OperatorContact } from './OperatorContact';
 
 export default function TermsOfServiceClient() {
   const operatorName = process.env.OPERATOR_NAME;
@@ -117,27 +118,10 @@ export default function TermsOfServiceClient() {
             </p>
           </section>
 
-          {operatorName && (
-            <section className="mt-6 space-y-4">
-              <h2 className="text-base font-semibold">Operator and Contact</h2>
-              <p className="text-sm text-muted-foreground">
-                MyOrganizer is operated by <strong>{operatorName}</strong>.
-                {operatorContactEmail && (
-                  <>
-                    {' '}
-                    You may contact us at{' '}
-                    <a
-                      href={`mailto:${operatorContactEmail}`}
-                      className="text-primary hover:underline"
-                    >
-                      {operatorContactEmail}
-                    </a>
-                    .
-                  </>
-                )}
-              </p>
-            </section>
-          )}
+          <OperatorContact
+            operatorName={operatorName}
+            operatorContactEmail={operatorContactEmail}
+          />
 
           <div className="mt-8 flex flex-col gap-3">
             <Button asChild variant="outline">
