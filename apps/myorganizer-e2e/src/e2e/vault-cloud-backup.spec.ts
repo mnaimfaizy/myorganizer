@@ -5,7 +5,7 @@ import {
   gotoStable,
   removeOwnedVault,
   routeApi,
-  routeVaultBlobInventory,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobInventoryRouteAbsolute,
@@ -314,15 +314,12 @@ function setupBackend(page: Page) {
     await route.fulfill({ status: 405, headers });
   });
 
-  routeVaultBlobInventory(page, {
+  routeVaultBlobInventoryOverStore(page, {
     url: vaultBlobInventoryRouteAbsolute(),
-    headers: () =>
-      headersFor(new URL(page.url() || 'http://localhost:3000').origin),
-    state: () => ({
-      blobs: serverBlobs,
-      etags: serverBlobEtags,
-      updatedAt: serverBlobUpdatedAt,
-    }),
+    cors: headersFor,
+    blobs: serverBlobs,
+    etags: serverBlobEtags,
+    updatedAt: serverBlobUpdatedAt,
   });
 
   return { backupRecords };

@@ -145,14 +145,7 @@ export async function routeVaultBlobInventory(
         // but 200 with the same body on WebKit. The client treats an unchanged 200
         // inventory the same as a 304 because every inventory etag equals its Sync
         // Bookmark, so zero per-type reads follow in both cases.
-        const browserName = route
-          .request()
-          .frame()
-          .page()
-          .context()
-          .browser()
-          ?.browserType()
-          .name();
+        const browserName = page.context().browser()?.browserType().name();
         if (browserName === 'webkit') {
           await route.fulfill({
             status: 200,
@@ -195,4 +188,36 @@ function allowConditionalRead(
     ...headers,
     'access-control-allow-headers': `${allowed},if-none-match`,
   };
+}
+
+/**
+ * Register the inventory stub over a spec's in-memory per-blob store — the
+ * shape every single-User vault spec has: CORS headers built from the page's
+ * own origin, and the three per-type maps the per-blob stub already writes.
+ *
+ * Reads the maps per request, so every push the spec's per-blob stub records
+ * is in the next inventory.
+ */
+export function routeVaultBlobInventoryOverStore(
+  page: Page,
+  store: {
+    /** Defaults to the relative matcher, as {@link routeVaultBlobInventory}. */
+    url?: RegExp;
+    /** The spec's CORS headers for a given origin. */
+    cors: (origin: string) => Record<string, string>;
+    blobs: VaultBlobInventoryState['blobs'];
+    etags: VaultBlobInventoryState['etags'];
+    updatedAt: VaultBlobInventoryState['updatedAt'];
+  },
+): Promise<void> {
+  return routeVaultBlobInventory(page, {
+    url: store.url,
+    headers: () =>
+      store.cors(new URL(page.url() || 'http://localhost:3000').origin),
+    state: () => ({
+      blobs: store.blobs,
+      etags: store.etags,
+      updatedAt: store.updatedAt,
+    }),
+  });
 }

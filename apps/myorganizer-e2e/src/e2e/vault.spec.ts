@@ -4,7 +4,7 @@ import {
   gotoStable,
   E2E_USER_ID,
   routeApi,
-  routeVaultBlobInventory,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobRouteRelative,
@@ -251,14 +251,11 @@ test.describe('Vault (E2E)', () => {
         await route.fulfill({ status: 405, headers });
       });
 
-      await routeVaultBlobInventory(page, {
-        headers: () =>
-          corsHeaders(new URL(page.url() || 'http://localhost:3000').origin),
-        state: () => ({
-          blobs: serverBlobs,
-          etags: serverBlobEtags,
-          updatedAt: serverBlobUpdatedAt,
-        }),
+      await routeVaultBlobInventoryOverStore(page, {
+        cors: corsHeaders,
+        blobs: serverBlobs,
+        etags: serverBlobEtags,
+        updatedAt: serverBlobUpdatedAt,
       });
     }
 
