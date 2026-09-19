@@ -1,9 +1,11 @@
 /**
  * Shared CLI plumbing for the review scripts: flag parsing, the exit-2
- * "could not run" helper, the is-main guard, and the small gather layer the
- * two measurement scripts share — git, `gh`, dates, and writing a file.
- * Kept here so the validator and the renderer do not each carry a differently
- * shaped copy, and so a fix to the `gh` probe or the git buffer is made once.
+ * "could not run" helper, the is-main guard, the first line of a thrown
+ * `gh` error, and the small gather layer the two measurement scripts share —
+ * git, `gh`, dates, and writing a file. Kept here so the validator, the
+ * renderer, the publisher, and the Review Tier label applier do not each
+ * carry a differently shaped copy, and so a fix to the `gh` probe or the git
+ * buffer is made once.
  */
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -41,6 +43,12 @@ export const cannotRun = (prefix) => (msg) => {
   console.error(`${prefix}: ${msg}`);
   process.exit(2);
 };
+
+/** The first non-empty line of a thrown `gh` error, for logs and cannotRun. */
+export const firstLine = (err) =>
+  String(err?.stderr || err?.message || err)
+    .split('\n')
+    .find(Boolean) ?? 'unknown error';
 
 export const readJsonOr = (path, onError) => {
   try {

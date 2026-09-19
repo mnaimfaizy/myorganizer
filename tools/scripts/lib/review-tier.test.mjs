@@ -10,6 +10,7 @@ import {
   loadPathMap,
   maxTier,
   parseNumstat,
+  planRelabel,
   renderReviewTierSummary,
 } from './review-tier.mjs';
 
@@ -93,6 +94,20 @@ test('tiers are ordered and the labels derive from them', () => {
   assert.equal(maxTier('auto', 'agent'), 'agent');
   assert.equal(maxTier('human', 'auto'), 'human');
   assert.equal(maxTier(), 'auto');
+});
+
+test('planRelabel adds the target and removes the other review labels, or does nothing', () => {
+  assert.deepEqual(planRelabel(['tooling', 'review:agent'], 'review:human'), {
+    add: ['review:human'],
+    remove: ['review:agent'],
+  });
+  assert.equal(planRelabel(['tooling', 'review:human'], 'review:human'), null);
+  assert.equal(planRelabel(['tooling'], null), null);
+  assert.deepEqual(planRelabel([], 'review:auto'), {
+    add: ['review:auto'],
+    remove: [],
+  });
+  assert.throws(() => planRelabel([], 'review:ship'), /unknown tier label/);
 });
 
 test('globs: ** spans directories, * stays inside a segment', () => {

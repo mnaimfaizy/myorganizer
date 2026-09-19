@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { parseArgs } from './cli.mjs';
+import { firstLine, parseArgs } from './cli.mjs';
 
 const VALIDATE = 'tools/scripts/review/validate-review-report.mjs';
 const RENDER = 'tools/scripts/review/render-review-report.mjs';
@@ -19,6 +19,15 @@ test('parseArgs separates positionals from flags and tolerates a bare flag', () 
     positional: ['in.json'],
     flags: { out: 'o.json', 'no-hunks': null },
   });
+});
+
+test('firstLine prefers stderr, then message, then the first non-empty line', () => {
+  assert.equal(
+    firstLine({ stderr: 'GraphQL: Something went wrong\nmore', message: 'x' }),
+    'GraphQL: Something went wrong',
+  );
+  assert.equal(firstLine(new Error('boom')), 'boom');
+  assert.equal(firstLine('plain'), 'plain');
 });
 
 test('validator: exit 2 with no input, exit 1 on a rejected report, exit 0 on the fixture', () => {

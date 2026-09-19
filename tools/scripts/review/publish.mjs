@@ -23,13 +23,16 @@
  *      lowers a tier, and only on a fresh run.
  */
 
+import { planRelabel } from '../lib/review-tier.mjs';
+
 import { evidenceText } from './evidence.mjs';
 import {
   AXIS_TITLES,
   REPORT_SCHEMA_VERSION,
-  REVIEW_TIER_LABELS,
   VERDICT_VALUES,
 } from './schema.mjs';
+
+export { planRelabel };
 
 export const SUMMARY_MARKER = '<!-- code-review-report -->';
 /**
@@ -77,17 +80,6 @@ export const targetTierLabel = ({ tier, effectiveTier, verdict }) => {
     throw new Error(`unknown verdict ${verdict}`);
   if (verdict === 'request-changes') return 'review:human';
   return effectiveTier ?? tier ?? null;
-};
-
-/** @param {string[]} currentLabels every label on the Pull Request */
-export const planRelabel = (currentLabels, target) => {
-  if (!target) return null;
-  if (!REVIEW_TIER_LABELS.includes(target))
-    throw new Error(`unknown tier label ${target}`);
-  const current = currentLabels.filter((l) => REVIEW_TIER_LABELS.includes(l));
-  const remove = current.filter((l) => l !== target);
-  const add = current.includes(target) ? [] : [target];
-  return add.length === 0 && remove.length === 0 ? null : { add, remove };
 };
 
 const header = ({ headSha, runUrl }) =>

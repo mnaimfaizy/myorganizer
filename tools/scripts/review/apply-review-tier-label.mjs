@@ -13,24 +13,10 @@
 // job output still stands). Exit 2 = the script could not run (missing args).
 import { setTimeout as delay } from 'node:timers/promises';
 
-import { REVIEW_TIER_LABELS } from '../lib/review-tier.mjs';
-import { cannotRun, gh, ghJson, isMain, parseArgs } from './cli.mjs';
-
-/** Same shape as `planRelabel` in publish.mjs; kept here so this script
- *  does not import Zod through the finding contract. */
-const planRelabel = (currentLabels, target) => {
-  const current = currentLabels.filter((l) => REVIEW_TIER_LABELS.includes(l));
-  const remove = current.filter((l) => l !== target);
-  const add = current.includes(target) ? [] : [target];
-  return add.length === 0 && remove.length === 0 ? null : { add, remove };
-};
+import { REVIEW_TIER_LABELS, planRelabel } from '../lib/review-tier.mjs';
+import { cannotRun, firstLine, gh, ghJson, isMain, parseArgs } from './cli.mjs';
 
 export const DEFAULT_ATTEMPTS = 3;
-
-const firstLine = (err) =>
-  String(err?.stderr || err?.message || err)
-    .split('\n')
-    .find(Boolean) ?? 'unknown error';
 
 /**
  * @param {{

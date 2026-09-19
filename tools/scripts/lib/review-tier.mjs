@@ -41,6 +41,17 @@ export const REVIEW_TIERS = /** @type {const} */ (['auto', 'agent', 'human']);
 export const reviewTierLabel = (tier) => `review:${tier}`;
 export const REVIEW_TIER_LABELS = REVIEW_TIERS.map(reviewTierLabel);
 
+/** @param {string[]} currentLabels every label on the Pull Request */
+export const planRelabel = (currentLabels, target) => {
+  if (!target) return null;
+  if (!REVIEW_TIER_LABELS.includes(target))
+    throw new Error(`unknown tier label ${target}`);
+  const current = currentLabels.filter((l) => REVIEW_TIER_LABELS.includes(l));
+  const remove = current.filter((l) => l !== target);
+  const add = current.includes(target) ? [] : [target];
+  return add.length === 0 && remove.length === 0 ? null : { add, remove };
+};
+
 const rank = (tier) => REVIEW_TIERS.indexOf(tier);
 export const maxTier = (...tiers) =>
   tiers.reduce(
