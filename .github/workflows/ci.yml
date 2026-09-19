@@ -466,7 +466,9 @@ jobs:
         image: postgres:16
         env:
           POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
+          # Throwaway runner service. Trust avoids storing a credential in the
+          # workflow; this database is never reachable off the job.
+          POSTGRES_HOST_AUTH_METHOD: trust
           POSTGRES_DB: myorganizer
         ports:
           - 5432:5432
@@ -480,7 +482,7 @@ jobs:
       # Prisma generate reads this without connecting; migrate deploy and
       # migrate diff use the service above so a migration that fails to apply,
       # or a schema that has drifted from the migrations, fails before merge.
-      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/myorganizer
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
 
     steps:
       - name: Checkout repository
