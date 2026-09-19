@@ -476,7 +476,7 @@ describe('VaultService', () => {
       expect(result.body.ok).toBe(true);
     }
 
-    // Assert that all six registered blob types were persisted
+    // Assert that all five registered blob types were persisted
     expect(prisma.encryptedVaultBlob.upsert).toHaveBeenCalledTimes(
       VAULT_BLOB_TYPES.length,
     );

@@ -3150,7 +3150,7 @@ class Component extends DCLogic {
         n('stage', 'plain', 254, R2, 232, 96, 'candidate vault', 'in memory only · no writes yet')] });
 
     push({ scene: 6, title: 'One atomic commit.',
-      body: 'A single storage write swaps the candidate in. Not six writes, not a partial merge, not a sequence someone could interrupt halfway.',
+      body: 'A single storage write swaps the candidate in. Not five writes, not a partial merge, not a sequence someone could interrupt halfway.',
       nodes: [n('stage', 'plain', 254, R1, 232, 76, 'candidate vault', 'validated, migrated, staged'),
         n('vault', 'cipher', CA, R3, WIDE, 76, 'your vault', 'replaced in one write', 'committed')],
       edges: [e('stage', 'vault', 'single write')] });
