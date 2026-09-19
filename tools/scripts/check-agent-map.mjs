@@ -11,6 +11,7 @@
 // Exit 0 = in sync. Exit 1 = drift (fix the page). Exit 2 = the check could not run.
 import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import { AGENT_MAP_MANIFEST_NOTE } from './lib/agent-map-manifest-note.mjs';
 
 const PAGE = 'docs/agents/orchestration-map.html';
 const JOURNEY = 'docs/agents/agent-journey.html';
@@ -34,7 +35,7 @@ function readManifest(html, path) {
   );
   if (!raw)
     fail(
-      `no #agent-map-manifest block in ${path} — rebuild it with build-agent-map.mjs`,
+      `no #agent-map-manifest block in ${path} — edit the page in place via design-brief → Designer (ADR 0046); build-agent-map.mjs is not a rebuild path`,
     );
   try {
     return JSON.parse(raw[1]);
@@ -102,7 +103,16 @@ function checkReviewedAt(manifest, path) {
   }
 }
 
+function checkManifestNote(manifest, path) {
+  if (manifest.note !== AGENT_MAP_MANIFEST_NOTE) {
+    findings.push(
+      `manifest note drift: ${path} note does not match tools/scripts/lib/agent-map-manifest-note.mjs`,
+    );
+  }
+}
+
 checkReviewedAt(manifest, PAGE);
+checkManifestNote(manifest, PAGE);
 
 // The journey page carries its own #agent-map-manifest block — the same shape as the
 // orchestration map's — and its policyReviewedAt drifts independently of it. It also
@@ -112,6 +122,7 @@ if (existsSync(JOURNEY)) {
   const journey = readFileSync(JOURNEY, 'utf8');
   const journeyManifest = readManifest(journey, JOURNEY);
   checkReviewedAt(journeyManifest, JOURNEY);
+  checkManifestNote(journeyManifest, JOURNEY);
   const stations = [
     ...journey.matchAll(/name\s*:\s*'([^']+)'\s*,\s*tier\s*:\s*'(T[012])'/g),
   ];
@@ -136,7 +147,7 @@ if (findings.length > 0) {
   );
   for (const f of findings) console.error(`  - ${f}`);
   console.error(
-    `\nRebuild from the design export, or update the diagrams to match ${POLICY}.`,
+    `\nUpdate the diagrams in place via design-brief → Designer (ADR 0046) to match ${POLICY}.`,
   );
   process.exit(1);
 }

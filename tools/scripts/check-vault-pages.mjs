@@ -10,7 +10,7 @@
 // The pages' own `assertableFrom` blocks are conservative — they list only what a consumer
 // could import from a published package. This check reads the repo, so it can be stricter.
 //
-// Exit 0 = in sync. Exit 1 = drift (rebuild or fix the page). Exit 2 = the check could not run.
+// Exit 0 = in sync. Exit 1 = drift (edit the page in place). Exit 2 = the check could not run.
 import { readFileSync, existsSync } from 'node:fs';
 
 const PAGES = [
@@ -150,7 +150,9 @@ for (const [page, manifestId] of PAGES) {
     ),
   );
   if (!block)
-    fail(`no #${manifestId} block in ${page} — rebuild it from the export`);
+    fail(
+      `no #${manifestId} block in ${page} — edit the page in place via design-brief → Designer (ADR 0046); re-importing an export is not a rebuild path`,
+    );
 
   let manifest;
   try {
@@ -221,7 +223,7 @@ if (findings.length > 0) {
   );
   for (const f of findings) console.error(`  - ${f}`);
   console.error(
-    `\nRebuild from the design export, or correct the page to match the source constants.`,
+    `\nEdit lifecycle.html / trust-boundary.html in place via design-brief → Designer (ADR 0046) to match the source constants.`,
   );
   process.exit(1);
 }
