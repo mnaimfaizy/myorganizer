@@ -309,9 +309,9 @@ jobs:
       # The classifier's output, not the label, is what the validator reads.
       # Always emit a review:* label so an empty --tier cannot fail the
       # validator (`--tier needs a review:* label`) and cascade into Agent
-      # Review Ran plus Publish Review. Exit 2 already writes human; this
-      # wrapper covers a crash before finish(). Continuing on a classifier
-      # error lets the reviewer still run at review:human.
+      # Review Ran plus Publish Review. Shared with review-tier.yml; advisory
+      # mode covers a crash before finish() and still lets the reviewer run
+      # at review:human.
       - name: Classify the diff
         if: steps.preflight.outputs.skip != 'true'
         id: tier
@@ -320,12 +320,8 @@ jobs:
           corepack yarn review:tier:check \
             --base "$BASE_SHA" --head "$HEAD_SHA" --author "$PR_AUTHOR" \
             --out "$RUNNER_TEMP/tier.json"
-          if ! grep -q '^label=review:' "$GITHUB_OUTPUT" 2>/dev/null; then
-            echo 'tier=human' >> "$GITHUB_OUTPUT"
-            echo 'label=review:human' >> "$GITHUB_OUTPUT"
-            echo '::warning::classifier wrote no tier; defaulting to review:human'
-          fi
-          exit 0
+          node tools/scripts/review/run-review-tier-check.mjs \
+            --mode advisory --status $?
 
       # Spec discovery with the job token: branch name, then commit
       # references, then none. The reviewer reads the file and fetches nothing.

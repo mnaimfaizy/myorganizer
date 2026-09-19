@@ -102,6 +102,9 @@ GitHub never started has no log to make readable.
 ## What this does not claim
 
 It does not claim GitHub will stop failing to assign runners. That failure
-is outside the workflow YAML. It does not re-attribute the issue's "~160s /
-~15%" figures to install time; those were the issue author's inference from
-the Actions UI, and the job records do not match them.
+is outside the workflow YAML: a job with `runner_id` 0 never starts, so no
+step-level retry inside `review-tier.yml` can run. The operator action for
+that shape (run 147 / job `104326339851`) is to re-run the failed job from
+the Actions UI. It does not re-attribute the issue's "~160s / ~15%" figures
+to install time; those were the issue author's inference from the Actions
+UI, and the job records do not match them.

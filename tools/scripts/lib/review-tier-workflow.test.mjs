@@ -69,8 +69,13 @@ test('code-review never passes an empty --tier to the validator or publisher', (
   const classify = stepNamed(review, 'Classify the diff');
   assert.match(
     classify,
-    /label=review:human/,
-    'a classifier that dies before finish() must still emit a human tier',
+    /run-review-tier-check\.mjs/,
+    'both workflows share one classify-then-backfill helper',
+  );
+  assert.match(
+    classify,
+    /--mode advisory/,
+    'a classifier that dies before finish() must still let the reviewer run',
   );
   assert.match(
     CODE_REVIEW,
@@ -82,7 +87,35 @@ test('code-review never passes an empty --tier to the validator or publisher', (
   );
   assert.match(
     ACTION,
-    /if \[ -z '\$\{\{ inputs\.tier \}\}' \] \|\| \[ '\$\{\{ inputs\.tier \}\}' = 'null' \]; then/,
-    "empty string is not the sentinel `null` and used to reach `--tier ''`",
+    /if \[ '\$\{\{ inputs\.tier \}\}' = 'null' \]; then/,
+    'golden replay passes the sentinel null; empty string is stopped by the workflow || fallback',
   );
+  assert.doesNotMatch(
+    ACTION,
+    /if \[ -z '\$\{\{ inputs\.tier \}\}' \]/,
+    'empty-string handling in the action retriggers guard golden replay (ADR 0072)',
+  );
+});
+
+test('Review Tier and Code Review share one classify-then-backfill helper', () => {
+  const reviewTier = stepNamed(
+    jobBlock(REVIEW_TIER, 'classify'),
+    'Classify the diff',
+  );
+  const codeReview = stepNamed(
+    jobBlock(CODE_REVIEW, 'review'),
+    'Classify the diff',
+  );
+  assert.match(reviewTier, /yarn review:tier:check/);
+  assert.match(reviewTier, /run-review-tier-check\.mjs/);
+  assert.match(reviewTier, /--mode required/);
+  assert.match(codeReview, /yarn review:tier:check/);
+  assert.match(codeReview, /run-review-tier-check\.mjs/);
+  assert.match(codeReview, /--mode advisory/);
+  assert.doesNotMatch(
+    reviewTier,
+    /grep -q '\^label=review:'/,
+    'the backfill lives in the helper, not duplicated shell',
+  );
+  assert.doesNotMatch(codeReview, /grep -q '\^label=review:'/);
 });
