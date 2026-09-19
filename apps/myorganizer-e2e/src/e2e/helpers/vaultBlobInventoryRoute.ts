@@ -140,7 +140,29 @@ export async function routeVaultBlobInventory(
       const body = vaultBlobInventoryBody(state);
 
       if (request.headers()['if-none-match'] === body.etag) {
-        await route.fulfill({ status: 304, headers });
+        // WebKit's Playwright route layer cannot fulfill with redirect-class statuses
+        // (304, 301, etc.). When the ETag matches, answer 304 on Chromium and Firefox,
+        // but 200 with the same body on WebKit. The client treats an unchanged 200
+        // inventory the same as a 304 because every inventory etag equals its Sync
+        // Bookmark, so zero per-type reads follow in both cases.
+        const browserName = route
+          .request()
+          .frame()
+          .page()
+          .context()
+          .browser()
+          ?.browserType()
+          .name();
+        if (browserName === 'webkit') {
+          await route.fulfill({
+            status: 200,
+            headers,
+            contentType: 'application/json',
+            body: JSON.stringify(body),
+          });
+        } else {
+          await route.fulfill({ status: 304, headers });
+        }
         return;
       }
 

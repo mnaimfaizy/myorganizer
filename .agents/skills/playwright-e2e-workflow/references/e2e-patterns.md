@@ -443,6 +443,43 @@ Run on all three browsers before marking an E2E change complete.
 
 ---
 
+## Redirect-class statuses in route mocks
+
+Playwright's WebKit route layer cannot fulfill with redirect-class statuses (304, 301, 302, etc.)
+and throws `route.fulfill: Cannot fulfill with redirect status: 304`. On Chromium and Firefox,
+answer the intended redirect status. On WebKit, substitute an equivalent non-redirect status.
+
+```typescript
+// ❌ Wrong — fails on WebKit with "Cannot fulfill with redirect status: 304"
+if (request.headers()['if-none-match'] === body.etag) {
+  await route.fulfill({ status: 304, headers });
+  return;
+}
+
+// ✅ Correct — detect browser and substitute for WebKit
+if (request.headers()['if-none-match'] === body.etag) {
+  const browserName = route.request().frame().page().context().browser()?.browserType().name();
+  if (browserName === 'webkit') {
+    await route.fulfill({ status: 200, headers, contentType: 'application/json', body: JSON.stringify(body) });
+  } else {
+    await route.fulfill({ status: 304, headers });
+  }
+  return;
+}
+```
+
+The Vault Blob Inventory (`vaultBlobInventoryRoute.ts`) uses this pattern: when the client sends
+an `If-None-Match` ETag, it answers 304 on Chromium/Firefox but 200 with the same body on WebKit.
+The client treats both identically because every inventory etag equals its Sync Bookmark, so zero
+per-type blob reads follow in either case. Assert the response status conditionally in the test:
+
+```typescript
+const browserName = test.info().project.name;
+expect(response.status()).toBe(browserName === 'webkit' ? 200 : 304);
+```
+
+---
+
 ## Anti-pattern table
 
 | Anti-pattern                                               | Why it's wrong                                                                                 | Correct approach                                                                   |
