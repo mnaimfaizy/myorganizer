@@ -35,6 +35,17 @@ const DISABLED_VIDEO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
 const WATCHED_LEDGER_TTL_MS = DISABLED_VIDEO_RETENTION_MS;
 export const GOOGLE_PERMISSIONS_URL =
   'https://myaccount.google.com/permissions';
+
+/** Thrown inside the disconnect transaction when a Sync Run is claimed before commit. */
+class SyncRunBecameLiveError extends Error {
+  constructor() {
+    super('SYNC_RUN_LIVE');
+    this.name = 'SyncRunBecameLiveError';
+  }
+}
+
+const SYNC_RUN_LIVE_MESSAGE =
+  'Disconnect is not available while a sync is in progress. Wait for the sync to finish or cancel it, then try again.';
 /** Monday, matching the ISO week the digest period key is built from. */
 const DEFAULT_DIGEST_WEEKDAY = 1;
 
@@ -273,9 +284,66 @@ class YouTubeSyncService {
       return {
         ok: false,
         code: 'sync_run_live',
-        message:
-          'Disconnect is not available while a sync is in progress. Wait for the sync to finish or cancel it, then try again.',
+        message: SYNC_RUN_LIVE_MESSAGE,
       };
+    }
+
+    const deleteWatchedMarks = options.deleteWatchedMarks === true;
+
+    try {
+      await this.prisma.$transaction(async (transaction) => {
+        await transaction.$queryRaw`
+          SELECT "userId" FROM "YouTubeIntegration" WHERE "userId" = ${userId} FOR UPDATE
+        `;
+        const current = await transaction.youTubeIntegration.findUnique({
+          where: { userId },
+        });
+        if (!current || this.isSyncRunLive(current)) {
+          throw new SyncRunBecameLiveError();
+        }
+
+        if (deleteWatchedMarks) {
+          await transaction.youTubeWatchedLedger.deleteMany({
+            where: { userId },
+          });
+        } else {
+          const watchedVideos = await transaction.youTubeVideo.findMany({
+            where: { userId, watched: true },
+            select: { videoId: true },
+          });
+          if (watchedVideos.length > 0) {
+            await transaction.youTubeWatchedLedger.createMany({
+              data: watchedVideos.map((video) => ({
+                userId,
+                videoId: video.videoId,
+              })),
+              skipDuplicates: true,
+            });
+          }
+          await this.purgeExpiredWatchedLedgerRows(transaction, userId);
+        }
+
+        await transaction.youTubeVideo.deleteMany({ where: { userId } });
+        await transaction.youTubeSubscription.deleteMany({
+          where: { userId },
+        });
+        await transaction.youTubeNotificationSettings.deleteMany({
+          where: { userId },
+        });
+        await transaction.youTubeDigestDelivery.deleteMany({
+          where: { userId },
+        });
+        await transaction.youTubeIntegration.delete({ where: { userId } });
+      });
+    } catch (error) {
+      if (error instanceof SyncRunBecameLiveError) {
+        return {
+          ok: false,
+          code: 'sync_run_live',
+          message: SYNC_RUN_LIVE_MESSAGE,
+        };
+      }
+      throw error;
     }
 
     let revokeFailed = false;
@@ -290,39 +358,6 @@ class YouTubeSyncService {
         error,
       );
     }
-
-    const deleteWatchedMarks = options.deleteWatchedMarks === true;
-
-    await this.prisma.$transaction(async (transaction) => {
-      if (deleteWatchedMarks) {
-        await transaction.youTubeWatchedLedger.deleteMany({
-          where: { userId },
-        });
-      } else {
-        const watchedVideos = await transaction.youTubeVideo.findMany({
-          where: { userId, watched: true },
-          select: { videoId: true },
-        });
-        if (watchedVideos.length > 0) {
-          await transaction.youTubeWatchedLedger.createMany({
-            data: watchedVideos.map((video) => ({
-              userId,
-              videoId: video.videoId,
-            })),
-            skipDuplicates: true,
-          });
-        }
-        await this.purgeExpiredWatchedLedgerRows(transaction, userId);
-      }
-
-      await transaction.youTubeVideo.deleteMany({ where: { userId } });
-      await transaction.youTubeSubscription.deleteMany({ where: { userId } });
-      await transaction.youTubeNotificationSettings.deleteMany({
-        where: { userId },
-      });
-      await transaction.youTubeDigestDelivery.deleteMany({ where: { userId } });
-      await transaction.youTubeIntegration.delete({ where: { userId } });
-    });
 
     if (revokeFailed) {
       return {

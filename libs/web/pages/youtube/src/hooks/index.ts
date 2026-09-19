@@ -1,5 +1,6 @@
 'use client';
 
+import { Configuration, YouTubeApi } from '@myorganizer/app-api-client';
 import { clearAuthSession, getAccessToken, refresh } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -347,7 +348,52 @@ export interface YouTubeDisconnectResponse {
   message: string;
   revokeFailed?: boolean;
   googlePermissionsUrl?: string;
-  code?: 'sync_run_live';
+}
+
+export class YouTubeRequestError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'YouTubeRequestError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+function isAxiosError(error: unknown): error is {
+  isAxiosError: true;
+  response?: { status: number; data?: { message?: string; code?: string } };
+} {
+  return (
+    typeof error === 'object' &&
+    error !== null &&
+    'isAxiosError' in error &&
+    (error as { isAxiosError?: boolean }).isAxiosError === true
+  );
+}
+
+function youtubeApi(): YouTubeApi {
+  return new YouTubeApi(
+    new Configuration({
+      basePath: getApiBaseUrl(),
+      accessToken: getAccessToken() ?? '',
+      baseOptions: { withCredentials: true },
+    }),
+  );
+}
+
+function throwYouTubeRequest(error: unknown): never {
+  if (isAxiosError(error) && error.response) {
+    const body = error.response.data ?? {};
+    throw new YouTubeRequestError(
+      body.message ?? `Request failed: ${error.response.status}`,
+      error.response.status,
+      body.code,
+    );
+  }
+  throw error;
 }
 
 export function useYouTubeConnect() {
@@ -358,12 +404,31 @@ export function useYouTubeConnect() {
 
   const disconnect = useCallback(
     async (options?: { deleteWatchedMarks?: boolean }) => {
-      return apiFetch<YouTubeDisconnectResponse>('/disconnect', {
-        method: 'DELETE',
-        body: JSON.stringify({
+      const request = {
+        disconnectRequest: {
           deleteWatchedMarks: options?.deleteWatchedMarks === true,
-        }),
-      });
+        },
+      };
+      try {
+        const response = await youtubeApi().disconnect(request);
+        return response.data as YouTubeDisconnectResponse;
+      } catch (error) {
+        if (isAxiosError(error) && error.response?.status === 401) {
+          try {
+            await refresh();
+          } catch {
+            clearAuthSession();
+            throwYouTubeRequest(error);
+          }
+          try {
+            const response = await youtubeApi().disconnect(request);
+            return response.data as YouTubeDisconnectResponse;
+          } catch (retryError) {
+            throwYouTubeRequest(retryError);
+          }
+        }
+        throwYouTubeRequest(error);
+      }
     },
     [],
   );

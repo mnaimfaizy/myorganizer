@@ -78,8 +78,10 @@ jest.mock('../prisma', () => {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
     },
     youTubeIntegration: {
+      findUnique: jest.fn(),
       delete: jest.fn().mockResolvedValue({}),
     },
+    $queryRaw: jest.fn().mockResolvedValue([]),
   };
 
   const __mockPrisma = {
@@ -133,6 +135,9 @@ jest.mock('../prisma', () => {
     // expose the transaction stub so tests can assert on transactional calls
     __transaction: transaction,
   };
+
+  transaction.youTubeIntegration.findUnique =
+    __mockPrisma.youTubeIntegration.findUnique;
 
   return {
     createPrismaClient: () => __mockPrisma,
@@ -404,6 +409,31 @@ describe('YouTubeSyncService', () => {
       expect(result.ok).toBe(false);
       expect(result.code).toBe('sync_run_live');
       expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    });
+
+    it('refuses disconnect when a sync run becomes live before the transaction commits', async () => {
+      let reads = 0;
+      (
+        mockPrisma.youTubeIntegration.findUnique as jest.Mock
+      ).mockImplementation(() => {
+        reads += 1;
+        if (reads === 1) {
+          return Promise.resolve(connectedIntegration);
+        }
+        return Promise.resolve({
+          ...connectedIntegration,
+          lastSyncStatus: 'running',
+          lastSyncAttemptAt: new Date(),
+        });
+      });
+
+      const result = await youtubeSyncService.disconnect('user-1');
+
+      expect(result.ok).toBe(false);
+      expect(result.code).toBe('sync_run_live');
+      expect(mockTransaction.$queryRaw).toHaveBeenCalled();
+      expect(mockTransaction.youTubeIntegration.delete).not.toHaveBeenCalled();
+      expect(mockTransaction.youTubeVideo.deleteMany).not.toHaveBeenCalled();
     });
 
     it('should allow disconnect when a sync run is stale beyond RUN_TTL_MS', async () => {
