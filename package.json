@@ -77,6 +77,8 @@
     "adr:numbering:check": "node tools/scripts/check-adr-numbering.mjs",
     "docs:commands:check": "node tools/scripts/check-doc-commands.mjs",
     "docs:commands:test": "node --test tools/scripts/check-doc-commands.test.mjs",
+    "docs:file-refs:check": "node tools/scripts/check-doc-file-refs.mjs",
+    "docs:file-refs:test": "node --test tools/scripts/check-doc-file-refs.test.mjs",
     "enum:fanout:check": "node tools/scripts/check-enum-fanout.mjs",
     "enum:fanout:test": "node --test tools/scripts/check-enum-fanout.test.mjs",
     "tailwind:classes:check": "node tools/scripts/check-tailwind-classes.mjs",

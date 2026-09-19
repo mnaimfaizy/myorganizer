@@ -154,6 +154,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'docs:file-refs:check',
+    npmScript: 'docs:file-refs:check',
+    script: 'tools/scripts/check-doc-file-refs.mjs',
+    args: [],
+  },
+  {
     id: 'enum:fanout:check',
     npmScript: 'enum:fanout:check',
     script: 'tools/scripts/check-enum-fanout.mjs',

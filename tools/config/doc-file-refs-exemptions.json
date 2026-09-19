@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "comment": "File-refs `yarn docs:file-refs:check` may find missing without failing (ADR 0092). Every entry names the Markdown file that makes the claim, the claim token, and a written reason. An entry without a reason is rejected. An entry is stale — and fails — when the documenting file is gone, the claim is no longer made, or the named file exists again. Frozen Research Briefs under docs/research/ are skipped as a class (ADR 0041) and do not belong here.",
+  "exemptions": [
+    {
+      "file": "docs/adr/0011-platform-admin-console.md",
+      "claim": "apps/admin",
+      "reason": "Rejected and deferred alternative: a second deployable. The console shipped as /admin inside the existing Next.js app; apps/admin was never created."
+    },
+    {
+      "file": "docs/adr/0020-one-instruction-file-one-skill-tree.md",
+      "claim": ".github/skills",
+      "reason": "Rejected alternative for the Skill SSOT. Skills live in .agents/skills/; .github/skills/ was never a content tree in this repo."
+    },
+    {
+      "file": "docs/adr/0038-component-builder-scoped-bash-for-prototypes.md",
+      "claim": "docs/features/youtube-prototype-references.md",
+      "reason": "Records the git-show pattern that issue #354 needed; that reference map lived on a local-only prototype branch and was never committed to main. Merged ADRs are not rewritten (ADR 0042)."
+    },
+    {
+      "file": "docs/adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md",
+      "claim": "docs/internal/e2ee-vault-plan.md",
+      "reason": "Names a January 2026 planning draft PR #454 deleted. ADR 0041 says keeping that path as recoverable history is correct."
+    },
+    {
+      "file": "docs/adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md",
+      "claim": "docs/internal/mobile-app-spike.md",
+      "reason": "Names a January 2026 planning draft PR #454 deleted. ADR 0041 says keeping that path as recoverable history is correct."
+    },
+    {
+      "file": "docs/adr/0041-internal-notes-have-homes.md",
+      "claim": "docs/internal",
+      "reason": "The ADR is the record that docs/internal/ was the catch-all PR #454 deleted and must not return. The path is supposed to be absent."
+    },
+    {
+      "file": "docs/adr/0041-internal-notes-have-homes.md",
+      "claim": "docs/general",
+      "reason": "Rejected alternative: a catch-all named docs/general/. The directory does not exist and must not."
+    }
+  ]
+}

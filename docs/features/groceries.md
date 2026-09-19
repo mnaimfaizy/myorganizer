@@ -184,7 +184,7 @@ The `normalizeGroceries()` function:
 
 The `'groceries'` blob type is registered in:
 
-- `libs/core/src/lib/types/vault.ts` → `VaultBlobType` enum/union
+- `libs/web-vault/src/lib/vault/vaultBlobFields.ts` → `VaultBlobType` pin
 - `libs/web-vault/src/lib/vault/vaultShapes.ts` → blob handling in `serverEncryptedBlobToLocal()`
 
 ---
@@ -379,7 +379,7 @@ always cascades to every referencing List Line.
 
 When the `CatalogItem`, `GroceryList`, or `ListLine` shape needs to change:
 
-1. Update the types in `libs/core/src/lib/types/` (`GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`)
+1. Update the types in `libs/core/src/lib/constants/grocery.ts` (`GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`)
 2. Update `GroceryListSchema` in `libs/web-vault/src/lib/vault/groceriesNormalization.ts`
 3. Add a migration step inside `normalizeGroceries()` for the shape change
 4. Existing vault blobs auto-migrate on next load — `normalizeGroceries()` returns `changed: true` and the hook re-persists the updated blob

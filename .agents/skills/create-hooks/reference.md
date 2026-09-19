@@ -5,14 +5,14 @@ Quick matrix for MyOrganizer multi-harness hooks. Prefer the shared scripts in
 
 ## Config Sources
 
-| Host                 | Loads                                                                                  |
-| -------------------- | -------------------------------------------------------------------------------------- |
-| GitHub Copilot CLI   | `.github/hooks/*.json`, `~/.copilot/hooks/`, `.claude/settings.json`                   |
-| GitHub Copilot cloud | `.github/hooks/*.json` only (Linux; `bash` / `command`)                                |
-| Cursor IDE / CLI     | `.cursor/hooks.json`, `~/.cursor/hooks.json`, Claude settings (if third-party enabled) |
-| Cursor cloud         | `.cursor/hooks.json` (command hooks; subset of events)                                 |
-| Claude Code          | `.claude/settings.json`, `.claude/settings.local.json`                                 |
-| VS Code Copilot Chat | `.github/hooks/*.json` + `.claude/settings.json` (format bridging)                     |
+| Host                 | Loads                                                                                          |
+| -------------------- | ---------------------------------------------------------------------------------------------- |
+| GitHub Copilot CLI   | `.github/hooks/*.json`, `~/.copilot/hooks/`, `.claude/settings.json`                           |
+| GitHub Copilot cloud | `.github/hooks/*.json` only (Linux; `bash` / `command`)                                        |
+| Cursor IDE / CLI     | `.cursor/hooks.json`, `~/.cursor/hooks.json`, Claude settings (if third-party enabled)         |
+| Cursor cloud         | `.cursor/hooks.json` (command hooks; subset of events)                                         |
+| Claude Code          | `.claude/settings.json`, plus a local-only `.claude/settings.local.json` that is not committed |
+| VS Code Copilot Chat | `.github/hooks/*.json` + `.claude/settings.json` (format bridging)                             |
 
 ## Event Name Mapping
 

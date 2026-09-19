@@ -580,6 +580,9 @@ jobs:
       - name: Documented-command checker contracts
         run: corepack yarn docs:commands:test
 
+      - name: Documented file-ref checker contracts
+        run: corepack yarn docs:file-refs:test
+
       - name: README checker contracts
         run: corepack yarn readme:test
 
@@ -644,6 +647,9 @@ jobs:
 
       - name: Check documented commands resolve
         run: corepack yarn docs:commands:check
+
+      - name: Check documented file-refs resolve
+        run: corepack yarn docs:file-refs:check
 
       - name: Enum fan-out checker contracts
         run: corepack yarn enum:fanout:test

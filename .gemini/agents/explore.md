@@ -92,7 +92,7 @@ CodeExplorer cannot run it because every harness keeps this agent read-only and 
 | Blast radius of a TypeScript **type**                                  | Type references are not edges; the node reports degree ≈ 1                                                                      | `Grep`                                                |
 | Any symbol whose name occurs in more than one file                     | `get_node` returns one arbitrary match **without saying it substituted** — asking for `EncryptedBlob` returns `EncryptedBlobV1` | `query_graph`, then disambiguate by reading the files |
 | Which fields or members a type has                                     | Members are not nodes                                                                                                           | `Read` the type definition                            |
-| Database or schema questions                                           | `**/*.sql` is excluded by design                                                                                                | `apps/backend/src/prisma/schema.prisma`               |
+| Database or schema questions                                           | `**/*.sql` is excluded by design                                                                                                | `apps/backend/src/prisma/schema`                      |
 | Ranking PRs or slices by review risk                                   | Blast radius counts the changed file's own community, not its dependents, so it inverts risk for hub and barrel files           | `nx affected`                                         |
 
 **Trust rule.** Tag every graph-derived fact `[inferred]` until you confirm the exact location with

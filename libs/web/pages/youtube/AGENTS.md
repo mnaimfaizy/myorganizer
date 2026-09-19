@@ -18,9 +18,9 @@ sentence; the prototype is where the actual interaction model lives.
 | In-session queue rail            | **Variant B — Queue rail**                        | `queue-first/VariantB_Rail.tsx`, `useWatchQueue.ts`       |
 | Shorts page + budget / hard stop | Locked timed Shorts page                          | `feed-first/ShortsPrototypePage.tsx`, `useShortsTimer.ts` |
 
-Paths are under `libs/web/pages/youtube/src/prototype/` on the local-only
-branch `prototype/youtube-channel-first`, which carries all three directions.
-Read without switching branches:
+Paths live on the local-only branch `prototype/youtube-channel-first`, which
+carries all three directions. They are not in this tree. Read without switching
+branches:
 
 ```sh
 git show prototype/youtube-channel-first:libs/web/pages/youtube/src/prototype/channel-first/VariantC_Directory.tsx
