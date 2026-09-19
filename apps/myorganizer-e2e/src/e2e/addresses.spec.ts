@@ -4,6 +4,7 @@ import {
   E2E_VAULT_PHRASE,
   gotoStable,
   routeApi,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobRouteRelative,
@@ -274,6 +275,13 @@ async function setupRoutes(page: import('@playwright/test').Page) {
     }
 
     await route.fulfill({ status: 405, headers });
+  });
+
+  await routeVaultBlobInventoryOverStore(page, {
+    cors: corsHeaders,
+    blobs: serverBlobs,
+    etags: serverBlobEtags,
+    updatedAt: serverBlobUpdatedAt,
   });
 }
 

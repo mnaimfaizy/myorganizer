@@ -308,6 +308,38 @@ export class VaultService {
     };
   };
 
+  public getBlobInventory = async (
+    userId: string,
+  ): Promise<
+    ServiceResult<{
+      blobs: Array<{ type: VaultBlobType; etag: string; updatedAt: string }>;
+      etag: string;
+    }>
+  > => {
+    const blobRows = await this.prisma.encryptedVaultBlob.findMany({
+      where: { userId },
+      orderBy: { type: 'asc' },
+    });
+
+    const blobs = blobRows
+      .filter((row) => isVaultBlobType(row.type))
+      .map((row) => ({
+        type: row.type as VaultBlobType,
+        etag: etagFromContent(row.blob),
+        updatedAt: row.updatedAt.toISOString(),
+      }));
+
+    const etag = etagFromContent(
+      blobs.map(({ type, etag: memberEtag }) => ({ type, etag: memberEtag })),
+    );
+
+    return {
+      ok: true,
+      status: 200,
+      body: { blobs, etag },
+    };
+  };
+
   public putBlob = async (
     userId: string,
     type: VaultBlobType,

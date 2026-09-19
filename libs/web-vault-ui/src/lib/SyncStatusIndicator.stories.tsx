@@ -172,3 +172,25 @@ export const WithoutRetryAction: Story = {
     // onRetry is deliberately omitted — no callback, no button
   },
 };
+
+/**
+ * Vault Pull Stall: the device's most recent Vault Pull Pass left some data
+ * types unanswered (over budget, a failed inventory read, or an unreachable
+ * type). This is an error state, but it is NOT about the User's own unsent
+ * edits — contrast with `PendingNotRetrying`. It is also NOT a permanent
+ * failure requiring user action — contrast with `Standoff` and
+ * `TerminalSingleType`. It is resolved by retrying, and retry here asks the
+ * Vault Pull trigger for an immediate pass rather than the Vault Sync Queue.
+ * The retry button is visible and wired to demonstrate the affordance.
+ */
+export const PullStalled: Story = {
+  args: {
+    status: {
+      kind: 'pull-stalled',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    },
+    onRetry: fn(),
+  },
+};

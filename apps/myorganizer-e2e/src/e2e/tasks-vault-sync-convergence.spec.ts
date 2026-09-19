@@ -4,6 +4,7 @@ import {
   gotoStable,
   E2E_USER_ID,
   routeApi,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobRouteRelative,
@@ -260,6 +261,13 @@ test.describe('Tasks Vault Sync Convergence (E2E)', () => {
         }
 
         await route.fulfill({ status: 405, headers });
+      });
+
+      await routeVaultBlobInventoryOverStore(page, {
+        cors: corsHeaders,
+        blobs: serverBlobs,
+        etags: serverBlobEtags,
+        updatedAt: serverBlobUpdatedAt,
       });
     }
 

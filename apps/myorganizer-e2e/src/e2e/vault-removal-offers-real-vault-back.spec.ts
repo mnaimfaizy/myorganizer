@@ -3,6 +3,7 @@ import {
   createOwnedVault,
   gotoStable,
   routeApi,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobRouteRelative,
@@ -268,6 +269,13 @@ test.describe('Vault Removal Offers Real Vault Back (E2E)', () => {
         }
 
         await route.fulfill({ status: 405, headers });
+      });
+
+      await routeVaultBlobInventoryOverStore(page, {
+        cors: corsHeaders,
+        blobs: serverBlobs,
+        etags: serverBlobEtags,
+        updatedAt: serverBlobUpdatedAt,
       });
     }
 

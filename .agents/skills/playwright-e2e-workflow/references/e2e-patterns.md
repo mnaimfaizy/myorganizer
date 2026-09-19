@@ -97,6 +97,27 @@ request can leak to a real backend, or a stub that never records PUT will later 
 with `data: {}`. Do not seed a recovery key into every vault spec — only the flow that is proving
 recovery-key evidence needs one.
 
+Stub the Vault Blob Inventory too, with `routeVaultBlobInventory` from
+`helpers/vaultBlobInventoryRoute.ts`, derived from the same in-memory maps the per-blob stub reads.
+A Vault Pull Pass reads `GET /vault/blobs` **first** and has no fallback: a spec that stubs only the
+per-blob routes converges nothing, and the unstubbed inventory request is the one that leaks
+([ADR 0087](../../../../docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md)).
+Note that the pull pass no longer GETs every Vault Blob Type — it asks only about the ones the
+inventory names with an ETag this device has not already bookmarked — so a per-blob stub that is
+never hit is now a normal result rather than a sign the route pattern is wrong.
+
+```typescript
+await routeVaultBlobInventory(page, {
+  headers: () => corsHeaders(new URL(page.url() || 'http://localhost:3000').origin),
+  // Read live, never snapshotted: the inventory has to see the spec's own PUTs.
+  state: () => ({
+    blobs: serverBlobs,
+    etags: serverBlobEtags,
+    updatedAt: serverBlobUpdatedAt,
+  }),
+});
+```
+
 ---
 
 ## Vault reconcile and claim leftovers
@@ -419,6 +440,43 @@ When a button doesn't change state as expected:
 | All      | Use role-based selectors; never rely on incidental Tailwind/CSS classes.                                                    |
 
 Run on all three browsers before marking an E2E change complete.
+
+---
+
+## Redirect-class statuses in route mocks
+
+Playwright's WebKit route layer cannot fulfill with redirect-class statuses (304, 301, 302, etc.)
+and throws `route.fulfill: Cannot fulfill with redirect status: 304`. On Chromium and Firefox,
+answer the intended redirect status. On WebKit, substitute an equivalent non-redirect status.
+
+```typescript
+// ❌ Wrong — fails on WebKit with "Cannot fulfill with redirect status: 304"
+if (request.headers()['if-none-match'] === body.etag) {
+  await route.fulfill({ status: 304, headers });
+  return;
+}
+
+// ✅ Correct — detect browser and substitute for WebKit
+if (request.headers()['if-none-match'] === body.etag) {
+  const browserName = route.request().frame().page().context().browser()?.browserType().name();
+  if (browserName === 'webkit') {
+    await route.fulfill({ status: 200, headers, contentType: 'application/json', body: JSON.stringify(body) });
+  } else {
+    await route.fulfill({ status: 304, headers });
+  }
+  return;
+}
+```
+
+The Vault Blob Inventory (`vaultBlobInventoryRoute.ts`) uses this pattern: when the client sends
+an `If-None-Match` ETag, it answers 304 on Chromium/Firefox but 200 with the same body on WebKit.
+The client treats both identically because every inventory etag equals its Sync Bookmark, so zero
+per-type blob reads follow in either case. Assert the response status conditionally in the test:
+
+```typescript
+const browserName = test.info().project.name;
+expect(response.status()).toBe(browserName === 'webkit' ? 200 : 304);
+```
 
 ---
 

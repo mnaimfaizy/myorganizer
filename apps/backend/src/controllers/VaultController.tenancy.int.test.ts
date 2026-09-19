@@ -70,6 +70,7 @@ jest.mock('../services/VaultService', () => {
       putVaultMeta: jest.fn(),
       getBlob: jest.fn(),
       putBlob: jest.fn(),
+      getBlobInventory: jest.fn(),
       exportVault: jest.fn(),
       importVault: jest.fn(),
     },
@@ -470,5 +471,28 @@ describe('VaultController (HTTP tenancy integration)', () => {
     expect(calls[0][0]).toBe('user-a');
     expect(calls[1][0]).toBe('user-b');
     expect(calls[2][0]).toBe('user-a');
+  });
+
+  test('GET /vault/blobs?userId=user-b with spoofed headers under token-a calls service with user-a', async () => {
+    const vaultService = require('../services/VaultService').default;
+
+    vaultService.getBlobInventory.mockResolvedValueOnce({
+      ok: true,
+      status: 200,
+      body: { blobs: [], etag: 'W/"x"' },
+    });
+
+    // Spoofed headers X-User-Id and X-Forwarded-User are ignored by tsoa/controller.
+    const res = await request(app)
+      .get('/vault/blobs?userId=user-b')
+      .set('Authorization', 'Bearer token-a')
+      .set('X-User-Id', 'user-b')
+      .set('X-Forwarded-User', 'user-b');
+
+    expect(res.status).toBe(200);
+    // Service was called exactly once with user-a (from the token), not user-b.
+    expect(vaultService.getBlobInventory).toHaveBeenCalledTimes(1);
+    expect(vaultService.getBlobInventory).toHaveBeenCalledWith('user-a');
+    expect(vaultService.getBlobInventory).not.toHaveBeenCalledWith('user-b');
   });
 });

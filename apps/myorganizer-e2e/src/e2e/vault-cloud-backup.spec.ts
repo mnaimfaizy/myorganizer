@@ -5,8 +5,10 @@ import {
   gotoStable,
   removeOwnedVault,
   routeApi,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
+  vaultBlobInventoryRouteAbsolute,
   vaultBlobRouteAbsolute,
   vaultBlobTypeExtractor,
   waitForOwnedVault,
@@ -310,6 +312,14 @@ function setupBackend(page: Page) {
       return;
     }
     await route.fulfill({ status: 405, headers });
+  });
+
+  routeVaultBlobInventoryOverStore(page, {
+    url: vaultBlobInventoryRouteAbsolute(),
+    cors: headersFor,
+    blobs: serverBlobs,
+    etags: serverBlobEtags,
+    updatedAt: serverBlobUpdatedAt,
   });
 
   return { backupRecords };

@@ -3,6 +3,7 @@ import { routeApi } from './apiStub';
 import { submitLoginForm, waitForSignupFormInteractive } from './auth';
 import { gotoStable } from './navigation';
 import { createOwnedVault, unlockWithPassphrase } from './vaultGate';
+import { routeVaultBlobInventory } from './vaultBlobInventoryRoute';
 import {
   vaultBlobRouteRelative,
   vaultBlobTypeExtractor,
@@ -364,6 +365,24 @@ export function setupBackend(
     } else {
       await route.fulfill({ status: 405, headers });
     }
+  });
+
+  routeVaultBlobInventory(page, {
+    headers: () =>
+      headersFor(new URL(page.url() || 'http://localhost:3000').origin),
+    state: (request) => {
+      const authHeader = request.headers()['authorization'] || '';
+      const userId = authHeader.replace('Bearer ', '').split(':')[1];
+      if (!userId) return null;
+
+      // A User who has pushed nothing has an empty inventory, not a missing
+      // one — the pass reads it and finds nothing to pull.
+      return {
+        blobs: serverState.blobs[userId] ?? {},
+        etags: serverState.blobEtags[userId] ?? {},
+        updatedAt: serverState.blobUpdatedAt[userId] ?? {},
+      };
+    },
   });
 
   routeApi(page, vaultBackupsLatestUrl, async (route) => {
