@@ -1,5 +1,6 @@
 import {
   EncryptedBlobV1,
+  GetVaultBlobInventoryResponse,
   GetVaultBlobResponse,
   GetVaultMetaResponse,
   PutVaultBlobResponse,
@@ -11,7 +12,11 @@ import {
 
 type VaultApiLike = Pick<
   VaultApi,
-  'getVaultMeta' | 'putVaultMeta' | 'getVaultBlob' | 'putVaultBlob'
+  | 'getVaultMeta'
+  | 'putVaultMeta'
+  | 'getVaultBlob'
+  | 'putVaultBlob'
+  | 'getVaultBlobInventory'
 >;
 
 export type ServerVaultMeta = {
@@ -43,6 +48,26 @@ function getHttpStatus(error: unknown): number | undefined {
   const maybeAny = error as any;
   const status = maybeAny?.response?.status;
   return typeof status === 'number' ? status : undefined;
+}
+
+/**
+ * The per-call request options a read passes to the generated client, and the
+ * only way an `AbortSignal` reaches the network from here.
+ *
+ * The generated client takes a `RawAxiosRequestConfig` as the last argument of
+ * every operation and axios reads `signal` off it, so a caller that holds a
+ * budget or a supersede decision can end a request in flight
+ * ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ * decision 2). The client itself is a synced output and is never edited to
+ * carry one — this is the seam that exists for it.
+ *
+ * Built even when there is no signal, so every read has exactly one call shape
+ * rather than one per caller.
+ */
+function requestOptions(signal: AbortSignal | undefined): {
+  signal?: AbortSignal;
+} {
+  return { signal };
 }
 
 function defaultBlobConflictHandler(params: {
@@ -84,9 +109,11 @@ export async function getServerVaultMeta(
   // hand every caller the ability to push a local wrapping over the server's
   // and undo a passphrase change made on another device.
   api: Pick<VaultApiLike, 'getVaultMeta'>,
+  /** Ends this read in flight — see {@link requestOptions}. */
+  signal?: AbortSignal,
 ): Promise<ServerVaultMeta | null> {
   try {
-    const response = await api.getVaultMeta();
+    const response = await api.getVaultMeta(requestOptions(signal));
     return toServerVaultMeta(response.data as GetVaultMetaResponse);
   } catch (error) {
     if (getHttpStatus(error) === 404) return null;
@@ -117,9 +144,15 @@ export async function getServerVaultMeta(
  */
 export function observeServerVaultMetaOnce(
   api: Pick<VaultApiLike, 'getVaultMeta'>,
+  /**
+   * Ends the observation in flight. A pass's own signal, so the one request
+   * this makes is as abortable as the reads around it — a pass that gave up
+   * should not be left holding a socket on the one endpoint it asks last.
+   */
+  signal?: AbortSignal,
 ): () => Promise<ServerVaultMeta | null> {
   let observation: Promise<ServerVaultMeta | null> | null = null;
-  return () => (observation ??= getServerVaultMeta(api));
+  return () => (observation ??= getServerVaultMeta(api, signal));
 }
 
 export async function getServerVaultBlob(
@@ -161,9 +194,14 @@ export async function checkServerVaultBlob(
   api: Pick<VaultApiLike, 'getVaultBlob'>,
   type: VaultBlobType,
   ifNoneMatch: string | undefined,
+  /** Ends this read in flight — see {@link requestOptions}. */
+  signal?: AbortSignal,
 ): Promise<ServerVaultBlobCheck> {
   try {
-    const response = await api.getVaultBlob({ type, ifNoneMatch });
+    const response = await api.getVaultBlob(
+      { type, ifNoneMatch },
+      requestOptions(signal),
+    );
     return {
       kind: 'changed',
       blob: toServerVaultBlob(response.data as GetVaultBlobResponse),
@@ -172,6 +210,81 @@ export async function checkServerVaultBlob(
     const status = getHttpStatus(error);
     if (status === 304) return { kind: 'not-modified' };
     if (status === 404) return { kind: 'absent' };
+    throw error;
+  }
+}
+
+/** One Vault Blob Type the Vault Blob Inventory says the server holds. */
+export type ServerVaultBlobInventoryEntry = {
+  type: VaultBlobType;
+  /** The identity of that type's Ciphertext, comparable to a Sync Bookmark's. */
+  etag: string;
+  updatedAt: string;
+};
+
+/**
+ * What the server says it holds for one User: which Vault Blob Types exist and
+ * the identity of each one's Ciphertext.
+ *
+ * It describes Ciphertext and carries none, so it needs no unlock
+ * ([ADR 0068](../../../../../docs/adr/0068-a-locked-vault-blocks-exactly-the-operations-that-need-the-master-key.md)).
+ * A Vault Blob Type missing from `blobs` means there is nothing to pull for it,
+ * never that anything should be deleted — see `vaultPullCheck.ts`.
+ */
+export type ServerVaultBlobInventory = {
+  /** The whole inventory's ETag, for the next read's `If-None-Match`. */
+  etag: string;
+  blobs: ServerVaultBlobInventoryEntry[];
+};
+
+/** What a conditional read of the Vault Blob Inventory found. */
+export type ServerVaultBlobInventoryCheck =
+  /** `ifNoneMatch` matched — no Vault Blob Type moved since it was read. */
+  | { kind: 'not-modified' }
+  /** The inventory as the server now holds it. */
+  | { kind: 'inventory'; inventory: ServerVaultBlobInventory };
+
+/**
+ * Read the Vault Blob Inventory, conditionally on `ifNoneMatch` — the ETag a
+ * previous read answered with, or `undefined` when this device holds none.
+ *
+ * The inventory's ETag is derived from its members', so it moves exactly when
+ * some Vault Blob did: a 304 here is the whole of "nothing changed anywhere",
+ * which is what makes the steady state of a Vault Pull Pass one request
+ * ([ADR 0087](../../../../../docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md),
+ * decision 3).
+ *
+ * Only 304 is read as an answer. Every other failure — including a 401/403 —
+ * is re-thrown for the caller to classify, because there is no fallback to
+ * fall back to: a pass that cannot read the inventory asks about nothing
+ * (decision 6).
+ */
+export async function checkServerVaultBlobInventory(
+  // Narrower than `VaultApiLike` for the same reason every other read here is.
+  api: Pick<VaultApiLike, 'getVaultBlobInventory'>,
+  ifNoneMatch: string | undefined,
+  /** Ends this read in flight — see {@link requestOptions}. */
+  signal?: AbortSignal,
+): Promise<ServerVaultBlobInventoryCheck> {
+  try {
+    const response = await api.getVaultBlobInventory(
+      { ifNoneMatch },
+      requestOptions(signal),
+    );
+    const data = response.data as GetVaultBlobInventoryResponse;
+    return {
+      kind: 'inventory',
+      inventory: {
+        etag: data.etag,
+        blobs: data.blobs.map((entry) => ({
+          type: entry.type,
+          etag: entry.etag,
+          updatedAt: entry.updatedAt,
+        })),
+      },
+    };
+  } catch (error) {
+    if (getHttpStatus(error) === 304) return { kind: 'not-modified' };
     throw error;
   }
 }

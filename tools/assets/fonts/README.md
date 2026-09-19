@@ -1,9 +1,10 @@
 # Embedded fonts
 
 The two typefaces used by [`docs/agents/orchestration-map.html`](../../../docs/agents/orchestration-map.html).
-`tools/scripts/build-agent-map.mjs` base64-encodes them into the generated page, so it renders
+They are embedded as base64 data URIs in that page's `@font-face` block so it renders
 identically from disk, offline, and inside a sandbox that blocks external hosts. Nothing at
-render time touches the network.
+render time touches the network. `tools/scripts/build-agent-map.mjs` inlined them on first
+import; that page is no longer reproducible from the importer (ADR 0052).
 
 | File                          | Family    | Weights           | Subset |
 | ----------------------------- | --------- | ----------------- | ------ |
@@ -12,7 +13,7 @@ render time touches the network.
 
 Figtree is a variable font, so one file covers every weight the diagram uses — cheaper than
 five static cuts. Only the latin subset is vendored; the page is English, and the font stacks
-in the generated CSS keep their fallbacks for anything outside that range.
+in the page CSS keep their fallbacks for anything outside that range.
 
 ## Licence
 
@@ -34,6 +35,8 @@ curl -sS -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML
   "https://fonts.googleapis.com/css2?family=Caprasimo&family=Figtree:wght@400..800&display=swap"
 ```
 
-Download the URLs under the `/* latin */` blocks, replace the files above, then rebuild the page.
+Download the URLs under the `/* latin */` blocks, replace the files above, then re-embed them
+into `docs/agents/orchestration-map.html`'s `@font-face` block — edit the page in place via
+design-brief → Designer (ADR 0046). Do not rebuild with `build-agent-map.mjs`.
 Verify each download starts with the `wOF2` magic bytes (`774f4632`) before committing — an
 error page saved as `.woff2` fails silently at render time.

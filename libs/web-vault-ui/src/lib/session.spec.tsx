@@ -6,6 +6,7 @@ const mockGetCurrentUser = jest.fn();
 const mockCreateVaultHandle = jest.fn();
 const mockCreateVaultApi = jest.fn();
 const mockCreateVaultSyncQueue = jest.fn();
+const mockCreateVaultPullTrigger = jest.fn();
 const mockCreateLocalVaultRevision = jest.fn(() => ({
   current: () => 0,
   bump: jest.fn(),
@@ -22,6 +23,7 @@ jest.mock('@myorganizer/web-vault', () => ({
   createVaultHandle: (opts: unknown) => mockCreateVaultHandle(opts),
   createVaultApi: () => mockCreateVaultApi(),
   createVaultSyncQueue: (opts: unknown) => mockCreateVaultSyncQueue(opts),
+  createVaultPullTrigger: (opts: unknown) => mockCreateVaultPullTrigger(opts),
   createLocalVaultRevision: () => mockCreateLocalVaultRevision(),
   claimUnclaimedLocalVaultOnEvidence: (opts: unknown) =>
     mockClaimUnclaimedLocalVaultOnEvidence(opts),
@@ -52,11 +54,25 @@ const setupTwoQueueMock = (queueA: object, queueB: object) => {
   });
 };
 
+// Helper to set up distinct pull triggers keyed on call order (order-independent)
+const setupTwoTriggerMock = (triggerA: object, triggerB: object) => {
+  mockCreateVaultPullTrigger.mockImplementation(() => {
+    const callIndex = mockCreateVaultPullTrigger.mock.calls.length - 1;
+    return callIndex === 0 ? triggerA : triggerB;
+  });
+};
+
 describe('VaultSessionProvider', () => {
   let mockApi: { getVaultBlob: jest.Mock; putVaultBlob: jest.Mock };
   let mockQueue: {
     vaultBlobChanged: jest.Mock;
     markUnsentFromBookmarks: jest.Mock;
+  };
+  let mockPullTrigger: {
+    requestCheck: jest.Mock;
+    check: jest.Mock;
+    status: jest.Mock;
+    subscribe: jest.Mock;
   };
 
   beforeEach(() => {
@@ -71,6 +87,14 @@ describe('VaultSessionProvider', () => {
       markUnsentFromBookmarks: jest.fn().mockResolvedValue(undefined),
     };
     mockCreateVaultSyncQueue.mockReturnValue(mockQueue);
+
+    mockPullTrigger = {
+      requestCheck: jest.fn(),
+      check: jest.fn(),
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+    mockCreateVaultPullTrigger.mockReturnValue(mockPullTrigger);
 
     // Standard handle stub: just echoes back the input, with vaultStatus method
     mockCreateVaultHandle.mockImplementation((opts) => ({
@@ -634,6 +658,146 @@ describe('VaultSessionProvider', () => {
       expect(mockCreateVaultSyncQueue).toHaveBeenCalledTimes(2);
       expect(optionsOf(2).syncSink).toBe(mockQueueB);
       expect(optionsOf(2).syncSink).not.toBe(mockQueueA);
+    });
+  });
+
+  describe('pull trigger wiring', () => {
+    test('trigger is built from the vault api and a deferring prompt', () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      mockCreateVaultHandle.mockImplementation(() => ({
+        owner: 'user-a',
+        vaultStatus: jest.fn(() => 'owned'),
+      }));
+
+      renderHook(() => useVaultSession(), { wrapper });
+
+      // Verify createVaultPullTrigger was called with the right api and prompt
+      expect(mockCreateVaultPullTrigger).toHaveBeenCalledWith(
+        expect.objectContaining({
+          api: mockApi,
+          prompt: expect.any(Function),
+        }),
+      );
+
+      // Verify the prompt function returns 'defer'
+      const callArgs = mockCreateVaultPullTrigger.mock.calls[0][0];
+      expect(callArgs.prompt()).toBe('defer');
+    });
+
+    test('trigger is exposed on context as result.current.pullTrigger', () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      mockCreateVaultHandle.mockImplementation(() => ({
+        owner: 'user-a',
+        vaultStatus: jest.fn(() => 'owned'),
+      }));
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      // Verify the exact object from createVaultPullTrigger is exposed on context
+      expect(result.current.pullTrigger).toBe(mockPullTrigger);
+    });
+
+    test('no owner, no trigger', () => {
+      mockGetCurrentUser.mockReturnValue(undefined);
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      expect(mockCreateVaultPullTrigger).not.toHaveBeenCalled();
+      expect(result.current.pullTrigger).toBeNull();
+    });
+
+    test('trigger survives lock/unlock', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      // Set masterKeyBytes
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([1, 2, 3]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toEqual(
+          new Uint8Array([1, 2, 3]),
+        );
+      });
+
+      const firstPullTrigger = result.current.pullTrigger;
+
+      // Lock
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+
+      // Verify the trigger was created exactly once despite multiple handle creations
+      expect(mockCreateVaultPullTrigger).toHaveBeenCalledTimes(1);
+
+      // Verify the trigger stayed the same reference after lock
+      expect(result.current.pullTrigger).toBe(firstPullTrigger);
+    });
+
+    test('owner change rebuilds the trigger', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      const mockTriggerA = {
+        requestCheck: jest.fn(),
+        check: jest.fn(),
+        status: jest.fn(() => ({ sessionEnded: false })),
+        subscribe: jest.fn(() => jest.fn()),
+      };
+      const mockTriggerB = {
+        requestCheck: jest.fn(),
+        check: jest.fn(),
+        status: jest.fn(() => ({ sessionEnded: false })),
+        subscribe: jest.fn(() => jest.fn()),
+      };
+      setupTwoTriggerMock(mockTriggerA, mockTriggerB);
+
+      const { result, rerender } = renderHook(() => useVaultSession(), {
+        wrapper,
+      });
+
+      // Set masterKeyBytes for user-a
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([1, 2, 3]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toEqual(
+          new Uint8Array([1, 2, 3]),
+        );
+      });
+      expect(result.current.pullTrigger).toBe(mockTriggerA);
+
+      // Switch owner
+      mockGetCurrentUser.mockReturnValue({ id: 'user-b' });
+      rerender();
+
+      await waitFor(() => {
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+
+      // Verify the trigger was called twice and the new trigger is used
+      expect(mockCreateVaultPullTrigger).toHaveBeenCalledTimes(2);
+      expect(result.current.pullTrigger).toBe(mockTriggerB);
+      expect(result.current.pullTrigger).not.toBe(mockTriggerA);
+    });
+
+    test('trigger is not passed to createVaultHandle', () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+      mockCreateVaultHandle.mockImplementation(() => ({
+        owner: 'user-a',
+        vaultStatus: jest.fn(() => 'owned'),
+      }));
+
+      renderHook(() => useVaultSession(), { wrapper });
+
+      // Verify createVaultHandle was not passed the pull trigger
+      const callArgs = mockCreateVaultHandle.mock.calls[0][0];
+      expect(callArgs).not.toHaveProperty('pullTrigger');
     });
   });
 

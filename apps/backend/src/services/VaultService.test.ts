@@ -820,4 +820,263 @@ describe('VaultService', () => {
       expect(etag1).not.toBe(etag2);
     });
   });
+
+  describe('ADR 0087: getBlobInventory', () => {
+    test('returns { blobs: [], etag } when no blobs exist', async () => {
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([]);
+
+      const result = await service.getBlobInventory('user-1');
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('Expected ok result');
+      expect(result.status).toBe(200);
+      expect(result.body.blobs).toEqual([]);
+      expect(result.body.etag).toContain('W/"');
+    });
+
+    test('returns one inventory entry per blob with type, etag, and updatedAt', async () => {
+      const blobA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const blobB = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: Buffer.from('different-ciphertext-b').toString('base64'),
+      };
+      const dateA = new Date('2025-01-01T00:00:00.000Z');
+      const dateB = new Date('2025-02-01T00:00:00.000Z');
+
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobA,
+          updatedAt: dateA,
+        },
+        {
+          type: 'groceries',
+          blob: blobB,
+          updatedAt: dateB,
+        },
+      ]);
+
+      const result = await service.getBlobInventory('user-1');
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('Expected ok result');
+      expect(result.body.blobs).toHaveLength(2);
+      expect(result.body.blobs[0]).toMatchObject({
+        type: 'addresses',
+        etag: expect.stringMatching(/^W\/.+/),
+        updatedAt: dateA.toISOString(),
+      });
+      expect(result.body.blobs[1]).toMatchObject({
+        type: 'groceries',
+        etag: expect.stringMatching(/^W\/.+/),
+        updatedAt: dateB.toISOString(),
+      });
+    });
+
+    test('each inventory entry etag matches etagFromContent of the blob', async () => {
+      const blobA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobA,
+          updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+        },
+      ]);
+
+      const inventoryResult = await service.getBlobInventory('user-1');
+
+      expect(inventoryResult.ok).toBe(true);
+      if (!inventoryResult.ok) throw new Error('Expected ok result');
+      const inventoryEtag = inventoryResult.body.blobs[0].etag;
+
+      // Now get the same blob via getBlob and compare etags
+      prisma.encryptedVaultBlob.findUnique.mockResolvedValue({
+        type: 'addresses',
+        blob: blobA,
+        updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+      });
+
+      const blobResult = await service.getBlob('user-1', 'addresses');
+      expect(blobResult.ok).toBe(true);
+      if (!blobResult.ok) throw new Error('Expected ok result');
+      const blobEtag = blobResult.body.etag;
+
+      // Same blob should have same etag in both contexts
+      expect(inventoryEtag).toBe(blobEtag);
+    });
+
+    test('inventory etag is stable when same blobs are returned', async () => {
+      const blobA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const dateA = new Date('2025-01-01T00:00:00.000Z');
+
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobA,
+          updatedAt: dateA,
+        },
+      ]);
+
+      const result1 = await service.getBlobInventory('user-1');
+      expect(result1.ok).toBe(true);
+      if (!result1.ok) throw new Error('Expected ok result');
+      const etag1 = result1.body.etag;
+
+      // Reset and return the same blobs again
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobA,
+          updatedAt: dateA,
+        },
+      ]);
+
+      const result2 = await service.getBlobInventory('user-1');
+      expect(result2.ok).toBe(true);
+      if (!result2.ok) throw new Error('Expected ok result');
+      const etag2 = result2.body.etag;
+
+      // ETags should be identical when content is the same
+      expect(etag1).toBe(etag2);
+    });
+
+    test('inventory etag changes when a blob content changes', async () => {
+      const blobA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const blobB = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: Buffer.from('different-ciphertext').toString('base64'),
+      };
+      const dateA = new Date('2025-01-01T00:00:00.000Z');
+
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobA,
+          updatedAt: dateA,
+        },
+      ]);
+
+      const result1 = await service.getBlobInventory('user-1');
+      expect(result1.ok).toBe(true);
+      if (!result1.ok) throw new Error('Expected ok result');
+      const etag1 = result1.body.etag;
+
+      // Change blob content
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobB,
+          updatedAt: dateA,
+        },
+      ]);
+
+      const result2 = await service.getBlobInventory('user-1');
+      expect(result2.ok).toBe(true);
+      if (!result2.ok) throw new Error('Expected ok result');
+      const etag2 = result2.body.etag;
+
+      // ETags should differ when blob content differs
+      expect(etag1).not.toBe(etag2);
+    });
+
+    test('inventory etag does not change when only updatedAt changes (blob content same)', async () => {
+      const blobA = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+      const dateA = new Date('2025-01-01T00:00:00.000Z');
+      const dateB = new Date('2025-06-15T12:00:00.000Z');
+
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobA,
+          updatedAt: dateA,
+        },
+      ]);
+
+      const result1 = await service.getBlobInventory('user-1');
+      expect(result1.ok).toBe(true);
+      if (!result1.ok) throw new Error('Expected ok result');
+      const etag1 = result1.body.etag;
+
+      // Same blob content but different updatedAt
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: blobA,
+          updatedAt: dateB,
+        },
+      ]);
+
+      const result2 = await service.getBlobInventory('user-1');
+      expect(result2.ok).toBe(true);
+      if (!result2.ok) throw new Error('Expected ok result');
+      const etag2 = result2.body.etag;
+
+      // ETags should remain identical (content-based, not timestamp-based)
+      expect(etag1).toBe(etag2);
+    });
+
+    test('filters out invalid blob types', async () => {
+      const validBlob = {
+        version: 1,
+        iv: IV_12B_BASE64,
+        ciphertext: CT_BASE64,
+      };
+
+      // findMany returns a row with an invalid type
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([
+        {
+          type: 'addresses',
+          blob: validBlob,
+          updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+        },
+        {
+          type: 'invalid_type',
+          blob: validBlob,
+          updatedAt: new Date('2025-01-01T00:00:00.000Z'),
+        },
+      ]);
+
+      const result = await service.getBlobInventory('user-1');
+
+      expect(result.ok).toBe(true);
+      if (!result.ok) throw new Error('Expected ok result');
+      // Only the valid type should be included
+      expect(result.body.blobs).toHaveLength(1);
+      expect(result.body.blobs[0].type).toBe('addresses');
+    });
+
+    test('calls findMany with userId and orderBy type asc', async () => {
+      prisma.encryptedVaultBlob.findMany.mockResolvedValue([]);
+
+      await service.getBlobInventory('user-1');
+
+      expect(prisma.encryptedVaultBlob.findMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+        orderBy: { type: 'asc' },
+      });
+    });
+  });
 });

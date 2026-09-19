@@ -98,6 +98,14 @@ const VAULT_SYNC_STATUS_READINGS = {
       "The encrypted data on the server belongs to a different vault than this device's, so nothing can be combined. Syncing is refused specifically to prevent that — and nothing here has been lost: this device's data stays intact and readable exactly because that refusal held. Retrying will not change that. To use the server's vault instead, remove this one from the Vault page and sign in with its passphrase; to keep this device's vault, no action is needed and syncing stays off until the two match.",
     canRetry: false,
   }),
+
+  'pull-stalled': () => ({
+    tone: 'error',
+    label: "Hasn't heard from your other devices",
+    detail:
+      'The last check with the server did not finish, so changes made on your other devices may not be here yet. Retrying asks again.',
+    canRetry: true,
+  }),
 } as const satisfies Record<
   VaultSyncStatusKind,
   (status: VaultSyncStatus) => VaultSyncStatusReading

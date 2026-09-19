@@ -788,6 +788,83 @@ export interface GetSyncStatus200Response {
 /**
  * 
  * @export
+ * @interface GetVaultBlobInventoryResponse
+ */
+export interface GetVaultBlobInventoryResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'etag': string;
+    /**
+     * 
+     * @type {Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'blobs': Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'details'?: any;
+}
+/**
+ * 
+ * @export
+ * @interface GetVaultBlobInventoryResponseAnyOf
+ */
+export interface GetVaultBlobInventoryResponseAnyOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponseAnyOf
+     */
+    'etag': string;
+    /**
+     * 
+     * @type {Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>}
+     * @memberof GetVaultBlobInventoryResponseAnyOf
+     */
+    'blobs': Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>;
+}
+/**
+ * 
+ * @export
+ * @interface GetVaultBlobInventoryResponseAnyOfBlobsInner
+ */
+export interface GetVaultBlobInventoryResponseAnyOfBlobsInner {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
+     */
+    'updatedAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
+     */
+    'etag': string;
+    /**
+     * 
+     * @type {VaultBlobType}
+     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
+     */
+    'type': VaultBlobType;
+}
+
+
+/**
+ * 
+ * @export
  * @interface GetVaultBlobResponse
  */
 export interface GetVaultBlobResponse {
@@ -4155,6 +4232,43 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
         },
         /**
          * 
+         * @param {string} [ifNoneMatch] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVaultBlobInventory: async (ifNoneMatch?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/vault/blobs`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            if (ifNoneMatch != null) {
+                localVarHeaderParameter['if-none-match'] = String(ifNoneMatch);
+            }
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4351,6 +4465,18 @@ export const VaultApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @param {string} [ifNoneMatch] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getVaultBlobInventory(ifNoneMatch?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVaultBlobInventoryResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVaultBlobInventory(ifNoneMatch, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['VaultApi.getVaultBlobInventory']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4428,6 +4554,15 @@ export const VaultApiFactory = function (configuration?: Configuration, basePath
         },
         /**
          * 
+         * @param {VaultApiGetVaultBlobInventoryRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVaultBlobInventory(requestParameters: VaultApiGetVaultBlobInventoryRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetVaultBlobInventoryResponse> {
+            return localVarFp.getVaultBlobInventory(requestParameters.ifNoneMatch, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4481,6 +4616,20 @@ export interface VaultApiGetVaultBlobRequest {
      * 
      * @type {string}
      * @memberof VaultApiGetVaultBlob
+     */
+    readonly ifNoneMatch?: string
+}
+
+/**
+ * Request parameters for getVaultBlobInventory operation in VaultApi.
+ * @export
+ * @interface VaultApiGetVaultBlobInventoryRequest
+ */
+export interface VaultApiGetVaultBlobInventoryRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultApiGetVaultBlobInventory
      */
     readonly ifNoneMatch?: string
 }
@@ -4574,6 +4723,17 @@ export class VaultApi extends BaseAPI {
      */
     public getVaultBlob(requestParameters: VaultApiGetVaultBlobRequest, options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).getVaultBlob(requestParameters.type, requestParameters.ifNoneMatch, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {VaultApiGetVaultBlobInventoryRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VaultApi
+     */
+    public getVaultBlobInventory(requestParameters: VaultApiGetVaultBlobInventoryRequest = {}, options?: RawAxiosRequestConfig) {
+        return VaultApiFp(this.configuration).getVaultBlobInventory(requestParameters.ifNoneMatch, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -227,4 +227,98 @@ describe('Vault cross-user isolation (real service over a fake store)', () => {
     expect(res.body.meta.kdf_salt).toBe('salt-b');
     expect(JSON.stringify(res.body)).not.toContain('salt-a');
   });
+
+  test('GET /vault/blobs under token-a lists only A types and each etag matches GET /vault/blob/:type', async () => {
+    // Seed B with an extra type (tasks) that A lacks
+    store.seedBlob('user-b', 'tasks', blobWith(B_CIPHERTEXT));
+
+    // Get inventory list as user-a
+    const inventoryRes = await request(app)
+      .get('/vault/blobs')
+      .set('Authorization', 'Bearer token-a');
+
+    expect(inventoryRes.status).toBe(200);
+    expect(inventoryRes.body.blobs).toHaveLength(1);
+    expect(inventoryRes.body.blobs[0].type).toBe('addresses');
+    const addressesEtagFromInventory = inventoryRes.body.blobs[0].etag;
+
+    // Fetch the same blob individually and verify etags match
+    const blobRes = await request(app)
+      .get('/vault/blob/addresses')
+      .set('Authorization', 'Bearer token-a');
+
+    expect(blobRes.status).toBe(200);
+    expect(blobRes.body.etag).toBe(addressesEtagFromInventory);
+
+    // Verify B's tasks blob is not in A's inventory and B's ciphertext is not in A's response
+    const types = inventoryRes.body.blobs.map((b: any) => b.type);
+    expect(types).not.toContain('tasks');
+    expect(JSON.stringify(inventoryRes.body)).not.toContain(B_CIPHERTEXT);
+  });
+
+  test('GET /vault/blobs under token-a with If-None-Match is isolated from B writes', async () => {
+    // First, get A's inventory and etag
+    const firstRes = await request(app)
+      .get('/vault/blobs')
+      .set('Authorization', 'Bearer token-a');
+
+    expect(firstRes.status).toBe(200);
+    const aEtag = firstRes.body.etag;
+
+    // Now B writes a new blob (addresses update)
+    await request(app)
+      .put('/vault/blob/addresses')
+      .set('Authorization', 'Bearer token-b')
+      .send({
+        type: 'addresses',
+        blob: blobWith(Buffer.from('user-b-new-secret').toString('base64')),
+      });
+
+    // A's conditional request should still return 304 (their list hasn't changed)
+    const condRes = await request(app)
+      .get('/vault/blobs')
+      .set('Authorization', 'Bearer token-a')
+      .set('If-None-Match', aEtag);
+
+    expect(condRes.status).toBe(304);
+    expect(condRes.text).toBe('');
+  });
+
+  test('GET /vault/blobs under token-b returns B own set and different list etag than A', async () => {
+    // Get A's inventory
+    const aRes = await request(app)
+      .get('/vault/blobs')
+      .set('Authorization', 'Bearer token-a');
+
+    expect(aRes.status).toBe(200);
+    const aEtag = aRes.body.etag;
+    const aAddressesEtag = aRes.body.blobs[0]?.etag;
+    expect(aRes.body.blobs).toHaveLength(1);
+    expect(aRes.body.blobs[0].type).toBe('addresses');
+
+    // Get B's inventory
+    const bRes = await request(app)
+      .get('/vault/blobs')
+      .set('Authorization', 'Bearer token-b');
+
+    expect(bRes.status).toBe(200);
+    expect(bRes.body.blobs).toHaveLength(1);
+    expect(bRes.body.blobs[0].type).toBe('addresses');
+
+    // Verify list etags are different (different blob contents)
+    expect(bRes.body.etag).not.toBe(aEtag);
+
+    // Verify individual blob etags are different (A and B have different ciphertexts)
+    const bAddressesEtag = bRes.body.blobs[0]?.etag;
+    expect(bAddressesEtag).not.toBe(aAddressesEtag);
+
+    // Verify by fetching the actual blob: B's blob has B's ciphertext, not A's
+    const bBlobRes = await request(app)
+      .get('/vault/blob/addresses')
+      .set('Authorization', 'Bearer token-b');
+
+    expect(bBlobRes.status).toBe(200);
+    expect(bBlobRes.body.blob.ciphertext).toBe(B_CIPHERTEXT);
+    expect(bBlobRes.body.blob.ciphertext).not.toBe(A_CIPHERTEXT);
+  });
 });

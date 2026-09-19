@@ -9,6 +9,7 @@ import {
   readOwnedVault,
   removeOwnedVault,
   routeApi,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   unlockVaultOnSettingsPage,
@@ -310,6 +311,13 @@ function setupBackend(page: Page) {
     }
 
     await route.fulfill({ status: 405, headers });
+  });
+
+  routeVaultBlobInventoryOverStore(page, {
+    cors: headersFor,
+    blobs: serverBlobs,
+    etags: serverBlobEtags,
+    updatedAt: serverBlobUpdatedAt,
   });
 
   return { backupRecords, getServerMeta };

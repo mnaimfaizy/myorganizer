@@ -4,8 +4,9 @@
  * Reads the current sync status from the Vault Session — see
  * `computeVaultSyncStatus` in `@myorganizer/web-vault` for what "current"
  * means. No state is owned here beyond the last reading: every recompute
- * re-derives from the Sync Bookmarks and the sync queue's own status, so a
- * component unmounting and remounting loses nothing.
+ * re-derives from the Sync Bookmarks, the sync queue's own status, and the
+ * pull trigger's own status, so a component unmounting and remounting loses
+ * nothing.
  */
 import { useCallback, useEffect, useState } from 'react';
 
@@ -20,8 +21,11 @@ export type UseVaultSyncStatusResult = {
   /** Null until a Vault Session exists and the first reading has resolved. */
   status: VaultSyncStatus | null;
   /**
-   * Ask the sync queue to try every unsent and terminally-failed type again
-   * right now. A no-op without a Vault Session.
+   * Ask for another attempt right now. Routes by the current status: a
+   * Vault Pull Stall asks the pull trigger for an immediate pass — retrying
+   * the queue would not touch what a stall is actually about — and every
+   * other retryable kind asks the sync queue to try its unsent and
+   * terminally-failed types again. A no-op without a Vault Session.
    */
   retry: () => void;
 };
@@ -30,6 +34,7 @@ export function useVaultSyncStatus(): UseVaultSyncStatusResult {
   const session = useOptionalVaultSession();
   const handle = session?.handle ?? null;
   const syncQueue = session?.syncQueue ?? null;
+  const pullTrigger = session?.pullTrigger ?? null;
 
   const [status, setStatus] = useState<VaultSyncStatus | null>(null);
 
@@ -37,13 +42,14 @@ export function useVaultSyncStatus(): UseVaultSyncStatusResult {
     // Nothing to subscribe to without a Vault Session — the hook's return
     // already masks a stale `status` to null in that case (see below), so
     // there is nothing to reset here.
-    if (!handle || !syncQueue) return;
+    if (!handle || !syncQueue || !pullTrigger) return;
 
     let cancelled = false;
     const recompute = () => {
       void computeVaultSyncStatus({
         handle,
         queueStatus: syncQueue.status(),
+        pullStatus: pullTrigger.status(),
       }).then((next) => {
         if (!cancelled) setStatus(next);
       });
@@ -51,8 +57,13 @@ export function useVaultSyncStatus(): UseVaultSyncStatusResult {
 
     recompute();
     // The queue notifies on every change that could move this reading — a
-    // mark, a drain finishing, a retry scheduled or firing.
-    const unsubscribe = syncQueue.subscribe(recompute);
+    // mark, a drain finishing, a retry scheduled or firing. The pull trigger
+    // notifies on the one change that could move its own half of the
+    // reading — a pass stopping the trigger for good on a 401/403 — which is
+    // what lets a reading-only device reach `session-ended` without waiting
+    // for the next focus (ADR 0088, decision 7).
+    const unsubscribeQueue = syncQueue.subscribe(recompute);
+    const unsubscribeTrigger = pullTrigger.subscribe(recompute);
 
     // Vault Pull and Vault Reconcile converge through the same primitive but
     // outside this queue, so a bookmark they advance would not otherwise
@@ -66,20 +77,32 @@ export function useVaultSyncStatus(): UseVaultSyncStatusResult {
 
     return () => {
       cancelled = true;
-      unsubscribe();
+      unsubscribeQueue();
+      unsubscribeTrigger();
       if (typeof window !== 'undefined') {
         window.removeEventListener('focus', recompute);
       }
     };
-  }, [handle, syncQueue]);
+  }, [handle, syncQueue, pullTrigger]);
 
   const retry = useCallback(() => {
-    if (!handle || !syncQueue) return;
+    if (!handle) return;
+
+    if (status?.kind === 'pull-stalled') {
+      if (!pullTrigger) return;
+      void pullTrigger.check(handle);
+      return;
+    }
+
+    if (!syncQueue) return;
     void syncQueue.retryNow(handle);
-  }, [handle, syncQueue]);
+  }, [handle, syncQueue, pullTrigger, status]);
 
   // A stale reading from a since-departed Vault Session (sign-out) is never
   // shown — masked here rather than cleared by an effect, which is what lets
   // the effect above skip setState entirely when there is no Session.
-  return { status: handle && syncQueue ? status : null, retry };
+  return {
+    status: handle && syncQueue && pullTrigger ? status : null,
+    retry,
+  };
 }

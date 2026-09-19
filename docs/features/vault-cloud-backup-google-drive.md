@@ -80,9 +80,11 @@ mechanism offered alongside the manual file-based one:
 | Required env on backend  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REDIRECT_URI`, `YOUTUBE_TOKEN_ENCRYPTION_KEY`, `YOUTUBE_CRON_SECRET` | _none — backend stores no Drive token_                |
 | Required env on frontend | _none_                                                                                                                   | `NEXT_PUBLIC_GOOGLE_CLIENT_ID`                        |
 
-The two features can share a single OAuth client in Google Cloud Console (it
-just needs both **Authorized redirect URIs** _and_ **Authorized JavaScript
-origins** filled in), or they can use separate clients — see
+In production the two features use separate Cloud projects, so Drive backup
+never waits on YouTube's sensitive-scope verification
+([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
+Locally they may share one client (it just needs both **Authorized redirect
+URIs** _and_ **Authorized JavaScript origins** filled in) — see
 [Google Cloud Console setup](#google-cloud-console-setup) below.
 
 ---
@@ -151,11 +153,12 @@ things on every token request:
 
 You can either:
 
-- **Reuse the same Cloud project as YouTube.** Easiest for solo / personal
-  setups. The single OAuth client gets both "Authorized redirect URIs"
+- **Reuse the dev/staging Cloud project as YouTube.** Fine for development
+  and staging. The single OAuth client gets both "Authorized redirect URIs"
   (YouTube) and "Authorized JavaScript origins" (Drive backup).
-- **Create a separate project.** Recommended for production so the YouTube
-  Data API quota and the Drive API quota stay isolated.
+- **Create a separate project.** Required for production: consent screen,
+  verification, and quota belong to the project, and `drive.appdata` is a
+  non-sensitive scope that should not wait on YouTube's review.
 
 ### Step 2 — Enable the Google Drive API
 
