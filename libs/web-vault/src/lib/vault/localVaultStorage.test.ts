@@ -708,7 +708,7 @@ describe('localVaultStorage — storage resolution and ownership', () => {
         });
         await handle.saveEncryptedData({
           type: 'groceries',
-          value: [{ id: 'a', text: 'Todo A' }],
+          value: [{ id: 'a', name: 'Milk' }],
         });
 
         // Assert: per-User record was updated with new data

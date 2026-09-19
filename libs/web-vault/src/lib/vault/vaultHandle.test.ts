@@ -860,7 +860,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       const handle = await createInitializedUnlockedVaultForReadWrite('user-a');
 
       const tasksValue = [{ id: '1', title: 'Task 1' }];
-      const todosValue = [{ id: 'a', text: 'Todo A' }];
+      const groceriesValue = [{ id: 'a', name: 'Milk' }];
 
       await handle.saveEncryptedData({
         type: 'tasks',
@@ -868,7 +868,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       });
       await handle.saveEncryptedData({
         type: 'groceries',
-        value: todosValue,
+        value: groceriesValue,
       });
 
       // Verify both are present.
@@ -876,13 +876,13 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         type: 'tasks',
         defaultValue: [],
       });
-      const loadedTodos = await handle.loadDecryptedData({
+      const loadedGroceries = await handle.loadDecryptedData({
         type: 'groceries',
         defaultValue: [],
       });
 
       expect(loadedTasks).toEqual(tasksValue);
-      expect(loadedTodos).toEqual(todosValue);
+      expect(loadedGroceries).toEqual(groceriesValue);
 
       // Verify vault data has both types.
       const vault = handle.loadVault();
@@ -1693,16 +1693,16 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       });
       await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-tasks' });
 
-      // Save todos but do NOT record push success
+      // Save groceries but do NOT record push success
       await handle.saveEncryptedData({
         type: 'groceries',
-        value: [{ id: 'a', text: 'Todo A' }],
+        value: [{ id: 'a', name: 'Milk' }],
       });
 
       // Tasks should not be dirty (pushed)
       expect(await handle.hasUnsentChanges('tasks')).toBe(false);
 
-      // Todos should be dirty (never pushed)
+      // Groceries should be dirty (never pushed)
       expect(await handle.hasUnsentChanges('groceries')).toBe(true);
     });
   });
@@ -1783,7 +1783,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       });
       await handle.saveEncryptedData({
         type: 'groceries',
-        value: [{ id: 'a', text: 'Todo A' }],
+        value: [{ id: 'a', name: 'Milk' }],
       });
 
       // Record push success only for tasks
@@ -1792,7 +1792,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       // Tasks should not be dirty
       expect(await handle.hasUnsentChanges('tasks')).toBe(false);
 
-      // Todos should still be dirty
+      // Groceries should still be dirty
       expect(await handle.hasUnsentChanges('groceries')).toBe(true);
     });
 

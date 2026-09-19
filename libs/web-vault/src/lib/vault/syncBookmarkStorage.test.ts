@@ -684,9 +684,9 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
         ciphertextHash: 'hash-tasks',
         etag: 'etag-tasks',
       };
-      const entryTodos: SyncBookmarkEntry = {
-        ciphertextHash: 'hash-todos',
-        etag: 'etag-todos',
+      const entryGroceries: SyncBookmarkEntry = {
+        ciphertextHash: 'hash-groceries',
+        etag: 'etag-groceries',
       };
 
       writeSyncBookmark({
@@ -697,14 +697,14 @@ describe('syncBookmarkStorage — Sync Bookmark storage primitives', () => {
       writeSyncBookmark({
         owner: 'user-a',
         type: 'groceries',
-        entry: entryTodos,
+        entry: entryGroceries,
       });
 
       // Simulate reload
       const result = readSyncBookmarks('user-a');
 
       expect(result.tasks).toEqual(entryTasks);
-      expect(result.groceries).toEqual(entryTodos);
+      expect(result.groceries).toEqual(entryGroceries);
     });
   });
 

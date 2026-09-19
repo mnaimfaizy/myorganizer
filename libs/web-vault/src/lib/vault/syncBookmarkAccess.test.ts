@@ -258,7 +258,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
         iv: bytesToBase64(new Uint8Array(12).fill(0xaa)),
         ciphertext: bytesToBase64(new Uint8Array(16).fill(0xbb)),
       };
-      const blobTodos: EncryptedBlob = {
+      const blobGroceries: EncryptedBlob = {
         iv: bytesToBase64(new Uint8Array(12).fill(0xcc)),
         ciphertext: bytesToBase64(new Uint8Array(16).fill(0xdd)),
       };
@@ -279,12 +279,12 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
       });
       expect(tasksDirty).toBe(false);
 
-      // Todos should still be dirty (never pushed)
-      const todosDirty = await access.hasUnsentChanges({
+      // Groceries should still be dirty (never pushed)
+      const groceriesDirty = await access.hasUnsentChanges({
         type: 'groceries',
-        blob: blobTodos,
+        blob: blobGroceries,
       });
-      expect(todosDirty).toBe(true);
+      expect(groceriesDirty).toBe(true);
     });
 
     test('13: recordPushSuccess overwrites previous bookmark for same type', async () => {
@@ -399,7 +399,7 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
         etag: 'etag-a',
       });
 
-      // User-b records success for todos
+      // User-b records success for groceries
       await accessB.recordPushSuccess({
         type: 'groceries',
         blob: blobB,
@@ -413,19 +413,19 @@ describe('syncBookmarkAccess — access layer, hashing, and dirtiness', () => {
       });
       expect(aDirty).toBe(false);
 
-      // User-b checks todos: not dirty
+      // User-b checks groceries: not dirty
       const bDirty = await accessB.hasUnsentChanges({
         type: 'groceries',
         blob: blobB,
       });
       expect(bDirty).toBe(false);
 
-      // User-a checks todos: dirty (never pushed by user-a)
-      const aTodosDirty = await accessA.hasUnsentChanges({
+      // User-a checks groceries: dirty (never pushed by user-a)
+      const aGroceriesDirty = await accessA.hasUnsentChanges({
         type: 'groceries',
         blob: blobB,
       });
-      expect(aTodosDirty).toBe(true);
+      expect(aGroceriesDirty).toBe(true);
 
       // User-b checks tasks: dirty (never pushed by user-b)
       const bTasksDirty = await accessB.hasUnsentChanges({

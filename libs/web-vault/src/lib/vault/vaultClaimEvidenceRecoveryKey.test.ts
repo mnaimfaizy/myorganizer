@@ -155,10 +155,10 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
 
     // Unlock and write test data
     await setupHandle.unlockWithPassphrase({ passphrase: testPassphrase });
-    const testTodos = { items: ['test-todo-1', 'test-todo-2'] };
+    const testGroceries = { items: ['apples', 'bread'] };
     await setupHandle.saveEncryptedData({
       type: 'groceries',
-      value: testTodos,
+      value: testGroceries,
     });
 
     // Move to unclaimed slot
@@ -192,7 +192,7 @@ describe('claimUnclaimedLocalVaultWithRecoveryKey', () => {
     });
 
     // Proves the unwrap was real: we got back exactly what we stored
-    expect(decrypted).toEqual(testTodos);
+    expect(decrypted).toEqual(testGroceries);
   });
 
   test('should return no-match and write nothing when recovery key is wrong', async () => {
@@ -571,10 +571,10 @@ describe('claimUnclaimedLocalVaultByRecoveryKey (AC #6)', () => {
 
     // Unlock and write test data
     await setupHandle.unlockWithPassphrase({ passphrase: testPassphrase });
-    const testTodos = { items: ['test-todo-1', 'test-todo-2'] };
+    const testGroceries = { items: ['apples', 'bread'] };
     await setupHandle.saveEncryptedData({
       type: 'groceries',
-      value: testTodos,
+      value: testGroceries,
     });
 
     // Move to unclaimed slot
@@ -603,7 +603,7 @@ describe('claimUnclaimedLocalVaultByRecoveryKey (AC #6)', () => {
     });
 
     // Proves the unwrap was real: we got back exactly what we stored
-    expect(decrypted).toEqual(testTodos);
+    expect(decrypted).toEqual(testGroceries);
   });
 
   test('6b: wrong recovery key throws VaultSecretMismatchError and leaves storage byte-identical', async () => {
