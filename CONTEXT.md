@@ -166,6 +166,10 @@ _Avoid_: Video (as the domain name alone), synced video, YouTube video row
 The binary completion/seen state of a Cached Upload for a User. Reversible by the User; not a viewing-analytics history.
 _Avoid_: Viewed, seen, played, completed
 
+**Watched Ledger**:
+The User's preserved Watched video ids that outlive a YouTube disconnect so reconnecting can restore Watched on matching Cached Uploads. Unused entries expire after the same 30-day window as disabled-channel retention; applied entries are removed when reapplied. Optional wipe on disconnect clears or never writes it.
+_Avoid_: watch history, watched archive, viewed ledger, disconnect backup
+
 **New**:
 A Cached Upload that is not Watched.
 _Avoid_: Unwatched, unread, unseen

@@ -18,7 +18,9 @@ interface SubscriptionManagerProps {
   loading: boolean;
   onSync: () => void;
   onToggle: (id: string, enabled: boolean) => void;
-  onDisconnect: () => void;
+  onRequestDisconnect: () => void;
+  disconnectDisabled?: boolean;
+  disconnectDisabledReason?: string;
   syncRetryAt?: string | null;
 }
 
@@ -27,7 +29,9 @@ export function SubscriptionManager({
   loading,
   onSync,
   onToggle,
-  onDisconnect,
+  onRequestDisconnect,
+  disconnectDisabled = false,
+  disconnectDisabledReason,
   syncRetryAt,
 }: SubscriptionManagerProps) {
   const router = useRouter();
@@ -76,7 +80,18 @@ export function SubscriptionManager({
           <Button
             variant="outline"
             size="sm"
-            onClick={onDisconnect}
+            onClick={onRequestDisconnect}
+            disabled={disconnectDisabled}
+            aria-label={
+              disconnectDisabled && disconnectDisabledReason
+                ? disconnectDisabledReason
+                : 'Disconnect YouTube account'
+            }
+            title={
+              disconnectDisabled && disconnectDisabledReason
+                ? disconnectDisabledReason
+                : undefined
+            }
             className="text-destructive hover:text-destructive"
           >
             Disconnect
@@ -89,7 +104,11 @@ export function SubscriptionManager({
           <li>Watched is yes/no, not analytics</li>
           <li>Latest 100 uploads cached per channel</li>
           <li>30 days after you disable a channel</li>
-          <li>Disconnecting deletes all metadata</li>
+          <li>
+            Disconnect removes Followed Channels, Cached Uploads, digest
+            settings, and tokens; Watched is kept for 30 days unless you choose
+            to delete it
+          </li>
           <li>Shorts budget is tracked locally</li>
         </ul>
         <Link href="/youtube/data-privacy" className="underline">

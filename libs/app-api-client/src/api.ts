@@ -411,6 +411,126 @@ export interface CronSyncResponse {
 /**
  * 
  * @export
+ * @interface DisconnectRequest
+ */
+export interface DisconnectRequest {
+    /**
+     * When true, do not preserve Watched — clear/skip ledger. Default false.
+     * @type {boolean}
+     * @memberof DisconnectRequest
+     */
+    'deleteWatchedMarks'?: boolean;
+}
+/**
+ * 
+ * @export
+ * @interface DisconnectResponse
+ */
+export interface DisconnectResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponse
+     */
+    'googlePermissionsUrl'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponse
+     */
+    'revokeFailed'?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponse
+     */
+    'ok': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponse
+     */
+    'code'?: DisconnectResponseCodeEnum;
+}
+
+export const DisconnectResponseCodeEnum = {
+    SyncRunLive: 'sync_run_live'
+} as const;
+
+export type DisconnectResponseCodeEnum = typeof DisconnectResponseCodeEnum[keyof typeof DisconnectResponseCodeEnum];
+
+/**
+ * 
+ * @export
+ * @interface DisconnectResponseAnyOf
+ */
+export interface DisconnectResponseAnyOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'googlePermissionsUrl'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'revokeFailed'?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'message': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'ok': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface DisconnectResponseAnyOf1
+ */
+export interface DisconnectResponseAnyOf1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf1
+     */
+    'code'?: DisconnectResponseAnyOf1CodeEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf1
+     */
+    'message': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponseAnyOf1
+     */
+    'ok': boolean;
+}
+
+export const DisconnectResponseAnyOf1CodeEnum = {
+    SyncRunLive: 'sync_run_live'
+} as const;
+
+export type DisconnectResponseAnyOf1CodeEnum = typeof DisconnectResponseAnyOf1CodeEnum[keyof typeof DisconnectResponseAnyOf1CodeEnum];
+
+/**
+ * 
+ * @export
  * @interface EncryptedBlobV1
  */
 export interface EncryptedBlobV1 {
@@ -5205,11 +5325,12 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token.
+         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+         * @param {DisconnectRequest} [disconnectRequest] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        disconnect: async (disconnectRequest?: DisconnectRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/disconnect`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -5228,9 +5349,12 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
 
 
     
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(disconnectRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -5763,12 +5887,13 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token.
+         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+         * @param {DisconnectRequest} [disconnectRequest] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async disconnect(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HandleCallback200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(options);
+        async disconnect(disconnectRequest?: DisconnectRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DisconnectResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(disconnectRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.disconnect']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -5956,12 +6081,13 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.cronSync(options).then((request) => request(axios, basePath));
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token.
+         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+         * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect(options?: RawAxiosRequestConfig): AxiosPromise<HandleCallback200Response> {
-            return localVarFp.disconnect(options).then((request) => request(axios, basePath));
+        disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<DisconnectResponse> {
+            return localVarFp.disconnect(requestParameters.disconnectRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * Returns the Google OAuth consent URL for linking YouTube.
@@ -6075,6 +6201,20 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
         },
     };
 };
+
+/**
+ * Request parameters for disconnect operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiDisconnectRequest
+ */
+export interface YouTubeApiDisconnectRequest {
+    /**
+     * 
+     * @type {DisconnectRequest}
+     * @memberof YouTubeApiDisconnect
+     */
+    readonly disconnectRequest?: DisconnectRequest
+}
 
 /**
  * Request parameters for getVideos operation in YouTubeApi.
@@ -6237,13 +6377,14 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
-     * Disconnects the user\'s YouTube account after revoking the token.
+     * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+     * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof YouTubeApi
      */
-    public disconnect(options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).disconnect(options).then((request) => request(this.axios, this.basePath));
+    public disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).disconnect(requestParameters.disconnectRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

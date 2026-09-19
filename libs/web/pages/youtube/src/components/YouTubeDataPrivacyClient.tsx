@@ -29,8 +29,11 @@ export default function YouTubeDataPrivacyClient() {
               are kept for <strong>30 days</strong>, then permanently deleted.
             </li>
             <li className="text-sm text-muted-foreground">
-              <strong>Disconnecting</strong> your YouTube account deletes all
-              YouTube metadata for your account.
+              <strong>Disconnecting</strong> your YouTube account removes
+              Followed Channels, Cached Uploads, notification and digest
+              settings, and OAuth tokens. Watched marks are kept for{' '}
+              <strong>30 days</strong> by default (matching disabled-channel
+              retention); you can optionally delete them when disconnecting.
             </li>
             <li className="text-sm text-muted-foreground">
               Your <strong>Shorts Daily Budget</strong> is tracked locally in

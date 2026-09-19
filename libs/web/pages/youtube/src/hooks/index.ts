@@ -342,15 +342,31 @@ export function useYouTubeNotifications() {
   return { settings, loading, update };
 }
 
+export interface YouTubeDisconnectResponse {
+  ok: boolean;
+  message: string;
+  revokeFailed?: boolean;
+  googlePermissionsUrl?: string;
+  code?: 'sync_run_live';
+}
+
 export function useYouTubeConnect() {
   const connect = useCallback(async () => {
     const data = await apiFetch<{ url: string }>('/auth-url');
     window.location.href = data.url;
   }, []);
 
-  const disconnect = useCallback(async () => {
-    await apiFetch('/disconnect', { method: 'DELETE' });
-  }, []);
+  const disconnect = useCallback(
+    async (options?: { deleteWatchedMarks?: boolean }) => {
+      return apiFetch<YouTubeDisconnectResponse>('/disconnect', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          deleteWatchedMarks: options?.deleteWatchedMarks === true,
+        }),
+      });
+    },
+    [],
+  );
 
   return { connect, disconnect };
 }
