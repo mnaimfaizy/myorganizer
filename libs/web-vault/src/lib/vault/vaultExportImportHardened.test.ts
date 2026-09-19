@@ -159,7 +159,7 @@ describe('exportVault', () => {
   // `envelopeFromLocalVault` was built by hand-enumerating four of the five
   // blob types and omitted Tasks, so every hardened export silently dropped
   // it and every restore came back with no tasks. Nothing failed; the file
-  // downloaded and parsed. Driven by the table so a seventh type is covered
+  // downloaded and parsed. Driven by the table so a sixth type is covered
   // here the moment it exists (issue #537, ADR 0053).
   test('carries every Vault Blob Type into the envelope', async () => {
     const result = await exportVault({ localVault: fullVault });
