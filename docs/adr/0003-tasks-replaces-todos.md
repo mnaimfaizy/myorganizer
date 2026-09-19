@@ -4,7 +4,7 @@ The existing `Todo` entity (`{ id, todo }`, vault blob type `'todos'`) was too t
 
 ## Status
 
-accepted. Amended 2026-09-18 (issue #538): the `'todos'` plumbing's exit criterion is a zero-row query plus a prior warning release, not "confidence". Cleanup landed in issue #841.
+accepted. Amended 2026-09-18 (issue #538): the `'todos'` plumbing's exit criterion is a zero-row query plus a prior warning release, not "confidence". Cleanup landed in issue #841. Amended 2026-09-19 (issue #841): predicate (1) confirmed for production and staging; predicate (2) waived by the maintainer — see _Exit record_.
 
 ## Decision
 
@@ -30,6 +30,16 @@ WHERE t.type = 'todos'
       AND k.type = 'tasks'
   );
 ```
+
+### Exit record (issue #841, 2026-09-19)
+
+| Predicate | Environment | Result | Recorded by |
+| --- | --- | --- | --- |
+| (1) Unmigrated live Ciphertext is zero | production | `0` | maintainer |
+| (1) Unmigrated live Ciphertext is zero | staging | `0` | maintainer |
+| (2) A warning release has already shipped | — | **waived** | maintainer |
+
+Predicate (2) was waived, not met. No release carried the warning before the removal. The maintainer accepted the residual it guarded: a `'todos'`-only Local Vault or export file that never reached a server is no longer readable after this change. Query (1) cannot see that residual, so the waiver is a decision, not a measurement.
 
 ## Considered Options
 
