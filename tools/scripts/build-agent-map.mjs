@@ -32,6 +32,7 @@
 // that page is not reproducible from here either. It remains covered by check-agent-map.mjs.
 import { readFileSync, writeFileSync, readdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import { AGENT_MAP_MANIFEST_NOTE } from './lib/agent-map-manifest-note.mjs';
 
 const [srcDir, dcFile, outFile] = process.argv.slice(2);
 if (!srcDir || !dcFile || !outFile) {
@@ -185,7 +186,7 @@ function generateAgentManifest() {
       ]),
   );
   const manifest = {
-    note: 'Asserted by tools/scripts/check-agent-map.mjs: on orchestration-map.html — agents (name→tier), policyReviewedAt, and diagram presence; on agent-journey.html — policyReviewedAt and station tiers in the page script. Edit in place via design-brief → Designer (ADR 0046). Do not rebuild — build-agent-map.mjs is a one-time importer and cannot reproduce these pages.',
+    note: AGENT_MAP_MANIFEST_NOTE,
     policyReviewedAt: policy.reviewedAt,
     agents: Object.fromEntries(
       Object.entries(policy.agents)
