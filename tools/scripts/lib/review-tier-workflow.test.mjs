@@ -42,6 +42,26 @@ test('applying the review:* label cannot fail the Review Tier check', () => {
     /gh label list --search/,
     'GitHub label search is an extra flaky round-trip the closed review:* set does not need',
   );
+  // Comments sit above `- name:`, so the step extractor does not see them.
+  assert.match(
+    classify,
+    /104334970928/,
+    'run 151 GraphQL flake after classify',
+  );
+  assert.match(
+    classify,
+    /104326339851/,
+    'run 147 Review Tier job with no runner',
+  );
+  assert.match(
+    classify,
+    /104326383163/,
+    "same SHA's Agent Review Ran job, not Review Tier",
+  );
+  assert.match(
+    classify,
+    /docs\/research\/2026-09-18-review-tier-intermittent-failures\.md/,
+  );
 });
 
 test('code-review never passes an empty --tier to the validator or publisher', () => {

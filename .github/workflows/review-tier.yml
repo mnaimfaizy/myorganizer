@@ -76,16 +76,15 @@ jobs:
           exit "$status"
 
       # The label is a display of the job output, never the truth (ADR 0070
-      # item 3). A GitHub GraphQL flake on `gh pr edit` failed the required
-      # check on #789 after the classifier had already emitted review:agent
-      # (run 34955049214). continue-on-error plus the applier's retries keep
-      # that from happening again. A fork's token cannot write labels; the
-      # output above still stands.
-      #
-      # A Review Tier job with no steps and no logs (runner_id 0, Azure
-      # BlobNotFound on the log API) is GitHub failing to assign a runner,
-      # not a classifier failure — see run 34952437386. Nothing in this
-      # workflow can write a log that GitHub never stored.
+      # item 3). continue-on-error plus the applier's retries keep a GraphQL
+      # flake on `gh pr edit` from failing the required check after classify
+      # has already written outputs. Evidence for the two #790 runs — 151
+      # (job 104334970928: cache hit, classify success, GraphQL flake; logs
+      # present) and 147 (job 104326339851: runner_id 0, empty steps, log
+      # API BlobNotFound) — and why job 104326383163 is Code Review's Agent
+      # Review Ran on the same SHA, not Review Tier, is frozen in
+      # docs/research/2026-09-18-review-tier-intermittent-failures.md.
+      # A fork's token cannot write labels; the output above still stands.
       - name: Apply the review tier label
         if: always() && steps.classify.outputs.label != '' && github.event.pull_request.head.repo.full_name == github.repository
         continue-on-error: true
