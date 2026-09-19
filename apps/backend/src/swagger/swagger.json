@@ -635,8 +635,7 @@
 					"groceries",
 					"mobileNumbers",
 					"subscriptions",
-					"tasks",
-					"todos"
+					"tasks"
 				]
 			},
 			"EncryptedBlobV1": {
@@ -777,9 +776,6 @@
 					},
 					"tasks": {
 						"$ref": "#/components/schemas/EncryptedBlobV1"
-					},
-					"todos": {
-						"$ref": "#/components/schemas/EncryptedBlobV1"
 					}
 				},
 				"type": "object",
@@ -873,8 +869,7 @@
 					"groceries",
 					"mobileNumbers",
 					"subscriptions",
-					"tasks",
-					"todos"
+					"tasks"
 				]
 			},
 			"VaultBackupRecordDto": {

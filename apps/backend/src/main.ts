@@ -12,6 +12,7 @@ import { createTsoaErrorHandler } from './helpers/httpErrorHandler';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
+import { deleteSupersededTodosBlobsOnBoot } from './bootstrap/deleteSupersededTodosBlobs';
 import { RegisterRoutes } from './routes/routes';
 import usersRouter from './routes/user';
 import passport from './utils/passport';
@@ -187,6 +188,7 @@ const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {
   console.log(`Listening at: http://localhost:${port}/`);
   void bootstrapPlatformAdminFromEnv();
+  void deleteSupersededTodosBlobsOnBoot();
 });
 server.on('error', console.error);
 

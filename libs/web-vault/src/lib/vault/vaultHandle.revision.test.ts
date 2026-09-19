@@ -372,8 +372,8 @@ describe('createVaultHandle with revision', () => {
       });
 
       await handle.saveEncryptedData({
-        type: 'todos',
-        value: [{ id: 'a', text: 'Todo A' }],
+        type: 'groceries',
+        value: [{ id: 'a', name: 'Milk' }],
       });
 
       await handle.saveEncryptedData({

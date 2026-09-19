@@ -1,21 +1,21 @@
 # Tasks replaces Todos
 
-The existing `Todo` entity (`{ id, todo }`, vault blob type `'todos'`) was too thin to support the task-management workflows users need. Rather than adding a richer `Task` entity alongside `Todo` and splitting "things to do" across two features, we replaced `Todo` entirely with `Task`. The `'todos'` vault blob type is auto-migrated to `'tasks'` on the user's first visit to the Tasks page. The first-visit path writes `'tasks'` and does not delete `'todos'`, so a leftover `'todos'` row next to `'tasks'` is normal after migrate. The `Todo` domain term, page, and Prisma model are gone.
+The existing `Todo` entity (`{ id, todo }`, vault blob type `'todos'`) was too thin to support the task-management workflows users need. Rather than adding a richer `Task` entity alongside `Todo` and splitting "things to do" across two features, we replaced `Todo` entirely with `Task`. The `'todos'` vault blob type was auto-migrated to `'tasks'` on the user's first visit to the Tasks page until issue #841. The first-visit path wrote `'tasks'` and did not delete `'todos'`, so a leftover `'todos'` row next to `'tasks'` was normal after migrate. The `Todo` domain term, page, and Prisma model are gone. `'todos'` is no longer a Vault Blob Type.
 
 ## Status
 
-accepted. Amended 2026-09-18 (issue #538): the `'todos'` plumbing's exit criterion is a zero-row query plus a prior warning release, not "confidence".
+accepted. Amended 2026-09-18 (issue #538): the `'todos'` plumbing's exit criterion is a zero-row query plus a prior warning release, not "confidence". Cleanup landed in issue #841. Amended 2026-09-19 (issue #841): predicate (1) confirmed for production and staging; predicate (2) waived by the maintainer — see _Exit record_.
 
 ## Decision
 
-The user-facing replacement stands. What this amendment decides is **when the leftover `'todos'` read path may be deleted**.
+The user-facing replacement stands. The leftover `'todos'` read path is deleted (issue #841): `VaultBlobType` no longer includes `'todos'`, first-visit migrate is gone, and leftover server `'todos'` rows whose owner already has `'tasks'` are deleted by `VaultService.deleteSupersededTodosBlobs` (idempotent; run on backend boot). Deleting a `'todos'` row whose owner has no `'tasks'` row remains forbidden; that SQL uses `EXISTS` on `'tasks'`.
 
-The auto-migration path (`todos` → `tasks`) stays until **both** of the following are true. Each is a fact, not a feeling:
+The auto-migration path (`todos` → `tasks`) stayed until **both** of the following were true. Each is a fact, not a feeling:
 
 1. **Unmigrated live Ciphertext is zero.** In every environment that stores user vaults, the count of `EncryptedVaultBlob` rows with `type = 'todos'` whose `userId` has no row with `type = 'tasks'` is `0`. The predicate is the Prisma model in `apps/backend/src/prisma/schema/vault.prisma`; it does not decrypt. An operator records the query, the environment, the date, and the count on the cleanup issue. CI cannot see production, so this is not a repo gate.
 2. **A warning release has already shipped.** A published release whose notes warn that `'todos'`-only Local Vaults and export files will stop being readable in a later release exists before the removal. The removal does not land in that same release. Local-only Ciphertext and old export files are invisible to query (1); the warning is how that residual is made a communicated fact rather than "confidence".
 
-When both hold, the plumbing is removed in **one change**: client migrate/read/export/import, `VaultBlobType.Todos`, the `VAULT_BLOB_FIELDS` pin, the backend `VAULT_BLOB_TYPES` list, and leftover `type = 'todos'` rows whose owner already has `type = 'tasks'`. Leftover rows next to a `tasks` blob are superseded copies, not unmigrated user data; deleting them as part of that change is what leaves no `'todos'` Ciphertext unreadable. Deleting a `'todos'` row whose owner has no `'tasks'` row remains forbidden.
+When both held, the plumbing was removed in **one change**: client migrate/read/export/import, `VaultBlobType.Todos`, the `VAULT_BLOB_FIELDS` pin, the backend `VAULT_BLOB_TYPES` list, and leftover `type = 'todos'` rows whose owner already has `type = 'tasks'`. Leftover rows next to a `tasks` blob are superseded copies, not unmigrated user data; deleting them as part of that change is what leaves no `'todos'` Ciphertext unreadable. Deleting a `'todos'` row whose owner has no `'tasks'` row remains forbidden.
 
 Query (1) matching the current schema:
 
@@ -31,6 +31,18 @@ WHERE t.type = 'todos'
   );
 ```
 
+### Exit record (issue #841, 2026-09-19)
+
+Operator record on the cleanup issue: [ADR 0003 exit record — 2026-09-19](https://github.com/mnaimfaizy/myorganizer/issues/841#issuecomment-5740823613). The table below is a durable copy of that comment, not a substitute for it.
+
+| Predicate                                 | Environment | Result     | Recorded by |
+| ----------------------------------------- | ----------- | ---------- | ----------- |
+| (1) Unmigrated live Ciphertext is zero    | production  | `0`        | maintainer  |
+| (1) Unmigrated live Ciphertext is zero    | staging     | `0`        | maintainer  |
+| (2) A warning release has already shipped | —           | **waived** | maintainer  |
+
+Predicate (2) was waived, not met. No release carried the warning before the removal. The maintainer accepted the residual it guarded: a `'todos'`-only Local Vault or export file that never reached a server is no longer readable after this change. Query (1) cannot see that residual, so the waiver is a decision, not a measurement. That waiver is recorded on #841 in the comment linked above, in a commit that only documents the exit record (it does not perform the plumbing deletion).
+
 ## Considered Options
 
 - **Coexist**: keep `Todo` as a lightweight quick-capture entry point and add `Task` as a separate richer entity. Rejected because both represent "a thing to do" — two features with the same semantic purpose creates confusion and splits the user's attention.
@@ -42,7 +54,6 @@ WHERE t.type = 'todos'
 
 ## Consequences
 
-- Any code referencing `VaultBlobType = 'todos'`, the `Todo` interface, or `normalizeTodos()` must be removed or replaced — except the auto-migration path, which remains until the two conditions above hold.
-- The cleanup is follow-up issue [#841](https://github.com/mnaimfaizy/myorganizer/issues/841), not this amendment. It is blocked on operator evidence for query (1) and on a warning already present in a shipped release's notes. It routes the API contract change through `backend-api-contract-change`.
-- `docs/vault/*.html` keep showing `'todos'` until the type is gone; `yarn vault:pages:check` asserts them against the live pin.
+- Any code referencing `VaultBlobType = 'todos'`, the `Todo` interface, `normalizeTodos()`, or `migrateFromTodos()` must stay gone.
+- `docs/vault/*.html` track the live pin; `'todos'` is no longer a Vault Blob Type.
 - Marketing copy is not this path. The landing page already says Encrypted Tasks, matching [CONTEXT.md](../../CONTEXT.md) (Todo is listed under _Avoid_ for **Task**).

@@ -10,7 +10,7 @@
   "cipher": { "name": "AES-GCM", "keyBytes": 32, "vaultIvBytes": 12, "authTagBytes": 16 },
   "envelope": { "schemaVersion": 1, "envelopeParseBytes": 10485760 },
   "backendLimits": { "backendExportBytes": 1048576, "backendImportBytes": 1048576, "backendVaultMetaBytes": 32768, "backendBlobBytes": 262144 },
-  "blobTypes": ["addresses", "groceries", "mobileNumbers", "subscriptions", "tasks", "todos"],
+  "blobTypes": ["addresses", "groceries", "mobileNumbers", "subscriptions", "tasks"],
   "import": { "replayHistoryLength": 10 },
   "assertableFrom": {
     "@myorganizer/vault-core": [
@@ -2928,13 +2928,12 @@ class Component extends DCLogic {
     const CA = 14, CB = 176, CC = 338, WD = 148, WIDE = 472, HALF = 310;
 
     const blob = (id, x, y, name, on) => n(id, on ? 'cipher' : 'ghost', x, y, WD, 52, name, on ? '{ iv, ciphertext }' : '');
-    const sixBlobs = (hot) => [
+    const typeBlobs = (hot) => [
       blob('b1', CA, B1, 'addresses', hot === 'all'),
       blob('b2', CB, B1, 'groceries', hot === 'all' || hot === 'groceries'),
       blob('b3', CC, B1, 'mobileNumbers', hot === 'all'),
       blob('b4', CA, B2, 'subscriptions', hot === 'all'),
-      blob('b5', CB, B2, 'tasks', hot === 'all'),
-      blob('b6', CC, B2, 'todos', hot === 'all')
+      blob('b5', CB, B2, 'tasks', hot === 'all')
     ];
 
     const jwt = n('jwt', 'meta', 534, 60, 162, 58, 'Your account', 'JWT session · who is asking');
@@ -3034,10 +3033,10 @@ class Component extends DCLogic {
       edges: [e('json', 'enc'), e('iv', 'enc'), e('mk', 'enc')] });
 
     push({ scene: 2, title: 'It replaces one blob. One storage write.',
-      body: 'The six types are encrypted independently, so a change to one is a change to one. The other five were not read, not rewritten, and not even decrypted to get here.',
-      nodes: [n('enc', 'op', CA, R2, WIDE, 58, 'AES-256-GCM · encrypt', '')].concat(sixBlobs('groceries')),
+      body: 'The five types are encrypted independently, so a change to one is a change to one. The other four were not read, not rewritten, and not even decrypted to get here.',
+      nodes: [n('enc', 'op', CA, R2, WIDE, 58, 'AES-256-GCM · encrypt', '')].concat(typeBlobs('groceries')),
       edges: [e('enc', 'b2', 'replaces')],
-      add: { device: [{ t: '6 encrypted blobs', k: 'opaque', d: 'on disk — one per record type' }] },
+      add: { device: [{ t: '5 encrypted blobs', k: 'opaque', d: 'on disk — one per record type' }] },
       ledgerNote: 'Still nothing remote. That was a local write; the network has not been touched yet.' });
 
     // ---------------- SCENE 3 ----------------
@@ -3069,8 +3068,8 @@ class Component extends DCLogic {
 
     // ---------------- SCENE 4 ----------------
     push({ scene: 4, title: 'An envelope is built, on the device.',
-      body: 'Everything needed to restore, sealed into one file: the KDF parameters, both wrapped master keys, and the six ciphertext blobs. Self-contained, portable, and useless to anyone without the passphrase.',
-      nodes: [n('env', 'cipher', CA, R2, WIDE, 88, 'vault envelope', 'schemaVersion · exportId · exportedAt · meta · 6 blobs')] });
+      body: 'Everything needed to restore, sealed into one file: the KDF parameters, both wrapped master keys, and the five ciphertext blobs. Self-contained, portable, and useless to anyone without the passphrase.',
+      nodes: [n('env', 'cipher', CA, R2, WIDE, 88, 'vault envelope', 'schemaVersion · exportId · exportedAt · meta · 5 blobs')] });
 
     push({ scene: 4, title: 'An audit record is posted to the backend.',
       body: 'Metadata about a backup, never the backup. And it is broader than it looks — the same reporter fires on every import too, success and failure alike, so the backend learns that something went wrong and which classified code it hit.',
@@ -3102,12 +3101,12 @@ class Component extends DCLogic {
     // ---------------- SCENE 5 ----------------
     push({ scene: 5, dark: true, title: 'You close the tab.',
       body: 'The master key is nulled. It lived in a React context in memory and nowhere else — no localStorage, no session cookie, no service-worker copy quietly kept for convenience.',
-      nodes: [n('mk', 'dead', CC, R2, WD, 58, 'Master key', 'nulled')].concat(sixBlobs('all')),
+      nodes: [n('mk', 'dead', CC, R2, WD, 58, 'Master key', 'nulled')].concat(typeBlobs('all')),
       remove: { device: ['Master key', 'Key-encryption key', 'The passphrase', 'Recovery key', '1 plaintext record'] } });
 
     push({ scene: 5, dark: true, title: 'Everything left on disk is ciphertext.',
       body: 'There is no "stay unlocked" setting to hunt for, because the only thing worth persisting is exactly the thing an attacker would want. A reload means unlocking again. By design, not by oversight.',
-      nodes: sixBlobs('all').concat([
+      nodes: typeBlobs('all').concat([
         n('w1', 'cipher', CA, R2, 232, 62, 'masterKeyWrappedWithPassphrase', 'locked'),
         n('w2', 'cipher', 254, R2, 232, 62, 'masterKeyWrappedWithRecoveryKey', 'locked')]),
       ledgerNote: 'The device column just emptied out. Everything real about this vault existed only while the tab was open.' });
@@ -3151,7 +3150,7 @@ class Component extends DCLogic {
         n('stage', 'plain', 254, R2, 232, 96, 'candidate vault', 'in memory only · no writes yet')] });
 
     push({ scene: 6, title: 'One atomic commit.',
-      body: 'A single storage write swaps the candidate in. Not six writes, not a partial merge, not a sequence someone could interrupt halfway.',
+      body: 'A single storage write swaps the candidate in. Not five writes, not a partial merge, not a sequence someone could interrupt halfway.',
       nodes: [n('stage', 'plain', 254, R1, 232, 76, 'candidate vault', 'validated, migrated, staged'),
         n('vault', 'cipher', CA, R3, WIDE, 76, 'your vault', 'replaced in one write', 'committed')],
       edges: [e('stage', 'vault', 'single write')] });
@@ -3192,17 +3191,17 @@ class Component extends DCLogic {
       add: { device: [{ t: 'Master key', k: 'real', d: 'recovered through the second wrapping' }] } });
 
     push({ scene: 7, branch: 'A', title: 'Set a new passphrase. It is instant.',
-      body: 'A new key-encryption key is derived — reusing the existing salt, not a fresh one — and the master key is re-wrapped under it. The six data blobs are never read and never rewritten. That is the entire operation.',
+      body: 'A new key-encryption key is derived — reusing the existing salt, not a fresh one — and the master key is re-wrapped under it. The five data blobs are never read and never rewritten. That is the entire operation.',
       nodes: [n('pp2', 'plain', CA, R1, WD, 58, 'New passphrase', ''),
         n('kdf', 'op', CB, R1, HALF, 58, 'PBKDF2-SHA256', 'the existing salt, reused'),
         n('mk', 'key', CC, R2, WD, 58, 'Master key', 'unchanged'),
-        n('w1', 'cipher', CA, R3, HALF, 58, 'masterKeyWrappedWithPassphrase', 'rewritten')].concat(sixBlobs('none')),
+        n('w1', 'cipher', CA, R3, HALF, 58, 'masterKeyWrappedWithPassphrase', 'rewritten')].concat(typeBlobs('none')),
       edges: [e('pp2', 'kdf'), e('kdf', 'w1'), e('mk', 'w1')],
-      ledgerNote: 'One wrapped key was rewritten. The six blobs, the backend rows and the Drive envelope are all byte-for-byte what they were.' });
+      ledgerNote: 'One wrapped key was rewritten. The five blobs, the backend rows and the Drive envelope are all byte-for-byte what they were.' });
 
     push({ scene: 7, branch: 'A', recap: true, title: 'You are back, and nothing was re-encrypted.',
       body: 'That is the payoff of wrapping a key instead of encrypting data with the passphrase directly. A passphrase change touches one small blob; the gigabytes, if you had them, would never move.',
-      nodes: [n('recs', 'plain', CA, R2, WIDE, 76, 'Your records', 'readable again, on this device only')].concat(sixBlobs('all')),
+      nodes: [n('recs', 'plain', CA, R2, WIDE, 76, 'Your records', 'readable again, on this device only')].concat(typeBlobs('all')),
       add: { device: [{ t: 'Your records, in plaintext', k: 'real', d: 'readable here and nowhere else' }] } });
 
     push({ scene: 7, branch: 'B', title: 'Ending B — neither key exists.',
@@ -3216,7 +3215,7 @@ class Component extends DCLogic {
       title: 'The data is gone. Permanently.',
       body: 'There is no reset link, no support ticket, no administrative override, and no back door held in reserve for emergencies. If any of those existed, everything the previous six scenes claimed would be false. This is the honest cost of the design — and the reason a well-meaning server-side recovery feature would quietly destroy the whole model.',
       nodes: [n('w1', 'dead', CA, R2, 232, 76, 'masterKeyWrappedWithPassphrase', 'sealed'),
-        n('w2', 'dead', 254, R2, 232, 76, 'masterKeyWrappedWithRecoveryKey', 'sealed')].concat(sixBlobs('none')),
+        n('w2', 'dead', 254, R2, 232, 76, 'masterKeyWrappedWithRecoveryKey', 'sealed')].concat(typeBlobs('none')),
       ledgerNote: 'Look at the remote columns one last time. They are full, and none of it was ever readable — which is exactly why none of it can be recovered for you now.' });
 
     // ---------------- SCENE 8 ----------------
@@ -3232,13 +3231,13 @@ class Component extends DCLogic {
       add: { device: [{ t: 'New recovery key', k: 'real', d: 'minted, not yet the one that opens anything' }] } });
 
     push({ scene: 8, title: 'Only one wrapping changes. The master key does not move.',
-      body: 'Confirm, and exactly one thing is rewritten: masterKeyWrappedWithRecoveryKey. masterKeyWrappedWithPassphrase, the salt, the KDF parameters, the master key itself, and all six Vault Blob types are byte-for-byte what they were — the passphrase-change story\'s twin, for the same reason: a key wraps a key, so re-keying one lock never has to touch the data underneath.',
+      body: 'Confirm, and exactly one thing is rewritten: masterKeyWrappedWithRecoveryKey. masterKeyWrappedWithPassphrase, the salt, the KDF parameters, the master key itself, and all five Vault Blob types are byte-for-byte what they were — the passphrase-change story\'s twin, for the same reason: a key wraps a key, so re-keying one lock never has to touch the data underneath.',
       nodes: [n('rk2', 'key', CA, R1, WD, 58, 'New recovery key', ''),
         n('mk', 'key', CC, R2, WD, 58, 'Master key', 'unchanged'),
         n('w1', 'cipher', CA, R3, 232, 58, 'masterKeyWrappedWithPassphrase', 'untouched'),
-        n('w2', 'cipher', 254, R3, 232, 58, 'masterKeyWrappedWithRecoveryKey', 'rewritten')].concat(sixBlobs('none')),
+        n('w2', 'cipher', 254, R3, 232, 58, 'masterKeyWrappedWithRecoveryKey', 'rewritten')].concat(typeBlobs('none')),
       edges: [e('rk2', 'w2'), e('mk', 'w2')],
-      ledgerNote: 'One wrapped key was rewritten. The master key, the passphrase wrapping, and all six Vault Blob types are byte-for-byte what they were.' });
+      ledgerNote: 'One wrapped key was rewritten. The master key, the passphrase wrapping, and all five Vault Blob types are byte-for-byte what they were.' });
 
     push({ scene: 8, title: 'Retirement is not instant everywhere.',
       body: 'It holds here, and on any device signing in fresh: both unwrap with the new key from now on. A device that is already signed in and has not synced since the rotation keeps honouring the retired key — until it syncs and you confirm the change there. There is no timer counting down: it happens whenever that device next reaches the server, not before.',

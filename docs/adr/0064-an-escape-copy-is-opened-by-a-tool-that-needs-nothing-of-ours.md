@@ -15,7 +15,7 @@ claim like that is worth checking rather than assuming.
 
 The cryptography checks out. `localToServerMeta` puts the KDF name, salt, hash and iteration count
 into the export envelope, alongside _both_ wrappings of the Master Key — the passphrase wrapping and
-the recovery-key wrapping — and the envelope carries all six Vault Blob Types. An Escape Copy plus a
+the recovery-key wrapping — and the envelope carries all five Vault Blob Types. An Escape Copy plus a
 passphrase, or an Escape Copy plus a recovery key, contains everything mathematically required to
 recover the plaintext. Nothing about the recovery needs us.
 

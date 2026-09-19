@@ -3,7 +3,6 @@ import type { VaultHandle } from '@myorganizer/web-vault';
 
 export interface TasksVaultAdapter {
   loadTasks(): Promise<Task[] | null>;
-  loadTodos(): Promise<unknown>;
   saveTasks(tasks: Task[]): Promise<void>;
 }
 
@@ -17,12 +16,6 @@ export function createProductionTasksVaultAdapter(
         defaultValue: null,
       });
     },
-    async loadTodos() {
-      return handle.loadDecryptedData<unknown>({
-        type: 'todos',
-        defaultValue: [],
-      });
-    },
     async saveTasks(tasks) {
       await handle.saveEncryptedData({
         type: 'tasks',
@@ -34,23 +27,15 @@ export function createProductionTasksVaultAdapter(
 
 export class InMemoryTasksVaultAdapter implements TasksVaultAdapter {
   private tasks: Task[] | null = null;
-  private todos: unknown = [];
 
-  constructor(initial?: { tasks?: Task[] | null; todos?: unknown }) {
+  constructor(initial?: { tasks?: Task[] | null }) {
     if (initial?.tasks !== undefined) {
       this.tasks = initial.tasks;
-    }
-    if (initial?.todos !== undefined) {
-      this.todos = initial.todos;
     }
   }
 
   async loadTasks(): Promise<Task[] | null> {
     return this.tasks;
-  }
-
-  async loadTodos(): Promise<unknown> {
-    return this.todos;
   }
 
   async saveTasks(tasks: Task[]): Promise<void> {

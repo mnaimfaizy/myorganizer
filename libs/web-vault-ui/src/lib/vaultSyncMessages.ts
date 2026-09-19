@@ -18,7 +18,7 @@ import type {
 
 /**
  * Every Vault Blob Type, and the name a User sees for it. Guarded by
- * `satisfies` so a seventh Vault Blob Type fails to compile here until it has
+ * `satisfies` so a sixth Vault Blob Type fails to compile here until it has
  * a label — see ADR 0053.
  */
 export const VAULT_BLOB_TYPE_LABELS = {
@@ -27,7 +27,6 @@ export const VAULT_BLOB_TYPE_LABELS = {
   [VaultBlobType.MobileNumbers]: 'Mobile Numbers',
   [VaultBlobType.Subscriptions]: 'Subscriptions',
   [VaultBlobType.Tasks]: 'Tasks',
-  [VaultBlobType.Todos]: 'Todos',
 } as const satisfies Record<VaultBlobType, string>;
 
 export function vaultBlobTypeLabel(type: VaultBlobType): string {

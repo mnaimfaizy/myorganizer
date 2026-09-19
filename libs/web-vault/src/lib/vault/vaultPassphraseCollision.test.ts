@@ -163,10 +163,10 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     await handleA.unlockWithPassphrase({ passphrase: sharedPassphrase });
 
     // Write some test data so we can verify the Master Key really does decrypt it
-    const testTodos = { items: ['test-todo-a-1'] };
+    const testGroceries = { items: ['apples'] };
     await handleA.saveEncryptedData({
-      type: 'todos',
-      value: testTodos,
+      type: 'groceries',
+      value: testGroceries,
     });
 
     const vaultA = handleA.loadVault();
@@ -186,10 +186,10 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     await handleB.unlockWithPassphrase({ passphrase: sharedPassphrase });
 
     // Write B's test data
-    const testTodosB = { items: ['test-todo-b-1'] };
+    const testGroceriesB = { items: ['bread'] };
     await handleB.saveEncryptedData({
-      type: 'todos',
-      value: testTodosB,
+      type: 'groceries',
+      value: testGroceriesB,
     });
 
     const vaultB = handleB.loadVault();
@@ -204,13 +204,13 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     // ASSERTION 1e: Master Keys are different — prove by reading back B's data
     // which fails if B had A's Master Key
     const decryptedB = await handleB.loadDecryptedData({
-      type: 'todos',
+      type: 'groceries',
       defaultValue: null,
     });
 
     // B should read back B's own data, not A's
-    expect(decryptedB).toEqual(testTodosB);
-    expect(decryptedB).not.toEqual(testTodos);
+    expect(decryptedB).toEqual(testGroceriesB);
+    expect(decryptedB).not.toEqual(testGroceries);
 
     // Verify A's unclaimed vault is unchanged
     const unclaimedRaw = localStorage.getItem(VAULT_STORAGE_KEY);
@@ -262,7 +262,7 @@ describe('Passphrase Collision Regression (AC #6)', () => {
     // Write test data
     const testData = { items: ['data-in-a'] };
     await handleA.saveEncryptedData({
-      type: 'todos',
+      type: 'groceries',
       value: testData,
     });
 

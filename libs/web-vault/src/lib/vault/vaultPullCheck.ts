@@ -23,7 +23,7 @@
  *     [#512](https://github.com/mnaimfaizy/myorganizer/issues/512).
  *   - A **failed** inventory read fails the pass: every type is recorded
  *     unanswered and none is read. There is deliberately no fallback to the
- *     six-way fan-out (decision 6) — a path that runs only when something is
+ *     five-way fan-out (decision 6) — a path that runs only when something is
  *     already wrong is a path nothing exercises.
  *
  * The inventory read is itself conditional, so the steady state of a pass is
