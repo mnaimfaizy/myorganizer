@@ -69,7 +69,6 @@ jest.mock('../services/VaultBackupService', () => {
       'mobileNumbers',
       'subscriptions',
       'tasks',
-      'todos',
     ],
   };
 });
@@ -140,7 +139,7 @@ describe('VaultBackupController (HTTP integration)', () => {
     source: 'local-file',
     status: 'success',
     schemaVersion: 1,
-    blobTypes: ['addresses', 'todos'],
+    blobTypes: ['addresses', 'tasks'],
     sizeBytes: 2048,
   };
 
@@ -424,7 +423,7 @@ describe('VaultBackupController (HTTP integration)', () => {
         status: 'success',
         errorCode: null,
         schemaVersion: 1,
-        blobTypes: ['todos'],
+        blobTypes: ['tasks'],
         sizeBytes: 4096,
         createdAt: new Date().toISOString(),
       },

@@ -1,13 +1,13 @@
 /**
  * Tests for the Vault Blob convergence strategy table.
  *
- * The table is the pinned guard that prevents a seventh Vault Blob Type from
+ * The table is the pinned guard that prevents a sixth Vault Blob Type from
  * being added without deciding how it converges. Every entry must declare its
  * strategy: mergeById with a callable merge, or promptOnConflict with no merge.
  *
- * promptOnConflict is permanent, not temporary or deprecated. Groceries and
- * Todos merge poorly under record union, and no record-level merge strategy
- * will be written for them.
+ * promptOnConflict is permanent, not temporary or deprecated. Groceries
+ * merge poorly under record union, and no record-level merge strategy will
+ * be written for them.
  */
 
 import { VaultBlobType } from '@myorganizer/app-api-client';
@@ -44,11 +44,8 @@ describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
     );
   });
 
-  test('should assign promptOnConflict strategy when type is Groceries or Todos', () => {
+  test('should assign promptOnConflict strategy when type is Groceries', () => {
     expect(VAULT_BLOB_CONVERGE_STRATEGIES[VaultBlobType.Groceries]).toEqual({
-      strategy: 'promptOnConflict',
-    });
-    expect(VAULT_BLOB_CONVERGE_STRATEGIES[VaultBlobType.Todos]).toEqual({
       strategy: 'promptOnConflict',
     });
   });
@@ -71,7 +68,7 @@ describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
   });
 
   test('should carry no merge function when strategy is promptOnConflict', () => {
-    const promptTypes = [VaultBlobType.Groceries, VaultBlobType.Todos];
+    const promptTypes = [VaultBlobType.Groceries];
 
     for (const type of promptTypes) {
       const strategy = VAULT_BLOB_CONVERGE_STRATEGIES[type];

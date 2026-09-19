@@ -84,7 +84,7 @@ describe('convergeVaultBlob', () => {
   async function setupHandle(
     owner: string,
     payload?: unknown,
-    type: 'tasks' | 'groceries' | 'todos' = 'tasks',
+    type: 'tasks' | 'groceries' = 'tasks',
   ) {
     const handle = createVaultHandle({ owner });
     await handle.initialize({ passphrase });
@@ -108,7 +108,7 @@ describe('convergeVaultBlob', () => {
   async function captureRemoteBlob(
     handle: ConvergingVaultHandle,
     payload: unknown,
-    type: 'tasks' | 'groceries' | 'todos' = 'tasks',
+    type: 'tasks' | 'groceries' = 'tasks',
   ): Promise<ServerVaultBlob> {
     // Save the current local data
     const vault = handle.loadVault();
@@ -1613,66 +1613,6 @@ describe('convergeVaultBlob', () => {
     expect(records).not.toContainEqual(
       expect.objectContaining({ id: 'task-2' }),
     );
-  });
-
-  // ===== Additional: Todos (second promptOnConflict type) =====
-  test('should ask with strategy reason and write nothing when Todos conflicts (second promptOnConflict type)', async () => {
-    // Coverage for the other promptOnConflict type (Todos, not just Groceries)
-    const handle = await setupHandle('user-1', [], 'todos');
-    await handle.recordPushSuccess({ type: 'todos', etag: 'etag-1' });
-
-    // Make dirty
-    const envelope: VaultBlobEnvelope<unknown> = {
-      records: [{ id: 'todo-1', title: 'Local todo' }],
-      deletions: {},
-    };
-    await handle.saveEncryptedData({ type: 'todos', value: envelope });
-
-    // Capture remote with different payload
-    const remote = await captureRemoteBlob(
-      handle,
-      [{ id: 'todo-2', title: 'Remote todo' }],
-      'todos',
-    );
-
-    let callCount = 0;
-    const api = {
-      getVaultBlob: jest
-        .fn()
-        .mockResolvedValue(formatGetVaultBlobResponse(remote)),
-      putVaultBlob: jest.fn(async () => {
-        callCount++;
-        if (callCount === 1) {
-          const error = Object.assign(new Error('conflict'), {
-            response: { status: 409 },
-          });
-          throw error;
-        }
-        return formatPutVaultBlobResponse('etag-server');
-      }),
-    };
-    const prompt = jest.fn().mockResolvedValue('defer' as const);
-
-    const outcome = await convergeVaultBlob({
-      api,
-      handle,
-      type: VaultBlobType.Todos,
-      prompt,
-      serverMeta: serverMetaFor(handle),
-    });
-
-    expect(outcome).toEqual({
-      kind: 'asked',
-      reason: 'strategy',
-      decision: 'defer',
-    });
-
-    // Prompt called once with strategy reason
-    expect(prompt).toHaveBeenCalledTimes(1);
-    expect(prompt.mock.calls[0][0].reason).toBe('strategy');
-
-    // Nothing written (only initial 409 attempt)
-    expect(api.putVaultBlob).toHaveBeenCalledTimes(1);
   });
 
   // ===== New: Undecryptable LOCAL Ciphertext, defer =====

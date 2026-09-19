@@ -67,7 +67,6 @@ test.describe('Vault Removal Offers Real Vault Back (E2E)', () => {
       mobileNumbers: null,
       subscriptions: null,
       tasks: null,
-      todos: null,
     };
     const serverBlobEtags: Record<string, string> = {
       addresses: 'W/"0"',
@@ -75,7 +74,6 @@ test.describe('Vault Removal Offers Real Vault Back (E2E)', () => {
       mobileNumbers: 'W/"0"',
       subscriptions: 'W/"0"',
       tasks: 'W/"0"',
-      todos: 'W/"0"',
     };
     const serverBlobUpdatedAt: Record<string, string> = {
       addresses: new Date(0).toISOString(),
@@ -83,7 +81,6 @@ test.describe('Vault Removal Offers Real Vault Back (E2E)', () => {
       mobileNumbers: new Date(0).toISOString(),
       subscriptions: new Date(0).toISOString(),
       tasks: new Date(0).toISOString(),
-      todos: new Date(0).toISOString(),
     };
 
     async function setupRoutes(page: import('@playwright/test').Page) {

@@ -1,4 +1,5 @@
 import userService from '../services/UserService';
+import { runBootTask } from './runBootTask';
 
 /**
  * Idempotently elevate PLATFORM_ADMIN_BOOTSTRAP_EMAIL to platform_admin when set.
@@ -11,18 +12,19 @@ export async function bootstrapPlatformAdminFromEnv(): Promise<void> {
   }
 
   const email = raw.trim();
-  try {
-    const elevated = await userService.elevateToPlatformAdminByEmail(email);
-    if (!elevated) {
-      console.warn(
-        `[bootstrap] PLATFORM_ADMIN_BOOTSTRAP_EMAIL=${email} did not match any User; skipping elevation.`,
+  await runBootTask(
+    '[bootstrap] Failed to elevate Platform Admin:',
+    async () => {
+      const elevated = await userService.elevateToPlatformAdminByEmail(email);
+      if (!elevated) {
+        console.warn(
+          `[bootstrap] PLATFORM_ADMIN_BOOTSTRAP_EMAIL=${email} did not match any User; skipping elevation.`,
+        );
+        return;
+      }
+      console.log(
+        `[bootstrap] Platform Admin ready for ${elevated.email} (role=${elevated.role}).`,
       );
-      return;
-    }
-    console.log(
-      `[bootstrap] Platform Admin ready for ${elevated.email} (role=${elevated.role}).`,
-    );
-  } catch (err) {
-    console.error('[bootstrap] Failed to elevate Platform Admin:', err);
-  }
+    },
+  );
 }

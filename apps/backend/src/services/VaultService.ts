@@ -7,7 +7,6 @@ export const VAULT_BLOB_TYPES = [
   'mobileNumbers',
   'subscriptions',
   'tasks',
-  'todos',
 ] as const;
 
 export type VaultBlobType = (typeof VAULT_BLOB_TYPES)[number];
@@ -571,6 +570,24 @@ export class VaultService {
     }
 
     return { ok: true, status: 200, body: { ok: true } };
+  };
+
+  /**
+   * Deletes leftover `'todos'` Ciphertext whose owner already has `'tasks'`.
+   * A `'todos'` row with no sibling `'tasks'` row is left alone (ADR 0003).
+   */
+  public deleteSupersededTodosBlobs = async (): Promise<number> => {
+    const deleted = await this.prisma.$executeRaw`
+      DELETE FROM "EncryptedVaultBlob" AS t
+      WHERE t.type = 'todos'
+        AND EXISTS (
+          SELECT 1
+          FROM "EncryptedVaultBlob" AS k
+          WHERE k."userId" = t."userId"
+            AND k.type = 'tasks'
+        )
+    `;
+    return Number(deleted);
   };
 }
 

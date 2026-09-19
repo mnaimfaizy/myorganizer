@@ -9,7 +9,7 @@
   "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 310000, "saltBytes": 16 },
   "cipher": { "name": "AES-GCM", "keyBytes": 32, "vaultIvBytes": 12, "authTagBytes": 16 },
   "envelope": { "schemaVersion": 1 },
-  "blobTypes": ["addresses", "groceries", "mobileNumbers", "subscriptions", "tasks", "todos"],
+  "blobTypes": ["addresses", "groceries", "mobileNumbers", "subscriptions", "tasks"],
   "localVaultKeys": {
     "ownerScoped": "myorganizer_vault_v1:<owner>",
     "unclaimed": "myorganizer_vault_v1"
@@ -544,8 +544,8 @@ textarea.input { min-height: 90px; resize: vertical; }
       <line x1="645" y1="834" x2="645" y2="964" style="stroke:var(--key);stroke-width:3"></line>
       <polygon points="636,962 654,962 645,976" style="fill:var(--key)"></polygon>
 
-      <text x="56" y="956" style="font-family:var(--font-body);font-size:13.5px;font-weight:700;letter-spacing:.09em;fill:var(--bound)">③ THE DATA — six independently encrypted blobs</text>
-      <text x="56" y="975" style="font-family:var(--font-body);font-size:12.5px;fill:var(--ink-2)">One master key, six ciphertexts. Changing one record rewrites exactly one blob.</text>
+      <text x="56" y="956" style="font-family:var(--font-body);font-size:13.5px;font-weight:700;letter-spacing:.09em;fill:var(--bound)">③ THE DATA — five independently encrypted blobs</text>
+      <text x="56" y="975" style="font-family:var(--font-body);font-size:12.5px;fill:var(--ink-2)">One master key, five ciphertexts. Changing one record rewrites exactly one blob.</text>
 
       <rect x="56" y="996" width="210" height="56" rx="14" style="fill:var(--cipher-fill);stroke:var(--cipher);stroke-width:2;stroke-dasharray:7 5"></rect>
       <text x="72" y="1021" style="font-family:var(--mono);font-size:13.5px;fill:var(--ink)">addresses</text>
@@ -562,9 +562,6 @@ textarea.input { min-height: 90px; resize: vertical; }
       <rect x="286" y="1064" width="210" height="56" rx="14" style="fill:var(--cipher-fill);stroke:var(--cipher);stroke-width:2;stroke-dasharray:7 5"></rect>
       <text x="302" y="1089" style="font-family:var(--mono);font-size:13.5px;fill:var(--ink)">tasks</text>
       <text x="302" y="1107" style="font-family:var(--font-body);font-size:11.5px;fill:var(--ink-2)">{ iv, ciphertext }</text>
-      <rect x="516" y="1064" width="210" height="56" rx="14" style="fill:var(--cipher-fill);stroke:var(--cipher);stroke-width:2;stroke-dasharray:7 5"></rect>
-      <text x="532" y="1089" style="font-family:var(--mono);font-size:13.5px;fill:var(--ink)">todos</text>
-      <text x="532" y="1107" style="font-family:var(--font-body);font-size:11.5px;fill:var(--ink-2)">{ iv, ciphertext }</text>
 
       <rect x="56" y="1150" width="334" height="142" rx="20" style="fill:var(--panel-2);stroke:var(--line);stroke-width:2;stroke-dasharray:4 4"></rect>
       <text x="76" y="1180" style="font-family:var(--font-body);font-size:10.5px;font-weight:700;letter-spacing:.14em;fill:var(--ink-2)">KEY LIFETIME = THE TAB</text>
@@ -579,7 +576,7 @@ textarea.input { min-height: 90px; resize: vertical; }
       <text x="430" y="1206" style="font-family:var(--font-body);font-size:13px;font-weight:700;fill:var(--ink)">Re-wraps the master key. Nothing else.</text>
       <text x="430" y="1228" style="font-family:var(--font-body);font-size:12.5px;fill:var(--ink)">The <tspan style="font-weight:700">existing salt is reused</tspan> — no fresh salt is</text>
       <text x="430" y="1246" style="font-family:var(--font-body);font-size:12.5px;fill:var(--ink)">drawn, and the iteration count is unchanged.</text>
-      <text x="430" y="1272" style="font-family:var(--font-body);font-size:12.5px;fill:var(--ink)">The six data blobs are untouched, which is</text>
+      <text x="430" y="1272" style="font-family:var(--font-body);font-size:12.5px;fill:var(--ink)">The five data blobs are untouched, which is</text>
       <text x="430" y="1290" style="font-family:var(--font-body);font-size:12.5px;fill:var(--ink)">why it is instant.</text>
 
       <rect x="836" y="96" width="536" height="696" rx="28" style="fill:var(--panel);stroke:var(--cipher);stroke-width:2;stroke-dasharray:9 6;opacity:.98"></rect>

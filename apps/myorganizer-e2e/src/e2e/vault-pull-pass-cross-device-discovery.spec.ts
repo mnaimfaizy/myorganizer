@@ -30,7 +30,7 @@ import {
  * that is a single 304.
  *
  * Note: Vault Reconcile re-runs on every Local Vault Revision write (#645) and
- * unconditionally reads all 6 Vault Blob Types, returning 404 for undeclared types.
+ * unconditionally reads all 5 Vault Blob Types, returning 404 for undeclared types.
  * This is tracked separately in #857 and is not part of the pull pass contract.
  *
  * Test-only passphrase against fully stubbed backend — no real credential applies.
@@ -72,7 +72,6 @@ test.describe('Vault Pull Pass Cross-Device Discovery (ADR 0087)', () => {
       mobileNumbers: null,
       subscriptions: null,
       tasks: null,
-      todos: null,
     };
     const serverBlobEtags: Record<string, string> = {
       addresses: 'W/"0"',
@@ -80,7 +79,6 @@ test.describe('Vault Pull Pass Cross-Device Discovery (ADR 0087)', () => {
       mobileNumbers: 'W/"0"',
       subscriptions: 'W/"0"',
       tasks: 'W/"0"',
-      todos: 'W/"0"',
     };
     const serverBlobUpdatedAt: Record<string, string> = {
       addresses: new Date(0).toISOString(),
@@ -88,7 +86,6 @@ test.describe('Vault Pull Pass Cross-Device Discovery (ADR 0087)', () => {
       mobileNumbers: new Date(0).toISOString(),
       subscriptions: new Date(0).toISOString(),
       tasks: new Date(0).toISOString(),
-      todos: new Date(0).toISOString(),
     };
 
     // Route matchers for response tracking
@@ -398,17 +395,16 @@ test.describe('Vault Pull Pass Cross-Device Discovery (ADR 0087)', () => {
     }
 
     // Before Phase 6 (settling), wait out Vault Reconcile's fan-out (issue #857).
-    // Reconcile reads all 6 Vault Blob Types unconditionally, and its responses
+    // Reconcile reads all 5 Vault Blob Types unconditionally, and its responses
     // must land before we fire the settling focus, otherwise they would register
     // in the settling phase and fail the "zero per-type reads" assertion.
-    // This waits for at least one response for each of the six types in discovery.
+    // This waits for at least one response for each of the five types in discovery.
     const blobTypes = [
       'addresses',
       'groceries',
       'mobileNumbers',
       'subscriptions',
       'tasks',
-      'todos',
     ];
     for (const blobType of blobTypes) {
       await expect

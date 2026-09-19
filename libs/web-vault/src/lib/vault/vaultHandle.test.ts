@@ -396,7 +396,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
           iv: 'aS1i',
           ciphertext: 'Y3QtYg==',
         },
-        data: { todos: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
+        data: { groceries: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
       };
 
       handleA.saveVault(vaultA);
@@ -860,15 +860,15 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       const handle = await createInitializedUnlockedVaultForReadWrite('user-a');
 
       const tasksValue = [{ id: '1', title: 'Task 1' }];
-      const todosValue = [{ id: 'a', text: 'Todo A' }];
+      const groceriesValue = [{ id: 'a', name: 'Milk' }];
 
       await handle.saveEncryptedData({
         type: 'tasks',
         value: tasksValue,
       });
       await handle.saveEncryptedData({
-        type: 'todos',
-        value: todosValue,
+        type: 'groceries',
+        value: groceriesValue,
       });
 
       // Verify both are present.
@@ -876,18 +876,18 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         type: 'tasks',
         defaultValue: [],
       });
-      const loadedTodos = await handle.loadDecryptedData({
-        type: 'todos',
+      const loadedGroceries = await handle.loadDecryptedData({
+        type: 'groceries',
         defaultValue: [],
       });
 
       expect(loadedTasks).toEqual(tasksValue);
-      expect(loadedTodos).toEqual(todosValue);
+      expect(loadedGroceries).toEqual(groceriesValue);
 
       // Verify vault data has both types.
       const vault = handle.loadVault();
       expect(vault?.data.tasks).toBeDefined();
-      expect(vault?.data.todos).toBeDefined();
+      expect(vault?.data.groceries).toBeDefined();
     });
   });
 
@@ -1056,7 +1056,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
           iv: 'aS1i',
           ciphertext: 'Y3QtYg==',
         },
-        data: { todos: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
+        data: { groceries: { iv: 'aXY=', ciphertext: 'Y3Q=' } },
       };
 
       localStorage.setItem(
@@ -1436,7 +1436,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       // ASSERTION: locked handle rejects with VaultLockedError
       await expect(
         handle.loadDecryptedData({
-          type: 'todos',
+          type: 'groceries',
           defaultValue: null,
         }),
       ).rejects.toThrow(VaultLockedError);
@@ -1468,7 +1468,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
           ciphertext: 'cmVjb3ZlcnktY3Q=',
         },
         data: {
-          todos: {
+          groceries: {
             iv: 'cGFzc3BocmFzZS1pdg==',
             ciphertext: 'c29tZS1vdGhlci1kYXRh', // Some other data
           },
@@ -1485,7 +1485,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
       // ASSERTION: loadDecryptedData resolves to defaultValue and never tries to decrypt unclaimed vault's data
       const result = await handle.loadDecryptedData({
-        type: 'todos',
+        type: 'groceries',
         defaultValue: { items: ['default'] },
       });
 
@@ -1693,17 +1693,17 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       });
       await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-tasks' });
 
-      // Save todos but do NOT record push success
+      // Save groceries but do NOT record push success
       await handle.saveEncryptedData({
-        type: 'todos',
-        value: [{ id: 'a', text: 'Todo A' }],
+        type: 'groceries',
+        value: [{ id: 'a', name: 'Milk' }],
       });
 
       // Tasks should not be dirty (pushed)
       expect(await handle.hasUnsentChanges('tasks')).toBe(false);
 
-      // Todos should be dirty (never pushed)
-      expect(await handle.hasUnsentChanges('todos')).toBe(true);
+      // Groceries should be dirty (never pushed)
+      expect(await handle.hasUnsentChanges('groceries')).toBe(true);
     });
   });
 
@@ -1782,8 +1782,8 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         value: [{ id: '1', title: 'Task 1' }],
       });
       await handle.saveEncryptedData({
-        type: 'todos',
-        value: [{ id: 'a', text: 'Todo A' }],
+        type: 'groceries',
+        value: [{ id: 'a', name: 'Milk' }],
       });
 
       // Record push success only for tasks
@@ -1792,8 +1792,8 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       // Tasks should not be dirty
       expect(await handle.hasUnsentChanges('tasks')).toBe(false);
 
-      // Todos should still be dirty
-      expect(await handle.hasUnsentChanges('todos')).toBe(true);
+      // Groceries should still be dirty
+      expect(await handle.hasUnsentChanges('groceries')).toBe(true);
     });
 
     test('5: recordPushSuccess can be called multiple times for same type (re-push)', async () => {
@@ -1937,7 +1937,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       });
       writeSyncBookmark({
         owner: 'user-b',
-        type: 'todos',
+        type: 'groceries',
         entry: { ciphertextHash: 'hash-b', etag: 'etag-b' },
       });
 

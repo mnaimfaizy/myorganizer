@@ -6,18 +6,18 @@ accepted
 
 ## Context
 
-A Vault Pull Pass issues one conditional `GET /vault/blob/{type}` per Vault Blob Type, all six, in
+A Vault Pull Pass issues one conditional `GET /vault/blob/{type}` per Vault Blob Type, all five, in
 series, on every mount and every window `focus`
 ([#616](https://github.com/mnaimfaizy/myorganizer/issues/616)). A type this device has never pushed
 has no Sync Bookmark, so no `If-None-Match` goes up and the request cannot be answered `304`. For a
-User who has never used three of the six types, three `404`s arrive on every pass — permanent red rows
+User who has never used three of the five types, three `404`s arrive on every pass — permanent red rows
 in exactly the place a real failure would show up the same way.
 
 The obvious fix is to skip types this device holds no blob for. It is wrong: a type the User created on
 another device also has no local blob here, and skipping it would end discovery of that type silently —
 data that simply never arrives, with no test to catch it. The device cannot tell "nothing anywhere"
 from "nothing here yet", and nothing in the protocol lets it: `VaultMetaV1` carries no per-type
-inventory and no list endpoint exists. The six-way fan-out is not an oversight; under the current
+inventory and no list endpoint exists. The five-way fan-out is not an oversight; under the current
 contract it is the only way to ask the question at all.
 
 ## Decision
@@ -29,7 +29,7 @@ the inventory says its Ciphertext differs from this device's Sync Bookmark.**
    `{ blobs: [{ type, etag, updatedAt }] }`. Vault Meta is what a Vault needs to be _opened_; a list of
    which Ciphertext exists is a fact about its _contents_, and putting it there would also make every
    blob push a second write that must land or leave the inventory lying.
-2. **It returns identities, not just names.** Names alone would recover the `404`s and still cost six
+2. **It returns identities, not just names.** Names alone would recover the `404`s and still cost five
    round trips. With each type's etag, a type whose etag matches its Sync Bookmark is not asked about at
    all; a type with no bookmark here is asked about, which is how a type created elsewhere is
    discovered.
@@ -43,7 +43,7 @@ the inventory says its Ciphertext differs from this device's Sync Bookmark.**
    missing type as a deletion would buy nothing and would turn a stale or partial response into local
    data loss — the same shape as the keep-server reconcile that destroyed grocery Ciphertext
    ([#512](https://github.com/mnaimfaizy/myorganizer/issues/512)).
-6. **A failed inventory read fails the pass; there is no fallback to the six-way fan-out.** Every type
+6. **A failed inventory read fails the pass; there is no fallback to the five-way fan-out.** Every type
    is recorded as unanswered and the next pass retries. A fallback that runs only when something is
    already wrong is a path nothing exercises, and it would silently restore the behaviour this ADR
    removes, so a broken inventory would never be noticed. The endpoint therefore ships before the
@@ -68,7 +68,7 @@ enumerating members ([ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-i
 
 ## Consequences
 
-- A pass costs one request in the steady state instead of six, and a User who has never used a type
+- A pass costs one request in the steady state instead of five, and a User who has never used a type
   never generates a `404` for it.
 - The Vault Blob Inventory is an API Contract change and goes through the `backend-api-contract-change`
   Skill and `yarn openapi:sync`. No Prisma change: `@@unique([userId, type])` already serves it.

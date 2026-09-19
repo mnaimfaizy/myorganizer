@@ -349,28 +349,27 @@ describe('computeVaultSyncStatus', () => {
   });
 
   test('iterated all types to build pending (not early exit)', async () => {
-    // Verify that all 6 types are checked even when some are terminal
+    // Verify that all live types are checked even when some are terminal
     const unsentMap = new Map([
       ['tasks', true],
       ['addresses', true],
       ['groceries', false],
       ['mobileNumbers', false],
       ['subscriptions', false],
-      ['todos', false],
     ]);
     const handle = createMockHandle(unsentMap);
     const queueStatus = createQueueStatus({
       terminalFailures: [
-        { type: VaultBlobType.Todos, status: 422 }, // excluded from pending
+        { type: VaultBlobType.Groceries, status: 422 }, // excluded from pending
       ],
     });
     const pullStatus = createPullStatus();
 
     await computeVaultSyncStatus({ handle, queueStatus, pullStatus });
 
-    // Should have called hasUnsentChanges for all except todos (which is terminal)
+    // Should have called hasUnsentChanges for all except groceries (which is terminal)
     const callCount = (handle.hasUnsentChanges as jest.Mock).mock.calls.length;
-    expect(callCount).toBe(5); // All 6 types minus todos which is skipped
+    expect(callCount).toBe(4); // All 5 types minus groceries which is skipped
   });
 
   describe('Observed Vault Identity and standoff detection', () => {

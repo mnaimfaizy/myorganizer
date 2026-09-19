@@ -82,7 +82,7 @@ const sampleVault: VaultStorageV1 = {
       iv: 'YWRkcmVzcy1pdi0xMjM=',
       ciphertext: 'YWRkcmVzcy1jdC0xMjM=',
     },
-    todos: {
+    groceries: {
       iv: 'dG9kby1pdi0xMjM0NTY=',
       ciphertext: 'dG9kby1jdC0xMjM0NTY=',
     },
@@ -92,7 +92,7 @@ const sampleVault: VaultStorageV1 = {
 /**
  * A vault carrying every Vault Blob Type, with per-type ciphertext so a
  * round-trip can prove which one came back. Built from `VAULT_BLOB_TYPES`
- * rather than by hand: a seventh type joins this fixture without anyone
+ * rather than by hand: a sixth type joins this fixture without anyone
  * remembering to add it, which is the whole point of the table (ADR 0053).
  */
 const fullVault: VaultStorageV1 = {
@@ -138,7 +138,7 @@ describe('exportVault', () => {
     );
     expect(result.envelope.exportedAt).toBe('2026-01-01T00:00:00Z');
     expect(result.envelope.blobs.addresses).toBeDefined();
-    expect(result.envelope.blobs.todos).toBeDefined();
+    expect(result.envelope.blobs.groceries).toBeDefined();
     expect(result.envelope.blobs.subscriptions).toBeUndefined();
     expect(result.sizeBytes).toBeGreaterThan(0);
 
@@ -150,16 +150,16 @@ describe('exportVault', () => {
       schemaVersion: CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
       blobTypes: expect.arrayContaining([
         VaultBlobType.Addresses,
-        VaultBlobType.Todos,
+        VaultBlobType.Groceries,
       ]),
     });
     expect(calls[0].sizeBytes).toBe(result.sizeBytes);
   });
 
-  // `envelopeFromLocalVault` was built by hand-enumerating five of the six
+  // `envelopeFromLocalVault` was built by hand-enumerating four of the five
   // blob types and omitted Tasks, so every hardened export silently dropped
   // it and every restore came back with no tasks. Nothing failed; the file
-  // downloaded and parsed. Driven by the table so a seventh type is covered
+  // downloaded and parsed. Driven by the table so a sixth type is covered
   // here the moment it exists (issue #537, ADR 0053).
   test('carries every Vault Blob Type into the envelope', async () => {
     const result = await exportVault({ localVault: fullVault });
@@ -219,8 +219,8 @@ describe('importVault', () => {
     expect(result.nextLocalVault.data.addresses?.ciphertext).toBe(
       sampleVault.data.addresses?.ciphertext,
     );
-    expect(result.nextLocalVault.data.todos?.ciphertext).toBe(
-      sampleVault.data.todos?.ciphertext,
+    expect(result.nextLocalVault.data.groceries?.ciphertext).toBe(
+      sampleVault.data.groceries?.ciphertext,
     );
 
     expect(calls).toHaveLength(1);

@@ -33,7 +33,7 @@ yarn vault:pages:check
 
 Treat a failure as "the diagram is stale", not "the check is broken". It covers 31 assertions —
 KDF parameters, cipher byte lengths, the envelope schema version, all seven size caps across the
-three layers that enforce them, the six blob types, the nine import error codes, and both Local
+three layers that enforce them, the five blob types, the nine import error codes, and both Local
 Vault storage keys.
 
 Blob types and error codes are compared as sets rather than sequences, so a page may order them

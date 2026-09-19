@@ -7,7 +7,7 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
 
 ## Use This Skill When
 
-- Adding or changing vault-backed features such as addresses, mobile numbers, subscriptions, todos, or vault export/import
+- Adding or changing vault-backed features such as addresses, mobile numbers, subscriptions, tasks, or vault export/import
 - Modifying encrypted blob shapes, vault reconcile, or server sync behavior
 - Updating vault initialization, unlock, recovery, export, or import flows
 

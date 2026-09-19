@@ -461,7 +461,6 @@ components:
         - mobileNumbers
         - subscriptions
         - tasks
-        - todos
     EncryptedBlobV1:
       properties:
         version:
@@ -550,8 +549,6 @@ components:
           $ref: "#/components/schemas/EncryptedBlobV1"
         tasks:
           $ref: "#/components/schemas/EncryptedBlobV1"
-        todos:
-          $ref: "#/components/schemas/EncryptedBlobV1"
       type: object
       description: Make all properties in T optional
     VaultExportV1:
@@ -613,7 +610,6 @@ components:
         - mobileNumbers
         - subscriptions
         - tasks
-        - todos
     VaultBackupRecordDto:
       properties:
         id:
