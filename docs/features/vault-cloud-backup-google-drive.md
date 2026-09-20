@@ -176,24 +176,45 @@ second Drive production project beside the one this runbook describes.
 ### Step 3 — Configure the OAuth consent screen
 
 On the shared **dev/staging** Testing project you can reuse the YouTube consent
-screen and add the Drive scope. On the **production Drive** project, configure
-a distinct brand so a User connecting Drive never sees YouTube scopes, and
-vice versa:
+screen and add the Drive scope. On the **production Drive** project, Branding
+has no separate "purpose" or "description" field — only **App name** and
+**App logo**. Distinction from YouTube is the App name plus Data Access, not
+a second logo:
+
+| Branding / access field    | YouTube production                      | Drive production                                         |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| **App name**               | `MyOrganizer`                           | `MyOrganizer Vault Backup`                               |
+| **App logo**               | Same MyOrganizer shield (120 × 120 PNG) | Same file — one product                                  |
+| Homepage / privacy / terms | `https://myorganiser.app`               | Same URLs                                                |
+| **Data Access**            | `youtube.readonly` only                 | `drive.appdata` only                                     |
+| Enabled API                | YouTube Data API v3                     | Google Drive API                                         |
+| Client extras              | Authorized redirect URIs                | Authorized JavaScript origins; leave redirect URIs empty |
+
+The logo to upload is `apps/myorganizer/public/images/google-oauth-app-logo.png`
+(square PNG, 120 × 120, under 1 MB — Google's Branding spec). It is the same
+shield as `apps/myorganizer/src/app/icon.svg`. Do not invent a Drive-only mark
+or use a Google Drive icon.
 
 1. **Google Auth platform → Branding** → fill:
-   - **App name:** `MyOrganizer`
-   - **User-facing description / purpose:** `Vault Backup` (keep this line
-     distinct from the YouTube production brand)
+   - **App name:** `MyOrganizer Vault Backup` (YouTube production stays
+     `MyOrganizer` — this is the field that differs)
+   - **App logo:** upload `google-oauth-app-logo.png`
    - Support email and developer contact
+   - App domain links (homepage, privacy, terms) on `myorganiser.app` once
+     those public pages exist
 2. **User type:** External (or Internal for Workspace orgs).
 3. **Data Access → Add or Remove Scopes** → add:
    `https://www.googleapis.com/auth/drive.appdata`
 
    The `drive.appdata` scope is _**not**_ classed as a sensitive or
    restricted scope, which means:
-   - No app verification is required to publish in production.
+   - No **data-access** verification is required to publish in production.
    - The "unverified app" warning still appears in **Testing** mode for
      external users.
+   - **Brand** verification is a separate check: without it, Google shows
+     only the authorized domain on the consent screen, not the App name or
+     logo. Name and logo still belong on Branding so they are ready when
+     you submit.
 
 4. **Audience → Test users:** while in Testing mode, add every Google
    account that needs to use cloud backup (your own dev account, QA users,
@@ -238,8 +259,9 @@ not configured"_.
 Sign out of all Google accounts, then visit the dev app and click
 **Connect Google Drive**. Confirm the popup shows:
 
-- The correct app name (`MyOrganizer`) and purpose line (`Vault Backup` on
-  the production Drive client).
+- The correct app name (`MyOrganizer Vault Backup` on the production Drive
+  client). Until brand verification is approved, Google may show only the
+  domain `myorganiser.app` instead of the name and logo — that is expected.
 - A **single** scope item: _"See, create, and delete its own configuration
   data in your Google Drive"_.
 
@@ -256,8 +278,8 @@ the YouTube production project; this section is the Drive one.
 
 1. Create a Cloud project (name e.g. `MyOrganizer Vault Backup`).
 2. Enable **Google Drive API** only ([Step 2](#step-2--enable-the-google-drive-api)).
-3. Configure the consent screen with brand **MyOrganizer** and purpose
-   **Vault Backup**, scope `drive.appdata` only
+3. Configure the consent screen with App name **MyOrganizer Vault Backup**,
+   the shared shield logo, and scope `drive.appdata` only
    ([Step 3](#step-3--configure-the-oauth-consent-screen)).
 4. Create a **Web application** OAuth client whose **Authorized JavaScript
    origins** include `https://myorganiser.app` and nothing else required for
