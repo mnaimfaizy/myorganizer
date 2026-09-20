@@ -26,11 +26,7 @@ import { SyncProgressPanel } from './SyncProgressPanel';
 import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
 
 export function YouTubePageClient() {
-  const {
-    available,
-    loading: availabilityLoading,
-    error: availabilityError,
-  } = useYouTubeAvailability();
+  const { available } = useYouTubeAvailability();
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
   const { connect, disconnect } = useYouTubeConnect();
   const handleDisconnect = useCallback(async () => {
@@ -40,7 +36,7 @@ export function YouTubePageClient() {
 
   // Check availability first — if unavailable, show error state before
   // checking connection status or proceeding to connected dashboard
-  if (available === false || availabilityLoading || availabilityError) {
+  if (available !== true) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
         <div className="rounded-full bg-destructive/10 p-4">

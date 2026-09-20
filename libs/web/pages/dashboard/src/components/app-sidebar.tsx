@@ -11,7 +11,7 @@ import {
   SidebarRail,
   useSidebar,
 } from '@myorganizer/web-ui';
-import { useYouTubeAvailability } from '@myorganizer/web/pages/youtube';
+import { useYouTubeNavVisible } from '../hooks/useYouTubeNavVisible';
 import {
   ClipboardList,
   CreditCard,
@@ -76,12 +76,10 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     avatar: '',
   };
   const { state } = useSidebar();
-  const { available, loading, error } = useYouTubeAvailability();
+  const youtubeNavVisible = useYouTubeNavVisible();
 
   const navMain = allNavItems.filter(
-    (item) =>
-      item.title !== 'YouTube' ||
-      (available === true && loading === false && error === null),
+    (item) => item.title !== 'YouTube' || youtubeNavVisible,
   );
 
   return (

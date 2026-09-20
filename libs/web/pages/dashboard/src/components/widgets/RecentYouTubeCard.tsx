@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
 import { Youtube } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { useYouTubeNavVisible } from '../../hooks/useYouTubeNavVisible';
 
 type VideoItem = {
   videoId: string;
@@ -22,9 +23,12 @@ type State =
   | { status: 'error' };
 
 export function RecentYouTubeCard() {
+  const youtubeNavVisible = useYouTubeNavVisible();
   const [state, setState] = useState<State>({ status: 'loading' });
 
   useEffect(() => {
+    if (!youtubeNavVisible) return;
+
     const base = `${getApiBaseUrl()}/youtube`;
     const token = getAccessToken();
     const headers: Record<string, string> = {
@@ -50,7 +54,11 @@ export function RecentYouTubeCard() {
           });
       })
       .catch(() => setState({ status: 'error' }));
-  }, []);
+  }, [youtubeNavVisible]);
+
+  if (!youtubeNavVisible) {
+    return null;
+  }
 
   return (
     <Card className="md:col-span-4 col-span-full">

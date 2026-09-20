@@ -11,18 +11,13 @@ export default function YouTubeCallbackClient() {
   const searchParams = useSearchParams();
   const [error, setError] = useState<string | null>(null);
   const didRun = useRef(false);
-  const {
-    available,
-    loading: availabilityLoading,
-    error: availabilityError,
-  } = useYouTubeAvailability();
+  const { available } = useYouTubeAvailability();
 
   const handleBack = useCallback(() => {
     router.replace('/dashboard');
   }, [router]);
 
-  const isUnavailable =
-    availabilityError !== null || availabilityLoading || available === false;
+  const isUnavailable = available !== true;
 
   useEffect(() => {
     if (didRun.current) return;

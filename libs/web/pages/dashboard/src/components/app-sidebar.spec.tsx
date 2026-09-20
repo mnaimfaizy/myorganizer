@@ -1,6 +1,6 @@
 /* eslint-disable import/first */
-jest.mock('@myorganizer/web/pages/youtube', () => ({
-  useYouTubeAvailability: jest.fn(),
+jest.mock('../hooks/useYouTubeNavVisible', () => ({
+  useYouTubeNavVisible: jest.fn(),
 }));
 
 jest.mock('@myorganizer/auth', () => ({
@@ -10,12 +10,23 @@ jest.mock('@myorganizer/auth', () => ({
 jest.mock('@myorganizer/web-ui', () => ({
   ...jest.requireActual('@myorganizer/web-ui'),
   useSidebar: jest.fn(),
+  Sidebar: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sidebar">{children}</div>
+  ),
+  SidebarHeader: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sidebar-header">{children}</div>
+  ),
+  SidebarContent: ({ children }: { children: React.ReactNode }) => (
+    <div data-testid="sidebar-content">{children}</div>
+  ),
+  SidebarRail: () => <div data-testid="sidebar-rail" />,
+  AppLogo: () => <div data-testid="app-logo" />,
 }));
 
 jest.mock('./nav-main', () => ({
-  NavMain: jest.fn(({ items }) => (
+  NavMain: jest.fn(({ items }: { items: { title: string }[] }) => (
     <div data-testid="nav-main" data-items={items.length}>
-      {items.map((item) => (
+      {items.map((item: { title: string }) => (
         <div
           key={item.title}
           data-testid={`nav-item-${item.title.toLowerCase()}`}
@@ -34,20 +45,17 @@ jest.mock('./nav-user', () => ({
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render } from '@testing-library/react';
+import { getCurrentUser } from '@myorganizer/auth';
+import { useSidebar } from '@myorganizer/web-ui';
+import { useYouTubeNavVisible } from '../hooks/useYouTubeNavVisible';
 import { AppSidebar } from './app-sidebar';
-import { useYouTubeAvailability } from '@myorganizer/web/pages/youtube';
-import { getCurrentUser, useSidebar } from '@myorganizer/web-ui';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
 
 describe('AppSidebar', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (useYouTubeAvailability as jest.Mock).mockReturnValue({
-      available: false,
-      loading: false,
-      error: null,
-    });
+    (useYouTubeNavVisible as jest.Mock).mockReturnValue(false);
     (getCurrentUser as jest.Mock).mockReturnValue({
       name: 'Test User',
       email: 'test@example.com',
@@ -57,104 +65,39 @@ describe('AppSidebar', () => {
     });
   });
 
-  describe('YouTube availability', () => {
-    it('should show YouTube when available', () => {
-      (useYouTubeAvailability as jest.Mock).mockReturnValue({
-        available: true,
-        loading: false,
-        error: null,
-      });
+  describe('YouTube nav visibility', () => {
+    it('should show YouTube when useYouTubeNavVisible returns true', () => {
+      (useYouTubeNavVisible as jest.Mock).mockReturnValue(true);
 
       render(<AppSidebar />);
 
       const navMainCall = (NavMain as jest.Mock).mock.calls[0][0];
       expect(navMainCall.items).toHaveLength(8);
       const youtubeItem = navMainCall.items.find(
-        (item: any) => item.title === 'YouTube',
+        (item: { title: string }) => item.title === 'YouTube',
       );
       expect(youtubeItem).toBeDefined();
     });
 
-    it('should hide YouTube when unavailable', () => {
-      (useYouTubeAvailability as jest.Mock).mockReturnValue({
-        available: false,
-        loading: false,
-        error: null,
-      });
+    it('should hide YouTube when useYouTubeNavVisible returns false', () => {
+      (useYouTubeNavVisible as jest.Mock).mockReturnValue(false);
 
       render(<AppSidebar />);
 
       const navMainCall = (NavMain as jest.Mock).mock.calls[0][0];
       expect(navMainCall.items).toHaveLength(7);
       const youtubeItem = navMainCall.items.find(
-        (item: any) => item.title === 'YouTube',
-      );
-      expect(youtubeItem).toBeUndefined();
-    });
-
-    it('should hide YouTube while loading', () => {
-      (useYouTubeAvailability as jest.Mock).mockReturnValue({
-        available: null,
-        loading: true,
-        error: null,
-      });
-
-      render(<AppSidebar />);
-
-      const navMainCall = (NavMain as jest.Mock).mock.calls[0][0];
-      expect(navMainCall.items).toHaveLength(7);
-      const youtubeItem = navMainCall.items.find(
-        (item: any) => item.title === 'YouTube',
-      );
-      expect(youtubeItem).toBeUndefined();
-    });
-
-    it('should hide YouTube on error', () => {
-      (useYouTubeAvailability as jest.Mock).mockReturnValue({
-        available: null,
-        loading: false,
-        error: new Error('Network error'),
-      });
-
-      render(<AppSidebar />);
-
-      const navMainCall = (NavMain as jest.Mock).mock.calls[0][0];
-      expect(navMainCall.items).toHaveLength(7);
-      const youtubeItem = navMainCall.items.find(
-        (item: any) => item.title === 'YouTube',
-      );
-      expect(youtubeItem).toBeUndefined();
-    });
-
-    it('should hide YouTube when available is null and not loading', () => {
-      (useYouTubeAvailability as jest.Mock).mockReturnValue({
-        available: null,
-        loading: false,
-        error: null,
-      });
-
-      render(<AppSidebar />);
-
-      const navMainCall = (NavMain as jest.Mock).mock.calls[0][0];
-      expect(navMainCall.items).toHaveLength(7);
-      const youtubeItem = navMainCall.items.find(
-        (item: any) => item.title === 'YouTube',
+        (item: { title: string }) => item.title === 'YouTube',
       );
       expect(youtubeItem).toBeUndefined();
     });
   });
 
   describe('permanent nav items', () => {
-    const states = [
-      { available: true, loading: false, error: null },
-      { available: false, loading: false, error: null },
-      { available: null, loading: true, error: null },
-    ];
-
-    it.each(states)(
-      'should always show other nav items - state: available=%p',
-      (state) => {
-        (useYouTubeAvailability as jest.Mock).mockReturnValue(state);
+    it.each([true, false])(
+      'should always show other nav items when youtubeNavVisible=%p',
+      (youtubeNavVisible) => {
+        (useYouTubeNavVisible as jest.Mock).mockReturnValue(youtubeNavVisible);
 
         render(<AppSidebar />);
 
@@ -171,7 +114,7 @@ describe('AppSidebar', () => {
           'Vault',
         ];
         expectedItems.forEach((title) => {
-          const item = items.find((i: any) => i.title === title);
+          const item = items.find((i: { title: string }) => i.title === title);
           expect(item).toBeDefined();
           expect(item.title).toBe(title);
         });
