@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "comment": "File-refs `yarn docs:file-refs:check` may find missing without failing (ADR 0092). Every entry names the Markdown file that makes the claim, the claim token, and a written reason. An entry without a reason is rejected. An entry is stale — and fails — when the documenting file is gone, the claim is no longer made, or the named file exists again. Frozen Research Briefs under docs/research/ are skipped as a class (ADR 0041) and do not belong here.",
+  "comment": "File-refs `yarn docs:file-refs:check` may find missing without failing (ADR 0093). Every entry names the Markdown file that makes the claim, the claim token, and a written reason. An entry without a reason is rejected. An entry is stale — and fails — when the documenting file is gone, the claim is no longer made, or the named file exists again. Frozen Research Briefs under docs/research/ are skipped as a class (ADR 0041) and do not belong here.",
   "exemptions": [
     {
       "file": "docs/adr/0011-platform-admin-console.md",

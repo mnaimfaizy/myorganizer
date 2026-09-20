@@ -4,7 +4,7 @@
 //   node tools/scripts/check-doc-file-refs.mjs [--print]
 //
 // A file-ref is a high-confidence claim that a path or directory-scoped module exists
-// in this repository (ADR 0092). PR #743 copied `migrationRunner` from issue #290 into
+// in this repository (ADR 0093). PR #743 copied `migrationRunner` from issue #290 into
 // an ADR addendum; the file is libs/web-vault-ui/src/lib/reconcileRunner.tsx.
 // `docs:commands:check` only reads fenced shell blocks, so the wrong name reached code
 // review. This gate reads inline backticks.
@@ -17,7 +17,7 @@
 //
 // What it reads: every tracked `*.md` except `docs/research/` (frozen at the date in
 // the filename, ADR 0041).
-// What it asserts, and only these shapes (ADR 0092):
+// What it asserts, and only these shapes (ADR 0093):
 //   1. A backticked token that starts under a known top-level directory, has no
 //      spaces or ellipsis, and is not a negative existence claim, resolves on disk.
 //   2. A camelCase or PascalCase identifier in the same sentence as a backticked
@@ -339,7 +339,7 @@ function main({ cwd = process.cwd(), argv = process.argv } = {}) {
     }
     console.error(
       '\nEither commit the file, correct the doc, or add a written-reason exemption' +
-        `\nin ${EXEMPTIONS_PATH} (ADR 0092). A stale exemption is removed, not kept.`,
+        `\nin ${EXEMPTIONS_PATH} (ADR 0093). A stale exemption is removed, not kept.`,
     );
     process.exit(1);
   }
