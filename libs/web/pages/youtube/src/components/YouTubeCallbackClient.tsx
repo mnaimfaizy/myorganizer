@@ -5,6 +5,7 @@ import { getApiBaseUrl } from '@myorganizer/core';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useYouTubeAvailability } from '../hooks';
+import { YouTubeUnavailableNotice } from './YouTubeUnavailableNotice';
 
 export default function YouTubeCallbackClient() {
   const router = useRouter();
@@ -64,17 +65,7 @@ export default function YouTubeCallbackClient() {
   }, [searchParams, router, isUnavailable]);
 
   if (isUnavailable) {
-    return (
-      <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
-        <p className="text-muted-foreground text-lg font-medium">
-          YouTube is not available right now.
-        </p>
-        <p className="text-muted-foreground text-sm">Please try again later.</p>
-        <button className="text-primary underline text-sm" onClick={handleBack}>
-          Back to Dashboard
-        </button>
-      </div>
-    );
+    return <YouTubeUnavailableNotice onBack={handleBack} />;
   }
 
   if (error) {

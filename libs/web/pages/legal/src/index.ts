@@ -1,2 +1,2 @@
-export { default as PrivacyPolicyPage } from './components/PrivacyPolicyClient';
-export { default as TermsOfServicePage } from './components/TermsOfServiceClient';
+export { default as PrivacyPolicyPage } from './components/PrivacyPolicyPage';
+export { default as TermsOfServicePage } from './components/TermsOfServicePage';

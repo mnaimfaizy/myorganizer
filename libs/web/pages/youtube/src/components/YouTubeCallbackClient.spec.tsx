@@ -49,7 +49,9 @@ describe('YouTubeCallbackClient — fail-closed availability', () => {
       render(<YouTubeCallbackClient />);
 
       expect(
-        screen.getByText('YouTube is not available right now.'),
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
       ).toBeInTheDocument();
       expect(screen.getByText('Please try again later.')).toBeInTheDocument();
       expect(
@@ -81,7 +83,9 @@ describe('YouTubeCallbackClient — fail-closed availability', () => {
       render(<YouTubeCallbackClient />);
 
       expect(
-        screen.getByText('YouTube is not available right now.'),
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
       ).toBeInTheDocument();
       expect(screen.getByText('Please try again later.')).toBeInTheDocument();
       expect(

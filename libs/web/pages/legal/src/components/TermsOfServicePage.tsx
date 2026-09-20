@@ -2,7 +2,7 @@ import { Button, Card, CardContent } from '@myorganizer/web-ui';
 import Link from 'next/link';
 import { OperatorContact } from './OperatorContact';
 
-export default function TermsOfServiceClient() {
+export default function TermsOfServicePage() {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
       <Card className="w-full max-w-2xl">
