@@ -42,32 +42,23 @@
 //
 // Exit 0 = every file-ref resolves, or is exempted. Exit 1 = at least one does
 // not, or an exemption is stale. Exit 2 = cannot run.
-import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, lstatSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import {
+  cleanRepoPathToken,
+  createCheckerFail,
+  gitIgnoredPaths,
+  hasPathPlaceholder,
+  isRepoPathToken,
+  listTrackedMarkdown,
+} from './lib/doc-paths.mjs';
 
 const PREFIX = 'doc-file-refs';
 const EXEMPTIONS_PATH = 'tools/config/doc-file-refs-exemptions.json';
 const SCHEMA_VERSION = 1;
 const RESEARCH_PREFIX = 'docs/research/';
-
-/**
- * Top-level directories a token must start under to read as a repo path.
- * Copied from check-doc-commands.mjs: a bare `package.json` is not a path
- * claim, and `src/index.ts` in an example is not anchored.
- */
-export const ROOTS = [
-  '.agents/',
-  '.claude/',
-  '.cursor/',
-  '.github/',
-  '.husky/',
-  'apps/',
-  'docs/',
-  'libs/',
-  'tools/',
-];
 
 const MODULE_EXTENSIONS = ['.ts', '.tsx', '.mjs', '.js', '.cjs'];
 
@@ -78,23 +69,15 @@ const DENIED_EXISTENCE =
 const FENCE = /```[\s\S]*?```/g;
 const INLINE_CODE = /`([^`\n]+)`/g;
 
-const fail = (msg) => {
-  console.error(`${PREFIX}: ${msg}`);
-  process.exit(2);
-};
-
-const isPlaceholder = (token) => /[<>${}*?|!]/.test(token);
+const fail = createCheckerFail(PREFIX);
 
 /** Strip wrapping punctuation a path picks up in running text. Keep a trailing slash. */
 export function clean(token) {
-  return token.replace(/^[('"]+/, '').replace(/[)'",;:.]+$/, '');
+  return cleanRepoPathToken(token);
 }
 
 export function isRepoPath(token) {
-  if (!token || isPlaceholder(token)) return false;
-  if (/\s/.test(token) || token.includes('…') || token.includes('...'))
-    return false;
-  return ROOTS.some((root) => token.startsWith(root));
+  return isRepoPathToken(token, { strict: true });
 }
 
 export function stripLineNumber(token) {
@@ -115,7 +98,7 @@ export function isModuleIdentifier(token) {
     !token ||
     token.includes('/') ||
     token.includes('.') ||
-    isPlaceholder(token)
+    hasPathPlaceholder(token)
   ) {
     return false;
   }
@@ -187,47 +170,6 @@ export function collectClaims(text, { exists, isDirectory }) {
   }
 
   return claims;
-}
-
-function gitIgnores(paths, { cwd }) {
-  if (paths.length === 0) return new Set();
-  const candidates = [
-    ...new Set(
-      paths.flatMap((path) =>
-        path.endsWith('/') ? [path] : [path, `${path}/`],
-      ),
-    ),
-  ];
-  const result = spawnSync('git', ['check-ignore', '--stdin'], {
-    cwd,
-    input: candidates.join('\n'),
-    encoding: 'utf8',
-  });
-  if (result.error)
-    fail(`could not run git check-ignore: ${result.error.message}`);
-  if (result.status !== 0 && result.status !== 1) {
-    fail(`git check-ignore exited ${result.status}`);
-  }
-  const ignored = new Set();
-  for (const line of (result.stdout ?? '').split('\n').filter(Boolean)) {
-    ignored.add(line.replace(/\/+$/, ''));
-  }
-  return ignored;
-}
-
-function trackedMarkdown({ cwd }) {
-  try {
-    return execFileSync('git', ['ls-files', '*.md'], {
-      cwd,
-      encoding: 'utf8',
-    })
-      .split('\n')
-      .filter(Boolean);
-  } catch {
-    return fail(
-      'could not list tracked Markdown files — is this a git repository?',
-    );
-  }
 }
 
 function moduleResolves(claim, exists) {
@@ -303,7 +245,7 @@ export function exemptionKey(file, claim) {
 
 function main({ cwd = process.cwd(), argv = process.argv } = {}) {
   const printOnly = argv.includes('--print');
-  const tracked = trackedMarkdown({ cwd });
+  const tracked = listTrackedMarkdown({ cwd, fail });
   const files = tracked.filter((file) => !file.startsWith(RESEARCH_PREFIX));
   if (files.length === 0) fail('no tracked Markdown files found');
 
@@ -333,9 +275,9 @@ function main({ cwd = process.cwd(), argv = process.argv } = {}) {
     }
   }
 
-  const ignored = gitIgnores(
+  const ignored = gitIgnoredPaths(
     [...new Set(findings.filter((f) => f.kind === 'path').map((f) => f.claim))],
-    { cwd },
+    { cwd, fail, includeDirectoryCandidates: true },
   );
   const live = [];
   const seenLive = new Set();
