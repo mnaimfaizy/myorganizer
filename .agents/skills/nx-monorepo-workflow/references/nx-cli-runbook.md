@@ -14,12 +14,12 @@ yarn nx generate @nx/react:library \
   --no-interactive
 ```
 
-**Page library example** (`libs/web/pages/my-route`):
+**Page library example** (`libs/web/pages/<route>`):
 
 ```sh
 yarn nx generate @nx/react:library \
   --name=my-route \
-  --directory=libs/web/pages/my-route \
+  --directory=libs/web/pages/<route> \
   --importPath=@myorganizer/web-pages/my-route \
   --unitTestRunner=jest \
   --bundler=none \
@@ -29,7 +29,7 @@ yarn nx generate @nx/react:library \
 After generation, add to `tsconfig.base.json`:
 
 ```json
-"@myorganizer/web-pages/my-route": ["libs/web/pages/my-route/src/index.ts"]
+"@myorganizer/web-pages/my-route": ["libs/web/pages/<route>/src/index.ts"]
 ```
 
 ---
@@ -155,7 +155,7 @@ Always use `--dry-run` first to preview what files will be created or modified:
 ```sh
 yarn nx generate @nx/react:library \
   --name=my-route \
-  --directory=libs/web/pages/my-route \
+  --directory=libs/web/pages/<route> \
   --importPath=@myorganizer/web-pages/my-route \
   --unitTestRunner=jest \
   --bundler=none \
@@ -196,7 +196,7 @@ yarn nx graph --affected
 | Artifact             | Convention             | Example                        |
 | -------------------- | ---------------------- | ------------------------------ |
 | Library project name | kebab-case             | `web-pages-todos`              |
-| Library directory    | `libs/<domain>/<name>` | `libs/web/pages/todos`         |
+| Library directory    | `libs/<domain>/<name>` | `libs/web/pages/<name>`        |
 | Import path alias    | `@myorganizer/<scope>` | `@myorganizer/web-pages/todos` |
 | App project name     | kebab-case             | `myorganizer`, `backend`       |
 | App directory        | `apps/<name>`          | `apps/myorganizer`             |

@@ -27,7 +27,7 @@ limited because of measured blind spots (below).
   name appears in more than one file (it can't disambiguate).
 - **Database schema questions** ("what reads this table?", "what does this migration affect?").
   `**/*.sql` is excluded by design — see "SQL is excluded on purpose" below. The current schema
-  lives in `apps/backend/src/prisma/schema.prisma`; use that and `nx affected`.
+  lives in `apps/backend/src/prisma/schema`; use that and `nx affected`.
 
 Always confirm a graph result against the actual file before trusting it — the graph can be stale.
 

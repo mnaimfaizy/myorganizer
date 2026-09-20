@@ -28,38 +28,20 @@
 //     someone has to remember to prune.
 //
 // Exit 0 = every documented path resolves. Exit 1 = at least one does not. Exit 2 = cannot run.
-import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 
+import {
+  cleanRepoPathToken,
+  createCheckerFail,
+  gitIgnoredPaths,
+  isRepoPathToken,
+  listTrackedMarkdown,
+} from './lib/doc-paths.mjs';
 import { tokenize } from './lib/shell-command.mjs';
 
-const fail = (msg) => {
-  console.error(`doc-commands: ${msg}`);
-  process.exit(2);
-};
-
-/**
- * Top-level directories a token must start under to read as a repo path. A bare `package.json`
- * or `main` is not a path claim, and `src/index.ts` inside an illustrative snippet is a path
- * relative to somewhere this checker cannot know. Anchoring at a real top-level directory is
- * what separates "the doc names a file in this repo" from "the doc shows some code".
- */
-const ROOTS = [
-  '.agents/',
-  '.claude/',
-  '.cursor/',
-  '.github/',
-  '.husky/',
-  'apps/',
-  'docs/',
-  'libs/',
-  'tools/',
-];
+const fail = createCheckerFail('doc-commands');
 
 const FENCE = /```(?:bash|sh|shell|console)\n([\s\S]*?)```/g;
-
-/** A token with a shell placeholder, variable, or glob in it is not naming one file. */
-const isPlaceholder = (token) => /[<>${}*?|!]/.test(token);
 
 // Re-exported so this module's contract tests, and any reader who comes here
 // first, still find the split beside the rules that use it. The one copy lives
@@ -68,54 +50,15 @@ export { tokenize };
 
 /** Strip shell and prose punctuation a path picks up in running text. */
 export function clean(token) {
-  return token.replace(/^[('"`]+/, '').replace(/[)'"`,;:.]+$/, '');
+  return cleanRepoPathToken(token);
 }
 
 /** Does this token claim to name a file in this repository? */
 export function isRepoPath(token) {
-  if (isPlaceholder(token)) return false;
-  return (
-    ROOTS.some((root) => token.startsWith(root)) || token.endsWith('.dc.html')
-  );
+  return isRepoPathToken(token, { allowDcHtml: true });
 }
 
-let ignoredCache = null;
-
-/**
- * Paths git ignores, resolved in one batch.
- *
- * `check-ignore` exits 1 when none of the input paths are ignored, which is an answer rather than
- * a failure — so this reads the status instead of letting a throwing `execFileSync` turn "nothing
- * is a build output" into a crash. That is exactly what it did until the fixture for a repo with
- * no matching ignore rule caught it.
- */
-function gitIgnores(paths) {
-  if (paths.length === 0) return new Set();
-  const result = spawnSync('git', ['check-ignore', '--stdin'], {
-    input: paths.join('\n'),
-    encoding: 'utf8',
-  });
-  if (result.error)
-    fail(`could not run git check-ignore: ${result.error.message}`);
-  if (result.status !== 0 && result.status !== 1) {
-    fail(`git check-ignore exited ${result.status}`);
-  }
-  return new Set((result.stdout ?? '').split('\n').filter(Boolean));
-}
-
-function trackedMarkdown() {
-  try {
-    return execFileSync('git', ['ls-files', '*.md'], { encoding: 'utf8' })
-      .split('\n')
-      .filter(Boolean);
-  } catch {
-    return fail(
-      'could not list tracked Markdown files — is this a git repository?',
-    );
-  }
-}
-
-const files = trackedMarkdown();
+const files = listTrackedMarkdown({ fail });
 if (files.length === 0) fail('no tracked Markdown files found');
 
 /** Every path claim in the corpus, before existence is considered. */
@@ -137,9 +80,11 @@ for (const file of files) {
 const missing = claims.filter((claim) => !existsSync(claim.path));
 
 // Only the missing ones need the ignore lookup, so a clean tree pays one subprocess at most.
-ignoredCache = gitIgnores([...new Set(missing.map((m) => m.path))]);
+const ignored = gitIgnoredPaths([...new Set(missing.map((m) => m.path))], {
+  fail,
+});
 
-const findings = missing.filter((claim) => !ignoredCache.has(claim.path));
+const findings = missing.filter((claim) => !ignored.has(claim.path));
 
 if (findings.length > 0) {
   console.error(
