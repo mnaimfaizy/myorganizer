@@ -70,9 +70,17 @@ Environment variables:
 NODE_ENV=production
 PORT=3000
 API_BASE_URL=https://api.myorganiser.app/api/v1
+OPERATOR_NAME=<legal operator name, or empty>
+OPERATOR_CONTACT_EMAIL=<contact email, or empty>
 ```
 
 The backend must list this origin in `CORS_ORIGINS`.
+
+`OPERATOR_NAME` and `OPERATOR_CONTACT_EMAIL` are Operator Fingerprints
+([ADR 0086](../adr/0086-a-public-tree-hides-an-operator-not-a-product.md)).
+The Privacy Policy and Terms of Service pages read them at request time.
+Leave both empty to omit the Operator & Contact section rather than
+rendering a placeholder.
 
 If `www.myorganiser.app` should redirect to `myorganiser.app`, configure it in
 cPanel **Domains** / **Redirects**.

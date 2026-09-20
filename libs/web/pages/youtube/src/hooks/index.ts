@@ -36,6 +36,7 @@ export function formatRetryAt(retryAt?: string | null) {
 
 export { useVideoQueue, QUEUE_CAP } from './useVideoQueue';
 export type { VideoQueue } from './useVideoQueue';
+export { useYouTubeAvailability } from '@myorganizer/web-youtube';
 
 export { useShortsBudget } from './useShortsBudget';
 export type { ShortsBudget } from './useShortsBudget';

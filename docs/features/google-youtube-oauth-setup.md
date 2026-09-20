@@ -221,7 +221,7 @@ When you're ready to go live:
 
 > **Testing mode is not an option for production.** Google expires refresh tokens issued in Testing after 7 days, so every YouTube Connection goes Revoked weekly, and the app is capped at 100 test users. Keep YouTube unavailable in production until the production project is verified.
 
-> **Do not deploy production YouTube credentials yet.** The availability switch that keeps YouTube hidden in production, and the startup check on the production redirect URI, are not implemented yet (#846). Until they land, nothing stops production from serving YouTube as soon as the credentials are set. See [ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md).
+> **Keep production YouTube unavailable until verification finishes.** The availability switch and production redirect-URI startup check landed in #846, and the web-side hiding landed in #847. Leave `YOUTUBE_AVAILABLE` unset or `false` until the production Cloud project work in #848 is complete. See [ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md).
 
 ---
 

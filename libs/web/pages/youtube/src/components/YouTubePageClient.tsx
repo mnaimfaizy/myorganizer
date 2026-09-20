@@ -9,6 +9,7 @@ import {
   formatRetryAt,
   useChannelUploads,
   useVideoQueue,
+  useYouTubeAvailability,
   useYouTubeCarousel,
   useYouTubeConnect,
   YouTubeRequestError,
@@ -25,8 +26,10 @@ import { SubscriptionManager } from './SubscriptionManager';
 import { SyncFreshnessIndicator } from './SyncFreshnessIndicator';
 import { SyncProgressPanel } from './SyncProgressPanel';
 import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
+import { YouTubeUnavailableNotice } from './YouTubeUnavailableNotice';
 
 export function YouTubePageClient() {
+  const { available } = useYouTubeAvailability();
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
   const { connect } = useYouTubeConnect();
   const [disconnectNotice, setDisconnectNotice] = useState<{
@@ -48,6 +51,12 @@ export function YouTubePageClient() {
         </a>
       </div>
     );
+
+  // Check availability first — if unavailable, show error state before
+  // checking connection status or proceeding to connected dashboard
+  if (available !== true) {
+    return <YouTubeUnavailableNotice />;
+  }
 
   if (status === 'loading') {
     return (

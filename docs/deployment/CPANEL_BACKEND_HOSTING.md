@@ -18,16 +18,17 @@ and it does not carry the Host Apply sequence, which lives once, in
 
 ## What differs between environments
 
-| Concern               | Staging                                                                                 | Production                                                                                      |
-| --------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| API origin            | `API_ORIGIN` secret on the `staging` Environment                                        | `https://api.myorganiser.app`                                                                   |
-| Frontend it serves    | The Vercel Staging frontend ([Vercel hosting](VERCEL_FRONTEND_HOSTING.md))              | `https://myorganiser.app` on cPanel ([Web app on cPanel](CPANEL_WEB_HOSTING.md))                |
-| `CORS_ORIGINS`        | The Staging frontend origin: the domain of the Vercel project `VERCEL_PROJECT_ID` names | `https://myorganiser.app,https://www.myorganiser.app`                                           |
-| `APP_FRONTEND_URL`    | That same Staging frontend origin                                                       | `https://myorganiser.app`                                                                       |
-| `GOOGLE_REDIRECT_URI` | That Staging frontend origin + `/dashboard/youtube/callback`                            | `https://myorganiser.app/dashboard/youtube/callback`                                            |
-| YouTube cron jobs     | **Not installed** — Staging is QA only                                                  | Installed ([YouTube integration](../features/youtube-integration.md#cpanel-cron-configuration)) |
-| Bundle upload         | Automatic after CI is green on `main`                                                   | After Deploy Approval on a `release/vX.Y.Z` run                                                 |
-| Host Apply            | Operator-dispatched `Deploy Staging` run; required green before a Cut                   | Runs after Deploy Approval; required green before a Tag                                         |
+| Concern               | Staging                                                                                 | Production                                                                                                                                           |
+| --------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API origin            | `API_ORIGIN` secret on the `staging` Environment                                        | `https://api.myorganiser.app`                                                                                                                        |
+| Frontend it serves    | The Vercel Staging frontend ([Vercel hosting](VERCEL_FRONTEND_HOSTING.md))              | `https://myorganiser.app` on cPanel ([Web app on cPanel](CPANEL_WEB_HOSTING.md))                                                                     |
+| `CORS_ORIGINS`        | The Staging frontend origin: the domain of the Vercel project `VERCEL_PROJECT_ID` names | `https://myorganiser.app,https://www.myorganiser.app`                                                                                                |
+| `APP_FRONTEND_URL`    | That same Staging frontend origin                                                       | `https://myorganiser.app`                                                                                                                            |
+| `GOOGLE_REDIRECT_URI` | That Staging frontend origin + `/dashboard/youtube/callback`                            | `https://myorganiser.app/dashboard/youtube/callback`                                                                                                 |
+| `YOUTUBE_AVAILABLE`   | `true` — Staging's Cloud project stays in Testing and needs no verification             | `false` until Production's Cloud project is verified ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)) |
+| YouTube cron jobs     | **Not installed** — Staging is QA only                                                  | Installed ([YouTube integration](../features/youtube-integration.md#cpanel-cron-configuration))                                                      |
+| Bundle upload         | Automatic after CI is green on `main`                                                   | After Deploy Approval on a `release/vX.Y.Z` run                                                                                                      |
+| Host Apply            | Operator-dispatched `Deploy Staging` run; required green before a Cut                   | Runs after Deploy Approval; required green before a Tag                                                                                              |
 
 Everything not in this table is the same in both environments.
 
@@ -115,6 +116,7 @@ MAIL_PASSWORD=<mailbox-password>
 EMAIL_SENDER=noreply@<domain>
 
 # YouTube integration
+YOUTUBE_AVAILABLE=<true once its Cloud project is verified, else false>
 GOOGLE_CLIENT_ID=<oauth-client-id>
 GOOGLE_CLIENT_SECRET=<oauth-client-secret>
 GOOGLE_REDIRECT_URI=<frontend origin>/dashboard/youtube/callback
@@ -133,6 +135,12 @@ YOUTUBE_CRON_SECRET=<shared-secret>
   variables. `YOUTUBE_API_BASE_URL` belongs only in that file, never here. The
   mailbox, SPF/DKIM, and crontab steps live in
   [YouTube integration](../features/youtube-integration.md#cpanel-cron-configuration).
+- YouTube is unavailable in production until its Cloud project is verified
+  ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
+  Leave `YOUTUBE_AVAILABLE` unset or `false` until then. When it is `true` in
+  production, the backend refuses to start unless `GOOGLE_REDIRECT_URI` is
+  `https`, is not `localhost`, and shares `APP_FRONTEND_URL`'s origin — so set
+  `APP_FRONTEND_URL` before flipping the switch on.
 - Restart the app after changing any variable; Passenger reads them at boot.
 
 ### 4. Host Apply access

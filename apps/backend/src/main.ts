@@ -8,14 +8,20 @@ import helmet from 'helmet';
 import * as path from 'path';
 import swaggerUi from 'swagger-ui-express';
 import { createCorsOptions } from './config/http';
+import { validateGoogleRedirectUriOnBoot } from './config/youtubeRedirectUri';
 import { createTsoaErrorHandler } from './helpers/httpErrorHandler';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
+import { createYouTubeAvailabilityGate } from './middleware/youtubeAvailabilityGate';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
 import { deleteSupersededTodosBlobsOnBoot } from './bootstrap/deleteSupersededTodosBlobs';
 import { RegisterRoutes } from './routes/routes';
 import usersRouter from './routes/user';
 import passport from './utils/passport';
+
+// ADR 0091: refuse to start rather than serve a misconfigured YouTube OAuth
+// redirect in production. No-op outside production or with the switch off.
+validateGoogleRedirectUriOnBoot();
 
 function normalizeRouterPrefix(raw: string | undefined): string {
   const trimmed = (raw ?? '').trim();
@@ -144,6 +150,10 @@ api.use('/user', usersRouter);
 
 // Apply additional protections for blind-storage endpoints.
 api.use('/vault', vaultRateLimiter);
+
+// ADR 0091: when the switch is off, every YouTube route 404s except the
+// cron endpoints (which succeed and do nothing) and the availability report.
+api.use('/youtube', createYouTubeAvailabilityGate());
 
 // Register tsoa routes
 RegisterRoutes(api);

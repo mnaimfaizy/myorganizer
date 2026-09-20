@@ -477,12 +477,12 @@ function FinalCTA() {
 
 function Footer() {
   const links = [
-    'Features',
-    'Security',
-    'Pricing',
-    'Privacy Policy',
-    'Terms of Service',
-    'Support',
+    { label: 'Features', href: '#' },
+    { label: 'Security', href: '#' },
+    { label: 'Pricing', href: '#' },
+    { label: 'Privacy Policy', href: '/privacy' },
+    { label: 'Terms of Service', href: '/terms' },
+    { label: 'Support', href: '#' },
   ];
   return (
     <footer
@@ -503,15 +503,15 @@ function Footer() {
           </span>
         </div>
         <div className="flex flex-wrap justify-center gap-4">
-          {links.map((label) => (
-            <a
+          {links.map(({ label, href }) => (
+            <Link
               key={label}
-              href="#"
+              href={href}
               className="text-xs uppercase tracking-wide transition-colors hover:opacity-80"
               style={{ color: palette.muted }}
             >
               {label}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

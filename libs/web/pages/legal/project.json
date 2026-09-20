@@ -1,0 +1,7 @@
+{
+  "name": "web-pages-legal",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/legal/src",
+  "projectType": "library",
+  "tags": ["type:page", "scope:web", "tier:agent"]
+}

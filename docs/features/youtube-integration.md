@@ -71,13 +71,14 @@ a resume cursor, so neither job has to finish inside a single cron tick.
 
 ### Environment Variables (new)
 
-| Variable                       | Purpose                                                                     |
-| ------------------------------ | --------------------------------------------------------------------------- |
-| `GOOGLE_CLIENT_ID`             | Google OAuth 2.0 client ID                                                  |
-| `GOOGLE_CLIENT_SECRET`         | Google OAuth 2.0 client secret                                              |
-| `GOOGLE_REDIRECT_URI`          | OAuth callback URL (e.g. `https://api.example.com/api/v1/youtube/callback`) |
-| `YOUTUBE_TOKEN_ENCRYPTION_KEY` | 32-byte hex key for AES-256-GCM token encryption                            |
-| `YOUTUBE_CRON_SECRET`          | Shared secret for authenticating cPanel cron requests                       |
+| Variable                       | Purpose                                                                                                                                                                                                                         |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `YOUTUBE_AVAILABLE`            | Backend switch (ADR 0091). Unset/`false`: every YouTube route 404s except the cron endpoints (succeed, do nothing) and `GET /youtube/availability` (reports it)                                                                 |
+| `GOOGLE_CLIENT_ID`             | Google OAuth 2.0 client ID                                                                                                                                                                                                      |
+| `GOOGLE_CLIENT_SECRET`         | Google OAuth 2.0 client secret                                                                                                                                                                                                  |
+| `GOOGLE_REDIRECT_URI`          | OAuth callback URL (e.g. `https://api.example.com/api/v1/youtube/callback`). In production, with the switch on, the backend refuses to start unless this is `https`, is not `localhost`, and shares `APP_FRONTEND_URL`'s origin |
+| `YOUTUBE_TOKEN_ENCRYPTION_KEY` | 32-byte hex key for AES-256-GCM token encryption                                                                                                                                                                                |
+| `YOUTUBE_CRON_SECRET`          | Shared secret for authenticating cPanel cron requests                                                                                                                                                                           |
 
 ## Database Models
 

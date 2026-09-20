@@ -2689,6 +2689,19 @@ export interface WatchedResponse {
 /**
  * 
  * @export
+ * @interface YouTubeAvailabilityResponse
+ */
+export interface YouTubeAvailabilityResponse {
+    /**
+     * 
+     * @type {boolean}
+     * @memberof YouTubeAvailabilityResponse
+     */
+    'available': boolean;
+}
+/**
+ * 
+ * @export
  * @interface YouTubeErrorResponse
  */
 export interface YouTubeErrorResponse {
@@ -5387,6 +5400,35 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
+         * Public availability report (ADR 0091): whether YouTube is available right now. Unauthenticated and reports booleans only — never configuration values — so the web can hide the feature without needing a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAvailability: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/availability`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Returns the user\'s YouTube integration status.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -5902,6 +5944,17 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Public availability report (ADR 0091): whether YouTube is available right now. Unauthenticated and reports booleans only — never configuration values — so the web can hide the feature without needing a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getAvailability(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<YouTubeAvailabilityResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getAvailability(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getAvailability']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Returns the user\'s YouTube integration status.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -6088,6 +6141,14 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
          */
         getAuthUrl(options?: RawAxiosRequestConfig): AxiosPromise<GetAuthUrl200Response> {
             return localVarFp.getAuthUrl(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Public availability report (ADR 0091): whether YouTube is available right now. Unauthenticated and reports booleans only — never configuration values — so the web can hide the feature without needing a session.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAvailability(options?: RawAxiosRequestConfig): AxiosPromise<YouTubeAvailabilityResponse> {
+            return localVarFp.getAvailability(options).then((request) => request(axios, basePath));
         },
         /**
          * Returns the user\'s YouTube integration status.
@@ -6387,6 +6448,16 @@ export class YouTubeApi extends BaseAPI {
      */
     public getAuthUrl(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getAuthUrl(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Public availability report (ADR 0091): whether YouTube is available right now. Unauthenticated and reports booleans only — never configuration values — so the web can hide the feature without needing a session.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public getAvailability(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getAvailability(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

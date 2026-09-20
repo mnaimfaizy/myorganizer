@@ -7,6 +7,7 @@ jest.mock('next/navigation', () => ({
 
 jest.mock('../hooks', () => ({
   useShortsBudget: jest.fn(),
+  useYouTubeAvailability: jest.fn(),
   useYouTubeShorts: jest.fn(),
   useYouTubeStatus: jest.fn(),
   updateVideoWatched: jest.fn(),
@@ -101,7 +102,12 @@ jest.mock('./ShortsBudgetMeter', () => ({
 // jest.mock('./ShortsHardStop', ...);
 
 import { render, screen, fireEvent } from '@testing-library/react';
-import { useShortsBudget, useYouTubeShorts, useYouTubeStatus } from '../hooks';
+import {
+  useShortsBudget,
+  useYouTubeAvailability,
+  useYouTubeShorts,
+  useYouTubeStatus,
+} from '../hooks';
 import { ShortsPageClient } from './ShortsPageClient';
 
 describe('ShortsPageClient — locked and unlocked branches', () => {
@@ -129,6 +135,11 @@ describe('ShortsPageClient — locked and unlocked branches', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (useYouTubeAvailability as jest.Mock).mockReturnValue({
+      available: true,
+      loading: false,
+      error: null,
+    });
     (useYouTubeStatus as jest.Mock).mockReturnValue({
       connected: true,
       status: 'ready',
@@ -220,6 +231,94 @@ describe('ShortsPageClient — locked and unlocked branches', () => {
       expect(
         screen.queryByRole('status', { name: /exhausted/i }),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('YouTube availability gate', () => {
+    beforeEach(() => {
+      (useShortsBudget as jest.Mock).mockReturnValue({
+        spentMs: 0,
+        limitMs: 3600000,
+        remainingMs: 3600000,
+        usedPercent: 0,
+        locked: false,
+        dayKey: '2026-08-10',
+        metering: false,
+        setLimitMinutes: jest.fn(),
+      });
+      (useYouTubeShorts as jest.Mock).mockReturnValue({
+        shorts: [],
+        loading: false,
+        error: null,
+        updateWatched: jest.fn(),
+        refresh: jest.fn(),
+      });
+    });
+
+    it('shows unavailable notice and no Shorts UI when availability is false', () => {
+      (useYouTubeAvailability as jest.Mock).mockReturnValue({
+        available: false,
+        loading: false,
+        error: null,
+      });
+
+      render(<ShortsPageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Connect Your YouTube Account/i),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('entry-continue')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('player-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shorts-list')).not.toBeInTheDocument();
+    });
+
+    it('shows unavailable notice and no Shorts UI while availability is loading', () => {
+      (useYouTubeAvailability as jest.Mock).mockReturnValue({
+        available: null,
+        loading: true,
+        error: null,
+      });
+
+      render(<ShortsPageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Connect Your YouTube Account/i),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('entry-continue')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('player-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shorts-list')).not.toBeInTheDocument();
+    });
+
+    it('shows unavailable notice and no Shorts UI when availability is null', () => {
+      (useYouTubeAvailability as jest.Mock).mockReturnValue({
+        available: null,
+        loading: false,
+        error: null,
+      });
+
+      render(<ShortsPageClient />);
+
+      expect(
+        screen.getByRole('heading', {
+          name: /YouTube is not available right now/i,
+        }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByText(/Connect Your YouTube Account/i),
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('entry-continue')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('player-panel')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('shorts-list')).not.toBeInTheDocument();
     });
   });
 
