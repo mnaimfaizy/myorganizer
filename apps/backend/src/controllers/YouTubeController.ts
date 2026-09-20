@@ -163,6 +163,24 @@ interface WatchedResponse {
   watched: boolean;
 }
 
+interface DisconnectRequest {
+  /** When true, do not preserve Watched — clear/skip ledger. Default false. */
+  deleteWatchedMarks?: boolean;
+}
+
+type DisconnectResponse =
+  | {
+      ok: true;
+      message: string;
+      revokeFailed?: boolean;
+      googlePermissionsUrl?: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      code?: 'sync_run_live';
+    };
+
 function toSyncStatusResponse(
   status: YouTubeSyncStatusDTO,
 ): SyncStatusResponse {
@@ -264,14 +282,22 @@ export class YouTubeController extends Controller {
 
   /**
    * Disconnects the user's YouTube account after revoking the token.
+   * Optionally wipes Watched marks via the request body; preserves them by default.
    */
   @Delete('/disconnect')
   @Security('jwt')
   public async disconnect(
     @Request() req: ExRequest,
-  ): Promise<{ ok: boolean; message: string }> {
+    @Body() body?: DisconnectRequest,
+  ): Promise<DisconnectResponse> {
     const userId = requireUserId(req);
-    return youtubeSyncService.disconnect(userId);
+    const result = await youtubeSyncService.disconnect(userId, {
+      deleteWatchedMarks: body?.deleteWatchedMarks,
+    });
+    if (result.ok === false && result.code === 'sync_run_live') {
+      this.setStatus(409);
+    }
+    return result;
   }
 
   /**

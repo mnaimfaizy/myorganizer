@@ -11,6 +11,7 @@ import Link from 'next/link';
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatRetryAt, isRetryCooldownActive } from '../hooks';
+import { YOUTUBE_DATA_PRIVACY_BULLETS } from '../lib/dataPrivacyCopy';
 import type { YouTubeSubscription } from '../types';
 
 interface SubscriptionManagerProps {
@@ -18,7 +19,9 @@ interface SubscriptionManagerProps {
   loading: boolean;
   onSync: () => void;
   onToggle: (id: string, enabled: boolean) => void;
-  onDisconnect: () => void;
+  onRequestDisconnect: () => void;
+  disconnectDisabled?: boolean;
+  disconnectDisabledReason?: string;
   syncRetryAt?: string | null;
 }
 
@@ -27,7 +30,9 @@ export function SubscriptionManager({
   loading,
   onSync,
   onToggle,
-  onDisconnect,
+  onRequestDisconnect,
+  disconnectDisabled = false,
+  disconnectDisabledReason,
   syncRetryAt,
 }: SubscriptionManagerProps) {
   const router = useRouter();
@@ -76,7 +81,18 @@ export function SubscriptionManager({
           <Button
             variant="outline"
             size="sm"
-            onClick={onDisconnect}
+            onClick={onRequestDisconnect}
+            disabled={disconnectDisabled}
+            aria-label={
+              disconnectDisabled && disconnectDisabledReason
+                ? disconnectDisabledReason
+                : 'Disconnect YouTube account'
+            }
+            title={
+              disconnectDisabled && disconnectDisabledReason
+                ? disconnectDisabledReason
+                : undefined
+            }
             className="text-destructive hover:text-destructive"
           >
             Disconnect
@@ -85,12 +101,9 @@ export function SubscriptionManager({
       </div>
       <div className="text-xs text-muted-foreground">
         <ul className="list-disc list-inside space-y-0.5 mb-2">
-          <li>Metadata only — never video files</li>
-          <li>Watched is yes/no, not analytics</li>
-          <li>Latest 100 uploads cached per channel</li>
-          <li>30 days after you disable a channel</li>
-          <li>Disconnecting deletes all metadata</li>
-          <li>Shorts budget is tracked locally</li>
+          {YOUTUBE_DATA_PRIVACY_BULLETS.map((bullet) => (
+            <li key={bullet}>{bullet}</li>
+          ))}
         </ul>
         <Link href="/youtube/data-privacy" className="underline">
           How we store your data

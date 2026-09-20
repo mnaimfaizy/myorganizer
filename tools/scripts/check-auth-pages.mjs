@@ -14,7 +14,7 @@
 // extractor rather than a shared `const NAME =` regex. `--extractors` runs them all against
 // source and prints what they resolved, which is how you check one after editing it.
 //
-// Exit 0 = in sync. Exit 1 = drift (rebuild or fix the page). Exit 2 = the check could not run.
+// Exit 0 = in sync. Exit 1 = drift (edit the page in place). Exit 2 = the check could not run.
 import { readFileSync, existsSync } from 'node:fs';
 
 const PAGES = [
@@ -223,7 +223,9 @@ for (const [page, manifestId] of PAGES) {
     ),
   );
   if (!block)
-    fail(`no #${manifestId} block in ${page} — rebuild it from the export`);
+    fail(
+      `no #${manifestId} block in ${page} — edit the page in place via design-brief → Designer (ADR 0046); re-importing an export is not a rebuild path`,
+    );
 
   let manifest;
   try {
@@ -255,7 +257,7 @@ if (findings.length) {
   console.error('auth-pages: the diagrams no longer match the code\n');
   for (const finding of findings) console.error(`  ${finding}`);
   console.error(
-    '\nRebuild the page from its export, or fix the value it asserts.',
+    '\nEdit session-lifecycle.html in place via design-brief → Designer (ADR 0046) to match the source constants.',
   );
   process.exit(1);
 }

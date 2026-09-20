@@ -369,6 +369,106 @@ describe('YouTubeController (HTTP integration)', () => {
     );
   });
 
+  test('requires auth for DELETE /youtube/disconnect', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app).delete('/youtube/disconnect');
+
+    expect(res.status).toBe(401);
+    expect(res.body).toEqual({ message: 'Unauthorized' });
+    expect(youtubeSyncService.disconnect).not.toHaveBeenCalled();
+  });
+
+  test('returns 409 when disconnect is refused because a sync run is live', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const liveRefuse = {
+      ok: false as const,
+      code: 'sync_run_live' as const,
+      message:
+        'Disconnect is not available while a sync is in progress. Wait for the sync to finish or cancel it, then try again.',
+    };
+    youtubeSyncService.disconnect.mockResolvedValue(liveRefuse);
+
+    const res = await request(app)
+      .delete('/youtube/disconnect')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual(liveRefuse);
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
+      deleteWatchedMarks: undefined,
+    });
+  });
+
+  test('threads deleteWatchedMarks: true through disconnect on success', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const success = {
+      ok: true as const,
+      message: 'YouTube disconnected.',
+    };
+    youtubeSyncService.disconnect.mockResolvedValue(success);
+
+    const res = await request(app)
+      .delete('/youtube/disconnect')
+      .set('Authorization', 'Bearer test')
+      .send({ deleteWatchedMarks: true });
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(success);
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
+      deleteWatchedMarks: true,
+    });
+  });
+
+  test('passes deleteWatchedMarks: undefined when disconnect body is omitted', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const success = {
+      ok: true as const,
+      message: 'YouTube disconnected.',
+    };
+    youtubeSyncService.disconnect.mockResolvedValue(success);
+
+    const res = await request(app)
+      .delete('/youtube/disconnect')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(success);
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
+      deleteWatchedMarks: undefined,
+    });
+  });
+
+  test('passes through revokeFailed and googlePermissionsUrl on successful disconnect', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const revokeFailedSuccess = {
+      ok: true as const,
+      message: 'YouTube disconnected, but Google token revoke failed.',
+      revokeFailed: true,
+      googlePermissionsUrl: 'https://myaccount.google.com/permissions',
+    };
+    youtubeSyncService.disconnect.mockResolvedValue(revokeFailedSuccess);
+
+    const res = await request(app)
+      .delete('/youtube/disconnect')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual(revokeFailedSuccess);
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
+      deleteWatchedMarks: undefined,
+    });
+  });
+
   test('GET /youtube/availability returns true when switch is on', async () => {
     const res = await request(app).get('/youtube/availability');
 

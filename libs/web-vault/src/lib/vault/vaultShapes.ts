@@ -107,7 +107,7 @@ export function serverMetaToLocalVault(options: {
  *
  * One fan-out over `VAULT_BLOB_TYPES` rather than one per caller: every place
  * that turns the server's Ciphertext into a Local Vault reaches this, so a
- * seventh Vault Blob Type cannot be carried by one path and dropped by
+ * sixth Vault Blob Type cannot be carried by one path and dropped by
  * another ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  */
 function serverBlobsToLocalData(

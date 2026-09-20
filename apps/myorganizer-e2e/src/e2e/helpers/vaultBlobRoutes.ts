@@ -14,7 +14,7 @@ import { VaultBlobType } from '@myorganizer/app-api-client';
 
 /**
  * Constructs the alternation of blob type segments from the generated enum.
- * Returns e.g. 'addresses|groceries|mobileNumbers|subscriptions|tasks|todos'
+ * Returns e.g. 'addresses|groceries|mobileNumbers|subscriptions|tasks'
  */
 function blobTypeAlternation(): string {
   return Object.values(VaultBlobType).join('|');

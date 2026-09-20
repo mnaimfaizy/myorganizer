@@ -32,10 +32,6 @@ describe('vaultSyncMessages', () => {
       expect(vaultBlobTypeLabel(VaultBlobType.Tasks)).toBe('Tasks');
     });
 
-    test('returns label for Todos', () => {
-      expect(vaultBlobTypeLabel(VaultBlobType.Todos)).toBe('Todos');
-    });
-
     test('every VaultBlobType member has a label via constant', () => {
       const allTypes: VaultBlobType[] = [
         VaultBlobType.Addresses,
@@ -43,7 +39,6 @@ describe('vaultSyncMessages', () => {
         VaultBlobType.MobileNumbers,
         VaultBlobType.Subscriptions,
         VaultBlobType.Tasks,
-        VaultBlobType.Todos,
       ];
 
       for (const type of allTypes) {
@@ -213,6 +208,55 @@ describe('vaultSyncMessages', () => {
       expect(reading.detail).toBeDefined();
       expect(reading.detail).not.toBeNull();
       expect(reading.canRetry).toBe(false);
+    });
+
+    test('pull-stalled status returns error tone with other-devices message', () => {
+      const status: VaultSyncStatus = {
+        kind: 'pull-stalled',
+        pendingTypes: [],
+        terminalFailures: [],
+        retrying: false,
+      };
+
+      const reading = describeVaultSyncStatus(status);
+      expect(reading.tone).toBe('error');
+      expect(reading.label).toBe("Hasn't heard from your other devices");
+      expect(reading.canRetry).toBe(true);
+    });
+
+    test('pull-stalled detail mentions other devices and does not claim data loss', () => {
+      const status: VaultSyncStatus = {
+        kind: 'pull-stalled',
+        pendingTypes: [],
+        terminalFailures: [],
+        retrying: false,
+      };
+
+      const reading = describeVaultSyncStatus(status);
+      expect(reading.detail).toContain('other devices');
+      expect(reading.detail).not.toMatch(/lost|loss/i);
+    });
+
+    test('security: pull-stalled output contains only fixed template text and blob type labels', () => {
+      const status: VaultSyncStatus = {
+        kind: 'pull-stalled',
+        pendingTypes: [],
+        terminalFailures: [],
+        retrying: false,
+      };
+
+      const reading = describeVaultSyncStatus(status);
+
+      // Verify the text is composed only of safe, fixed parts — no leaked error objects
+      for (const text of [reading.label, reading.detail]) {
+        if (text) {
+          expect(text).toBeDefined();
+          expect(text).not.toMatch(/\[object/); // no object stringification
+          expect(text).not.toMatch(/error/i); // no error keyword
+          expect(text).not.toMatch(/stack/i); // no stack trace
+          expect(text).not.toMatch(/at /); // no stack frames
+        }
+      }
     });
 
     test('security: output contains only fixed template text and blob type labels', () => {

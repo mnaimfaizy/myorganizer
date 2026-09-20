@@ -12,15 +12,17 @@ import {
   useYouTubeAvailability,
   useYouTubeCarousel,
   useYouTubeConnect,
+  YouTubeRequestError,
   useYouTubeStatus,
   useYouTubeSubscriptions,
   useYouTubeSyncStatus,
 } from '../hooks';
 import { useSyncRun } from '../hooks/useSyncRun';
 import { isRunLive } from '../lib/syncProgress';
-import { SubscriptionManager } from './SubscriptionManager';
 import { ChannelDirectory } from './ChannelDirectory';
+import { DisconnectYouTubeDialog } from './DisconnectYouTubeDialog';
 import { QueueRail } from './QueueRail';
+import { SubscriptionManager } from './SubscriptionManager';
 import { SyncFreshnessIndicator } from './SyncFreshnessIndicator';
 import { SyncProgressPanel } from './SyncProgressPanel';
 import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
@@ -28,11 +30,26 @@ import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
 export function YouTubePageClient() {
   const { available } = useYouTubeAvailability();
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
-  const { connect, disconnect } = useYouTubeConnect();
-  const handleDisconnect = useCallback(async () => {
-    await disconnect();
-    await refreshStatus();
-  }, [disconnect, refreshStatus]);
+  const { connect } = useYouTubeConnect();
+  const [disconnectNotice, setDisconnectNotice] = useState<{
+    message: string;
+    googlePermissionsUrl: string;
+  } | null>(null);
+
+  const disconnectNoticeBanner =
+    disconnectNotice === null ? null : (
+      <div role="status" className="mx-4 mt-4 text-sm text-muted-foreground">
+        {disconnectNotice.message}{' '}
+        <a
+          href={disconnectNotice.googlePermissionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="underline"
+        >
+          Manage Google permissions
+        </a>
+      </div>
+    );
 
   // Check availability first — if unavailable, show error state before
   // checking connection status or proceeding to connected dashboard
@@ -71,33 +88,58 @@ export function YouTubePageClient() {
 
   if (!connected) {
     return (
-      <YouTubeConnectPrompt
-        onConnect={connect}
-        statusMessage={
-          status === 'revoked'
-            ? 'Your previous connection was revoked. Please reconnect.'
-            : undefined
-        }
-      />
+      <>
+        {disconnectNoticeBanner}
+        <YouTubeConnectPrompt
+          onConnect={connect}
+          statusMessage={
+            status === 'revoked'
+              ? 'Your previous connection was revoked. Please reconnect.'
+              : undefined
+          }
+        />
+      </>
     );
   }
 
-  return <ConnectedDashboard onDisconnect={handleDisconnect} />;
+  return (
+    <>
+      {disconnectNoticeBanner}
+      <ConnectedDashboard
+        refreshStatus={refreshStatus}
+        onDisconnectNotice={setDisconnectNotice}
+      />
+    </>
+  );
 }
 
 interface ConnectedDashboardProps {
-  onDisconnect: () => void;
+  refreshStatus: () => Promise<void>;
+  onDisconnectNotice: (
+    notice: { message: string; googlePermissionsUrl: string } | null,
+  ) => void;
 }
 
-function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
+function ConnectedDashboard({
+  refreshStatus,
+  onDisconnectNotice,
+}: ConnectedDashboardProps) {
   // Digest mail and the subscription list deep-link a channel here. Read once
   // as the directory's initial selection rather than driving it from the URL,
   // so the User's own clicks are not fighting a stale query string.
   const deepLinkedChannelId = useSearchParams().get('channel');
+  const { disconnect } = useYouTubeConnect();
   const subs = useYouTubeSubscriptions();
   const carouselData = useYouTubeCarousel();
   const syncStatus = useYouTubeSyncStatus();
   const [syncError, setSyncError] = useState<string | null>(null);
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
+  const [disconnectError, setDisconnectError] = useState<string | null>(null);
+
+  const isSyncRunLive = isRunLive(syncStatus.status);
+  const disconnectDisabledReason = isSyncRunLive
+    ? 'Disconnect unavailable while a sync is running'
+    : undefined;
 
   const isCooldownActive = !!syncStatus.isCooldownActive;
   const [waitingForClaim, setWaitingForClaim] = useState(false);
@@ -267,6 +309,47 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
     carouselData.refresh();
   }, [carouselData]);
 
+  const handleRequestDisconnect = useCallback(() => {
+    setDisconnectError(null);
+    setDisconnectDialogOpen(true);
+  }, []);
+
+  const handleDisconnectDialogOpenChange = useCallback((open: boolean) => {
+    setDisconnectDialogOpen(open);
+    if (!open) {
+      setDisconnectError(null);
+    }
+  }, []);
+
+  const handleConfirmDisconnect = useCallback(
+    async (deleteWatchedMarks: boolean) => {
+      setDisconnectError(null);
+      try {
+        const result = await disconnect({ deleteWatchedMarks });
+        setDisconnectDialogOpen(false);
+        await refreshStatus();
+        if (result.revokeFailed && result.googlePermissionsUrl) {
+          onDisconnectNotice({
+            message: result.message,
+            googlePermissionsUrl: result.googlePermissionsUrl,
+          });
+        } else {
+          onDisconnectNotice(null);
+        }
+      } catch (err: unknown) {
+        const message =
+          err instanceof YouTubeRequestError && err.code === 'sync_run_live'
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Disconnect failed';
+        setDisconnectError(message);
+        throw err instanceof Error ? err : new Error(message);
+      }
+    },
+    [disconnect, onDisconnectNotice, refreshStatus],
+  );
+
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <SubscriptionManager
@@ -274,7 +357,9 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
         loading={subs.loading}
         onSync={handleSync}
         onToggle={subs.toggle}
-        onDisconnect={onDisconnect}
+        onRequestDisconnect={handleRequestDisconnect}
+        disconnectDisabled={isSyncRunLive}
+        disconnectDisabledReason={disconnectDisabledReason}
         syncRetryAt={syncStatus.status?.retryAt}
       />
 
@@ -357,6 +442,13 @@ function ConnectedDashboard({ onDisconnect }: ConnectedDashboardProps) {
           />
         </CardContent>
       </Card>
+
+      <DisconnectYouTubeDialog
+        open={disconnectDialogOpen}
+        onOpenChange={handleDisconnectDialogOpenChange}
+        onConfirm={handleConfirmDisconnect}
+        error={disconnectError}
+      />
     </div>
   );
 }

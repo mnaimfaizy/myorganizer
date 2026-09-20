@@ -52,7 +52,7 @@ describe('SubscriptionManager', () => {
     loading: false,
     onSync: jest.fn(),
     onToggle: jest.fn(),
-    onDisconnect: jest.fn(),
+    onRequestDisconnect: jest.fn(),
   };
 
   it('should render subscription channel titles', () => {
@@ -78,13 +78,16 @@ describe('SubscriptionManager', () => {
     expect(onSync).toHaveBeenCalledTimes(1);
   });
 
-  it('should call onDisconnect when disconnect button is clicked', () => {
-    const onDisconnect = jest.fn();
+  it('should call onRequestDisconnect when disconnect button is clicked', () => {
+    const onRequestDisconnect = jest.fn();
     render(
-      <SubscriptionManager {...defaultProps} onDisconnect={onDisconnect} />,
+      <SubscriptionManager
+        {...defaultProps}
+        onRequestDisconnect={onRequestDisconnect}
+      />,
     );
     fireEvent.click(screen.getByText('Disconnect'));
-    expect(onDisconnect).toHaveBeenCalledTimes(1);
+    expect(onRequestDisconnect).toHaveBeenCalledTimes(1);
   });
 
   it('should call onToggle when a toggle switch is clicked', () => {
@@ -119,6 +122,25 @@ describe('SubscriptionManager', () => {
     expect(imgs[0].getAttribute('src')).toBe('https://example.com/thumb1.jpg');
     // Second sub should have a letter fallback
     expect(screen.getByText('B')).toBeTruthy();
+  });
+
+  it('keeps disconnect disabled and does not call onRequestDisconnect when disconnectDisabled', () => {
+    const onRequestDisconnect = jest.fn();
+    render(
+      <SubscriptionManager
+        {...defaultProps}
+        onRequestDisconnect={onRequestDisconnect}
+        disconnectDisabled={true}
+        disconnectDisabledReason="Disconnect unavailable while a sync is running"
+      />,
+    );
+
+    const disconnectBtn = screen.getByRole('button', {
+      name: 'Disconnect unavailable while a sync is running',
+    });
+    expect(disconnectBtn).toBeDisabled();
+    fireEvent.click(disconnectBtn);
+    expect(onRequestDisconnect).not.toHaveBeenCalled();
   });
 
   it('should render privacy statement and link to data privacy page', () => {

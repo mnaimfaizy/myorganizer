@@ -15,9 +15,11 @@ import {
   createLocalVaultRevision,
   createVaultApi,
   createVaultHandle,
+  createVaultPullTrigger,
   createVaultSyncQueue,
   type LocalVaultRevision,
   type VaultHandle,
+  type VaultPullTrigger,
   type VaultSyncQueue,
 } from '@myorganizer/web-vault';
 
@@ -59,6 +61,16 @@ type VaultSessionContextValue = {
   handle: VaultHandle | null;
   /** The Vault Sync Queue `handle` reports to. Exposed for a sync status reading. */
   syncQueue: VaultSyncQueue | null;
+  /**
+   * The Vault Pull trigger `VaultPullRunner` asks on mount and on window
+   * focus. Created once per owner beside `syncQueue`, so `VaultPullRunner`
+   * no longer builds its own — one instance per owner is also what removes
+   * the double pass two instances cost
+   * ([#616](https://github.com/mnaimfaizy/myorganizer/issues/616)). Exposed
+   * for a sync status reading the same way `syncQueue` is (ADR 0088,
+   * decision 7).
+   */
+  pullTrigger: VaultPullTrigger | null;
   /**
    * Moves whenever the Local Vault is replaced under whoever is reading it —
    * convergence taking the server's Ciphertext, an import, a removal. Exposed
@@ -151,6 +163,21 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
     });
   }, [owner]);
 
+  // Keyed on `owner` alone, like `syncQueue` and for the same reason: locking
+  // and unlocking build a new handle over the same Local Vault, and a
+  // trigger rebuilt with it would forget it had ever stopped on a 401/403 and
+  // drop whatever debounce window was mid-flight.
+  const pullTrigger = useMemo(() => {
+    if (owner === null) return null;
+
+    return createVaultPullTrigger({
+      api: createVaultApi(),
+      // Same reasoning as the queue's prompt: a pull never interrupts the
+      // User with a dialog.
+      prompt: () => 'defer',
+    });
+  }, [owner]);
+
   // Keyed on `owner` alone, like the queue and for the same reason: locking
   // and unlocking build a new handle over the same Local Vault, and a revision
   // rebuilt with it would drop every subscriber a page had registered.
@@ -208,6 +235,7 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
       lock,
       handle,
       syncQueue,
+      pullTrigger,
       revision,
       claimEvidence,
       absentEvidence,
@@ -219,6 +247,7 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
       lock,
       handle,
       syncQueue,
+      pullTrigger,
       revision,
       claimEvidence,
       absentEvidence,

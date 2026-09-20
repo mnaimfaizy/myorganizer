@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { AGENT_MAP_MANIFEST_NOTE } from './lib/agent-map-manifest-note.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const CHECKER = join(HERE, 'check-agent-map.mjs');
@@ -19,9 +20,13 @@ function write(workspace, relative, contents) {
   writeFileSync(path, contents);
 }
 
-function manifestBlock(policyReviewedAt, agents) {
+function manifestBlock(
+  policyReviewedAt,
+  agents,
+  note = AGENT_MAP_MANIFEST_NOTE,
+) {
   return `<script type="application/json" id="agent-map-manifest">
-${JSON.stringify({ policyReviewedAt, agents }, null, 2)}
+${JSON.stringify({ note, policyReviewedAt, agents }, null, 2)}
 </script>`;
 }
 
@@ -107,6 +112,23 @@ test('fails when only the orchestration map manifest date drifts from the policy
   assert.match(
     result.stderr,
     /policy reviewedAt moved: docs\/agents\/orchestration-map\.html says 2026-01-01, policy says 2026-09-03/,
+  );
+});
+
+test('fails when a page manifest note drifts from the shared constant', (t) => {
+  const workspace = scaffold(t);
+  write(
+    workspace,
+    PAGE,
+    `<!doctype html><html><head>
+${manifestBlock('2026-09-03', { TestAgent: 'T1' }, 'stale note')}
+</head><body><div>TestAgent</div></body></html>`,
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /manifest note drift: docs\/agents\/orchestration-map\.html note does not match/,
   );
 });
 

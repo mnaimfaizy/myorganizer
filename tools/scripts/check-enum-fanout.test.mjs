@@ -43,7 +43,7 @@ const ENUM_SOURCE = `export const VaultBlobType = {
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
     Tasks: 'tasks',
-    Todos: 'todos'
+    Notes: 'notes'
 } as const;
 `;
 
@@ -53,7 +53,7 @@ const PIN_SOURCE = `export const VAULT_BLOB_FIELDS = {
   [VaultBlobType.MobileNumbers]: 'mobileNumbers',
   [VaultBlobType.Subscriptions]: 'subscriptions',
   [VaultBlobType.Tasks]: 'tasks',
-  [VaultBlobType.Todos]: 'todos',
+  [VaultBlobType.Notes]: 'notes',
 } as const satisfies Record<VaultBlobType, VaultRecordType>;
 
 export const VAULT_BLOB_TYPES = Object.keys(VAULT_BLOB_FIELDS) as VaultBlobType[];
@@ -107,7 +107,7 @@ test('fails a hand-enumerated fan-out that never reaches the table', (t) => {
   [VaultBlobType.Groceries]: g,
   [VaultBlobType.MobileNumbers]: m,
   [VaultBlobType.Subscriptions]: s,
-  [VaultBlobType.Todos]: t,
+  [VaultBlobType.Notes]: t,
 };
 `,
   });
@@ -137,7 +137,7 @@ test('accepts a call site that pins itself with its own satisfies clause', (t) =
   [VaultBlobType.MobileNumbers]: 'Mobile numbers',
   [VaultBlobType.Subscriptions]: 'Subscriptions',
   [VaultBlobType.Tasks]: 'Tasks',
-  [VaultBlobType.Todos]: 'Todos',
+  [VaultBlobType.Notes]: 'Notes',
 } as const satisfies Record<VaultBlobType, string>;
 `,
   });
@@ -148,7 +148,7 @@ test('accepts a call site that pins itself with its own satisfies clause', (t) =
 test('ignores test files, which enumerate members as fixtures', (t) => {
   const workspace = scaffold(t, {
     'libs/web-vault/src/lib/vault/export.test.ts': `expect(VaultBlobType.Tasks).toBe('tasks');
-expect(VaultBlobType.Todos).toBe('todos');
+expect(VaultBlobType.Notes).toBe('notes');
 `,
   });
   const result = run(workspace);
@@ -157,7 +157,7 @@ expect(VaultBlobType.Todos).toBe('todos');
 
 test('ignores the generated API client, which declares the enum itself', (t) => {
   const workspace = scaffold(t, {
-    'libs/app-api-client/src/other.ts': `const x = [VaultBlobType.Tasks, VaultBlobType.Todos];
+    'libs/app-api-client/src/other.ts': `const x = [VaultBlobType.Tasks, VaultBlobType.Notes];
 `,
   });
   const result = run(workspace);
@@ -174,7 +174,7 @@ if (localVault.data.addresses) blobs.addresses = wrap(localVault.data.addresses)
 if (localVault.data.groceries) blobs.groceries = wrap(localVault.data.groceries);
 if (localVault.data.mobileNumbers) blobs.mobileNumbers = wrap(localVault.data.mobileNumbers);
 if (localVault.data.subscriptions) blobs.subscriptions = wrap(localVault.data.subscriptions);
-if (localVault.data.todos) blobs.todos = wrap(localVault.data.todos);
+if (localVault.data.notes) blobs.notes = wrap(localVault.data.notes);
 `,
   });
   const result = run(workspace);
@@ -188,7 +188,7 @@ if (localVault.data.todos) blobs.todos = wrap(localVault.data.todos);
 
 test('does not read member values as a fan-out outside the value roots', (t) => {
   const workspace = scaffold(t, {
-    'libs/web/pages/src/dashboard.ts': `const counts = { tasks: list.tasks.length, todos: list.todos.length };
+    'libs/web/pages/src/dashboard.ts': `const counts = { tasks: list.tasks.length, notes: list.notes.length };
 `,
   });
   const result = run(workspace);
@@ -206,7 +206,7 @@ test('a comment naming the table does not exempt a fan-out', (t) => {
   if (blobs.groceries) next.data.groceries = x(blobs.groceries);
   if (blobs.mobileNumbers) next.data.mobileNumbers = x(blobs.mobileNumbers);
   if (blobs.subscriptions) next.data.subscriptions = x(blobs.subscriptions);
-  if (blobs.todos) next.data.todos = x(blobs.todos);
+  if (blobs.notes) next.data.notes = x(blobs.notes);
 }
 `,
   });
@@ -228,7 +228,7 @@ export function bad(v) {
   if (v.data.groceries) out.groceries = v.data.groceries;
   if (v.data.mobileNumbers) out.mobileNumbers = v.data.mobileNumbers;
   if (v.data.subscriptions) out.subscriptions = v.data.subscriptions;
-  if (v.data.todos) out.todos = v.data.todos;
+  if (v.data.notes) out.notes = v.data.notes;
 }
 `,
   });
@@ -270,7 +270,7 @@ test('exempts a declaration site, which is the list rather than a use of it', (t
   | 'mobileNumbers'
   | 'subscriptions'
   | 'tasks'
-  | 'todos';
+  | 'notes';
 `,
   );
   write(workspace, 'libs/vault-core/src/lib/types.ts', 'export {};\n');

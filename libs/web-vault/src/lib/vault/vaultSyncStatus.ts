@@ -11,6 +11,11 @@
  *   - What the Vault Sync Queue's last drain found — `VaultSyncQueueStatus`,
  *     which is in-memory for exactly as long as the queue is (one browser
  *     session's Vault Handle), never written to storage.
+ *   - What the Vault Pull trigger's last pass found — `VaultPullTriggerStatus`,
+ *     in-memory the same way. A device that only reads stops pulling on a
+ *     401/403 without ever pushing, so `session-ended` cannot be read from
+ *     the queue alone ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ *     decision 7).
  *
  * A third is the one piece of state PRD #650 (ADR 0067) adds: the Observed
  * Vault Identity `convergeVaultBlob` records per User whenever a pass
@@ -30,6 +35,7 @@ import { VaultBlobType } from '@myorganizer/app-api-client';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import type { VaultHandle } from './vaultHandle';
 import { vaultIdentityOf } from './vaultMetaConverge';
+import type { VaultPullTriggerStatus } from './vaultPullTrigger';
 import { localToServerMeta } from './vaultShapes';
 import type {
   VaultSyncQueueStatus,
@@ -37,9 +43,9 @@ import type {
 } from './vaultSyncQueue';
 
 /**
- * The five things a User can be told, in the order they take priority when
+ * The six things a User can be told, in the order they take priority when
  * more than one is true at once — the only enumeration of the members, so a
- * sixth kind fails to compile at {@link VAULT_SYNC_STATUS_RULES} until it says
+ * seventh kind fails to compile at {@link VAULT_SYNC_STATUS_RULES} until it says
  * what is reported for it ([ADR 0053](../../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  *
  * A Session ending and a standoff both outrank a terminal failure: neither is
@@ -50,12 +56,18 @@ import type {
  * either way. A terminal failure still outranks merely-pending types, per the
  * acceptance criterion that a terminal failure never reads as "not synced
  * yet".
+ *
+ * `pull-stalled` ranks below `pending` and above `synced` only: every kind
+ * above it is either about the User's own unsent edits or cannot be fixed by
+ * retrying, and a Vault Pull Stall can be ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
+ * decision 6).
  */
 export const VAULT_SYNC_STATUS_KINDS = [
   'session-ended',
   'standoff',
   'terminal',
   'pending',
+  'pull-stalled',
   'synced',
 ] as const;
 
@@ -78,6 +90,9 @@ type VaultSyncStatusEvidence = {
   terminalFailures: VaultSyncTerminalFailure[];
   pendingTypes: VaultBlobType[];
   retryScheduled: boolean;
+  /** Whether the most recent non-superseded Vault Pull Pass left any type
+   * unanswered — see {@link VaultPullTriggerStatus.stalledTypes}. */
+  pullStalled: boolean;
 };
 
 /**
@@ -145,6 +160,15 @@ const VAULT_SYNC_STATUS_RULES = {
       retrying: evidence.retryScheduled,
     }),
   },
+  'pull-stalled': {
+    applies: (evidence) => evidence.pullStalled,
+    build: (evidence) => ({
+      kind: 'pull-stalled',
+      pendingTypes: evidence.pendingTypes,
+      terminalFailures: evidence.terminalFailures,
+      retrying: false,
+    }),
+  },
   synced: {
     applies: () => true,
     build: () => ({
@@ -168,9 +192,10 @@ const VAULT_SYNC_STATUS_RULES = {
  * `handle` needs the bookmark comparison (`hasUnsentChanges`), the Local
  * Vault (`loadVault`) and the Observed Vault Identity (`observedVaultIdentity`)
  * — all three answerable while the Vault is locked, since none needs the
- * Master Key. `queueStatus` is `VaultSyncQueue.status()`, read fresh by the
- * caller rather than cached here, since a queue notifies on every change that
- * could move this reading (see `VaultSyncQueue.subscribe`).
+ * Master Key. `queueStatus` is `VaultSyncQueue.status()` and `pullStatus` is
+ * `VaultPullTrigger.status()`, both read fresh by the caller rather than
+ * cached here, since each notifies on every change that could move this
+ * reading (see `VaultSyncQueue.subscribe` and `VaultPullTrigger.subscribe`).
  */
 export async function computeVaultSyncStatus(options: {
   handle: Pick<
@@ -178,8 +203,9 @@ export async function computeVaultSyncStatus(options: {
     'hasUnsentChanges' | 'loadVault' | 'observedVaultIdentity'
   >;
   queueStatus: VaultSyncQueueStatus;
+  pullStatus: VaultPullTriggerStatus;
 }): Promise<VaultSyncStatus> {
-  const { handle, queueStatus } = options;
+  const { handle, queueStatus, pullStatus } = options;
   const terminalTypes = new Set(
     queueStatus.terminalFailures.map((failure) => failure.type),
   );
@@ -193,11 +219,15 @@ export async function computeVaultSyncStatus(options: {
   }
 
   const evidence: VaultSyncStatusEvidence = {
-    sessionEnded: queueStatus.sessionEnded,
+    // Either side having seen a 401/403 ends the Session: a device that
+    // only reads never drains the queue, so the queue alone would miss it
+    // (ADR 0088, decision 7).
+    sessionEnded: queueStatus.sessionEnded || pullStatus.sessionEnded,
     standoff: isVaultSyncStandoff(handle),
     terminalFailures: queueStatus.terminalFailures,
     pendingTypes,
     retryScheduled: queueStatus.retryScheduled,
+    pullStalled: pullStatus.stalledTypes.length > 0,
   };
 
   for (const kind of VAULT_SYNC_STATUS_KINDS) {

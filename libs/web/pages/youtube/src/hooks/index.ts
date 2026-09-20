@@ -65,6 +65,30 @@ async function doFetch(path: string, options?: RequestInit): Promise<Response> {
   });
 }
 
+export class YouTubeRequestError extends Error {
+  readonly status: number;
+  readonly code?: string;
+
+  constructor(message: string, status: number, code?: string) {
+    super(message);
+    this.name = 'YouTubeRequestError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+async function throwFromResponse(res: Response): Promise<never> {
+  const body = (await res.json().catch(() => ({}))) as {
+    message?: string;
+    code?: string;
+  };
+  throw new YouTubeRequestError(
+    body.message ?? `Request failed: ${res.status}`,
+    res.status,
+    body.code,
+  );
+}
+
 async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   let res = await doFetch(path, options);
 
@@ -76,8 +100,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
       await refreshInFlight;
     } catch {
       clearAuthSession();
-      const body = await res.json().catch(() => ({}));
-      throw new Error(body.message ?? `Request failed: ${res.status}`);
+      await throwFromResponse(res);
     } finally {
       refreshInFlight = null;
     }
@@ -85,8 +108,7 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error(body.message ?? `Request failed: ${res.status}`);
+    await throwFromResponse(res);
   }
   return res.json();
 }
@@ -343,15 +365,30 @@ export function useYouTubeNotifications() {
   return { settings, loading, update };
 }
 
+export interface YouTubeDisconnectResponse {
+  ok: boolean;
+  message: string;
+  revokeFailed?: boolean;
+  googlePermissionsUrl?: string;
+}
+
 export function useYouTubeConnect() {
   const connect = useCallback(async () => {
     const data = await apiFetch<{ url: string }>('/auth-url');
     window.location.href = data.url;
   }, []);
 
-  const disconnect = useCallback(async () => {
-    await apiFetch('/disconnect', { method: 'DELETE' });
-  }, []);
+  const disconnect = useCallback(
+    async (options?: { deleteWatchedMarks?: boolean }) => {
+      return apiFetch<YouTubeDisconnectResponse>('/disconnect', {
+        method: 'DELETE',
+        body: JSON.stringify({
+          deleteWatchedMarks: options?.deleteWatchedMarks === true,
+        }),
+      });
+    },
+    [],
+  );
 
   return { connect, disconnect };
 }

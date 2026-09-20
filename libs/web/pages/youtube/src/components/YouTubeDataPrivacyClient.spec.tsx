@@ -65,11 +65,13 @@ describe('YouTubeDataPrivacyClient', () => {
     expect(text).toMatch(/permanently deleted/i);
   });
 
-  it('should render disconnect deletes all metadata claim', () => {
+  it('should render disconnect retention claim', () => {
     const { container } = render(<YouTubeDataPrivacyClient />);
     const text = container.textContent || '';
     expect(text).toMatch(/Disconnecting.*YouTube account/i);
-    expect(text).toMatch(/deletes all YouTube metadata/i);
+    expect(text).toMatch(/Followed Channels.*Cached Uploads/i);
+    expect(text).toMatch(/30 days/i);
+    expect(text).toMatch(/optionally delete them when disconnecting/i);
   });
 
   it('should render Shorts Daily Budget browser-local claim', () => {

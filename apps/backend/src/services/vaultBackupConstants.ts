@@ -13,7 +13,6 @@ export const VAULT_BACKUP_BLOB_TYPES = [
   'mobileNumbers',
   'subscriptions',
   'tasks',
-  'todos',
 ] as const;
 export type VaultBackupBlobType = (typeof VAULT_BACKUP_BLOB_TYPES)[number];
 

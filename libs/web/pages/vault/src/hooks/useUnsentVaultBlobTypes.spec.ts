@@ -154,7 +154,7 @@ describe('useUnsentVaultBlobTypes', () => {
     // Groceries and Tasks: saved but NOT pushed (unsent)
     await seedUnsentGroceriesAndTasks(handle);
 
-    // MobileNumbers, Subscriptions, Todos: not touched (no data)
+    // MobileNumbers, Subscriptions: not touched (no data)
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({ handle });
 

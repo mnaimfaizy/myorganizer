@@ -87,7 +87,7 @@ describe('FakeVaultStore isolates users', () => {
   });
 
   test('findMany returns only the scoped user blobs', async () => {
-    store.seedBlob('user-b', 'todos', { ciphertext: 'b2' });
+    store.seedBlob('user-b', 'groceries', { ciphertext: 'b2' });
     const rows = await store.encryptedVaultBlob.findMany({
       where: { userId: 'user-a' },
     });

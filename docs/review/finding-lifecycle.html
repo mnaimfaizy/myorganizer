@@ -1194,8 +1194,9 @@
           <code>Setup Affected Context</code>, <code>Lint</code>,
           <code>Test</code> (<code>ci.yml:23, :142, :203, :335, :413, :459</code>). The
           <code>Test</code> job sets <code>DATABASE_URL</code>
-          (<code>ci.yml:467</code>) but starts no database service, so
-          affected Jest runs without one &mdash; which is why the Reviewer's
+          (<code>ci.yml:485</code>) and starts a throwaway Postgres service for
+          migrate deploy/diff; affected Jest still runs against mocks without
+          needing that service &mdash; which is why the Reviewer's
           <code>executed</code> evidence is feasible in CI, in the same
           environment.
         </dd>
@@ -1786,9 +1787,9 @@
         "file": ".github/workflows/ci.yml",
         "start": "name: Test"
       },
-      "ci.yml:467": {
+      "ci.yml:485": {
         "file": ".github/workflows/ci.yml",
-        "start": "DATABASE_URL: postgresql://localhost:5432/myorganizer"
+        "start": "DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer"
       },
       ".github/CODEOWNERS:3": {
         "file": ".github/CODEOWNERS",

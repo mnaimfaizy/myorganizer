@@ -62,7 +62,7 @@ describe('task-workflow', () => {
   });
 
   describe('loadTasksFromVault', () => {
-    it('returns empty tasks when adapter has no tasks or todos', async () => {
+    it('returns empty tasks when adapter has no tasks', async () => {
       const adapter = new InMemoryTasksVaultAdapter();
 
       const result = await loadTasksFromVault(adapter);
@@ -92,27 +92,13 @@ describe('task-workflow', () => {
       expect(result.tasks.map((t) => t.id)).toEqual(['high', 'low']);
     });
 
-    it('migrates legacy todos and persists migrated tasks', async () => {
-      const adapter = new InMemoryTasksVaultAdapter({
-        tasks: null,
-        todos: [{ id: 'legacy-1', todo: 'Buy milk' }, 'Walk dog'],
-      });
+    it('returns empty tasks when stored tasks are null and does not persist', async () => {
+      const adapter = new InMemoryTasksVaultAdapter({ tasks: null });
 
       const result = await loadTasksFromVault(adapter);
 
-      expect(result.loadError).toBeNull();
-      expect(result.tasks).toHaveLength(2);
-      expect(result.tasks.map((t) => t.title).sort()).toEqual([
-        'Buy milk',
-        'Walk dog',
-      ]);
-      expect(result.tasks.find((t) => t.title === 'Buy milk')?.id).toBe(
-        'legacy-1',
-      );
-      expect(result.tasks.find((t) => t.title === 'Walk dog')?.id).toBe(
-        'generated-id-1',
-      );
-      expect(adapter.getSavedTasks()).toHaveLength(2);
+      expect(result).toEqual({ tasks: [], loadError: null });
+      expect(adapter.getSavedTasks()).toBeNull();
     });
 
     it('normalizes invalid task fields and re-saves when changed', async () => {

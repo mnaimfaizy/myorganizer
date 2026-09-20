@@ -36,6 +36,7 @@ describe('useVaultSyncStatus', () => {
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: null,
       syncQueue: null,
+      pullTrigger: null,
     });
 
     const { result } = renderHook(() => useVaultSyncStatus());
@@ -59,9 +60,15 @@ describe('useVaultSyncStatus', () => {
       subscribe: jest.fn(() => jest.fn()),
     };
 
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
       syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
     });
 
     const { result } = renderHook(() => useVaultSyncStatus());
@@ -80,6 +87,7 @@ describe('useVaultSyncStatus', () => {
     expect(mockComputeVaultSyncStatus).toHaveBeenCalledWith({
       handle: mockHandle,
       queueStatus: { unsent: [], terminal: [] },
+      pullStatus: { sessionEnded: false },
     });
   });
 
@@ -117,9 +125,15 @@ describe('useVaultSyncStatus', () => {
       }),
     };
 
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
       syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
     });
 
     const { result } = renderHook(() => useVaultSyncStatus());
@@ -150,7 +164,7 @@ describe('useVaultSyncStatus', () => {
 
   test('unmount calls unsubscribe function from syncQueue.subscribe', async () => {
     const mockHandle = { owner: 'user-a' };
-    const unsubscribe = jest.fn();
+    const queueUnsubscribe = jest.fn();
 
     mockComputeVaultSyncStatus.mockResolvedValue({
       kind: 'synced',
@@ -161,12 +175,18 @@ describe('useVaultSyncStatus', () => {
 
     const mockSyncQueue = {
       status: jest.fn(() => ({ unsent: [], terminal: [] })),
-      subscribe: jest.fn(() => unsubscribe),
+      subscribe: jest.fn(() => queueUnsubscribe),
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
     };
 
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
       syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
     });
 
     const { unmount } = renderHook(() => useVaultSyncStatus());
@@ -176,7 +196,7 @@ describe('useVaultSyncStatus', () => {
 
     unmount();
 
-    expect(unsubscribe).toHaveBeenCalledTimes(1);
+    expect(queueUnsubscribe).toHaveBeenCalledTimes(1);
   });
 
   test('retry() calls syncQueue.retryNow with current handle', async () => {
@@ -196,9 +216,15 @@ describe('useVaultSyncStatus', () => {
       retryNow: mockRetryNow,
     };
 
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
       syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
     });
 
     const { result } = renderHook(() => useVaultSyncStatus());
@@ -222,9 +248,15 @@ describe('useVaultSyncStatus', () => {
       retryNow: mockRetryNow,
     };
 
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: null,
       syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
     });
 
     const { result } = renderHook(() => useVaultSyncStatus());
@@ -251,9 +283,15 @@ describe('useVaultSyncStatus', () => {
       subscribe: jest.fn(() => jest.fn()),
     };
 
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
       syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
     });
 
     const { rerender, result } = renderHook(() => useVaultSyncStatus());
@@ -291,9 +329,15 @@ describe('useVaultSyncStatus', () => {
       subscribe: jest.fn(() => jest.fn()),
     };
 
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
     (useOptionalVaultSession as jest.Mock).mockReturnValue({
       handle: mockHandle,
       syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
     });
 
     const { result } = renderHook(() => useVaultSyncStatus());
@@ -319,5 +363,374 @@ describe('useVaultSyncStatus', () => {
         initialCallCount,
       );
     });
+  });
+
+  test('with vault session having no pullTrigger, status is null', () => {
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: { owner: 'user-a' },
+      syncQueue: { status: jest.fn(), subscribe: jest.fn() },
+      pullTrigger: null,
+    });
+
+    const { result } = renderHook(() => useVaultSyncStatus());
+
+    expect(result.current.status).toBeNull();
+    expect(mockComputeVaultSyncStatus).not.toHaveBeenCalled();
+  });
+
+  test('pullTrigger.subscribe is called on mount', async () => {
+    const mockHandle = { owner: 'user-a' };
+
+    mockComputeVaultSyncStatus.mockResolvedValue({
+      kind: 'synced',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    });
+
+    const mockSyncQueue = {
+      status: jest.fn(() => ({ unsent: [], terminal: [] })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
+    });
+
+    renderHook(() => useVaultSyncStatus());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(mockPullTrigger.subscribe).toHaveBeenCalledTimes(1);
+  });
+
+  test('calling pullTrigger.subscribe listener triggers recompute', async () => {
+    const mockHandle = { owner: 'user-a' };
+    const initialStatus: VaultSyncStatus = {
+      kind: 'synced',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+    const updatedStatus: VaultSyncStatus = {
+      kind: 'pending',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    const triggerSubscribedCallbacks: Array<() => void> = [];
+
+    mockComputeVaultSyncStatus.mockImplementation(() => {
+      // Return initial status on first call, updated on second
+      return Promise.resolve(
+        mockComputeVaultSyncStatus.mock.calls.length === 1
+          ? initialStatus
+          : updatedStatus,
+      );
+    });
+
+    const mockSyncQueue = {
+      status: jest.fn(() => ({ unsent: [], terminal: [] })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn((callback: () => void) => {
+        triggerSubscribedCallbacks.push(callback);
+        return jest.fn();
+      }),
+    };
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
+    });
+
+    const { result } = renderHook(() => useVaultSyncStatus());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toEqual(initialStatus);
+    });
+
+    expect(mockComputeVaultSyncStatus).toHaveBeenCalledTimes(1);
+
+    // Simulate pullTrigger notifying of a change
+    await act(async () => {
+      triggerSubscribedCallbacks[0]?.();
+    });
+
+    await waitFor(() => {
+      expect(mockComputeVaultSyncStatus).toHaveBeenCalledTimes(2);
+    });
+
+    // Status should be updated
+    await waitFor(() => {
+      expect(result.current.status).toEqual(updatedStatus);
+    });
+  });
+
+  test('unmount calls unsubscribe function from pullTrigger.subscribe', async () => {
+    const mockHandle = { owner: 'user-a' };
+    const triggerUnsubscribe = jest.fn();
+
+    mockComputeVaultSyncStatus.mockResolvedValue({
+      kind: 'synced',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    });
+
+    const mockSyncQueue = {
+      status: jest.fn(() => ({ unsent: [], terminal: [] })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => triggerUnsubscribe),
+    };
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
+    });
+
+    const { unmount } = renderHook(() => useVaultSyncStatus());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    unmount();
+
+    expect(triggerUnsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  test('pullTrigger listener triggers recompute independent of focus event', async () => {
+    const mockHandle = { owner: 'user-a' };
+    const mockStatus: VaultSyncStatus = {
+      kind: 'synced',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    mockComputeVaultSyncStatus.mockResolvedValue(mockStatus);
+
+    const triggerSubscribedCallbacks: Array<() => void> = [];
+
+    const mockSyncQueue = {
+      status: jest.fn(() => ({ unsent: [], terminal: [] })),
+      subscribe: jest.fn(() => jest.fn()),
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn((callback: () => void) => {
+        triggerSubscribedCallbacks.push(callback);
+        return jest.fn();
+      }),
+    };
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
+    });
+
+    const { result } = renderHook(() => useVaultSyncStatus());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status).toBeDefined();
+    });
+
+    const initialCallCount = mockComputeVaultSyncStatus.mock.calls.length;
+
+    // Fire the pull trigger's callback WITHOUT dispatching a focus event
+    await act(async () => {
+      triggerSubscribedCallbacks[0]?.();
+      await Promise.resolve();
+    });
+
+    // Should trigger another recompute from the trigger alone
+    await waitFor(() => {
+      expect(mockComputeVaultSyncStatus.mock.calls.length).toBeGreaterThan(
+        initialCallCount,
+      );
+    });
+  });
+
+  test('retry() routes to pullTrigger.check when status is pull-stalled', async () => {
+    const mockHandle = { owner: 'user-a' };
+    const mockCheck = jest.fn();
+    const mockRetryNow = jest.fn();
+
+    mockComputeVaultSyncStatus.mockResolvedValue({
+      kind: 'pull-stalled',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    });
+
+    const mockSyncQueue = {
+      status: jest.fn(() => ({ unsent: [], terminal: [] })),
+      subscribe: jest.fn(() => jest.fn()),
+      retryNow: mockRetryNow,
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+      check: mockCheck,
+    };
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
+    });
+
+    const { result } = renderHook(() => useVaultSyncStatus());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status?.kind).toBe('pull-stalled');
+    });
+
+    act(() => {
+      result.current.retry();
+    });
+
+    expect(mockCheck).toHaveBeenCalledWith(mockHandle);
+    expect(mockRetryNow).not.toHaveBeenCalled();
+  });
+
+  test('retry() routes to syncQueue.retryNow when status is pending (non-stall kind)', async () => {
+    const mockHandle = { owner: 'user-a' };
+    const mockRetryNow = jest.fn();
+    const mockCheck = jest.fn();
+
+    mockComputeVaultSyncStatus.mockResolvedValue({
+      kind: 'pending',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    });
+
+    const mockSyncQueue = {
+      status: jest.fn(() => ({ unsent: [], terminal: [] })),
+      subscribe: jest.fn(() => jest.fn()),
+      retryNow: mockRetryNow,
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+      check: mockCheck,
+    };
+
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
+    });
+
+    const { result } = renderHook(() => useVaultSyncStatus());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status?.kind).toBe('pending');
+    });
+
+    act(() => {
+      result.current.retry();
+    });
+
+    expect(mockRetryNow).toHaveBeenCalledWith(mockHandle);
+    expect(mockCheck).not.toHaveBeenCalled();
+  });
+
+  test('retry() with pull-stalled status but no pullTrigger is a no-op', async () => {
+    const mockHandle = { owner: 'user-a' };
+    const mockRetryNow = jest.fn();
+    const mockCheck = jest.fn();
+
+    mockComputeVaultSyncStatus.mockResolvedValue({
+      kind: 'pull-stalled',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    });
+
+    const mockSyncQueue = {
+      status: jest.fn(() => ({ unsent: [], terminal: [] })),
+      subscribe: jest.fn(() => jest.fn()),
+      retryNow: mockRetryNow,
+    };
+
+    const mockPullTrigger = {
+      status: jest.fn(() => ({ sessionEnded: false })),
+      subscribe: jest.fn(() => jest.fn()),
+      check: mockCheck,
+    };
+
+    // Start with pullTrigger present so status can resolve
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: mockPullTrigger,
+    });
+
+    const { result, rerender } = renderHook(() => useVaultSyncStatus());
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    await waitFor(() => {
+      expect(result.current.status?.kind).toBe('pull-stalled');
+    });
+
+    // Simulate pullTrigger becoming null (e.g., session ends)
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+      syncQueue: mockSyncQueue,
+      pullTrigger: null,
+    });
+
+    act(() => {
+      rerender();
+    });
+
+    // Returned status is masked to null, but retry() still has the old pull-stalled state in its closure
+    expect(result.current.status).toBeNull();
+
+    act(() => {
+      result.current.retry();
+    });
+
+    // The guard `if (!pullTrigger) return;` prevents calling either mock
+    expect(mockCheck).not.toHaveBeenCalled();
+    expect(mockRetryNow).not.toHaveBeenCalled();
   });
 });

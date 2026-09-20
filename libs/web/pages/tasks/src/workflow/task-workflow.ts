@@ -1,6 +1,6 @@
 import type { Task } from '@myorganizer/core';
 import { randomId } from '@myorganizer/core';
-import { migrateFromTodos, normalizeTasks } from '@myorganizer/web-vault';
+import { normalizeTasks } from '@myorganizer/web-vault';
 
 import { sortTasks } from './task-sorting';
 import type {
@@ -29,14 +29,6 @@ export async function loadTasksFromVault(
     const raw = await adapter.loadTasks();
 
     if (raw === null) {
-      const todos = await adapter.loadTodos();
-
-      if (Array.isArray(todos) && todos.length > 0) {
-        const migrated = migrateFromTodos(todos);
-        await adapter.saveTasks(migrated);
-        return { tasks: sortTasks(migrated), loadError: null };
-      }
-
       return { tasks: [], loadError: null };
     }
 

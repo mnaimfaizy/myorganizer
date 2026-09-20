@@ -41,6 +41,13 @@ type GetVaultBlobResponse =
     }
   | ErrorResponse;
 
+type GetVaultBlobInventoryResponse =
+  | {
+      blobs: Array<{ type: VaultBlobType; etag: string; updatedAt: string }>;
+      etag: string;
+    }
+  | ErrorResponse;
+
 type PutVaultBlobResponse =
   | { ok: true; etag: string; updatedAt: string }
   | ErrorResponse;
@@ -53,6 +60,10 @@ type ImportVaultResponse = { ok: true } | ErrorResponse;
 @Route('/vault')
 @Security('jwt')
 export class VaultController extends Controller {
+  private matchesIfNoneMatch(etag: string, ifNoneMatch?: string): boolean {
+    return ifNoneMatch !== undefined && ifNoneMatch === etag;
+  }
+
   @Get()
   public async getVaultMeta(
     @Request() req: ExRequest,
@@ -93,16 +104,31 @@ export class VaultController extends Controller {
 
     const result = await vaultService.getBlob(userId, type);
 
-    if (
-      result.ok &&
-      ifNoneMatch !== undefined &&
-      ifNoneMatch === result.body.etag
-    ) {
+    if (result.ok && this.matchesIfNoneMatch(result.body.etag, ifNoneMatch)) {
       return notModified(304, undefined);
     }
 
     this.setStatus(result.status);
     return result.body as GetVaultBlobResponse;
+  }
+
+  @Response(304, 'Not Modified')
+  @Get('/blobs')
+  public async getVaultBlobInventory(
+    @Request() req: ExRequest,
+    @Res() notModified: TsoaResponse<304, void>,
+    @Header('if-none-match') ifNoneMatch?: string,
+  ): Promise<GetVaultBlobInventoryResponse> {
+    const userId = requireUserId(req);
+
+    const result = await vaultService.getBlobInventory(userId);
+
+    if (result.ok && this.matchesIfNoneMatch(result.body.etag, ifNoneMatch)) {
+      return notModified(304, undefined);
+    }
+
+    this.setStatus(result.status);
+    return result.body as GetVaultBlobInventoryResponse;
   }
 
   @Put('/blob/{type}')

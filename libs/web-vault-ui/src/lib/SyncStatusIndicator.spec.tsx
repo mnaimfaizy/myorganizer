@@ -318,4 +318,82 @@ describe('SyncStatusIndicator', () => {
     );
     expect(statusRegion.textContent).toContain('intact and readable');
   });
+
+  test('pull-stalled status renders visible label and detail', () => {
+    const status: VaultSyncStatus = {
+      kind: 'pull-stalled',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} />);
+
+    const label = screen.getByTestId('sync-status-label');
+    const detail = screen.getByTestId('sync-status-detail');
+
+    expect(label).toBeInTheDocument();
+    expect(label.textContent).toBe("Hasn't heard from your other devices");
+    expect(detail).toBeInTheDocument();
+    expect(detail.textContent).toContain('other devices');
+  });
+
+  test('pull-stalled status renders visibly different from pending and terminal', () => {
+    const status: VaultSyncStatus = {
+      kind: 'pull-stalled',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} />);
+
+    const label = screen.getByTestId('sync-status-label');
+
+    expect(label.textContent).toBe("Hasn't heard from your other devices");
+    // Ensure it's different from pending's "Changes not yet sent"
+    expect(label.textContent).not.toBe('Changes not yet sent');
+    // Ensure it's different from terminal's "Some changes could not be saved"
+    expect(label.textContent).not.toBe('Some changes could not be saved');
+    // Ensure it's different from standoff's "This vault is not the one on the server"
+    expect(label.textContent).not.toBe(
+      'This vault is not the one on the server',
+    );
+  });
+
+  test('pull-stalled status retry button is present and callable when onRetry is provided', () => {
+    const onRetry = jest.fn();
+    const status: VaultSyncStatus = {
+      kind: 'pull-stalled',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} onRetry={onRetry} />);
+
+    const button = screen.getByTestId('sync-status-retry-button');
+    expect(button).toBeInTheDocument();
+    expect(button.textContent).toBe('Retry now');
+
+    fireEvent.click(button);
+    expect(onRetry).toHaveBeenCalledTimes(1);
+  });
+
+  test('pull-stalled status region announces label and detail for screen readers', () => {
+    const status: VaultSyncStatus = {
+      kind: 'pull-stalled',
+      pendingTypes: [],
+      terminalFailures: [],
+      retrying: false,
+    };
+
+    render(<SyncStatusIndicator status={status} />);
+
+    const statusRegion = screen.getByRole('status');
+    expect(statusRegion.textContent).toContain(
+      "Hasn't heard from your other devices",
+    );
+    expect(statusRegion.textContent).toContain('other devices');
+  });
 });

@@ -9,6 +9,7 @@ import {
   readOwnedVault,
   removeOwnedVault,
   routeApi,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   unlockVaultOnSettingsPage,
@@ -67,21 +68,18 @@ function setupBackend(page: Page) {
     addresses: null,
     mobileNumbers: null,
     subscriptions: null,
-    todos: null,
     groceries: null,
   };
   const serverBlobEtags: Record<string, string> = {
     addresses: 'W/"0"',
     mobileNumbers: 'W/"0"',
     subscriptions: 'W/"0"',
-    todos: 'W/"0"',
     groceries: 'W/"0"',
   };
   const serverBlobUpdatedAt: Record<string, string> = {
     addresses: new Date(0).toISOString(),
     mobileNumbers: new Date(0).toISOString(),
     subscriptions: new Date(0).toISOString(),
-    todos: new Date(0).toISOString(),
     groceries: new Date(0).toISOString(),
   };
 
@@ -313,6 +311,13 @@ function setupBackend(page: Page) {
     }
 
     await route.fulfill({ status: 405, headers });
+  });
+
+  routeVaultBlobInventoryOverStore(page, {
+    cors: headersFor,
+    blobs: serverBlobs,
+    etags: serverBlobEtags,
+    updatedAt: serverBlobUpdatedAt,
   });
 
   return { backupRecords, getServerMeta };

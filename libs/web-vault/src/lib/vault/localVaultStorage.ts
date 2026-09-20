@@ -28,8 +28,7 @@ export type VaultRecordType =
   | 'groceries'
   | 'mobileNumbers'
   | 'subscriptions'
-  | 'tasks'
-  | 'todos';
+  | 'tasks';
 
 export type VaultStorageV1 = {
   version: 1;
@@ -47,7 +46,6 @@ export type VaultStorageV1 = {
     mobileNumbers?: EncryptedBlob;
     subscriptions?: EncryptedBlob;
     tasks?: EncryptedBlob;
-    todos?: EncryptedBlob;
   };
 };
 

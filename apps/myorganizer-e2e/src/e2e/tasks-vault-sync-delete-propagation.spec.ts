@@ -4,10 +4,12 @@ import {
   gotoStable,
   E2E_USER_ID,
   routeApi,
+  routeVaultBlobInventoryOverStore,
   submitLoginForm,
   unlockWithPassphrase,
   vaultBlobRouteRelative,
   vaultBlobTypeExtractor,
+  vaultBlobInventoryRouteRelative,
   waitForOwnedVault,
   readOwnedVault,
 } from './helpers';
@@ -59,7 +61,6 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       mobileNumbers: null,
       subscriptions: null,
       tasks: null,
-      todos: null,
     };
     const serverBlobEtags: Record<string, string> = {
       addresses: 'W/"0"',
@@ -67,7 +68,6 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       mobileNumbers: 'W/"0"',
       subscriptions: 'W/"0"',
       tasks: 'W/"0"',
-      todos: 'W/"0"',
     };
     const serverBlobUpdatedAt: Record<string, string> = {
       addresses: new Date(0).toISOString(),
@@ -75,7 +75,6 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       mobileNumbers: new Date(0).toISOString(),
       subscriptions: new Date(0).toISOString(),
       tasks: new Date(0).toISOString(),
-      todos: new Date(0).toISOString(),
     };
 
     async function setupRoutes(page: import('@playwright/test').Page) {
@@ -265,6 +264,13 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
 
         await route.fulfill({ status: 405, headers });
       });
+
+      await routeVaultBlobInventoryOverStore(page, {
+        cors: corsHeaders,
+        blobs: serverBlobs,
+        etags: serverBlobEtags,
+        updatedAt: serverBlobUpdatedAt,
+      });
     }
 
     // Throwaway, test-only: every vault endpoint here is stubbed in-process,
@@ -443,7 +449,14 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
       0,
     );
 
-    // Step 13 (deletion): Count ctx1's reads of the tasks blob from here on.
+    // Step 13 (deletion): Count ctx1's Vault Blob Inventory reads from here on.
+    //
+    // Under ADR 0087, a Vault Pull Pass reads the Vault Blob Inventory first
+    // (`GET /vault/blobs`), and only reads a per-type blob when the inventory
+    // etag differs from the device's Sync Bookmark. Since ctx1's last tasks
+    // push set its Sync Bookmark to the current tasks etag, and ctx2 re-pushed
+    // an already-deleted task, the tasks etag does not change, so ctx1 does not
+    // read `/vault/blob/tasks` — only the inventory.
     //
     // ctx1's own pull is what makes step 17 a real resurrection proof rather
     // than an assertion that cannot fail. ctx2 re-pushed a merged record set
@@ -455,14 +468,14 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
     // The vault contents are the wrong thing to wait on here: the merge is
     // idempotent, so a correct pull legitimately leaves the Local Vault
     // byte-identical and a `.not.toBe(before)` poll would flake. The round
-    // trip itself is the observable event, so wait on the GET instead.
-    let ctx1TasksReads = 0;
-    page1.on('request', (request) => {
+    // trip itself is the observable event, so wait on the inventory GET instead.
+    let ctx1InventoryReads = 0;
+    page1.on('response', (response) => {
       if (
-        request.method() === 'GET' &&
-        /\/vault\/blob\/tasks/.test(request.url())
+        (response.status() === 200 || response.status() === 304) &&
+        vaultBlobInventoryRouteRelative().test(response.url())
       ) {
-        ctx1TasksReads += 1;
+        ctx1InventoryReads += 1;
       }
     });
 
@@ -472,7 +485,7 @@ test.describe('Tasks Vault Sync Delete Propagation (E2E)', () => {
     // Step 15 (deletion): Wait for that pull to actually reach the server,
     // covering the 500ms VAULT_PULL_DEBOUNCE_MS without a fixed sleep.
     await expect
-      .poll(() => ctx1TasksReads, { timeout: 15000 })
+      .poll(() => ctx1InventoryReads, { timeout: 15000 })
       .toBeGreaterThan(0);
 
     // Step 16 (deletion): Re-navigate ctx1 to finalize

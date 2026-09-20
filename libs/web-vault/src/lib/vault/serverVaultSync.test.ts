@@ -4,6 +4,7 @@ import {
   VaultMetaV1,
 } from '@myorganizer/app-api-client';
 import {
+  checkServerVaultBlobInventory,
   getServerVaultBlob,
   getServerVaultMeta,
   putServerVaultBlobEtagAware,
@@ -220,6 +221,104 @@ describe('serverVaultSync', () => {
       kind: 'updated',
       etag: 'new-etag',
       updatedAt: 't3',
+    });
+  });
+
+  // ===== checkServerVaultBlobInventory tests =====
+
+  describe('checkServerVaultBlobInventory', () => {
+    type ApiForInventory = Parameters<typeof checkServerVaultBlobInventory>[0];
+
+    test('200 response maps etag and blobs entries', async () => {
+      const api = {
+        getVaultBlobInventory: jest.fn().mockResolvedValue({
+          data: {
+            etag: 'inv-etag-v1',
+            blobs: [
+              {
+                type: VaultBlobType.Tasks,
+                etag: 'tasks-etag',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+              {
+                type: VaultBlobType.Groceries,
+                etag: 'groc-etag',
+                updatedAt: '2026-01-02T00:00:00.000Z',
+              },
+            ],
+          },
+        }),
+      } as unknown as ApiForInventory;
+
+      const result = await checkServerVaultBlobInventory(api, undefined);
+
+      expect(result.kind).toBe('inventory');
+      if (result.kind === 'inventory') {
+        expect(result.inventory.etag).toBe('inv-etag-v1');
+        expect(result.inventory.blobs).toEqual([
+          {
+            type: VaultBlobType.Tasks,
+            etag: 'tasks-etag',
+            updatedAt: '2026-01-01T00:00:00.000Z',
+          },
+          {
+            type: VaultBlobType.Groceries,
+            etag: 'groc-etag',
+            updatedAt: '2026-01-02T00:00:00.000Z',
+          },
+        ]);
+      }
+    });
+
+    test('ifNoneMatch argument forwarded to getVaultBlobInventory', async () => {
+      const api = {
+        getVaultBlobInventory: jest.fn().mockResolvedValue({
+          data: {
+            etag: 'inv-etag-v2',
+            blobs: [],
+          },
+        }),
+      } as unknown as ApiForInventory;
+
+      const passedEtag = 'prev-inventory-etag';
+      await checkServerVaultBlobInventory(api, passedEtag);
+
+      // The per-call request options carry the caller's AbortSignal, and every
+      // read sends the same call shape whether or not there is one to send.
+      expect(api.getVaultBlobInventory).toHaveBeenCalledWith(
+        { ifNoneMatch: passedEtag },
+        { signal: undefined },
+      );
+    });
+
+    test('304 rejection returns not-modified', async () => {
+      const api = {
+        getVaultBlobInventory: jest.fn().mockRejectedValue(httpError(304)),
+      } as unknown as ApiForInventory;
+
+      const result = await checkServerVaultBlobInventory(api, 'some-etag');
+
+      expect(result.kind).toBe('not-modified');
+    });
+
+    test('401 rejection re-thrown', async () => {
+      const api = {
+        getVaultBlobInventory: jest.fn().mockRejectedValue(httpError(401)),
+      } as unknown as ApiForInventory;
+
+      await expect(
+        checkServerVaultBlobInventory(api, undefined),
+      ).rejects.toThrow('HTTP 401');
+    });
+
+    test('500 rejection re-thrown', async () => {
+      const api = {
+        getVaultBlobInventory: jest.fn().mockRejectedValue(httpError(500)),
+      } as unknown as ApiForInventory;
+
+      await expect(
+        checkServerVaultBlobInventory(api, undefined),
+      ).rejects.toThrow('HTTP 500');
     });
   });
 });

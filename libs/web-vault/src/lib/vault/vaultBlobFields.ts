@@ -16,7 +16,7 @@ import { VaultRecordType } from './localVaultStorage';
 /**
  * Every Vault Blob Type, and the Local Vault field each one lands in.
  *
- * The `satisfies` clause is the guard, not decoration: a seventh member added
+ * The `satisfies` clause is the guard, not decoration: a sixth member added
  * to `VaultBlobType` fails to compile here until it is given a home. Every
  * code path that fans out over the blob types — reconcile, export, import —
  * iterates this one table, so a type cannot be present in some branches and
@@ -27,17 +27,18 @@ import { VaultRecordType } from './localVaultStorage';
  * while the Local Vault carried it, and a keep-server decision destroyed it
  * ([#512](https://github.com/mnaimfaizy/myorganizer/issues/512)). Tasks was
  * then found missing from the hardened export path, which had been built by
- * hand-enumerating five of the six members
- * ([#537](https://github.com/mnaimfaizy/myorganizer/issues/537)).
+ * hand-enumerating five of the then-six members
+ * ([#537](https://github.com/mnaimfaizy/myorganizer/issues/537)). `'todos'`
+ * was retired in #841 once ADR 0003's exit query was zero.
  *
  * The rest of the `satisfies` clause holds four hand-maintained lists of the
- * same six strings equal, which nothing else compares:
+ * same five strings equal, which nothing else compares:
  *
  *   - `VaultBlobType` — generated from the API contract.
  *   - `VaultRecordType` — the Local Vault's own field-name union.
  *   - `VaultExportBlobType` — the export envelope's union in `vault-core`.
  *   - `CoreVaultRecordType` — `vault-core`'s separate copy of the field names,
- *     which listed five and omitted `todos` until #537 found it.
+ *     which listed five and omitted a member until #537 found it.
  *
  * A member added to one and not the others compiles everywhere else and
  * surfaces only as a blob that cannot be exported, or one the envelope schema
@@ -53,7 +54,6 @@ export const VAULT_BLOB_FIELDS = {
   [VaultBlobType.MobileNumbers]: 'mobileNumbers',
   [VaultBlobType.Subscriptions]: 'subscriptions',
   [VaultBlobType.Tasks]: 'tasks',
-  [VaultBlobType.Todos]: 'todos',
 } as const satisfies Record<VaultBlobType, VaultRecordType> &
   Record<VaultExportBlobType, VaultRecordType> &
   Record<VaultBlobType, CoreVaultRecordType>;
@@ -71,7 +71,7 @@ type MappedVaultRecordType = (typeof VAULT_BLOB_FIELDS)[VaultBlobType];
  * A Local Vault write names a field; convergence names a Vault Blob Type. The
  * Vault Handle's sync sink is handed the first and has to report the second,
  * and inverting the pin is how it does that. A hand-written second table would
- * be exactly the shape ADR 0053 forbids: a seventh member could be present in
+ * be exactly the shape ADR 0053 forbids: a sixth member could be present in
  * one direction and missing from the other, and the missing direction is the
  * one that silently stops synchronising.
  *
@@ -80,7 +80,7 @@ type MappedVaultRecordType = (typeof VAULT_BLOB_FIELDS)[VaultBlobType];
  * `Record<VaultRecordType, …>` here would be an assertion the compiler never
  * checks — and an uncovered field would reach the sink as `type: undefined`,
  * which is a Vault Blob Type that silently never synchronises. Declared this
- * way, a field no Vault Blob Type maps onto — a seventh field, or two blob
+ * way, a field no Vault Blob Type maps onto — a sixth field, or two blob
  * types collapsed onto one field — instead fails to compile at the call site
  * that indexes this table with a `VaultRecordType`.
  */
@@ -107,8 +107,8 @@ export type VaultBlobMerge = (
  * `promptOnConflict` is a permanent strategy, not a stopgap and not a
  * deprecation notice. Groceries is a nested payload of catalog, lists and
  * lines whose bulk mutations — Uncheck All, Remove Checked From List — merge
- * badly under a union by id, and todos is a legacy read source nothing
- * writes. Neither is waiting for a record-level merge to be written.
+ * badly under a union by id. It is not waiting for a record-level merge
+ * to be written.
  */
 export type VaultBlobConvergeStrategy =
   | {
@@ -151,7 +151,7 @@ function overRecords<TRecord>(
  * Every Vault Blob Type, and how it converges. The second pinned table, kept
  * beside the first for the same reason the first exists.
  *
- * The `satisfies` clause is the guard: a seventh Vault Blob Type fails to
+ * The `satisfies` clause is the guard: a sixth Vault Blob Type fails to
  * compile here until somebody decides how it converges. It cannot inherit a
  * strategy from whichever arm an `else` happened to be — the shape that
  * destroyed grocery Ciphertext in
@@ -180,7 +180,6 @@ export const VAULT_BLOB_CONVERGE_STRATEGIES = {
     strategy: 'mergeById',
     merge: overRecords(mergeTasks),
   },
-  [VaultBlobType.Todos]: { strategy: 'promptOnConflict' },
 } as const satisfies Record<VaultBlobType, VaultBlobConvergeStrategy>;
 
 /** The blob types above, in a stable iteration order. */

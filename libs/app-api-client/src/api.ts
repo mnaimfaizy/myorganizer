@@ -411,6 +411,126 @@ export interface CronSyncResponse {
 /**
  * 
  * @export
+ * @interface DisconnectRequest
+ */
+export interface DisconnectRequest {
+    /**
+     * When true, do not preserve Watched — clear/skip ledger. Default false.
+     * @type {boolean}
+     * @memberof DisconnectRequest
+     */
+    'deleteWatchedMarks'?: boolean;
+}
+/**
+ * 
+ * @export
+ * @interface DisconnectResponse
+ */
+export interface DisconnectResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponse
+     */
+    'googlePermissionsUrl'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponse
+     */
+    'revokeFailed'?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponse
+     */
+    'ok': boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponse
+     */
+    'code'?: DisconnectResponseCodeEnum;
+}
+
+export const DisconnectResponseCodeEnum = {
+    SyncRunLive: 'sync_run_live'
+} as const;
+
+export type DisconnectResponseCodeEnum = typeof DisconnectResponseCodeEnum[keyof typeof DisconnectResponseCodeEnum];
+
+/**
+ * 
+ * @export
+ * @interface DisconnectResponseAnyOf
+ */
+export interface DisconnectResponseAnyOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'googlePermissionsUrl'?: string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'revokeFailed'?: boolean;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'message': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponseAnyOf
+     */
+    'ok': boolean;
+}
+/**
+ * 
+ * @export
+ * @interface DisconnectResponseAnyOf1
+ */
+export interface DisconnectResponseAnyOf1 {
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf1
+     */
+    'code'?: DisconnectResponseAnyOf1CodeEnum;
+    /**
+     * 
+     * @type {string}
+     * @memberof DisconnectResponseAnyOf1
+     */
+    'message': string;
+    /**
+     * 
+     * @type {boolean}
+     * @memberof DisconnectResponseAnyOf1
+     */
+    'ok': boolean;
+}
+
+export const DisconnectResponseAnyOf1CodeEnum = {
+    SyncRunLive: 'sync_run_live'
+} as const;
+
+export type DisconnectResponseAnyOf1CodeEnum = typeof DisconnectResponseAnyOf1CodeEnum[keyof typeof DisconnectResponseAnyOf1CodeEnum];
+
+/**
+ * 
+ * @export
  * @interface EncryptedBlobV1
  */
 export interface EncryptedBlobV1 {
@@ -785,6 +905,83 @@ export interface GetSyncStatus200Response {
      */
     'message': string;
 }
+/**
+ * 
+ * @export
+ * @interface GetVaultBlobInventoryResponse
+ */
+export interface GetVaultBlobInventoryResponse {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'etag': string;
+    /**
+     * 
+     * @type {Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'blobs': Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'message': string;
+    /**
+     * 
+     * @type {any}
+     * @memberof GetVaultBlobInventoryResponse
+     */
+    'details'?: any;
+}
+/**
+ * 
+ * @export
+ * @interface GetVaultBlobInventoryResponseAnyOf
+ */
+export interface GetVaultBlobInventoryResponseAnyOf {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponseAnyOf
+     */
+    'etag': string;
+    /**
+     * 
+     * @type {Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>}
+     * @memberof GetVaultBlobInventoryResponseAnyOf
+     */
+    'blobs': Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>;
+}
+/**
+ * 
+ * @export
+ * @interface GetVaultBlobInventoryResponseAnyOfBlobsInner
+ */
+export interface GetVaultBlobInventoryResponseAnyOfBlobsInner {
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
+     */
+    'updatedAt': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
+     */
+    'etag': string;
+    /**
+     * 
+     * @type {VaultBlobType}
+     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
+     */
+    'type': VaultBlobType;
+}
+
+
 /**
  * 
  * @export
@@ -1218,12 +1415,6 @@ export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
      * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
      */
     'tasks'?: EncryptedBlobV1;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
-     */
-    'todos'?: EncryptedBlobV1;
 }
 /**
  * 
@@ -2110,8 +2301,7 @@ export const VaultBackupBlobType = {
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
-    Tasks: 'tasks',
-    Todos: 'todos'
+    Tasks: 'tasks'
 } as const;
 
 export type VaultBackupBlobType = typeof VaultBackupBlobType[keyof typeof VaultBackupBlobType];
@@ -2258,8 +2448,7 @@ export const VaultBlobType = {
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
-    Tasks: 'tasks',
-    Todos: 'todos'
+    Tasks: 'tasks'
 } as const;
 
 export type VaultBlobType = typeof VaultBlobType[keyof typeof VaultBlobType];
@@ -4176,6 +4365,43 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
         },
         /**
          * 
+         * @param {string} [ifNoneMatch] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVaultBlobInventory: async (ifNoneMatch?: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/vault/blobs`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            if (ifNoneMatch != null) {
+                localVarHeaderParameter['if-none-match'] = String(ifNoneMatch);
+            }
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4372,6 +4598,18 @@ export const VaultApiFp = function(configuration?: Configuration) {
         },
         /**
          * 
+         * @param {string} [ifNoneMatch] 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getVaultBlobInventory(ifNoneMatch?: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<GetVaultBlobInventoryResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getVaultBlobInventory(ifNoneMatch, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['VaultApi.getVaultBlobInventory']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4449,6 +4687,15 @@ export const VaultApiFactory = function (configuration?: Configuration, basePath
         },
         /**
          * 
+         * @param {VaultApiGetVaultBlobInventoryRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getVaultBlobInventory(requestParameters: VaultApiGetVaultBlobInventoryRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<GetVaultBlobInventoryResponse> {
+            return localVarFp.getVaultBlobInventory(requestParameters.ifNoneMatch, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4502,6 +4749,20 @@ export interface VaultApiGetVaultBlobRequest {
      * 
      * @type {string}
      * @memberof VaultApiGetVaultBlob
+     */
+    readonly ifNoneMatch?: string
+}
+
+/**
+ * Request parameters for getVaultBlobInventory operation in VaultApi.
+ * @export
+ * @interface VaultApiGetVaultBlobInventoryRequest
+ */
+export interface VaultApiGetVaultBlobInventoryRequest {
+    /**
+     * 
+     * @type {string}
+     * @memberof VaultApiGetVaultBlobInventory
      */
     readonly ifNoneMatch?: string
 }
@@ -4595,6 +4856,17 @@ export class VaultApi extends BaseAPI {
      */
     public getVaultBlob(requestParameters: VaultApiGetVaultBlobRequest, options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).getVaultBlob(requestParameters.type, requestParameters.ifNoneMatch, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * 
+     * @param {VaultApiGetVaultBlobInventoryRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof VaultApi
+     */
+    public getVaultBlobInventory(requestParameters: VaultApiGetVaultBlobInventoryRequest = {}, options?: RawAxiosRequestConfig) {
+        return VaultApiFp(this.configuration).getVaultBlobInventory(requestParameters.ifNoneMatch, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
@@ -5058,11 +5330,12 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token.
+         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+         * @param {DisconnectRequest} [disconnectRequest] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        disconnect: async (disconnectRequest?: DisconnectRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/disconnect`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -5081,9 +5354,12 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
 
 
     
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(disconnectRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -5645,12 +5921,13 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token.
+         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+         * @param {DisconnectRequest} [disconnectRequest] 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async disconnect(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<HandleCallback200Response>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(options);
+        async disconnect(disconnectRequest?: DisconnectRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DisconnectResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(disconnectRequest, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.disconnect']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -5849,12 +6126,13 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.cronSync(options).then((request) => request(axios, basePath));
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token.
+         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+         * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect(options?: RawAxiosRequestConfig): AxiosPromise<HandleCallback200Response> {
-            return localVarFp.disconnect(options).then((request) => request(axios, basePath));
+        disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<DisconnectResponse> {
+            return localVarFp.disconnect(requestParameters.disconnectRequest, options).then((request) => request(axios, basePath));
         },
         /**
          * Returns the Google OAuth consent URL for linking YouTube.
@@ -5976,6 +6254,20 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
         },
     };
 };
+
+/**
+ * Request parameters for disconnect operation in YouTubeApi.
+ * @export
+ * @interface YouTubeApiDisconnectRequest
+ */
+export interface YouTubeApiDisconnectRequest {
+    /**
+     * 
+     * @type {DisconnectRequest}
+     * @memberof YouTubeApiDisconnect
+     */
+    readonly disconnectRequest?: DisconnectRequest
+}
 
 /**
  * Request parameters for getVideos operation in YouTubeApi.
@@ -6138,13 +6430,14 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
-     * Disconnects the user\'s YouTube account after revoking the token.
+     * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
+     * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof YouTubeApi
      */
-    public disconnect(options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).disconnect(options).then((request) => request(this.axios, this.basePath));
+    public disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).disconnect(requestParameters.disconnectRequest, options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

@@ -47,6 +47,19 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DisconnectResponse": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"googlePermissionsUrl":{"dataType":"string"},"revokeFailed":{"dataType":"boolean"},"message":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[true],"required":true}}},{"dataType":"nestedObjectLiteral","nestedProperties":{"code":{"dataType":"enum","enums":["sync_run_live"]},"message":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[false],"required":true}}}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "DisconnectRequest": {
+        "dataType": "refObject",
+        "properties": {
+            "deleteWatchedMarks": {"dataType":"boolean"},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SubscriptionResponse": {
         "dataType": "refObject",
         "properties": {
@@ -270,7 +283,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VaultBlobType": {
         "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["addresses"]},{"dataType":"enum","enums":["groceries"]},{"dataType":"enum","enums":["mobileNumbers"]},{"dataType":"enum","enums":["subscriptions"]},{"dataType":"enum","enums":["tasks"]},{"dataType":"enum","enums":["todos"]}],"validators":{}},
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["addresses"]},{"dataType":"enum","enums":["groceries"]},{"dataType":"enum","enums":["mobileNumbers"]},{"dataType":"enum","enums":["subscriptions"]},{"dataType":"enum","enums":["tasks"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "EncryptedBlobV1": {
@@ -288,6 +301,11 @@ const models: TsoaRoute.Models = {
         "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"etag":{"dataType":"string","required":true},"updatedAt":{"dataType":"string","required":true},"blob":{"ref":"EncryptedBlobV1","required":true},"type":{"ref":"VaultBlobType","required":true}}},{"ref":"ErrorResponse"}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "GetVaultBlobInventoryResponse": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"etag":{"dataType":"string","required":true},"blobs":{"dataType":"array","array":{"dataType":"nestedObjectLiteral","nestedProperties":{"updatedAt":{"dataType":"string","required":true},"etag":{"dataType":"string","required":true},"type":{"ref":"VaultBlobType","required":true}}},"required":true}}},{"ref":"ErrorResponse"}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "PutVaultBlobResponse": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"updatedAt":{"dataType":"string","required":true},"etag":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[true],"required":true}}},{"ref":"ErrorResponse"}],"validators":{}},
@@ -295,7 +313,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "Partial_Record_VaultBlobType.EncryptedBlobV1__": {
         "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"addresses":{"ref":"EncryptedBlobV1"},"groceries":{"ref":"EncryptedBlobV1"},"mobileNumbers":{"ref":"EncryptedBlobV1"},"subscriptions":{"ref":"EncryptedBlobV1"},"tasks":{"ref":"EncryptedBlobV1"},"todos":{"ref":"EncryptedBlobV1"}},"validators":{}},
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"addresses":{"ref":"EncryptedBlobV1"},"groceries":{"ref":"EncryptedBlobV1"},"mobileNumbers":{"ref":"EncryptedBlobV1"},"subscriptions":{"ref":"EncryptedBlobV1"},"tasks":{"ref":"EncryptedBlobV1"}},"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VaultExportV1": {
@@ -336,7 +354,7 @@ const models: TsoaRoute.Models = {
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VaultBackupBlobType": {
         "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["addresses"]},{"dataType":"enum","enums":["groceries"]},{"dataType":"enum","enums":["mobileNumbers"]},{"dataType":"enum","enums":["subscriptions"]},{"dataType":"enum","enums":["tasks"]},{"dataType":"enum","enums":["todos"]}],"validators":{}},
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["addresses"]},{"dataType":"enum","enums":["groceries"]},{"dataType":"enum","enums":["mobileNumbers"]},{"dataType":"enum","enums":["subscriptions"]},{"dataType":"enum","enums":["tasks"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "VaultBackupRecordDto": {
@@ -627,6 +645,7 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsYouTubeController_disconnect: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                body: {"in":"body","name":"body","ref":"DisconnectRequest"},
         };
         app.delete('/youtube/disconnect',
             authenticateMiddleware([{"jwt":[]}]),
@@ -1152,6 +1171,39 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'getVaultBlob',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsVaultController_getVaultBlobInventory: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                notModified: {"in":"res","name":"304","required":true,"dataType":"void"},
+                ifNoneMatch: {"in":"header","name":"if-none-match","dataType":"string"},
+        };
+        app.get('/vault/blobs',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(VaultController)),
+            ...(fetchMiddlewares<RequestHandler>(VaultController.prototype.getVaultBlobInventory)),
+
+            async function VaultController_getVaultBlobInventory(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsVaultController_getVaultBlobInventory, request, response });
+
+                const controller = new VaultController();
+
+              await templateService.apiHandler({
+                methodName: 'getVaultBlobInventory',
                 controller,
                 response,
                 next,

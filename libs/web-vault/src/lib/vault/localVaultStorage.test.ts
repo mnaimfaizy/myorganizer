@@ -707,8 +707,8 @@ describe('localVaultStorage — storage resolution and ownership', () => {
           masterKeyBytes: sentinelKeyBytes,
         });
         await handle.saveEncryptedData({
-          type: 'todos',
-          value: [{ id: 'a', text: 'Todo A' }],
+          type: 'groceries',
+          value: [{ id: 'a', name: 'Milk' }],
         });
 
         // Assert: per-User record was updated with new data
@@ -718,7 +718,7 @@ describe('localVaultStorage — storage resolution and ownership', () => {
         expect(userRecordStr).not.toBeNull();
         if (userRecordStr !== null) {
           const userRecordAfterWrite = JSON.parse(userRecordStr);
-          expect(userRecordAfterWrite.vault.data?.todos).toBeDefined();
+          expect(userRecordAfterWrite.vault.data?.groceries).toBeDefined();
         }
 
         // Assert: unsuffixed slot byte-identical (writes do NOT touch unclaimed vault)
