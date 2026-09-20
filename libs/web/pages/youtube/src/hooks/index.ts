@@ -1,8 +1,8 @@
 'use client';
 
-import { Configuration, YouTubeApi } from '@myorganizer/app-api-client';
 import { clearAuthSession, getAccessToken, refresh } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
+import { getYouTubeAvailability } from '@myorganizer/web-youtube';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ChannelCarousel,
@@ -595,11 +595,7 @@ export function useYouTubeAvailability() {
     setLoading(true);
     setError(null);
     try {
-      const api = new YouTubeApi(
-        new Configuration({ basePath: getApiBaseUrl() }),
-      );
-      const response = await api.getAvailability();
-      setAvailable(response.data.available);
+      setAvailable(await getYouTubeAvailability());
     } catch (err: unknown) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setAvailable(false);

@@ -1,7 +1,6 @@
 'use client';
 
-import { Configuration, YouTubeApi } from '@myorganizer/app-api-client';
-import { getApiBaseUrl } from '@myorganizer/core';
+import { getYouTubeAvailability } from '@myorganizer/web-youtube';
 import { useEffect, useState } from 'react';
 
 export function useYouTubeNavVisible(): boolean {
@@ -10,15 +9,10 @@ export function useYouTubeNavVisible(): boolean {
   useEffect(() => {
     let cancelled = false;
 
-    const api = new YouTubeApi(
-      new Configuration({ basePath: getApiBaseUrl() }),
-    );
-
-    api
-      .getAvailability()
-      .then((response) => {
+    getYouTubeAvailability()
+      .then((available) => {
         if (cancelled) return;
-        setVisible(response.data.available === true);
+        setVisible(available);
       })
       .catch(() => {
         if (!cancelled) {

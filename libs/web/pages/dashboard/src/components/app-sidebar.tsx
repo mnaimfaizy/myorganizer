@@ -79,7 +79,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const youtubeNavVisible = useYouTubeNavVisible();
 
   const navMain = allNavItems.filter(
-    (item) => item.title !== 'YouTube' || youtubeNavVisible,
+    (item) => item.url !== '/dashboard/youtube' || youtubeNavVisible,
   );
 
   return (
