@@ -2,6 +2,7 @@
 
 import { Button } from '@myorganizer/web-ui';
 import Link from 'next/link';
+import { YOUTUBE_DATA_PRIVACY_BULLETS } from '../lib/dataPrivacyCopy';
 
 interface YouTubeConnectPromptProps {
   /**
@@ -56,12 +57,9 @@ export function YouTubeConnectPrompt({
       </p>
       <div className="max-w-md text-center text-sm text-muted-foreground">
         <ul className="list-disc list-inside space-y-1 mb-2 inline-block text-left">
-          <li>Metadata only — never video files</li>
-          <li>Watched is yes/no, not analytics</li>
-          <li>Latest 100 uploads cached per channel</li>
-          <li>30 days after you disable a channel</li>
-          <li>Disconnecting deletes all metadata</li>
-          <li>Shorts budget is tracked locally</li>
+          {YOUTUBE_DATA_PRIVACY_BULLETS.map((bullet) => (
+            <li key={bullet}>{bullet}</li>
+          ))}
         </ul>
       </div>
       <Link

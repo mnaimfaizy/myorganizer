@@ -140,3 +140,19 @@ model YouTubeWorkerLease {
   cursor     String?
   updatedAt  DateTime @updatedAt
 }
+
+/// Ledger of Watched video ids that outlives YouTube disconnect. Unused rows
+/// expire after 30 days; applied rows are removed on reconnect reapply. Not
+/// vault-backed.
+model YouTubeWatchedLedger {
+  id        String   @id @default(cuid())
+  userId    String
+  videoId   String
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, videoId])
+  @@index([userId])
+  @@index([createdAt])
+}

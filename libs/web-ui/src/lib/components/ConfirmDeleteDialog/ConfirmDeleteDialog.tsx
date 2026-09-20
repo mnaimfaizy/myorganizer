@@ -26,62 +26,78 @@ interface ConfirmDeleteDialogProps {
   onConfirm: () => void | Promise<void>;
   /** Optional content to render between the header (title + description) and the footer buttons. Useful for additional interactive controls or content blocks. */
   children?: React.ReactNode;
+  /** Confirm button label. Defaults to "Delete" / "Delete…" while pending. */
+  confirmLabel?: string;
 }
 
 const ConfirmDeleteDialog = React.forwardRef<
   HTMLDivElement,
   ConfirmDeleteDialogProps
->(({ open, onOpenChange, title, description, onConfirm, children }, ref) => {
-  const [isPending, setIsPending] = useState(false);
-
-  const handleConfirm = useCallback(async () => {
-    setIsPending(true);
-    try {
-      await onConfirm();
-    } catch (error) {
-      console.error('ConfirmDeleteDialog: onConfirm rejected:', error);
-    } finally {
-      setIsPending(false);
-    }
-  }, [onConfirm]);
-
-  const handleCancel = useCallback(() => {
-    onOpenChange(false);
-  }, [onOpenChange]);
-
-  const handleOpenChange = useCallback(
-    (newOpen: boolean) => {
-      if (!newOpen) {
-        onOpenChange(false);
-      }
+>(
+  (
+    {
+      open,
+      onOpenChange,
+      title,
+      description,
+      onConfirm,
+      children,
+      confirmLabel,
     },
-    [onOpenChange],
-  );
+    ref,
+  ) => {
+    const [isPending, setIsPending] = useState(false);
+    const confirmButtonLabel = confirmLabel ?? 'Delete';
 
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent ref={ref}>
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>{description}</DialogDescription>
-        </DialogHeader>
-        {children}
-        <DialogFooter>
-          <Button variant="outline" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button
-            variant="destructive"
-            onClick={handleConfirm}
-            disabled={isPending}
-          >
-            {isPending ? 'Delete…' : 'Delete'}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-});
+    const handleConfirm = useCallback(async () => {
+      setIsPending(true);
+      try {
+        await onConfirm();
+      } catch (error) {
+        console.error('ConfirmDeleteDialog: onConfirm rejected:', error);
+      } finally {
+        setIsPending(false);
+      }
+    }, [onConfirm]);
+
+    const handleCancel = useCallback(() => {
+      onOpenChange(false);
+    }, [onOpenChange]);
+
+    const handleOpenChange = useCallback(
+      (newOpen: boolean) => {
+        if (!newOpen) {
+          onOpenChange(false);
+        }
+      },
+      [onOpenChange],
+    );
+
+    return (
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+        <DialogContent ref={ref}>
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+            <DialogDescription>{description}</DialogDescription>
+          </DialogHeader>
+          {children}
+          <DialogFooter>
+            <Button variant="outline" onClick={handleCancel}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleConfirm}
+              disabled={isPending}
+            >
+              {isPending ? `${confirmButtonLabel}…` : confirmButtonLabel}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    );
+  },
+);
 
 ConfirmDeleteDialog.displayName = 'ConfirmDeleteDialog';
 

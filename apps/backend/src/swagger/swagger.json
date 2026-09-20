@@ -46,6 +46,71 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"DisconnectResponse": {
+				"anyOf": [
+					{
+						"properties": {
+							"googlePermissionsUrl": {
+								"type": "string"
+							},
+							"revokeFailed": {
+								"type": "boolean"
+							},
+							"message": {
+								"type": "string"
+							},
+							"ok": {
+								"type": "boolean",
+								"enum": [
+									true
+								],
+								"nullable": false
+							}
+						},
+						"required": [
+							"message",
+							"ok"
+						],
+						"type": "object"
+					},
+					{
+						"properties": {
+							"code": {
+								"type": "string",
+								"enum": [
+									"sync_run_live"
+								],
+								"nullable": false
+							},
+							"message": {
+								"type": "string"
+							},
+							"ok": {
+								"type": "boolean",
+								"enum": [
+									false
+								],
+								"nullable": false
+							}
+						},
+						"required": [
+							"message",
+							"ok"
+						],
+						"type": "object"
+					}
+				]
+			},
+			"DisconnectRequest": {
+				"properties": {
+					"deleteWatchedMarks": {
+						"type": "boolean",
+						"description": "When true, do not preserve Watched — clear/skip ledger. Default false."
+					}
+				},
+				"type": "object",
+				"additionalProperties": false
+			},
 			"SubscriptionResponse": {
 				"properties": {
 					"id": {
@@ -1449,25 +1514,13 @@
 						"content": {
 							"application/json": {
 								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										},
-										"ok": {
-											"type": "boolean"
-										}
-									},
-									"required": [
-										"message",
-										"ok"
-									],
-									"type": "object"
+									"$ref": "#/components/schemas/DisconnectResponse"
 								}
 							}
 						}
 					}
 				},
-				"description": "Disconnects the user's YouTube account after revoking the token.",
+				"description": "Disconnects the user's YouTube account after revoking the token.\nOptionally wipes Watched marks via the request body; preserves them by default.",
 				"tags": [
 					"YouTube"
 				],
@@ -1476,7 +1529,17 @@
 						"jwt": []
 					}
 				],
-				"parameters": []
+				"parameters": [],
+				"requestBody": {
+					"required": false,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/DisconnectRequest"
+							}
+						}
+					}
+				}
 			}
 		},
 		"/youtube/subscriptions": {

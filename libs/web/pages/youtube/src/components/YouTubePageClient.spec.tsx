@@ -1,4 +1,11 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 
 import '@testing-library/jest-dom';
 
@@ -44,7 +51,43 @@ jest.mock('@myorganizer/web-ui', () => ({
     <div className={className}>{children}</div>
   ),
   CardTitle: ({ children }: any) => <h2>{children}</h2>,
+  Checkbox: ({ id, checked, onCheckedChange, ...props }: any) => (
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked}
+      onChange={(event) => onCheckedChange?.(event.target.checked)}
+      {...props}
+    />
+  ),
+  ConfirmDeleteDialog: ({
+    open,
+    title,
+    description,
+    children,
+    onConfirm,
+    confirmLabel,
+  }: any) =>
+    open ? (
+      <div role="dialog" aria-label={title}>
+        <div>{description}</div>
+        {children}
+        <button
+          type="button"
+          onClick={() => {
+            void Promise.resolve(onConfirm()).catch(() => {
+              // Real dialog keeps open on failure; avoid unhandled rejection in tests.
+            });
+          }}
+        >
+          {confirmLabel ?? 'Delete'}
+        </button>
+      </div>
+    ) : null,
   Input: (props: any) => <input {...props} />,
+  Label: ({ children, htmlFor }: any) => (
+    <label htmlFor={htmlFor}>{children}</label>
+  ),
   Skeleton: ({ className }: any) => (
     <div className={className} data-testid="skeleton" />
   ),
@@ -59,19 +102,34 @@ const mockUseYouTubeSyncStatus = jest.fn();
 const mockUseVideoQueue = jest.fn();
 const mockUseChannelUploads = jest.fn();
 
-jest.mock('../hooks', () => ({
-  useYouTubeStatus: () => mockUseYouTubeStatus(),
-  useYouTubeConnect: () => mockUseYouTubeConnect(),
-  useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
-  useYouTubeCarousel: () => mockUseYouTubeCarousel(),
-  useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
-  useVideoQueue: () => mockUseVideoQueue(),
-  useChannelUploads: () => mockUseChannelUploads(),
-  isRetryCooldownActive: (retryAt?: string | null) =>
-    Boolean(retryAt && Date.parse(retryAt) > Date.now()),
-  formatRetryAt: (retryAt?: string | null) =>
-    retryAt ? new Date(retryAt).toLocaleString() : null,
-}));
+jest.mock('../hooks', () => {
+  class YouTubeRequestError extends Error {
+    readonly status: number;
+    readonly code?: string;
+
+    constructor(message: string, status: number, code?: string) {
+      super(message);
+      this.name = 'YouTubeRequestError';
+      this.status = status;
+      this.code = code;
+    }
+  }
+
+  return {
+    useYouTubeStatus: () => mockUseYouTubeStatus(),
+    useYouTubeConnect: () => mockUseYouTubeConnect(),
+    useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
+    useYouTubeCarousel: () => mockUseYouTubeCarousel(),
+    useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
+    useVideoQueue: () => mockUseVideoQueue(),
+    useChannelUploads: () => mockUseChannelUploads(),
+    YouTubeRequestError,
+    isRetryCooldownActive: (retryAt?: string | null) =>
+      Boolean(retryAt && Date.parse(retryAt) > Date.now()),
+    formatRetryAt: (retryAt?: string | null) =>
+      retryAt ? new Date(retryAt).toLocaleString() : null,
+  };
+});
 
 const { YouTubePageClient } =
   require('./YouTubePageClient') as typeof import('./YouTubePageClient');
@@ -470,6 +528,162 @@ describe('YouTubePageClient', () => {
       render(<YouTubePageClient />);
 
       expect(screen.getByText('Older upload C')).toBeInTheDocument();
+    });
+  });
+
+  describe('disconnect confirm', () => {
+    const renderConnected = (
+      disconnect = jest.fn().mockResolvedValue({ revokeFailed: false }),
+      syncStatusOverrides: Record<string, unknown> = {},
+    ) => {
+      const refreshStatus = jest.fn();
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: refreshStatus,
+      });
+      mockUseYouTubeConnect.mockReturnValue({
+        connect: jest.fn(),
+        disconnect,
+      });
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: null,
+        loading: false,
+        triggerSync: jest.fn(),
+        isCooldownActive: false,
+        refresh: jest.fn(),
+        ...syncStatusOverrides,
+      });
+      render(<YouTubePageClient />);
+      return { disconnect, refreshStatus };
+    };
+
+    const openDisconnectDialog = () => {
+      fireEvent.click(
+        screen.getByRole('button', { name: 'Disconnect YouTube account' }),
+      );
+      return screen.getByRole('dialog', { name: 'Disconnect YouTube?' });
+    };
+
+    it('opens confirm dialog without calling disconnect until confirmed', () => {
+      const { disconnect } = renderConnected();
+      const dialog = openDisconnectDialog();
+
+      expect(dialog).toBeInTheDocument();
+      expect(disconnect).not.toHaveBeenCalled();
+    });
+
+    it('calls disconnect with deleteWatchedMarks false when confirmed without checkbox', async () => {
+      const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      await act(async () => {
+        fireEvent.click(
+          within(dialog).getByRole('button', { name: 'Disconnect' }),
+        );
+      });
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: false });
+    });
+
+    it('calls disconnect with deleteWatchedMarks true when wipe checkbox is checked', async () => {
+      const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      fireEvent.click(screen.getByLabelText('Also delete my Watched marks'));
+
+      await act(async () => {
+        fireEvent.click(
+          within(dialog).getByRole('button', { name: 'Disconnect' }),
+        );
+      });
+
+      expect(disconnect).toHaveBeenCalledTimes(1);
+      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: true });
+    });
+
+    it('describes destroyed stores in the disconnect dialog', () => {
+      renderConnected();
+      const dialog = openDisconnectDialog();
+
+      expect(dialog).toHaveTextContent(/Followed Channels/);
+      expect(dialog).toHaveTextContent(/Cached Uploads/);
+      expect(dialog).toHaveTextContent(/notification/);
+      expect(dialog).toHaveTextContent(/digest/);
+      expect(dialog).toHaveTextContent(/OAuth/);
+    });
+
+    it.each(['discovering', 'running'] as const)(
+      'disables disconnect while sync status is %s and does not open confirm',
+      (liveStatus) => {
+        const disconnect = jest.fn();
+        renderConnected(disconnect, { status: { status: liveStatus } });
+
+        const disconnectBtn = screen.getByRole('button', {
+          name: 'Disconnect unavailable while a sync is running',
+        });
+        expect(disconnectBtn).toBeDisabled();
+
+        fireEvent.click(disconnectBtn);
+
+        expect(
+          screen.queryByRole('dialog', { name: 'Disconnect YouTube?' }),
+        ).not.toBeInTheDocument();
+        expect(disconnect).not.toHaveBeenCalled();
+      },
+    );
+
+    it('shows disconnect error alert inside the dialog when disconnect rejects', async () => {
+      const disconnect = jest
+        .fn()
+        .mockRejectedValue(new Error('Server unavailable'));
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Disconnect' }),
+      );
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(
+          'Server unavailable',
+        );
+      });
+      expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    it('surfaces sync_run_live YouTubeRequestError message inside the dialog', async () => {
+      const { YouTubeRequestError } = jest.requireMock('../hooks') as {
+        YouTubeRequestError: new (
+          message: string,
+          status: number,
+          code?: string,
+        ) => Error;
+      };
+      const disconnect = jest
+        .fn()
+        .mockRejectedValue(
+          new YouTubeRequestError(
+            'Disconnect is not available while a sync is in progress.',
+            409,
+            'sync_run_live',
+          ),
+        );
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Disconnect' }),
+      );
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(
+          'Disconnect is not available while a sync is in progress.',
+        );
+      });
     });
   });
 

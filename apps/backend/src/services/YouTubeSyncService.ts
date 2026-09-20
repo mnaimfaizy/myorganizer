@@ -30,7 +30,79 @@ export const MANUAL_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
  * `expect(RUN_TTL_MS).toBe(MANUAL_REFRESH_COOLDOWN_MS)`, not for external consumption.
  */
 export const RUN_TTL_MS = MANUAL_REFRESH_COOLDOWN_MS;
+
+/**
+ * Statuses that count as an in-flight Sync Run under ADR 0080.
+ * Shared by {@link isSyncRunLive} and {@link syncRunClaimableWhere} so the
+ * claim gate and its inverse cannot drift independently.
+ */
+export const LIVE_SYNC_STATUSES = ['running', 'discovering'] as const;
+export type LiveSyncStatus = (typeof LIVE_SYNC_STATUSES)[number];
+
+export function isLiveSyncStatus(
+  status: string | null | undefined,
+): status is LiveSyncStatus {
+  return status === 'running' || status === 'discovering';
+}
+
+/**
+ * ADR 0080 live-run predicate: true while {@link syncRunClaimableWhere} would
+ * refuse a new claim. Both sides read only {@link LIVE_SYNC_STATUSES} and
+ * {@link RUN_TTL_MS}.
+ */
+export function isSyncRunLive(
+  integration: {
+    lastSyncStatus: string | null;
+    lastSyncAttemptAt: Date | null;
+  },
+  at: Date = new Date(),
+): boolean {
+  if (!isLiveSyncStatus(integration.lastSyncStatus)) {
+    return false;
+  }
+  if (!integration.lastSyncAttemptAt) {
+    return true;
+  }
+  return at.getTime() - integration.lastSyncAttemptAt.getTime() <= RUN_TTL_MS;
+}
+
+/**
+ * Prisma where for rows that may accept a new Sync Run claim — the logical
+ * inverse of {@link isSyncRunLive} (ADR 0080 decision 4).
+ */
+export function syncRunClaimableWhere(
+  userId: string,
+  at: Date,
+): Prisma.YouTubeIntegrationWhereInput {
+  return {
+    userId,
+    OR: [
+      { lastSyncStatus: { notIn: [...LIVE_SYNC_STATUSES] } },
+      {
+        lastSyncAttemptAt: {
+          lt: new Date(at.getTime() - RUN_TTL_MS),
+        },
+      },
+    ],
+  };
+}
+
 const DISABLED_VIDEO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+/** Watched Ledger TTL — aligned with disabled-channel retention (ADR 0092). */
+const WATCHED_LEDGER_TTL_MS = DISABLED_VIDEO_RETENTION_MS;
+export const GOOGLE_PERMISSIONS_URL =
+  'https://myaccount.google.com/permissions';
+
+/** Thrown inside the disconnect transaction when a Sync Run is claimed before commit. */
+class SyncRunBecameLiveError extends Error {
+  constructor() {
+    super('SYNC_RUN_LIVE');
+    this.name = 'SyncRunBecameLiveError';
+  }
+}
+
+const SYNC_RUN_LIVE_MESSAGE =
+  'Disconnect is not available while a sync is in progress. Wait for the sync to finish or cancel it, then try again.';
 /** Monday, matching the ISO week the digest period key is built from. */
 const DEFAULT_DIGEST_WEEKDAY = 1;
 
@@ -127,6 +199,19 @@ export interface YouTubeRefreshResult extends YouTubeSyncStatusDTO {
   subscriptionsSynced: number;
   videosSynced: number;
 }
+
+export type YouTubeDisconnectResult =
+  | {
+      ok: true;
+      message: string;
+      revokeFailed?: true;
+      googlePermissionsUrl?: string;
+    }
+  | {
+      ok: false;
+      message: string;
+      code?: 'sync_run_live';
+    };
 
 interface YouTubeVideoSnapshot {
   videoId: string;
@@ -241,7 +326,10 @@ class YouTubeSyncService {
   }
 
   /** Disconnect YouTube integration */
-  async disconnect(userId: string): Promise<{ ok: boolean; message: string }> {
+  async disconnect(
+    userId: string,
+    options: { deleteWatchedMarks?: boolean } = {},
+  ): Promise<YouTubeDisconnectResult> {
     const integration = await this.prisma.youTubeIntegration.findUnique({
       where: { userId },
     });
@@ -249,20 +337,94 @@ class YouTubeSyncService {
       return { ok: false, message: 'No YouTube integration found.' };
     }
 
+    if (isSyncRunLive(integration)) {
+      return {
+        ok: false,
+        code: 'sync_run_live',
+        message: SYNC_RUN_LIVE_MESSAGE,
+      };
+    }
+
+    const deleteWatchedMarks = options.deleteWatchedMarks === true;
+
+    try {
+      await this.prisma.$transaction(async (transaction) => {
+        await transaction.$queryRaw`
+          SELECT "userId" FROM "YouTubeIntegration" WHERE "userId" = ${userId} FOR UPDATE
+        `;
+        const current = await transaction.youTubeIntegration.findUnique({
+          where: { userId },
+        });
+        if (!current || isSyncRunLive(current)) {
+          throw new SyncRunBecameLiveError();
+        }
+
+        if (deleteWatchedMarks) {
+          await transaction.youTubeWatchedLedger.deleteMany({
+            where: { userId },
+          });
+        } else {
+          const watchedVideos = await transaction.youTubeVideo.findMany({
+            where: { userId, watched: true },
+            select: { videoId: true },
+          });
+          if (watchedVideos.length > 0) {
+            await transaction.youTubeWatchedLedger.createMany({
+              data: watchedVideos.map((video) => ({
+                userId,
+                videoId: video.videoId,
+              })),
+              skipDuplicates: true,
+            });
+          }
+          await this.purgeExpiredWatchedLedgerRows(transaction, userId);
+        }
+
+        await transaction.youTubeVideo.deleteMany({ where: { userId } });
+        await transaction.youTubeSubscription.deleteMany({
+          where: { userId },
+        });
+        await transaction.youTubeNotificationSettings.deleteMany({
+          where: { userId },
+        });
+        await transaction.youTubeDigestDelivery.deleteMany({
+          where: { userId },
+        });
+        await transaction.youTubeIntegration.delete({ where: { userId } });
+      });
+    } catch (error) {
+      if (error instanceof SyncRunBecameLiveError) {
+        return {
+          ok: false,
+          code: 'sync_run_live',
+          message: SYNC_RUN_LIVE_MESSAGE,
+        };
+      }
+      throw error;
+    }
+
+    let revokeFailed = false;
     try {
       const oauth2Client = getOAuth2Client();
       const refreshToken = this.decryptRefreshToken(integration);
       await oauth2Client.revokeToken(refreshToken);
-    } catch {
-      logger.warn('Failed to revoke token at Google (may already be revoked)');
+    } catch (error) {
+      revokeFailed = true;
+      logger.warn(
+        'Failed to revoke token at Google (may already be revoked)',
+        error,
+      );
     }
 
-    await this.prisma.youTubeVideo.deleteMany({ where: { userId } });
-    await this.prisma.youTubeSubscription.deleteMany({ where: { userId } });
-    await this.prisma.youTubeNotificationSettings.deleteMany({
-      where: { userId },
-    });
-    await this.prisma.youTubeIntegration.delete({ where: { userId } });
+    if (revokeFailed) {
+      return {
+        ok: true,
+        message:
+          'YouTube account disconnected locally. Remove Google access at your Google account permissions if needed.',
+        revokeFailed: true,
+        googlePermissionsUrl: GOOGLE_PERMISSIONS_URL,
+      };
+    }
 
     return { ok: true, message: 'YouTube account disconnected.' };
   }
@@ -617,18 +779,14 @@ class YouTubeSyncService {
       ? new Date(manualRefreshAt.getTime() + MANUAL_REFRESH_COOLDOWN_MS)
       : null;
 
-    // Determine the reported status: if the persisted status is 'running' or 'discovering'
-    // and exceeds the TTL, project it as 'failed' with 'syncInterrupted' (an Interrupted Sync).
-    // This is a read-time projection — we do not write the correction back to the row.
+    // Determine the reported status: if a persisted live status is past the
+    // ADR 0080 TTL, project it as 'failed' with 'syncInterrupted'. Read-time
+    // only — we do not write the correction back to the row.
     let reportedStatus = (integration.lastSyncStatus ??
       'never') as YouTubeSyncStatus;
     let reportedError = integration.lastSyncError ?? null;
 
-    if (
-      (reportedStatus === 'running' || reportedStatus === 'discovering') &&
-      integration.lastSyncAttemptAt &&
-      now.getTime() - integration.lastSyncAttemptAt.getTime() > RUN_TTL_MS
-    ) {
+    if (isLiveSyncStatus(reportedStatus) && !isSyncRunLive(integration, now)) {
       reportedStatus = 'failed';
       reportedError = 'syncInterrupted';
     }
@@ -1036,6 +1194,12 @@ class YouTubeSyncService {
                 },
               },
       });
+
+      await this.reapplyWatchedFromLedger(
+        transaction,
+        userId,
+        snapshot.map((video) => video.videoId),
+      );
     });
 
     return snapshot.length;
@@ -1123,14 +1287,53 @@ class YouTubeSyncService {
     });
   }
 
+  private purgeExpiredWatchedLedgerRows(
+    transaction: Prisma.TransactionClient,
+    userId: string,
+  ) {
+    return transaction.youTubeWatchedLedger.deleteMany({
+      where: {
+        userId,
+        createdAt: { lt: new Date(Date.now() - WATCHED_LEDGER_TTL_MS) },
+      },
+    });
+  }
+
+  private async reapplyWatchedFromLedger(
+    transaction: Prisma.TransactionClient,
+    userId: string,
+    videoIds: string[],
+  ): Promise<void> {
+    if (videoIds.length > 0) {
+      const ledgerRows = await transaction.youTubeWatchedLedger.findMany({
+        where: { userId, videoId: { in: videoIds } },
+        select: { videoId: true },
+      });
+
+      if (ledgerRows.length > 0) {
+        const reapplyIds = ledgerRows.map((row) => row.videoId);
+        await transaction.youTubeVideo.updateMany({
+          where: { userId, videoId: { in: reapplyIds } },
+          data: { watched: true },
+        });
+        await transaction.youTubeWatchedLedger.deleteMany({
+          where: { userId, videoId: { in: reapplyIds } },
+        });
+      }
+    }
+
+    await this.purgeExpiredWatchedLedgerRows(transaction, userId);
+  }
+
   /**
    * Atomically claim a Sync Run with the given status and timestamp.
    *
    * Returns true if the claim was won (exactly one row updated), false if a concurrent
    * run is already live and the claim was lost (zero rows updated).
    *
-   * This is the single place the run-claim predicate (and therefore RUN_TTL_MS)
-   * lives, ensuring it stays in sync across all call sites (ADR 0080 decision 4).
+   * The claim where clause is {@link syncRunClaimableWhere}, the inverse of
+   * {@link isSyncRunLive}, so RUN_TTL_MS / LIVE_SYNC_STATUSES stay single-sourced
+   * (ADR 0080 decision 4).
    */
   private async claimSyncRun(
     userId: string,
@@ -1138,17 +1341,7 @@ class YouTubeSyncService {
     status: 'running' | 'discovering',
   ): Promise<boolean> {
     const runClaim = await this.prisma.youTubeIntegration.updateMany({
-      where: {
-        userId,
-        OR: [
-          { lastSyncStatus: { notIn: ['running', 'discovering'] } },
-          {
-            lastSyncAttemptAt: {
-              lt: new Date(at.getTime() - RUN_TTL_MS),
-            },
-          },
-        ],
-      },
+      where: syncRunClaimableWhere(userId, at),
       data: {
         lastSyncAttemptAt: at,
         lastSyncStatus: status,

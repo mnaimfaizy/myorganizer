@@ -461,10 +461,28 @@ jobs:
     timeout-minutes: 30
     needs: setup
 
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          # Throwaway runner service. Trust avoids storing a credential in the
+          # workflow; this database is never reachable off the job.
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: myorganizer
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     env:
-      # Required for Prisma v7 config loading during `prisma generate`.
-      # CI uses a dummy local URL here because generation does not connect.
-      DATABASE_URL: postgresql://localhost:5432/myorganizer
+      # Prisma generate reads this without connecting; migrate deploy and
+      # migrate diff use the service above so a migration that fails to apply,
+      # or a schema that has drifted from the migrations, fails before merge.
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
 
     steps:
       - name: Checkout repository
@@ -599,6 +617,12 @@ jobs:
       # same dependency; typechecking needs it just as much, and runs first.
       - name: Generate Prisma client
         run: corepack yarn nx run backend:generate-types
+
+      - name: Apply Prisma migrations and check schema drift
+        working-directory: apps/backend/src
+        run: |
+          npx prisma migrate deploy --schema prisma/schema
+          npx prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
 
       # Compiles every project tsconfig, lib/app and spec alike. Nothing ran
       # TypeScript in CI before this, so two type errors had reached main.

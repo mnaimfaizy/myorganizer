@@ -309,6 +309,45 @@ describe('ConfirmDeleteDialog', () => {
     expect(onConfirm).toHaveBeenCalledTimes(1);
   });
 
+  it('should use confirmLabel for the confirm button text and pending state', async () => {
+    const onOpenChange = jest.fn();
+    const resolvers: { resolve?: () => void } = {};
+    const onConfirm = jest.fn(
+      () =>
+        new Promise<void>((resolve) => {
+          resolvers.resolve = resolve;
+        }),
+    );
+
+    render(
+      <ConfirmDeleteDialog
+        open={true}
+        onOpenChange={onOpenChange}
+        title="Disconnect account?"
+        description="You can reconnect later."
+        onConfirm={onConfirm}
+        confirmLabel="Disconnect"
+      />,
+    );
+
+    const confirmButton = screen.getByRole('button', { name: /disconnect/i });
+    expect(confirmButton).toHaveTextContent('Disconnect');
+
+    fireEvent.click(confirmButton);
+
+    await waitFor(() => {
+      expect(confirmButton).toBeDisabled();
+      expect(confirmButton).toHaveTextContent('Disconnect…');
+    });
+
+    await resolvePending(resolvers);
+
+    await waitFor(() => {
+      expect(confirmButton).not.toBeDisabled();
+      expect(confirmButton).toHaveTextContent('Disconnect');
+    });
+  });
+
   it('should re-enable the confirm button when onConfirm rejects', async () => {
     const onOpenChange = jest.fn();
     // Delay rejection to allow pending state to be visible, then throw error
