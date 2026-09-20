@@ -195,6 +195,21 @@ Production cPanel FTP/FTPS:
 - `FTP_PROD_FRONTEND_PASSWORD`
 - `FTP_PROD_FRONTEND_DIR` (remote directory for frontend app root)
 
+Frontend **build-time** (GitHub Environment **variables** on `production`,
+not secrets — the value is public and inlined into the browser bundle):
+
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — Vault Cloud Backup GIS client. Dedicated
+  production Drive project (ADR 0091); not the YouTube production client
+  from #848. Empty leaves the vault page on _"Cloud backup is not
+  configured"_ (no availability switch). After first production enable the
+  value is sticky: Drive `appDataFolder` is per OAuth application, so
+  changing it hides existing Escape Copies. See
+  [Vault Cloud Backup](../features/vault-cloud-backup-google-drive.md).
+
+`deploy-production.yml` passes this variable into the
+`yarn package:myorganizer:web` step. Setting it only on the cPanel Node.js
+app does not change an already-built bundle.
+
 ### Host Apply (Staging & Production)
 
 After the backend bundle is uploaded, CI SSHs in to install, migrate, regenerate

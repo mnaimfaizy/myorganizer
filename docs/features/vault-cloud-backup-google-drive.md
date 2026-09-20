@@ -20,6 +20,8 @@ and troubleshooting.
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Google Cloud Console setup](#google-cloud-console-setup)
+- [Production Google application](#production-google-application)
+- [Sticky client ID](#sticky-client-id)
 - [Environment variables](#environment-variables)
 - [Frontend integration points](#frontend-integration-points)
 - [Backend integration points](#backend-integration-points)
@@ -83,9 +85,12 @@ mechanism offered alongside the manual file-based one:
 In production the two features use separate Cloud projects, so Drive backup
 never waits on YouTube's sensitive-scope verification
 ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
-Locally they may share one client (it just needs both **Authorized redirect
-URIs** _and_ **Authorized JavaScript origins** filled in) — see
-[Google Cloud Console setup](#google-cloud-console-setup) below.
+The YouTube production project is created in [#848](https://github.com/mnaimfaizy/myorganizer/issues/848);
+the Drive production project is created here — do not reuse or duplicate that
+YouTube project. Development and staging may share one Testing-project client
+(it just needs both **Authorized redirect URIs** _and_ **Authorized JavaScript
+origins** filled in) — see [Google Cloud Console setup](#google-cloud-console-setup)
+below.
 
 ---
 
@@ -151,14 +156,15 @@ things on every token request:
 
 ### Step 1 — Pick (or create) the Cloud project
 
-You can either:
+| Environment           | Cloud project                                                                                                                           | Why                                                                                                                                                    |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Development / staging | Shared **Testing** project with YouTube ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)) | Weekly reconnect is accepted there. One Web client can hold YouTube redirect URIs _and_ Drive JavaScript origins.                                      |
+| Production            | **Dedicated Drive project** (this issue)                                                                                                | Consent, publishing, and quota belong to the project. `drive.appdata` is non-sensitive and must not wait on YouTube's `youtube.readonly` verification. |
 
-- **Reuse the dev/staging Cloud project as YouTube.** Fine for development
-  and staging. The single OAuth client gets both "Authorized redirect URIs"
-  (YouTube) and "Authorized JavaScript origins" (Drive backup).
-- **Create a separate project.** Required for production: consent screen,
-  verification, and quota belong to the project, and `drive.appdata` is a
-  non-sensitive scope that should not wait on YouTube's review.
+[#848](https://github.com/mnaimfaizy/myorganizer/issues/848) creates the production
+**YouTube** project. It does not create this Drive project. Do not put
+`drive.appdata` on the YouTube production consent screen, and do not invent a
+second Drive production project beside the one this runbook describes.
 
 ### Step 2 — Enable the Google Drive API
 
@@ -169,23 +175,57 @@ You can either:
 
 ### Step 3 — Configure the OAuth consent screen
 
-If you already configured it for YouTube, you can reuse it. Otherwise:
+On the shared **dev/staging** Testing project you can reuse the YouTube consent
+screen and add the Drive scope. On the **production Drive** project, Branding
+has no separate "purpose" or "description" field — only **App name** and
+**App logo**. Distinction from YouTube is the App name plus Data Access, not
+a second logo:
 
-1. **Google Auth platform → Branding** → fill app name, support email, dev
-   contact.
+| Branding / access field    | YouTube production                      | Drive production                                         |
+| -------------------------- | --------------------------------------- | -------------------------------------------------------- |
+| **App name**               | `MyOrganizer`                           | `MyOrganizer Vault Backup`                               |
+| **App logo**               | Same MyOrganizer shield (120 × 120 PNG) | Same file — one product                                  |
+| Homepage / privacy / terms | `https://myorganiser.app`               | Same URLs                                                |
+| **Data Access**            | `youtube.readonly` only                 | `drive.appdata` only                                     |
+| Enabled API                | YouTube Data API v3                     | Google Drive API                                         |
+| Client extras              | Authorized redirect URIs                | Authorized JavaScript origins; leave redirect URIs empty |
+
+The logo to upload is `apps/myorganizer/public/images/google-oauth-app-logo.png`
+(square PNG, 120 × 120, under 1 MB — Google's Branding spec). It is the same
+shield as `apps/myorganizer/src/app/icon.svg`. Do not invent a Drive-only mark
+or use a Google Drive icon.
+
+1. **Google Auth platform → Branding** → fill:
+   - **App name:** `MyOrganizer Vault Backup` (YouTube production stays
+     `MyOrganizer` — this is the field that differs)
+   - **App logo:** upload `google-oauth-app-logo.png`
+   - Support email and developer contact
+   - App domain links (homepage, privacy, terms) on `myorganiser.app` once
+     those public pages exist
 2. **User type:** External (or Internal for Workspace orgs).
 3. **Data Access → Add or Remove Scopes** → add:
    `https://www.googleapis.com/auth/drive.appdata`
 
    The `drive.appdata` scope is _**not**_ classed as a sensitive or
    restricted scope, which means:
-   - No app verification is required to publish in production.
+   - No **data-access** verification is required to publish in production.
    - The "unverified app" warning still appears in **Testing** mode for
      external users.
+   - **Brand** verification is a separate check: without it, Google shows
+     only the authorized domain on the consent screen, not the App name or
+     logo. Name and logo still belong on Branding so they are ready when
+     you submit.
 
 4. **Audience → Test users:** while in Testing mode, add every Google
    account that needs to use cloud backup (your own dev account, QA users,
    etc.). External users not on this list will see `access_denied`.
+
+Production Drive can move **Audience** from Testing to **In production**
+without Google's app-verification review. Do that when you are ready for
+Users; until then, only listed test users can complete the GIS popup. There
+is no YouTube-style availability switch in this app: an empty
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID` is what keeps the card on _"Cloud backup is
+not configured"_.
 
 ### Step 4 — Create / edit the OAuth Client ID
 
@@ -194,11 +234,11 @@ If you already configured it for YouTube, you can reuse it. Otherwise:
 3. **Authorized JavaScript origins** — add the page origins where the cloud
    backup UI loads (no trailing slash, no path):
 
-   | Environment | Origin                        |
-   | ----------- | ----------------------------- |
-   | Local dev   | `http://localhost:4200`       |
-   | Staging     | `https://staging.example.com` |
-   | Production  | `https://app.example.com`     |
+   | Environment | Origin                                                                                                                            |
+   | ----------- | --------------------------------------------------------------------------------------------------------------------------------- |
+   | Local dev   | `http://localhost:4200`                                                                                                           |
+   | Staging     | The HTTPS origin of the Vercel project `VERCEL_PROJECT_ID` names (see [Vercel hosting](../deployment/VERCEL_FRONTEND_HOSTING.md)) |
+   | Production  | `https://myorganiser.app` (see [Web app on cPanel](../deployment/CPANEL_WEB_HOSTING.md))                                          |
 
 4. **Authorized redirect URIs** — only needed if this same client is also
    used for YouTube; otherwise leave empty.
@@ -211,12 +251,17 @@ If you already configured it for YouTube, you can reuse it. Otherwise:
 5. **Save.** Copy the **Client ID**. The Client Secret is _not_ needed for
    the Drive flow (it's a public OAuth client; Drive is browser-only).
 
+   Treat that Client ID as **sticky** the moment it is used in production —
+   see [Sticky client ID](#sticky-client-id).
+
 ### Step 5 — Verify the consent screen
 
 Sign out of all Google accounts, then visit the dev app and click
 **Connect Google Drive**. Confirm the popup shows:
 
-- The correct app name.
+- The correct app name (`MyOrganizer Vault Backup` on the production Drive
+  client). Until brand verification is approved, Google may show only the
+  domain `myorganiser.app` instead of the name and logo — that is expected.
 - A **single** scope item: _"See, create, and delete its own configuration
   data in your Google Drive"_.
 
@@ -225,20 +270,77 @@ the wrong client ID is wired up — check `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 
 ---
 
+## Production Google application
+
+This is operator work in Google Cloud Console. The repository cannot create
+the project. [#848](https://github.com/mnaimfaizy/myorganizer/issues/848) is
+the YouTube production project; this section is the Drive one.
+
+1. Create a Cloud project (name e.g. `MyOrganizer Vault Backup`).
+2. Enable **Google Drive API** only ([Step 2](#step-2--enable-the-google-drive-api)).
+3. Configure the consent screen with App name **MyOrganizer Vault Backup**,
+   the shared shield logo, and scope `drive.appdata` only
+   ([Step 3](#step-3--configure-the-oauth-consent-screen)).
+4. Create a **Web application** OAuth client whose **Authorized JavaScript
+   origins** include `https://myorganiser.app` and nothing else required for
+   Drive. Leave redirect URIs empty.
+5. Copy the Client ID into the production frontend **build** as
+   `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (see [Environment variables](#environment-variables)).
+   Do this **before** the production package step runs. The first enable
+   needs no migration: no production Drive client exists yet.
+
+Staging does **not** wait on this project. Point staging at the Testing
+project client (it may share YouTube's) and add the staging origin under
+**Authorized JavaScript origins**. Users on staging who are not test users
+will still see `access_denied` until you add them or publish that Testing
+app, which you should not.
+
+---
+
+## Sticky client ID
+
+Google Drive's `appDataFolder` is scoped **per OAuth application**. The
+hidden folder a User's Escape Copies live in belongs to the client that
+wrote them. Changing production `NEXT_PUBLIC_GOOGLE_CLIENT_ID` to a client
+from a different Cloud project (or a newly created client) makes those
+copies **invisible** to the new client — a data-loss-shaped outcome for
+anyone who relied on Drive as their Escape Copy destination.
+
+- **Never swap the production client casually.** A forced move needs its
+  own ADR and a User-visible migration. Do not build that migration before
+  a production client exists.
+- Development and staging clients can still rotate: Testing-mode tokens are
+  short-lived and those environments are not the User's Escape Copy home.
+- Recording a new Client ID in the GitHub `production` Environment variable
+  is the production cutover. Because the value is inlined at build time,
+  the next `yarn package:myorganizer:web` in
+  [Deploy Production](../deployment/CI_CD_AND_RELEASE_PROCESS.md) is what
+  ships it.
+
+---
+
 ## Environment variables
 
-| Variable                       | Where used | Required for cloud backup | Notes                                        |
-| ------------------------------ | ---------- | :-----------------------: | -------------------------------------------- |
-| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Frontend   |          **Yes**          | Public OAuth client id (sent to the browser) |
-| `GOOGLE_CLIENT_ID`             | Backend    |            No             | Used by the YouTube server-side flow         |
-| `GOOGLE_CLIENT_SECRET`         | Backend    |            No             | YouTube only                                 |
-| `GOOGLE_REDIRECT_URI`          | Backend    |            No             | YouTube only                                 |
+| Variable                       | Where used | Required for cloud backup | Notes                                                                                           |
+| ------------------------------ | ---------- | :-----------------------: | ----------------------------------------------------------------------------------------------- |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Frontend   |          **Yes**          | Public OAuth client id, **inlined at build time**. Sticky in production. Empty = not configured |
+| `GOOGLE_CLIENT_ID`             | Backend    |            No             | Used by the YouTube server-side flow                                                            |
+| `GOOGLE_CLIENT_SECRET`         | Backend    |            No             | YouTube only                                                                                    |
+| `GOOGLE_REDIRECT_URI`          | Backend    |            No             | YouTube only                                                                                    |
 
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is consumed in
 [libs/web/pages/vault/src/components/VaultPageClient.tsx](../../libs/web/pages/vault/src/components/VaultPageClient.tsx).
 If it is empty (or the GIS script fails to load) the page renders a
 disabled card with the message _"Cloud backup is not configured…"_ instead
-of the connect controls.
+of the connect controls. That empty-value card **is** the off switch —
+Drive has no YouTube-style production availability flag.
+
+The same file also reads `window.__MYORG_GOOGLE_CLIENT_ID__` when the
+build-time variable is absent. That fallback exists so Playwright can
+enable the card without rebuilding
+([vault-cloud-backup.spec.ts](../../apps/myorganizer-e2e/src/e2e/vault-cloud-backup.spec.ts)).
+It is **not** a production configuration path. Do not inject the production
+client id through `window` on a hosted origin.
 
 The Vault operation policy answers first, though
 ([ADR 0068](../adr/0068-a-locked-vault-blocks-exactly-the-operations-that-need-the-master-key.md)).
@@ -252,9 +354,42 @@ moves Ciphertext and needs no Master Key.
 For Next.js to pick up the variable, restart `corepack yarn start:myorganizer`
 after editing `.env`. `NEXT_PUBLIC_*` values are inlined at build time.
 
-> **Ops note.** In production, set `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in the
-> Vercel/cPanel environment configuration **before** the production build
-> step runs. Re-deploy after changing it.
+> **Ops — where to set it.**
+>
+> | Environment | Where the value lives                                                                                                                | Notes                                                                                                                                                                                                 |
+> | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | Local       | `.env` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`                                                                                             | Testing-project client is fine; may share YouTube's.                                                                                                                                                  |
+> | Staging     | Vercel project env for the staging frontend ([Vercel hosting](../deployment/VERCEL_FRONTEND_HOSTING.md))                             | Testing-project client. Add the staging origin as an Authorized JavaScript origin. The staging workflow deploys with `--prod` against that Vercel project, so use that project's Production env vars. |
+> | Production  | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `production` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md)) | Dedicated Drive client. Injected when CI runs `yarn package:myorganizer:web`. Setting it only in the cPanel Node.js app panel does nothing — the value is already baked into the bundle.              |
+>
+> Changing the production value after Users have copies in `appDataFolder`
+> is a [sticky-client](#sticky-client-id) event, not a routine rotate.
+
+### Why there is no ADR 0043 gate
+
+[#751](https://github.com/mnaimfaizy/myorganizer/issues/751) asked whether any
+fact here is worth an [ADR 0043](../adr/0043-gates-assert-facts.md) Assertion
+Gate, or whether this stays operational and documented only. The 2026-09-18
+triage chose **ops + docs**: no new checker, and no YouTube-style availability
+switch.
+
+The facts that can fail in production are not in the repository. The Client ID
+lives in a GitHub Environment **variable** on `production` that no `check-*.mjs`
+can read; a gate that demanded a non-empty value would also fail every local
+commit that leaves `.env.example`'s `NEXT_PUBLIC_GOOGLE_CLIENT_ID=` blank (that
+blank line **is** the off switch). The Cloud project, consent brand, and
+Authorized JavaScript origins live in Google Cloud Console. Same shape as
+[ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)
+leaving YouTube's production `GOOGLE_REDIRECT_URI` to a boot check rather than
+a repo gate: the value is not an artifact a checker can compare.
+
+What _is_ in git — `.env.example` declaring the name, and
+`deploy-production.yml` injecting `vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID` into
+`yarn package:myorganizer:web` — is already visible to review. A dedicated
+checker that only confirmed that one YAML line still would not catch the
+operator failure that matters (the value stored as a Secret instead of a
+Variable, or never set), so it would assert a fact that has never broken a
+deploy. ADR 0043 rejects that kind of gate.
 
 ---
 
@@ -465,19 +600,19 @@ Override defaults via `CloudBackupCoordinator` constructor options
 
 ## Troubleshooting
 
-| Symptom                                                              | Likely cause                                                                            | Fix                                                                                                                                                             |
-| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Error 400: redirect_uri_mismatch` on connect popup                  | The page origin is not in **Authorized JavaScript origins** of the OAuth client.        | Add `http://localhost:4200` (and prod origins) under **Credentials → OAuth client → Authorized JavaScript origins**.                                            |
-| `Drive request failed: 403 …Drive API has not been used in project…` | Google Drive API is not enabled in the GCP project owning the OAuth client.             | Enable **Google Drive API** in **APIs & Services → Library**.                                                                                                   |
-| `Drive request failed: 403 Insufficient Permission`                  | The user closed the consent popup before granting `drive.appdata`.                      | Click **Unlink**, then **Link Google Drive** again, leaving the scope checkbox checked.                                                                         |
-| `Drive request failed: 403 access_denied` / "App is blocked"         | Consent screen is in **Testing** and the user is not on the test-users list.            | Add the email to **OAuth consent → Audience → Test users**, or publish the app.                                                                                 |
-| Cloud backup card shows _"Cloud backup is not configured"_           | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is empty at build time.                                  | Set the env var in `.env` (and the production deploy environment) and rebuild.                                                                                  |
-| Brief popup flashes on every page load                               | Old build still calls `acquireToken({ interactive: false })` from `getConnectionState`. | Pull latest `main`. Current code never re-acquires tokens outside a user gesture.                                                                               |
-| `[GSI_LOGGER]: Failed to open popup window … Maybe blocked…`         | A token request is happening outside a user gesture.                                    | The scheduler only uses `canRunWithoutPrompt()`, which never requests a token. If you patched it, restore the user-gesture-only invariant.                      |
-| Card stuck on "Working…" after closing the Google popup              | A build without `error_callback` on `initTokenClient`.                                  | Pull latest `main`; a dismissed popup now ends the action quietly.                                                                                              |
-| `POST /vault/backups → 401`                                          | The app's JWT access token expired or was signed with a different secret.               | Logout → login. If still failing, check that `ACCESS_JWT_SECRET` matches between the running backend and the token issuer.                                      |
-| `GET /vault/backups/latest → 401`                                    | Same as above.                                                                          | Logout → login.                                                                                                                                                 |
-| Connect button is disabled                                           | The GIS script (`https://accounts.google.com/gsi/client`) failed to load.               | Check Network tab; common causes are content blockers, an offline state, or a strict CSP that omits `accounts.google.com`. Allowlist `*.gstatic.com` if needed. |
+| Symptom                                                              | Likely cause                                                                                  | Fix                                                                                                                                                                                           |
+| -------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Error 400: redirect_uri_mismatch` on connect popup                  | The page origin is not in **Authorized JavaScript origins** of the OAuth client.              | Add `http://localhost:4200` (and prod origins) under **Credentials → OAuth client → Authorized JavaScript origins**.                                                                          |
+| `Drive request failed: 403 …Drive API has not been used in project…` | Google Drive API is not enabled in the GCP project owning the OAuth client.                   | Enable **Google Drive API** in **APIs & Services → Library**.                                                                                                                                 |
+| `Drive request failed: 403 Insufficient Permission`                  | The user closed the consent popup before granting `drive.appdata`.                            | Click **Unlink**, then **Link Google Drive** again, leaving the scope checkbox checked.                                                                                                       |
+| `Drive request failed: 403 access_denied` / "App is blocked"         | Consent screen is in **Testing** and the user is not on the test-users list.                  | Add the email to **OAuth consent → Audience → Test users**, or publish the app.                                                                                                               |
+| Cloud backup card shows _"Cloud backup is not configured"_           | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` is empty at build time (and the E2E window fallback is unset). | Set it in `.env` locally, in the staging Vercel project, or in the GitHub `production` Environment variable, then rebuild. Do not use `window.__MYORG_GOOGLE_CLIENT_ID__` on a hosted origin. |
+| Brief popup flashes on every page load                               | Old build still calls `acquireToken({ interactive: false })` from `getConnectionState`.       | Pull latest `main`. Current code never re-acquires tokens outside a user gesture.                                                                                                             |
+| `[GSI_LOGGER]: Failed to open popup window … Maybe blocked…`         | A token request is happening outside a user gesture.                                          | The scheduler only uses `canRunWithoutPrompt()`, which never requests a token. If you patched it, restore the user-gesture-only invariant.                                                    |
+| Card stuck on "Working…" after closing the Google popup              | A build without `error_callback` on `initTokenClient`.                                        | Pull latest `main`; a dismissed popup now ends the action quietly.                                                                                                                            |
+| `POST /vault/backups → 401`                                          | The app's JWT access token expired or was signed with a different secret.                     | Logout → login. If still failing, check that `ACCESS_JWT_SECRET` matches between the running backend and the token issuer.                                                                    |
+| `GET /vault/backups/latest → 401`                                    | Same as above.                                                                                | Logout → login.                                                                                                                                                                               |
+| Connect button is disabled                                           | The GIS script (`https://accounts.google.com/gsi/client`) failed to load.                     | Check Network tab; common causes are content blockers, an offline state, or a strict CSP that omits `accounts.google.com`. Allowlist `*.gstatic.com` if needed.                               |
 
 When debugging Drive errors specifically, the provider re-reads the response
 body and includes Google's `error.message` field in the thrown `Error`. The
@@ -492,5 +627,5 @@ request — it is the most authoritative source.
 - Drive API — [`appDataFolder` reference](https://developers.google.com/drive/api/guides/appdata)
 - Drive API — [files.create with appProperties](https://developers.google.com/drive/api/reference/rest/v3/files)
 - OWASP — [OAuth 2.0 implicit flow guidance](https://cheatsheetseries.owasp.org/cheatsheets/OAuth2_Cheat_Sheet.html)
-- Internal: [ADR 0062](../adr/0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md), [ADR 0063](../adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md), [ADR 0064 — standalone reader, not built yet (#792)](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md), [ADR 0039 — vault crypto suite](../adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md), [ADR 0033 — local vaults are user-owned](../adr/0033-local-vaults-are-user-owned-and-never-silently-destroyed.md), [vault overview](../vault/README.md)
+- Internal: [ADR 0062](../adr/0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md), [ADR 0063](../adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md), [ADR 0064 — standalone reader, not built yet (#792)](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md), [ADR 0039 — vault crypto suite](../adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md), [ADR 0033 — local vaults are user-owned](../adr/0033-local-vaults-are-user-owned-and-never-silently-destroyed.md), [ADR 0091 — Google Cloud project split](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md), [vault overview](../vault/README.md)
 - Sibling integration: [YouTube OAuth setup](./google-youtube-oauth-setup.md), [YouTube integration architecture](./youtube-integration.md)

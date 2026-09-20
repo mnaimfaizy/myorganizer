@@ -29,14 +29,16 @@ as the OAuth provider but use very different flows, scopes, and credentials.
 - **Setting up Google Cloud Console for the first time?**
   Read [google-youtube-oauth-setup.md](./google-youtube-oauth-setup.md) — it
   walks through project creation, the OAuth consent screen, and creating a
-  Web Application OAuth client. The same client can be reused for the Drive
-  backup feature by adding **Authorized JavaScript origins** in addition to
-  the redirect URIs.
+  Web Application OAuth client. Development and staging may reuse that
+  Testing-project client for Drive backup by adding **Authorized JavaScript
+  origins** in addition to the redirect URIs. Production Drive uses its
+  **own** Cloud project ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md));
+  do not put `drive.appdata` on the YouTube production consent screen.
 
 - **Adding the Drive cloud backup feature to your environment?**
   Read [vault-cloud-backup-google-drive.md](./vault-cloud-backup-google-drive.md).
-  Pay particular attention to the `Authorized JavaScript origins` step and
-  to the `drive.appdata` scope.
+  Pay particular attention to the `Authorized JavaScript origins` step, the
+  `drive.appdata` scope, and the sticky production client id.
 
 - **Working on YouTube sync, OAuth, or the cron?**
   Read [youtube-integration.md](./youtube-integration.md) for architecture,
