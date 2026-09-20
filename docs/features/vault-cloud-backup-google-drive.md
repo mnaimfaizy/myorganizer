@@ -365,6 +365,32 @@ after editing `.env`. `NEXT_PUBLIC_*` values are inlined at build time.
 > Changing the production value after Users have copies in `appDataFolder`
 > is a [sticky-client](#sticky-client-id) event, not a routine rotate.
 
+### Why there is no ADR 0043 gate
+
+[#751](https://github.com/mnaimfaizy/myorganizer/issues/751) asked whether any
+fact here is worth an [ADR 0043](../adr/0043-gates-assert-facts.md) Assertion
+Gate, or whether this stays operational and documented only. The 2026-09-18
+triage chose **ops + docs**: no new checker, and no YouTube-style availability
+switch.
+
+The facts that can fail in production are not in the repository. The Client ID
+lives in a GitHub Environment **variable** on `production` that no `check-*.mjs`
+can read; a gate that demanded a non-empty value would also fail every local
+commit that leaves `.env.example`'s `NEXT_PUBLIC_GOOGLE_CLIENT_ID=` blank (that
+blank line **is** the off switch). The Cloud project, consent brand, and
+Authorized JavaScript origins live in Google Cloud Console. Same shape as
+[ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)
+leaving YouTube's production `GOOGLE_REDIRECT_URI` to a boot check rather than
+a repo gate: the value is not an artifact a checker can compare.
+
+What _is_ in git — `.env.example` declaring the name, and
+`deploy-production.yml` injecting `vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID` into
+`yarn package:myorganizer:web` — is already visible to review. A dedicated
+checker that only confirmed that one YAML line still would not catch the
+operator failure that matters (the value stored as a Secret instead of a
+Variable, or never set), so it would assert a fact that has never broken a
+deploy. ADR 0043 rejects that kind of gate.
+
 ---
 
 ## Frontend integration points
