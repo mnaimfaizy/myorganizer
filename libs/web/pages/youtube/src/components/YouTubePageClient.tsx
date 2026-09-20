@@ -1,18 +1,10 @@
 'use client';
 
-import {
-  Button,
-  Card,
-  CardContent,
-  CardTitle,
-  Checkbox,
-  ConfirmDeleteDialog,
-  Label,
-} from '@myorganizer/web-ui';
+import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useId, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   formatRetryAt,
   useChannelUploads,
@@ -25,9 +17,10 @@ import {
 } from '../hooks';
 import { useSyncRun } from '../hooks/useSyncRun';
 import { isRunLive } from '../lib/syncProgress';
-import { SubscriptionManager } from './SubscriptionManager';
 import { ChannelDirectory } from './ChannelDirectory';
+import { DisconnectYouTubeDialog } from './DisconnectYouTubeDialog';
 import { QueueRail } from './QueueRail';
+import { SubscriptionManager } from './SubscriptionManager';
 import { SyncFreshnessIndicator } from './SyncFreshnessIndicator';
 import { SyncProgressPanel } from './SyncProgressPanel';
 import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
@@ -111,9 +104,7 @@ function ConnectedDashboard({
   const syncStatus = useYouTubeSyncStatus();
   const [syncError, setSyncError] = useState<string | null>(null);
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
-  const [deleteWatchedMarks, setDeleteWatchedMarks] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
-  const deleteWatchedMarksCheckboxId = useId();
 
   const isSyncRunLive = isRunLive(syncStatus.status);
   const disconnectDisabledReason = isSyncRunLive
@@ -296,32 +287,34 @@ function ConnectedDashboard({
   const handleDisconnectDialogOpenChange = useCallback((open: boolean) => {
     setDisconnectDialogOpen(open);
     if (!open) {
-      setDeleteWatchedMarks(false);
       setDisconnectError(null);
     }
   }, []);
 
-  const handleConfirmDisconnect = useCallback(async () => {
-    setDisconnectError(null);
-    try {
-      const result = await disconnect({ deleteWatchedMarks });
-      setDisconnectDialogOpen(false);
-      setDeleteWatchedMarks(false);
-      await refreshStatus();
-      if (result.revokeFailed && result.googlePermissionsUrl) {
-        onDisconnectNotice({
-          message: result.message,
-          googlePermissionsUrl: result.googlePermissionsUrl,
-        });
-      } else {
-        onDisconnectNotice(null);
+  const handleConfirmDisconnect = useCallback(
+    async (deleteWatchedMarks: boolean) => {
+      setDisconnectError(null);
+      try {
+        const result = await disconnect({ deleteWatchedMarks });
+        setDisconnectDialogOpen(false);
+        await refreshStatus();
+        if (result.revokeFailed && result.googlePermissionsUrl) {
+          onDisconnectNotice({
+            message: result.message,
+            googlePermissionsUrl: result.googlePermissionsUrl,
+          });
+        } else {
+          onDisconnectNotice(null);
+        }
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : 'Disconnect failed';
+        setDisconnectError(message);
+        throw err instanceof Error ? err : new Error(message);
       }
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Disconnect failed';
-      setDisconnectError(message);
-      throw err instanceof Error ? err : new Error(message);
-    }
-  }, [deleteWatchedMarks, disconnect, onDisconnectNotice, refreshStatus]);
+    },
+    [disconnect, onDisconnectNotice, refreshStatus],
+  );
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -416,44 +409,12 @@ function ConnectedDashboard({
         </CardContent>
       </Card>
 
-      <ConfirmDeleteDialog
+      <DisconnectYouTubeDialog
         open={disconnectDialogOpen}
         onOpenChange={handleDisconnectDialogOpenChange}
-        title="Disconnect YouTube?"
-        description={
-          <>
-            This removes your Followed Channels, Cached Uploads, notification
-            and digest settings, and OAuth tokens from MyOrganizer. Watched
-            marks are kept for 30 days unless you choose to delete them below.
-          </>
-        }
-        confirmLabel="Disconnect"
         onConfirm={handleConfirmDisconnect}
-      >
-        <div className="space-y-3 py-2">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id={deleteWatchedMarksCheckboxId}
-              checked={deleteWatchedMarks}
-              onCheckedChange={(checked) =>
-                setDeleteWatchedMarks(checked === true)
-              }
-            />
-            <Label htmlFor={deleteWatchedMarksCheckboxId}>
-              Also delete my Watched marks
-            </Label>
-          </div>
-          {disconnectError && (
-            <div
-              role="alert"
-              aria-live="assertive"
-              className="text-sm text-destructive"
-            >
-              {disconnectError}
-            </div>
-          )}
-        </div>
-      </ConfirmDeleteDialog>
+        error={disconnectError}
+      />
     </div>
   );
 }
