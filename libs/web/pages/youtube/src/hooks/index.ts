@@ -2,7 +2,6 @@
 
 import { clearAuthSession, getAccessToken, refresh } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
-import { getYouTubeAvailability } from '@myorganizer/web-youtube';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type {
   ChannelCarousel,
@@ -37,6 +36,7 @@ export function formatRetryAt(retryAt?: string | null) {
 
 export { useVideoQueue, QUEUE_CAP } from './useVideoQueue';
 export type { VideoQueue } from './useVideoQueue';
+export { useYouTubeAvailability } from '@myorganizer/web-youtube';
 
 export { useShortsBudget } from './useShortsBudget';
 export type { ShortsBudget } from './useShortsBudget';
@@ -583,33 +583,4 @@ export async function updateVideoWatched(
       body: JSON.stringify({ watched }),
     },
   );
-}
-
-export function useYouTubeAvailability() {
-  const [available, setAvailable] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
-  const didMount = useRef(false);
-
-  const fetch_ = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setAvailable(await getYouTubeAvailability());
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-      setAvailable(false);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!didMount.current) {
-      didMount.current = true;
-      void fetch_();
-    }
-  }, [fetch_]);
-
-  return { available, loading, error };
 }

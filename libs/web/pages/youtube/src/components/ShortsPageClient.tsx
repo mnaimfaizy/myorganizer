@@ -3,12 +3,18 @@
 import { Button, Skeleton } from '@myorganizer/web-ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { useShortsBudget, useYouTubeShorts, useYouTubeStatus } from '../hooks';
-import { updateVideoWatched } from '../hooks';
+import {
+  updateVideoWatched,
+  useShortsBudget,
+  useYouTubeAvailability,
+  useYouTubeShorts,
+  useYouTubeStatus,
+} from '../hooks';
 import { ShortsEntryWarning } from './ShortsEntryWarning';
 import { ShortsBudgetMeter } from './ShortsBudgetMeter';
 import { ShortsHardStop } from './ShortsHardStop';
 import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
+import { YouTubeUnavailableNotice } from './YouTubeUnavailableNotice';
 import { ShortsList } from './ShortsList';
 import { ShortsPlayerPanel } from './ShortsPlayerPanel';
 
@@ -17,14 +23,15 @@ import { ShortsPlayerPanel } from './ShortsPlayerPanel';
  *
  * The page follows this flow:
  *
- * 1. Connection gate: if not connected to YouTube, show a prompt to connect.
- * 2. Entry warning: on first mount or navigation, block the page with an entry
+ * 1. Availability gate: if YouTube is unavailable, show the unavailable notice.
+ * 2. Connection gate: if not connected to YouTube, show a prompt to connect.
+ * 3. Entry warning: on first mount or navigation, block the page with an entry
  *    gate that explains the Shorts time cap and requires acknowledgement.
- * 3. Budget meter: render the meter in both active and locked states, wired to
+ * 4. Budget meter: render the meter in both active and locked states, wired to
  *    `budget.setLimitMinutes`.
- * 4. Active state: if acknowledged and not locked, render the active Short with
+ * 5. Active state: if acknowledged and not locked, render the active Short with
  *    Previous/Next navigation, wrapping, and a side list of all Shorts.
- * 5. Locked state: if budget is exhausted, render the Hard Stop surface.
+ * 6. Locked state: if budget is exhausted, render the Hard Stop surface.
  *
  * Watched/New state is independent of budgeting and uses the same rules as
  * long-form. Failures to update watched state do not crash the page.
@@ -33,6 +40,7 @@ import { ShortsPlayerPanel } from './ShortsPlayerPanel';
  * is false until acknowledged and not locked.
  */
 export function ShortsPageClient() {
+  const { available } = useYouTubeAvailability();
   const { connected, status } = useYouTubeStatus();
   const {
     shorts,
@@ -196,6 +204,11 @@ export function ShortsPageClient() {
     handlePreviousShort,
     handleNextShort,
   ]);
+
+  // Availability gate — fail closed before connection or Shorts UI
+  if (available !== true) {
+    return <YouTubeUnavailableNotice />;
+  }
 
   // Connection gate
   if (status === 'loading') {

@@ -133,6 +133,15 @@ describe('PrivacyPolicyPage', () => {
       expect(text).not.toMatch(/mailto:/);
     });
 
+    it('should render contact email when only OPERATOR_CONTACT_EMAIL is set (no OPERATOR_NAME)', () => {
+      process.env.OPERATOR_CONTACT_EMAIL = 'privacy@acme.test';
+      render(<PrivacyPolicyPage />);
+      const emailLink = screen.getByRole('link', {
+        name: /privacy@acme\.test/i,
+      });
+      expect(emailLink).toHaveAttribute('href', 'mailto:privacy@acme.test');
+    });
+
     it('should not render Operator section when OPERATOR_NAME is not set', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
