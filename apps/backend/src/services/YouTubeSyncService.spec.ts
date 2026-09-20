@@ -153,6 +153,9 @@ const {
   RUN_TTL_MS,
   MANUAL_REFRESH_COOLDOWN_MS,
   GOOGLE_PERMISSIONS_URL,
+  LIVE_SYNC_STATUSES,
+  isSyncRunLive,
+  syncRunClaimableWhere,
 } = require('./YouTubeSyncService');
 
 const connectedIntegration = {
@@ -2067,6 +2070,55 @@ describe('YouTubeSyncService', () => {
   describe('Sync Run claim and phases (ADR 0080 batch 1)', () => {
     it('RUN_TTL_MS must equal MANUAL_REFRESH_COOLDOWN_MS (ADR 0080 decision 3)', () => {
       expect(RUN_TTL_MS).toBe(MANUAL_REFRESH_COOLDOWN_MS);
+    });
+
+    it('syncRunClaimableWhere is the inverse of isSyncRunLive for LIVE_SYNC_STATUSES', () => {
+      const at = new Date('2026-06-01T12:00:00.000Z');
+      const cases: Array<{
+        lastSyncStatus: string | null;
+        lastSyncAttemptAt: Date | null;
+        live: boolean;
+      }> = [
+        { lastSyncStatus: 'success', lastSyncAttemptAt: at, live: false },
+        { lastSyncStatus: 'running', lastSyncAttemptAt: null, live: true },
+        {
+          lastSyncStatus: 'discovering',
+          lastSyncAttemptAt: new Date(at.getTime() - RUN_TTL_MS + 1000),
+          live: true,
+        },
+        {
+          lastSyncStatus: 'running',
+          lastSyncAttemptAt: new Date(at.getTime() - RUN_TTL_MS - 1000),
+          live: false,
+        },
+      ];
+
+      expect([...LIVE_SYNC_STATUSES]).toEqual(['running', 'discovering']);
+
+      for (const sample of cases) {
+        expect(isSyncRunLive(sample, at)).toBe(sample.live);
+        const where = syncRunClaimableWhere('user-1', at);
+        // Claimable when not live: status not live OR attempt older than TTL.
+        const statusClaimable = !LIVE_SYNC_STATUSES.includes(
+          sample.lastSyncStatus as (typeof LIVE_SYNC_STATUSES)[number],
+        );
+        const attemptClaimable =
+          sample.lastSyncAttemptAt !== null &&
+          sample.lastSyncAttemptAt.getTime() < at.getTime() - RUN_TTL_MS;
+        const claimable = statusClaimable || attemptClaimable;
+        expect(claimable).toBe(!sample.live);
+        expect(where).toEqual({
+          userId: 'user-1',
+          OR: [
+            { lastSyncStatus: { notIn: ['running', 'discovering'] } },
+            {
+              lastSyncAttemptAt: {
+                lt: new Date(at.getTime() - RUN_TTL_MS),
+              },
+            },
+          ],
+        });
+      }
     });
 
     it('should claim the Sync Run with both WHERE disjuncts when no claimedAt is provided', async () => {
