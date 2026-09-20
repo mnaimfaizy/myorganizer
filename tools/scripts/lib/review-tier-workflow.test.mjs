@@ -114,6 +114,12 @@ test('Review Tier and Code Review share one classify-then-backfill helper', () =
   assert.match(codeReview, /--mode advisory/);
   assert.doesNotMatch(
     reviewTier,
+    /run-review-tier-check\.mjs[\s\S]*--base /,
+    'the helper does not spawn the classifier; yarn review:tier:check does',
+  );
+  assert.doesNotMatch(codeReview, /run-review-tier-check\.mjs[\s\S]*--base /);
+  assert.doesNotMatch(
+    reviewTier,
     /grep -q '\^label=review:'/,
     'the backfill lives in the helper, not duplicated shell',
   );

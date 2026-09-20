@@ -7,9 +7,9 @@
 // for that; they already diverge in exit policy, which is why this script
 // takes --mode instead of duplicating the grep.
 //
-// The workflows still run `yarn review:tier:check` themselves so the Meta-Gate
+// The workflows run `yarn review:tier:check` themselves so the Meta-Gate
 // sees the checker by exact script name (ADR 0043). This script only backfills
-// and chooses the step's exit code:
+// and chooses the step's exit code — it does not spawn the classifier:
 //
 //   node tools/scripts/review/run-review-tier-check.mjs \
 //     --mode required|advisory --status <classifier-exit>
@@ -19,20 +19,10 @@
 //                  required check still fails visibly.
 // --mode advisory  Code Review: always exit 0 so the reviewer still runs at
 //                  review:human.
-//
-// Without --status it can also spawn the checker (local / tests):
-//
-//   node tools/scripts/review/run-review-tier-check.mjs \
-//     --mode required --base <sha> --head <sha> [--author] [--out]
-import { spawnSync } from 'node:child_process';
 import { appendFileSync, existsSync, readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
 
 import { cannotRun, isMain, parseArgs } from './cli.mjs';
 
-export const CHECKER = fileURLToPath(
-  new URL('../check-review-tier.mjs', import.meta.url),
-);
 export const HUMAN_OUTPUT = 'tier=human\nlabel=review:human\n';
 export const BACKFILL_WARNING =
   '::warning::classifier wrote no tier; defaulting to review:human';
@@ -84,41 +74,29 @@ export const exitStatusAfterBackfill = ({
   return classifierStatus;
 };
 
-const defaultRunChecker = (args) =>
-  spawnSync(process.execPath, [CHECKER, ...args], { stdio: 'inherit' });
-
 /**
  * @param {{
  *   mode: 'required' | 'advisory',
- *   checkerArgs: string[],
+ *   classifierStatus: number | null,
  *   githubOutput?: string,
- *   runChecker?: (args: string[]) => { status: number | null },
  * }} input
  */
 export const runReviewTierCheck = ({
   mode,
-  checkerArgs,
+  classifierStatus,
   githubOutput,
-  runChecker = defaultRunChecker,
 }) => {
   if (mode !== 'required' && mode !== 'advisory') {
     throw new Error('--mode must be required or advisory');
   }
-  const result = runChecker(checkerArgs);
-  const classifierStatus = result.status ?? 2;
+  const status = classifierStatus ?? 2;
   const { backfilled } = applyGithubOutputBackfill(githubOutput);
-  return exitStatusAfterBackfill({ mode, classifierStatus, backfilled });
+  return exitStatusAfterBackfill({
+    mode,
+    classifierStatus: status,
+    backfilled,
+  });
 };
-
-const FORWARD_FLAGS = [
-  'base',
-  'head',
-  'author',
-  'out',
-  'graph',
-  'files',
-  'summary',
-];
 
 if (isMain(import.meta.url)) {
   const { flags } = parseArgs(process.argv.slice(2));
@@ -126,35 +104,15 @@ if (isMain(import.meta.url)) {
   if (flags.mode !== 'required' && flags.mode !== 'advisory') {
     fail('--mode required|advisory is required');
   }
-  if (flags.status !== undefined && flags.status !== null) {
-    const classifierStatus = Number.parseInt(flags.status, 10);
-    if (!Number.isInteger(classifierStatus))
-      fail('--status must be an integer');
-    process.exit(
-      runReviewTierCheck({
-        mode: flags.mode,
-        checkerArgs: [],
-        githubOutput: process.env.GITHUB_OUTPUT,
-        runChecker: () => ({ status: classifierStatus }),
-      }),
-    );
+  if (flags.status === undefined || flags.status === null) {
+    fail('--status <classifier-exit> is required after yarn review:tier:check');
   }
-  if (!flags.base || !flags.head) {
-    fail(
-      '--base and --head are required (or pass --status after yarn review:tier:check)',
-    );
-  }
-  const checkerArgs = [];
-  for (const name of FORWARD_FLAGS) {
-    if (flags[name]) checkerArgs.push(`--${name}`, flags[name]);
-  }
-  if (Object.prototype.hasOwnProperty.call(flags, 'print')) {
-    checkerArgs.push('--print');
-  }
+  const classifierStatus = Number.parseInt(flags.status, 10);
+  if (!Number.isInteger(classifierStatus)) fail('--status must be an integer');
   process.exit(
     runReviewTierCheck({
       mode: flags.mode,
-      checkerArgs,
+      classifierStatus,
       githubOutput: process.env.GITHUB_OUTPUT,
     }),
   );

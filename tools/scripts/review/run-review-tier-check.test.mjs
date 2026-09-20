@@ -110,9 +110,8 @@ test('runReviewTierCheck backfills after a crash (null status) in required mode'
   const path = join(dir, 'output');
   const status = runReviewTierCheck({
     mode: 'required',
-    checkerArgs: ['--base', 'a', '--head', 'b'],
+    classifierStatus: null,
     githubOutput: path,
-    runChecker: () => ({ status: null }),
   });
   assert.equal(status, 2);
   assert.equal(readFileSync(path, 'utf8'), HUMAN_OUTPUT);
@@ -124,9 +123,8 @@ test('runReviewTierCheck advisory swallows a classifier exit 2', () => {
   writeFileSync(path, 'label=review:human\n');
   const status = runReviewTierCheck({
     mode: 'advisory',
-    checkerArgs: [],
+    classifierStatus: 2,
     githubOutput: path,
-    runChecker: () => ({ status: 2 }),
   });
   assert.equal(status, 0);
   assert.equal(readFileSync(path, 'utf8'), 'label=review:human\n');
@@ -149,4 +147,14 @@ test('CLI --status required backfills a silent success and exits 2', () => {
   );
   assert.equal(result.status, 2);
   assert.equal(readFileSync(output, 'utf8'), HUMAN_OUTPUT);
+});
+
+test('CLI refuses --base/--head: yarn review:tier:check is the only classifier entry', () => {
+  const result = spawnSync(
+    process.execPath,
+    [SCRIPT, '--mode', 'required', '--base', 'a', '--head', 'b'],
+    { encoding: 'utf8' },
+  );
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /--status <classifier-exit> is required/);
 });
