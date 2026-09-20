@@ -102,19 +102,34 @@ const mockUseYouTubeSyncStatus = jest.fn();
 const mockUseVideoQueue = jest.fn();
 const mockUseChannelUploads = jest.fn();
 
-jest.mock('../hooks', () => ({
-  useYouTubeStatus: () => mockUseYouTubeStatus(),
-  useYouTubeConnect: () => mockUseYouTubeConnect(),
-  useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
-  useYouTubeCarousel: () => mockUseYouTubeCarousel(),
-  useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
-  useVideoQueue: () => mockUseVideoQueue(),
-  useChannelUploads: () => mockUseChannelUploads(),
-  isRetryCooldownActive: (retryAt?: string | null) =>
-    Boolean(retryAt && Date.parse(retryAt) > Date.now()),
-  formatRetryAt: (retryAt?: string | null) =>
-    retryAt ? new Date(retryAt).toLocaleString() : null,
-}));
+jest.mock('../hooks', () => {
+  class YouTubeRequestError extends Error {
+    readonly status: number;
+    readonly code?: string;
+
+    constructor(message: string, status: number, code?: string) {
+      super(message);
+      this.name = 'YouTubeRequestError';
+      this.status = status;
+      this.code = code;
+    }
+  }
+
+  return {
+    useYouTubeStatus: () => mockUseYouTubeStatus(),
+    useYouTubeConnect: () => mockUseYouTubeConnect(),
+    useYouTubeSubscriptions: () => mockUseYouTubeSubscriptions(),
+    useYouTubeCarousel: () => mockUseYouTubeCarousel(),
+    useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
+    useVideoQueue: () => mockUseVideoQueue(),
+    useChannelUploads: () => mockUseChannelUploads(),
+    YouTubeRequestError,
+    isRetryCooldownActive: (retryAt?: string | null) =>
+      Boolean(retryAt && Date.parse(retryAt) > Date.now()),
+    formatRetryAt: (retryAt?: string | null) =>
+      retryAt ? new Date(retryAt).toLocaleString() : null,
+  };
+});
 
 const { YouTubePageClient } =
   require('./YouTubePageClient') as typeof import('./YouTubePageClient');
@@ -638,6 +653,37 @@ describe('YouTubePageClient', () => {
         );
       });
       expect(disconnect).toHaveBeenCalledTimes(1);
+    });
+
+    it('surfaces sync_run_live YouTubeRequestError message inside the dialog', async () => {
+      const { YouTubeRequestError } = jest.requireMock('../hooks') as {
+        YouTubeRequestError: new (
+          message: string,
+          status: number,
+          code?: string,
+        ) => Error;
+      };
+      const disconnect = jest
+        .fn()
+        .mockRejectedValue(
+          new YouTubeRequestError(
+            'Disconnect is not available while a sync is in progress.',
+            409,
+            'sync_run_live',
+          ),
+        );
+      renderConnected(disconnect);
+      const dialog = openDisconnectDialog();
+
+      fireEvent.click(
+        within(dialog).getByRole('button', { name: 'Disconnect' }),
+      );
+
+      await waitFor(() => {
+        expect(within(dialog).getByRole('alert')).toHaveTextContent(
+          'Disconnect is not available while a sync is in progress.',
+        );
+      });
     });
   });
 

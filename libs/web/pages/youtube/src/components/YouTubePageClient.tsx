@@ -11,6 +11,7 @@ import {
   useVideoQueue,
   useYouTubeCarousel,
   useYouTubeConnect,
+  YouTubeRequestError,
   useYouTubeStatus,
   useYouTubeSubscriptions,
   useYouTubeSyncStatus,
@@ -308,7 +309,11 @@ function ConnectedDashboard({
         }
       } catch (err: unknown) {
         const message =
-          err instanceof Error ? err.message : 'Disconnect failed';
+          err instanceof YouTubeRequestError && err.code === 'sync_run_live'
+            ? err.message
+            : err instanceof Error
+              ? err.message
+              : 'Disconnect failed';
         setDisconnectError(message);
         throw err instanceof Error ? err : new Error(message);
       }
