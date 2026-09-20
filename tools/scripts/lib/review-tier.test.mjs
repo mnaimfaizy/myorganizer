@@ -5,10 +5,12 @@ import {
   REVIEW_TIER_LABELS,
   ReviewTierConfigError,
   classifyReviewTier,
+  errorResult,
   globToRegExp,
   loadPathMap,
   maxTier,
   parseNumstat,
+  planRelabel,
   renderReviewTierSummary,
 } from './review-tier.mjs';
 
@@ -75,6 +77,26 @@ const classify = (files, overrides = {}) =>
   classifyReviewTier({ files, graph, pathMap, author: 'owner', ...overrides });
 const signal = (result, kind) => result.signals.find((s) => s.kind === kind);
 
+test('a classifier error is human, not a missing tier', () => {
+  const result = errorResult('nx graph failed', 'owner');
+  assert.equal(result.tier, 'human');
+  assert.equal(result.label, 'review:human');
+  assert.equal(result.signals[0].kind, 'error');
+  assert.equal(result.signals[0].detail, 'nx graph failed');
+});
+
+test('classifier labels match the finding-contract tuple in schema.mjs', async () => {
+  // Two declarations on purpose: schema.mjs is the finding contract (zod
+  // `z.enum` needs a const tuple) and this module must not import it, because
+  // apply-review-tier-label.mjs runs without zod. Changing schema.mjs also
+  // retriggers guard golden replay (ADR 0072). The values still have to be
+  // the same three labels or planRelabel would accept a label the validator
+  // rejects.
+  const { REVIEW_TIER_LABELS: schemaLabels } =
+    await import('../review/schema.mjs');
+  assert.deepEqual([...REVIEW_TIER_LABELS], [...schemaLabels]);
+});
+
 test('tiers are ordered and the labels derive from them', () => {
   assert.deepEqual(REVIEW_TIER_LABELS, [
     'review:auto',
@@ -84,6 +106,20 @@ test('tiers are ordered and the labels derive from them', () => {
   assert.equal(maxTier('auto', 'agent'), 'agent');
   assert.equal(maxTier('human', 'auto'), 'human');
   assert.equal(maxTier(), 'auto');
+});
+
+test('planRelabel adds the target and removes the other review labels, or does nothing', () => {
+  assert.deepEqual(planRelabel(['tooling', 'review:agent'], 'review:human'), {
+    add: ['review:human'],
+    remove: ['review:agent'],
+  });
+  assert.equal(planRelabel(['tooling', 'review:human'], 'review:human'), null);
+  assert.equal(planRelabel(['tooling'], null), null);
+  assert.deepEqual(planRelabel([], 'review:auto'), {
+    add: ['review:auto'],
+    remove: [],
+  });
+  assert.throws(() => planRelabel([], 'review:ship'), /unknown tier label/);
 });
 
 test('globs: ** spans directories, * stays inside a segment', () => {
