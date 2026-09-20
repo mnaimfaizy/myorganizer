@@ -38,6 +38,10 @@ This is the only API required. The integration uses the `youtube.readonly` scope
 3. Fill in the required fields:
    - **App name:** `MyOrganizer` (or your app name)
    - **User support email:** your email address
+   - **App logo (optional):** the same 120 × 120 PNG as Drive —
+     `apps/myorganizer/public/images/google-oauth-app-logo.png`. Production
+     Drive uses App name `MyOrganizer Vault Backup` on its own project; do
+     not put `drive.appdata` on this YouTube consent screen.
 4. Click **Next**.
 
 ### Choose User Type
@@ -232,6 +236,15 @@ Create one OAuth client per environment, across two Google Cloud projects:
 A refresh token only works with the client that issued it. Moving an environment to a different client or project turns every existing YouTube Connection Revoked, and each User must reconnect.
 
 Each environment's `.env` file uses its own `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`.
+
+Vault Cloud Backup is a **different** production Cloud project. Do not add
+`drive.appdata` to this YouTube production consent screen, and do not reuse
+the YouTube production client as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`. The Drive
+runbook — including the sticky-client warning — lives in
+[vault-cloud-backup-google-drive.md](./vault-cloud-backup-google-drive.md).
+Development and staging may still share one Testing-project client if that
+client has both redirect URIs and JavaScript origins
+([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
 
 ---
 

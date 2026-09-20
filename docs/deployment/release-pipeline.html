@@ -1485,7 +1485,7 @@
               </text>
               <text class="nc" x="272" y="962">
                 not Vercel &#183; needs deploy-backend, not host-apply (:290)
-                &#183; deploy-production.yml:344-355
+                &#183; deploy-production.yml:344-361
               </text>
             </g>
 
@@ -1723,7 +1723,7 @@
         <dd id="note-deployfrontend">
           Packages with <code>yarn package:myorganizer:web</code> and ships
           <code>./dist/deploy/myorganizer-web/</code> over FTP to cPanel
-          (<code>deploy-production.yml:344-355</code>). Production never
+          (<code>deploy-production.yml:344-361</code>). Production never
           invokes Vercel; staging's frontend does. That is the one place the
           two environments genuinely diverge &mdash; see panel&nbsp;2. Runs
           alongside <code>host-apply</code>, not after it &mdash; its
@@ -1882,7 +1882,7 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/myorganizer-web/</code></p>
-          <span class="cite">deploy-production.yml:347, :353</span>
+          <span class="cite">deploy-production.yml:353, :359</span>
         </div>
       </div>
       <p class="small muted">
@@ -2001,7 +2001,7 @@
             <code>300000</code> ms, the same value at three sites: staging
             backend (<code>deploy-staging.yml:124</code>), production backend
             (<code>deploy-production.yml:170</code>), production frontend
-            (<code>:355</code>). <code>host-apply</code> has no FTP step and
+            (<code>:361</code>). <code>host-apply</code> has no FTP step and
             no site here &mdash; it applies over SSH, not FTP.
           </p>
         </div>
@@ -2653,10 +2653,10 @@
       "deploy-production.yml:292": { "file": ".github/workflows/deploy-production.yml", "start": "timeout-minutes: 45" },
       "deploy-production.yml:293": { "file": ".github/workflows/deploy-production.yml", "start": "environment: production" },
       "deploy-production.yml:300": { "file": ".github/workflows/deploy-production.yml", "start": "ref: ${{ needs.validate.outputs.release_ref }}" },
-      "deploy-production.yml:344-355": { "file": ".github/workflows/deploy-production.yml", "start": "- name: Package frontend (cPanel)", "end": "timeout: 300000" },
-      "deploy-production.yml:347": { "file": ".github/workflows/deploy-production.yml", "start": "- name: Deploy frontend to cPanel (production)" },
-      "deploy-production.yml:353": { "file": ".github/workflows/deploy-production.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
-      "deploy-production.yml:355": { "file": ".github/workflows/deploy-production.yml", "start": "timeout: 300000" },
+      "deploy-production.yml:344-361": { "file": ".github/workflows/deploy-production.yml", "start": "- name: Package frontend (cPanel)", "end": "timeout: 300000" },
+      "deploy-production.yml:353": { "file": ".github/workflows/deploy-production.yml", "start": "- name: Deploy frontend to cPanel (production)" },
+      "deploy-production.yml:359": { "file": ".github/workflows/deploy-production.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
+      "deploy-production.yml:361": { "file": ".github/workflows/deploy-production.yml", "start": "timeout: 300000" },
       "deploy-staging.yml:9-12": { "file": ".github/workflows/deploy-staging.yml", "start": "workflow_run:", "end": "branches: [main]" },
       "deploy-staging.yml:29": { "file": ".github/workflows/deploy-staging.yml", "start": "if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}" },
       "deploy-staging.yml:32": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },

@@ -27,6 +27,7 @@ import { join } from 'node:path';
 
 import {
   cannotRun,
+  firstLine,
   gh,
   ghGraphql as graphql,
   ghJson,
@@ -310,11 +311,6 @@ export const main = (argv) => {
     `${plan.outcome}; verdict ${plan.verdict ?? 'none'}; check ${plan.failCheck ? 'fails' : 'passes'}`,
   );
 };
-
-const firstLine = (err) =>
-  String(err.stderr || err.message || err)
-    .split('\n')
-    .find(Boolean) ?? 'unknown error';
 
 if (isMain(import.meta.url)) {
   try {

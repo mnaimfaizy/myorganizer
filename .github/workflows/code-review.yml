@@ -307,13 +307,21 @@ jobs:
         run: corepack yarn install --immutable
 
       # The classifier's output, not the label, is what the validator reads.
+      # Always emit a review:* label so an empty --tier cannot fail the
+      # validator (`--tier needs a review:* label`) and cascade into Agent
+      # Review Ran plus Publish Review. Shared with review-tier.yml; advisory
+      # mode covers a crash before finish() and still lets the reviewer run
+      # at review:human.
       - name: Classify the diff
         if: steps.preflight.outputs.skip != 'true'
         id: tier
         run: |
+          set +e
           corepack yarn review:tier:check \
             --base "$BASE_SHA" --head "$HEAD_SHA" --author "$PR_AUTHOR" \
             --out "$RUNNER_TEMP/tier.json"
+          node tools/scripts/review/run-review-tier-check.mjs \
+            --mode advisory --status $?
 
       # Spec discovery with the job token: branch name, then commit
       # references, then none. The reviewer reads the file and fetches nothing.
@@ -337,7 +345,7 @@ jobs:
           base: ${{ needs.context.outputs.base_sha }}
           head: ${{ needs.context.outputs.head_sha }}
           head-ref: ${{ needs.context.outputs.head_ref }}
-          tier: ${{ steps.tier.outputs.label }}
+          tier: ${{ steps.tier.outputs.label || 'review:human' }}
           model: ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -561,7 +569,7 @@ jobs:
       PR_NUMBER: ${{ needs.context.outputs.pr }}
       HEAD_SHA: ${{ needs.context.outputs.head_sha }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-      TIER: ${{ needs.review.outputs.tier }}
+      TIER: ${{ needs.review.outputs.tier || 'review:human' }}
       GH_TOKEN: ${{ github.token }}
     steps:
       - name: Checkout repository
