@@ -1,90 +1,99 @@
-# Release v0.4.0
+# Release v1.0.0
 
-Date: 2026-08-18
+Date: 2026-09-20
 
-## Changes since v0.3.0
+## Changes since v0.4.0
 
-Compare: https://github.com/mnaimfaizy/myorganizer/compare/v0.3.0...v0.4.0
-
-> **License change.** This release adopts the **Elastic License 2.0** (#365). MyOrganizer was
-> previously distributed under different terms — review [`LICENSE`](LICENSE) before upgrading,
-> redistributing, or offering this software as a hosted service.
+Compare: https://github.com/mnaimfaizy/myorganizer/compare/v0.4.0...v1.0.0
 
 ## Highlights
 
-The focused YouTube watching experience (#264) is the headline of this release: a channel-first
-directory, an in-session queue, Shorts kept deliberately separate from long-form video, and daily
-guardrails designed to stop the watching session before it turns into a doomscroll.
+Vault data can now sync across devices: pull, converge, sync status, recovery-key
+rotation, and owner-bound storage on shared devices. YouTube can be hidden by an
+operator availability switch, and disconnect confirms while preserving Watched
+marks by default. Add/edit flows for tasks, subscriptions, addresses, and mobile
+numbers open in summoned dialogs.
+
+## Breaking Changes
+
+- **Unclaimed vault unlock.** Passphrase and recovery-key unlock no longer claim
+  an unclaimed local vault. Claim it explicitly from the vault page
+  (`claimUnclaimedLocalVaultLocked` or `claimUnclaimedLocalVaultByRecoveryKey`).
+- **`todos` blob type removed.** Vault export/import no longer accepts `todos`.
+  That data lives under `tasks`; re-export if you still have a `todos`-era backup.
 
 ## Added
 
-### Focused YouTube watching
+### Vault / E2EE
 
-- **Channel-first directory** replaces the old view-mode toggle. Browse by channel, with
-  privacy-enhanced in-app playback so watching no longer hands YouTube a full tracking profile.
-- **In-session queue rail** with keyboard navigation, per-video duration estimates, and a running
-  total so you can see what committing to the queue actually costs you.
-- **Shorts, isolated by design.** Shorts are classified by runtime and kept out of the long-form
-  feed. A **Daily Budget** meter tracks Shorts watched, and a **Hard Stop** ends the session when
-  the budget is spent.
-- **Watched state** is tracked on synced videos, with sync freshness and cooldown indicators that
-  tell you when the list you are looking at is stale or a sync has failed.
-- **Digest deep-linking** — links in the weekly digest email and the subscription list now open the
-  channel directly in the focused directory.
-- Digest delivery now runs as its own resumable worker, so a partial failure resumes instead of
-  restarting the whole send.
+- Cross-device vault sync: pull, blob convergence, sync status, and deletion logs.
+- Recovery-key rotation from the vault page, with a server reachability check.
+- Claim an unclaimed local vault via evidence instead of passphrase alone.
+- Change the vault passphrase from an already-unlocked session.
+- Per-user owner-bound vault handles so shared devices keep data isolated.
+- Import preview (merge, replace, or skip) before committing.
+- Explicit local vault removal, with confirmation naming unsent blob types.
+- `GET /vault/blobs` inventory endpoint for cross-device blob discovery.
+
+### YouTube
+
+- Operator-controlled availability switch; nav, Shorts, and dashboard cards hide when off.
+- Disconnect confirmation; Watched marks are preserved by default via a server ledger.
+- Live sync-run progress during subscription refreshes.
 
 ### Elsewhere
 
-- Visual regression testing via Chromatic UI Tests in CI, with a Storybook story library covering
-  the UI primitives and vault components.
+- Privacy Policy and Terms of Service pages with operator contact details.
+- Summoned add/edit dialogs for tasks, subscriptions, addresses, and mobile numbers.
+- Single `/dashboard/vault` page for vault management.
+- Shared email frame for verification and notification mail.
+- Dynamic dashboard breadcrumbs.
+- Reusable confirm-delete dialog with a customizable confirm label.
 
 ## Fixed
 
 ### Security
 
-- **`deepmerge-ts` stack exhaustion** — pinned to 8.0.1 to patch
-  [GHSA-ggr8-5vv4-36mx](https://github.com/advisories/GHSA-ggr8-5vv4-36mx), where deeply nested
-  input could exhaust the stack.
-- **`nanoid` denial of service** — updated to 3.3.18, resolving the outstanding DoS advisories
-  (#283, #328).
-- **Agent tooling secret exposure** — security hooks now run under Claude Code, and secret file
-  reads are guarded (#298).
+- **`adm-zip` denial of service** — bumped to 0.6.1, patching the high-severity
+  memory-exhaustion advisory.
+- Vault unlock no longer hands an unclaimed local vault to a second user on a
+  shared device who happens to use the same passphrase.
 
-### Accessibility
+### Vault / E2EE
 
-- The channel selector now announces as the tab set it already behaved like, with correct
-  `tablist` / `tab` / `tabpanel` semantics and orientation.
-- Each queue rail has its own heading id, so the two layouts no longer emit duplicate ids.
-- Channel list arrow keys follow the layout: up/down on desktop, left/right on mobile.
+- Never merge vault blobs when device identity differs.
+- Restore the unlock card after a hard reload on the vault page.
+- Disclose credential replacement when import replaces existing data.
+- Clear sync bookmarks on restore so stale server data cannot overwrite a restore.
 
-### Behaviour
+### Auth / Sessions
 
-- **Auth token lifetimes no longer drift** on refresh, and previously unreachable error codes now
-  surface to the client (#325).
-- Per-video player state is cleared on an in-place Shorts swap — playback status and duration no
-  longer leak from the previous video.
-- Only one player can be active across surfaces at a time.
-- The Shorts budget meters from the Play press rather than the embed alone, so it stays accurate
-  when the embed is blocked or unresponsive.
-- The weekly digest no longer claims a digest period when the video window is empty.
-- Corrected timezone handling in the subscription date picker (#243).
+- Logout no longer 500s; all `/auth` routes are served from AuthController.
+- Login validation errors return field-level Zod details.
+- API requests replay with a refreshed token after 401.
+
+### YouTube
+
+- Disconnect is blocked while a sync run is still live.
+- Sync progress no longer races the run-claim step.
+- Dashboard nav and Shorts are gated strictly on availability status.
+
+### UI
+
+- Groceries page styling restored via semantic colour and spacing tokens.
+- DatePicker opens on the selected date’s month instead of today.
+- Sign-up password labels are associated with their inputs.
 
 ## Changed
 
-- **Elastic License 2.0** adopted repository-wide (#365). See the notice above.
-- **Production deploys are documented as approval-gated, and tags are receipts**
-  ([ADR 0028](docs/adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md)). The
-  ship decision is the required-reviewer approval on the `production` environment, not the dispatch
-  that queues the run. A `vX.Y.Z` tag now means "this version is live in production."
-- YouTube metadata privacy wording is surfaced on the playback surface itself, rather than buried
-  in settings.
-- The README is now a front door that links to `TECH_STACK.md`, `package.json`, and `.env.example`
-  instead of restating them, with a drift guard in CI (#326).
+- Vault management lives on one `/dashboard/vault` page instead of split routes.
+- Unlock never claims as a side effect; claiming is a separate, evidence-checked path.
 
 ## Internal
 
-Agent governance and harness consolidation (ADR 0020), tiered quality gates (ADR 0012), component
-hygiene enforcement (ADR 0027), the markdown allowlist (ADR 0023), PR Surface Labels (ADR 0025),
-graphify knowledge-graph fixes, sandcastle dispatch modes, and the `PrAuthor` sub-agent. None of
-this changes application behaviour.
+Agent code-review pipeline (tier classifier, golden replay, obligation gates),
+Nx inferred-target migration, staging host-apply preflight, assertion gates
+(doc file-refs, Tailwind classes, mobile platform imports, checker contracts),
+dependency security patches (Next.js 16.3.4, nodemailer 9.1.1, mysql2,
+browserslist, fast-uri), and expanded vault / YouTube / auth test coverage.
+None of this changes application behaviour on its own.
