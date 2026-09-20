@@ -1,0 +1,17 @@
+{
+  "name": "escape-copy-reader",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/escape-copy-reader/src",
+  "projectType": "application",
+  "tags": ["type:app", "scope:web", "tier:human"],
+  "targets": {
+    "build": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "parallel": false,
+        "commands": ["node tools/scripts/build-escape-copy-reader.mjs"]
+      }
+    }
+  }
+}

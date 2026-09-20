@@ -1,6 +1,14 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 import '@testing-library/jest-dom';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+
+/**
+ * The export the page drives. Declared here rather than inside the factory so
+ * a test can decide, per case, whether the export succeeded — which is the
+ * whole question the co-locate prompt turns on. The `mock` prefix is what lets
+ * `jest.mock`'s hoisting reach it.
+ */
+const mockExportVaultNow = jest.fn<Promise<boolean>, []>();
 
 // Mock useVaultDisabledState at its module path so the real useVaultOperationAvailability
 // (which imports it from the same file) will use the mock when it calls useVaultDisabledState().
@@ -14,7 +22,10 @@ jest.mock('../hooks', () => {
     ...actual,
     useGoogleIdentityScript: jest.fn(() => 'loading'),
     useLatestCloudBackup: () => ({ status: 'empty', record: null }),
-    useExportVault: () => ({ exporting: false, exportVaultNow: jest.fn() }),
+    useExportVault: () => ({
+      exporting: false,
+      exportVaultNow: mockExportVaultNow,
+    }),
     useChangePassphrase: () => ({
       changing: false,
       changePassphrase: jest.fn(),
@@ -61,8 +72,24 @@ jest.mock('@myorganizer/web-vault-ui', () => {
 });
 
 jest.mock('./CloudBackupLiveCard', () => ({
-  CloudBackupLiveCard: () => (
-    <div data-testid="cloud-backup-live-card">Encrypted cloud backup</div>
+  // Carries the callback through so the Drive path can be driven from a test.
+  // The real card fires it on a `backupCounter` increment; what this page owes
+  // is to raise the prompt when it does, and that is what this stands in for.
+  CloudBackupLiveCard: ({
+    onEscapeCopyMade,
+  }: {
+    onEscapeCopyMade?: () => void;
+  }) => (
+    <div data-testid="cloud-backup-live-card">
+      Encrypted cloud backup
+      <button
+        type="button"
+        data-testid="stub-drive-backup-succeeded"
+        onClick={() => onEscapeCopyMade?.()}
+      >
+        backup succeeded
+      </button>
+    </div>
   ),
 }));
 
@@ -78,6 +105,7 @@ describe('VaultPageClient', () => {
     delete process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
     (useGoogleIdentityScript as jest.Mock).mockReturnValue('loading');
     (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
+    mockExportVaultNow.mockResolvedValue(true);
   });
 
   afterEach(() => {
@@ -118,15 +146,23 @@ describe('VaultPageClient', () => {
     expect(screen.queryByTestId('last-backup-card')).not.toBeInTheDocument();
   });
 
-  test('positions the removal card directly below export, per the removal-control spec', () => {
+  test('positions the escape copy reader card and removal card in the correct order below export', () => {
     render(<VaultPageClient />);
 
     const exportHeading = screen.getByText('Export encrypted vault');
+    const escapeCopyHeading = screen.getByText(
+      'Open your Escape Copy without us',
+    );
     const removeButton = screen.getByTestId('remove-vault-button');
     const importHeading = screen.getByText('Import encrypted vault');
 
+    // Assert the order: Export → EscapeCopyReaderCard → RemoveVaultCard → ImportVaultCard
     expect(
-      exportHeading.compareDocumentPosition(removeButton) &
+      exportHeading.compareDocumentPosition(escapeCopyHeading) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      escapeCopyHeading.compareDocumentPosition(removeButton) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
@@ -228,6 +264,7 @@ describe('VaultPageClient', () => {
       // not plaintext, so unlock is not a plaintext-access boundary for it.
       process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
       (useVaultDisabledState as jest.Mock).mockReturnValue('locked');
+      mockExportVaultNow.mockResolvedValue(true);
       (useGoogleIdentityScript as jest.Mock).mockReturnValue('ready');
 
       render(<VaultPageClient />);
@@ -274,6 +311,94 @@ describe('VaultPageClient', () => {
 
       // Should render the live cloud backup card
       expect(screen.getByText('Encrypted cloud backup')).toBeInTheDocument();
+    });
+  });
+
+  describe('Escape Copy reader card', () => {
+    test('renders the escape copy reader card', () => {
+      render(<VaultPageClient />);
+
+      expect(
+        screen.getByText('Open your Escape Copy without us'),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId('escape-copy-reader-download-link'),
+      ).toBeInTheDocument();
+    });
+
+    test('does not show the "just made" callout on initial render', () => {
+      render(<VaultPageClient />);
+
+      expect(
+        screen.queryByTestId('escape-copy-reader-just-made'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('raises the callout once a local export has actually succeeded', async () => {
+      (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
+      mockExportVaultNow.mockResolvedValue(true);
+      render(<VaultPageClient />);
+
+      fireEvent.click(screen.getByTestId('export-vault-button'));
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('escape-copy-reader-just-made'),
+        ).toBeInTheDocument(),
+      );
+    });
+
+    test('leaves the callout down when the export failed', async () => {
+      // The prompt says "you just made an Escape Copy". Raising it when no
+      // copy was made tells the User a file exists that does not.
+      (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
+      mockExportVaultNow.mockResolvedValue(false);
+      render(<VaultPageClient />);
+
+      fireEvent.click(screen.getByTestId('export-vault-button'));
+
+      await waitFor(() => expect(mockExportVaultNow).toHaveBeenCalled());
+      expect(
+        screen.queryByTestId('escape-copy-reader-just-made'),
+      ).not.toBeInTheDocument();
+    });
+
+    test('raises the callout when a Drive Escape Copy succeeds', async () => {
+      (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
+      (useGoogleIdentityScript as jest.Mock).mockReturnValue('ready');
+      process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID = 'test-client-id';
+      render(<VaultPageClient />);
+
+      fireEvent.click(screen.getByTestId('stub-drive-backup-succeeded'));
+
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('escape-copy-reader-just-made'),
+        ).toBeInTheDocument(),
+      );
+    });
+
+    test('keeps the callout up afterwards, because the reminder outlives the moment', async () => {
+      // Sticky on purpose: a User who leaves to go find the downloaded file
+      // and comes back is exactly the User the reminder is for.
+      (useVaultDisabledState as jest.Mock).mockReturnValue('enabled');
+      mockExportVaultNow.mockResolvedValue(true);
+      render(<VaultPageClient />);
+
+      fireEvent.click(screen.getByTestId('export-vault-button'));
+      await waitFor(() =>
+        expect(
+          screen.getByTestId('escape-copy-reader-just-made'),
+        ).toBeInTheDocument(),
+      );
+
+      mockExportVaultNow.mockResolvedValue(false);
+      fireEvent.click(screen.getByTestId('export-vault-button'));
+
+      await waitFor(() => expect(mockExportVaultNow).toHaveBeenCalledTimes(2));
+      expect(
+        screen.getByTestId('escape-copy-reader-just-made'),
+      ).toBeInTheDocument();
     });
   });
 });

@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-09-13.
+> Last synced from `package.json` on 2026-09-20.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -276,14 +276,15 @@
 
 ## Build & Transpilation
 
-| Package               | Version | Purpose                                                    |
-| --------------------- | ------- | ---------------------------------------------------------- |
-| `@swc/core`           | 1.15.8  | SWC transpiler — faster alternative to Babel for Nx builds |
-| `@swc-node/register`  | 1.11.1  | SWC integration for Node.js require hooks                  |
-| `@swc/helpers`        | 0.5.18  | SWC runtime helpers                                        |
-| `@babel/core`         | 7.28.6  | Babel — used by babel-jest for test transforms             |
-| `@babel/preset-react` | 7.28.5  | Babel React preset for test transforms                     |
-| `webpack-cli`         | 6.0.1   | Webpack CLI — used by `@nx/webpack` builds                 |
+| Package               | Version | Purpose                                                             |
+| --------------------- | ------- | ------------------------------------------------------------------- |
+| `@swc/core`           | 1.15.8  | SWC transpiler — faster alternative to Babel for Nx builds          |
+| `@swc-node/register`  | 1.11.1  | SWC integration for Node.js require hooks                           |
+| `@swc/helpers`        | 0.5.18  | SWC runtime helpers                                                 |
+| `@babel/core`         | 7.28.6  | Babel — used by babel-jest for test transforms                      |
+| `@babel/preset-react` | 7.28.5  | Babel React preset for test transforms                              |
+| `webpack-cli`         | 6.0.1   | Webpack CLI — used by `@nx/webpack` builds                          |
+| `esbuild`             | 0.25.12 | JS/TS bundler — builds the standalone Escape Copy reader (ADR 0064) |
 
 ---
 

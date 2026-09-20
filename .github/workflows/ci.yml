@@ -696,6 +696,9 @@ jobs:
       - name: Checker contract coverage checker contracts
         run: corepack yarn checker-contracts:test
 
+      - name: Escape Copy reader gate contracts
+        run: corepack yarn escape-copy-reader:test
+
       # The meta-gate: asserts every check-*.mjs is invoked by some hook or
       # workflow, resolving one level of indirection through the aggregate's
       # manifest. Nine checkers ran nowhere when ADR 0043 was written.
@@ -777,6 +780,16 @@ jobs:
       # A bare `react-native/…` subpath import is deprecated at 0.80 with
       # removal planned, and a browser global typechecks on mobile because the
       # base config puts `dom` in `lib`. Nothing else in CI sees either.
+      # ADR 0064: the Escape Copy must be openable by a tool that needs nothing
+      # of ours, and a gate must assert the tool still opens a freshly produced
+      # envelope. This builds the reader and runs it against an envelope the
+      # real exporter produces here, so a schema move that outruns the reader
+      # fails now rather than on the day somebody needs it. CI-only: it builds
+      # a 500 KB page and runs PBKDF2 four times, which is more than the
+      # pre-commit aggregate is for.
+      - name: Check the Escape Copy reader opens a fresh envelope
+        run: corepack yarn escape-copy-reader:check
+
       - name: Check mobile platform rules
         run: corepack yarn mobile-platform:check
 

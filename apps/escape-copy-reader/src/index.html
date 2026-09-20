@@ -1,0 +1,243 @@
+<!doctype html>
+<!--
+  MyOrganizer Escape Copy reader — the page shell.
+
+  Built into a single self-contained file by
+  tools/scripts/build-escape-copy-reader.mjs, which replaces the two
+  placeholders below with the design tokens and the bundled reader. Nothing is
+  fetched at run time: no stylesheet link, no script src, no font URL. The
+  built file opens from file:// with the network cable out, which is the only
+  situation it exists for.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MyOrganizer Escape Copy reader</title>
+    <style>
+      /* @@DESIGN_TOKENS@@ */
+    </style>
+    <style>
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        padding: var(--space-6, 1.5rem);
+        background: var(--color-surface);
+        color: var(--color-primary);
+        font-family: var(--font-body);
+        line-height: 1.55;
+      }
+      main {
+        max-width: 56rem;
+        margin: 0 auto;
+      }
+      h1 {
+        font-family: var(--font-display);
+        font-size: 1.75rem;
+        margin: 0 0 var(--space-2, 0.5rem);
+      }
+      .lede {
+        color: var(--color-muted);
+        margin-top: 0;
+      }
+      section {
+        background: var(--color-card);
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-lg);
+        padding: var(--space-6, 1.5rem);
+        margin-bottom: var(--space-6, 1.5rem);
+      }
+      .integrity {
+        border-left: 4px solid var(--color-warning);
+      }
+      .integrity h2 {
+        color: var(--color-warning);
+      }
+      h2 {
+        font-family: var(--font-display);
+        font-size: 1.125rem;
+        margin: 0 0 var(--space-2, 0.5rem);
+      }
+      label {
+        display: block;
+        font-weight: 600;
+        margin-bottom: var(--space-1, 0.25rem);
+      }
+      input[type='file'],
+      input[type='password'] {
+        width: 100%;
+        padding: 0.5rem;
+        border: 1px solid var(--color-border);
+        border-radius: var(--radius-md);
+        font: inherit;
+        background: var(--color-surface);
+        color: inherit;
+      }
+      fieldset {
+        border: 0;
+        padding: 0;
+        margin: var(--space-4, 1rem) 0;
+      }
+      fieldset label {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.375rem;
+        font-weight: 400;
+        margin-right: var(--space-4, 1rem);
+      }
+      button {
+        margin-top: var(--space-4, 1rem);
+        padding: 0.5rem 1rem;
+        border: 0;
+        border-radius: var(--radius-md);
+        background: var(--color-secondary);
+        color: var(--color-on-secondary);
+        font: inherit;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      button:hover {
+        background: var(--color-primary);
+      }
+      #status {
+        min-height: 1.5rem;
+        margin: var(--space-4, 1rem) 0 0;
+        color: var(--color-warning);
+      }
+      #file-name {
+        display: block;
+        margin-top: var(--space-1, 0.25rem);
+        color: var(--color-muted);
+        font-size: 0.875rem;
+      }
+      .copy-meta {
+        color: var(--color-muted);
+        font-size: 0.875rem;
+        margin-top: 0;
+      }
+      details.section {
+        border-top: 1px solid var(--color-border);
+        padding: var(--space-2, 0.5rem) 0;
+      }
+      details.section summary {
+        cursor: pointer;
+        font-weight: 600;
+      }
+      details.section summary.absent {
+        color: var(--color-muted);
+        font-weight: 400;
+      }
+      pre {
+        overflow-x: auto;
+        background: var(--color-surface-container);
+        border-radius: var(--radius-md);
+        padding: var(--space-4, 1rem);
+        font-size: 0.8125rem;
+      }
+      footer {
+        color: var(--color-muted);
+        font-size: 0.8125rem;
+      }
+      code {
+        background: var(--color-surface-container);
+        border-radius: var(--radius-sm);
+        padding: 0 0.25rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>MyOrganizer Escape Copy reader</h1>
+      <p class="lede">
+        Opens a MyOrganizer vault Escape Copy — the file a local Export or a
+        Google Drive backup produces — with your passphrase or your Recovery
+        Key. It needs no MyOrganizer account, no MyOrganizer server, and no
+        Google account. It works with the network cable out, and it is meant to
+        keep working if MyOrganizer does not.
+      </p>
+
+      <section class="integrity">
+        <h2>Before you type your passphrase into this file</h2>
+        <p>
+          A file that accepts a vault passphrase is exactly the thing an
+          attacker would like to substitute. Use only a copy whose checksum
+          matches the one published beside it on the MyOrganizer GitHub Releases
+          page, or a copy you saved yourself from a release you already
+          verified.
+        </p>
+        <p>
+          Verify with <code>sha256sum</code> (Linux),
+          <code>shasum -a 256</code> (macOS), or
+          <code>Get-FileHash</code> (Windows PowerShell), and compare against
+          the published <code>SHA256SUMS.txt</code>.
+        </p>
+        <p>
+          This page sends nothing anywhere and stores nothing. Everything
+          happens in this tab, and closing it leaves no trace.
+        </p>
+      </section>
+
+      <section>
+        <h2>Open a copy</h2>
+        <form id="open-form">
+          <label for="envelope-file">Your Escape Copy file (.json)</label>
+          <input
+            id="envelope-file"
+            name="envelope-file"
+            type="file"
+            accept="application/json,.json"
+          />
+          <span id="file-name">No file chosen.</span>
+
+          <fieldset>
+            <legend>Unlock with</legend>
+            <label
+              ><input
+                type="radio"
+                name="secret-kind"
+                value="passphrase"
+                checked
+              />
+              Passphrase</label
+            >
+            <label
+              ><input type="radio" name="secret-kind" value="recovery-key" />
+              Recovery Key</label
+            >
+          </fieldset>
+
+          <label for="secret">Passphrase or Recovery Key</label>
+          <input
+            id="secret"
+            name="secret"
+            type="password"
+            autocomplete="off"
+            spellcheck="false"
+          />
+
+          <button type="submit">Open</button>
+          <p id="status" role="status" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section>
+        <h2>Your data</h2>
+        <div id="output"></div>
+      </section>
+
+      <footer>
+        <p>
+          This reader shows your data on screen and does not write a decrypted
+          file to disk. Copy what you need from the sections above.
+        </p>
+      </footer>
+    </main>
+    <script>
+      /* @@READER_BUNDLE@@ */
+    </script>
+  </body>
+</html>

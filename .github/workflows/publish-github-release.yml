@@ -44,6 +44,22 @@ jobs:
           ref: ${{ steps.release.outputs.tag }}
           fetch-depth: 1
 
+      # ADR 0064: an Escape Copy is opened by a tool that needs nothing of
+      # ours, and the distribution answer is a file the User holds with a
+      # checksum they can check. Built from the tag being published, so the
+      # reader attached to a release is the reader that release's exporter
+      # produces envelopes for.
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: corepack yarn install --immutable
+
+      - name: Build the standalone Escape Copy reader
+        run: corepack yarn escape-copy-reader:build
+
       - name: Create or update GitHub Release
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
         env:
@@ -98,4 +114,60 @@ jobs:
 
               await github.rest.repos.createRelease(release);
               core.info(`Created GitHub Release ${tag}.`);
+            }
+
+      - name: Attach the Escape Copy reader and its checksum
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.tag }}
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require('node:fs');
+            const path = require('node:path');
+            const tag = process.env.RELEASE_TAG;
+            const dir = 'dist/escape-copy-reader';
+
+            const assets = [
+              'myorganizer-escape-copy-reader.html',
+              'SHA256SUMS.txt',
+            ];
+
+            for (const name of assets) {
+              if (!fs.existsSync(path.join(dir, name))) {
+                core.setFailed(`Missing ${dir}/${name}; the reader build did not produce it.`);
+                return;
+              }
+            }
+
+            const release = await github.rest.repos.getReleaseByTag({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              tag,
+            });
+
+            // Replaced rather than skipped when it already exists: a re-run of
+            // this workflow at the same tag must leave the published checksum
+            // describing the published file, and an upload that silently kept
+            // an older asset is exactly the mismatch that trains Users to stop
+            // checking.
+            for (const existing of release.data.assets) {
+              if (assets.includes(existing.name)) {
+                await github.rest.repos.deleteReleaseAsset({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  asset_id: existing.id,
+                });
+              }
+            }
+
+            for (const name of assets) {
+              await github.rest.repos.uploadReleaseAsset({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.data.id,
+                name,
+                data: fs.readFileSync(path.join(dir, name)),
+              });
+              core.info(`Attached ${name} to ${tag}.`);
             }

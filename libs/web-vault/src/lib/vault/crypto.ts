@@ -1,95 +1,26 @@
-export type Base64String = string;
-
-export function bytesToBase64(bytes: Uint8Array): Base64String {
-  let binary = '';
-  for (let i = 0; i < bytes.length; i++) {
-    binary += String.fromCharCode(bytes[i]);
-  }
-  return btoa(binary);
-}
-
-export function base64ToBytes(base64: Base64String): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
-export function utf8ToBytes(text: string): Uint8Array {
-  return new TextEncoder().encode(text);
-}
-
-export function bytesToUtf8(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
-}
-
-export function randomBytes(length: number): Uint8Array {
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  return bytes;
-}
-
-export async function importAesGcmKey(rawKey: Uint8Array): Promise<CryptoKey> {
-  return crypto.subtle.importKey(
-    'raw',
-    rawKey as unknown as BufferSource,
-    { name: 'AES-GCM' },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-export async function deriveKeyFromPassphrase(options: {
-  passphrase: string;
-  salt: Uint8Array;
-  iterations: number;
-}): Promise<CryptoKey> {
-  const baseKey = await crypto.subtle.importKey(
-    'raw',
-    utf8ToBytes(options.passphrase) as unknown as BufferSource,
-    'PBKDF2',
-    false,
-    ['deriveKey']
-  );
-
-  return crypto.subtle.deriveKey(
-    {
-      name: 'PBKDF2',
-      salt: options.salt as unknown as BufferSource,
-      iterations: options.iterations,
-      hash: 'SHA-256',
-    },
-    baseKey,
-    { name: 'AES-GCM', length: 256 },
-    false,
-    ['encrypt', 'decrypt']
-  );
-}
-
-export async function aesGcmEncrypt(options: {
-  key: CryptoKey;
-  plaintext: Uint8Array;
-  iv: Uint8Array;
-}): Promise<Uint8Array> {
-  const out = await crypto.subtle.encrypt(
-    { name: 'AES-GCM', iv: options.iv as unknown as BufferSource },
-    options.key,
-    options.plaintext as unknown as BufferSource
-  );
-  return new Uint8Array(out);
-}
-
-export async function aesGcmDecrypt(options: {
-  key: CryptoKey;
-  ciphertext: Uint8Array;
-  iv: Uint8Array;
-}): Promise<Uint8Array> {
-  const out = await crypto.subtle.decrypt(
-    { name: 'AES-GCM', iv: options.iv as unknown as BufferSource },
-    options.key,
-    options.ciphertext as unknown as BufferSource
-  );
-  return new Uint8Array(out);
-}
+/**
+ * The Vault's crypto primitives, re-exported from `@myorganizer/vault-core`.
+ *
+ * The implementations moved to `vault-core` so the standalone Escape Copy
+ * reader can be bundled from the same source the exporter runs
+ * ([ADR 0064](../../../../../docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)).
+ * A reader carrying its own hand-copied PBKDF2 or AES-GCM would be a second
+ * implementation of the one thing that must never disagree with the first,
+ * and it would disagree silently — at the only moment anybody runs it.
+ *
+ * This file stays as the import site every caller in `web-vault` already
+ * names, so the move is invisible to them and to `@myorganizer/web-vault`'s
+ * public surface.
+ */
+export {
+  aesGcmDecrypt,
+  aesGcmEncrypt,
+  base64ToBytes,
+  bytesToBase64,
+  bytesToUtf8,
+  deriveKeyFromPassphrase,
+  importAesGcmKey,
+  randomBytes,
+  utf8ToBytes,
+} from '@myorganizer/vault-core';
+export type { Base64String } from '@myorganizer/vault-core';

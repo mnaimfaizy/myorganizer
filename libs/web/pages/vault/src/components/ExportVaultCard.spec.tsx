@@ -115,7 +115,7 @@ describe('ExportVaultCard', () => {
 
   describe('Export action', () => {
     test('B5: enabled state + click calls exportVaultNow once', async () => {
-      const mockExportVaultNow = jest.fn();
+      const mockExportVaultNow = jest.fn().mockResolvedValue(true);
       (useExportVault as jest.Mock).mockReturnValue({
         exporting: false,
         exportVaultNow: mockExportVaultNow,
@@ -149,6 +149,44 @@ describe('ExportVaultCard', () => {
 
       // exportVaultNow should not have been called
       expect(mockExportVaultNow).not.toHaveBeenCalled();
+    });
+
+    test('B7: successful export calls onEscapeCopyMade callback', async () => {
+      const mockExportVaultNow = jest.fn().mockResolvedValue(true);
+      const mockOnEscapeCopyMade = jest.fn();
+      (useExportVault as jest.Mock).mockReturnValue({
+        exporting: false,
+        exportVaultNow: mockExportVaultNow,
+      });
+
+      render(<ExportVaultCard onEscapeCopyMade={mockOnEscapeCopyMade} />);
+
+      const button = screen.getByTestId('export-vault-button');
+      fireEvent.click(button);
+
+      await waitFor(() => {
+        expect(mockOnEscapeCopyMade).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    test('B8: failed export does not call onEscapeCopyMade callback', async () => {
+      const mockExportVaultNow = jest.fn().mockResolvedValue(false);
+      const mockOnEscapeCopyMade = jest.fn();
+      (useExportVault as jest.Mock).mockReturnValue({
+        exporting: false,
+        exportVaultNow: mockExportVaultNow,
+      });
+
+      render(<ExportVaultCard onEscapeCopyMade={mockOnEscapeCopyMade} />);
+
+      const button = screen.getByTestId('export-vault-button');
+      fireEvent.click(button);
+
+      await waitFor(() => {
+        expect(mockExportVaultNow).toHaveBeenCalledTimes(1);
+      });
+
+      expect(mockOnEscapeCopyMade).not.toHaveBeenCalled();
     });
   });
 });
