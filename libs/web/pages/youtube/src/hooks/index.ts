@@ -1,5 +1,6 @@
 'use client';
 
+import { Configuration, YouTubeApi } from '@myorganizer/app-api-client';
 import { clearAuthSession, getAccessToken, refresh } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -557,12 +558,11 @@ export function useYouTubeAvailability() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`${getYouTubeApiBase()}/availability`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch availability: ${response.status}`);
-      }
-      const data = (await response.json()) as { available: boolean };
-      setAvailable(data.available);
+      const api = new YouTubeApi(
+        new Configuration({ basePath: getApiBaseUrl() }),
+      );
+      const response = await api.getAvailability();
+      setAvailable(response.data.available);
     } catch (err: unknown) {
       setError(err instanceof Error ? err : new Error(String(err)));
       setAvailable(false);

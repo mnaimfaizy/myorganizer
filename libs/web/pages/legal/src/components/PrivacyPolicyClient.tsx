@@ -3,9 +3,6 @@ import Link from 'next/link';
 import { OperatorContact } from './OperatorContact';
 
 export default function PrivacyPolicyClient() {
-  const operatorName = process.env.OPERATOR_NAME;
-  const operatorContactEmail = process.env.OPERATOR_CONTACT_EMAIL;
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
       <Card className="w-full max-w-3xl">
@@ -95,10 +92,7 @@ export default function PrivacyPolicyClient() {
             </p>
           </section>
 
-          <OperatorContact
-            operatorName={operatorName}
-            operatorContactEmail={operatorContactEmail}
-          />
+          <OperatorContact />
 
           <section className="mt-6">
             <h2 className="text-base font-semibold">Policy Changes</h2>

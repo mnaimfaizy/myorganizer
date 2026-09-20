@@ -3,9 +3,6 @@ import Link from 'next/link';
 import { OperatorContact } from './OperatorContact';
 
 export default function TermsOfServiceClient() {
-  const operatorName = process.env.OPERATOR_NAME;
-  const operatorContactEmail = process.env.OPERATOR_CONTACT_EMAIL;
-
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-4 p-8">
       <Card className="w-full max-w-2xl">
@@ -118,10 +115,7 @@ export default function TermsOfServiceClient() {
             </p>
           </section>
 
-          <OperatorContact
-            operatorName={operatorName}
-            operatorContactEmail={operatorContactEmail}
-          />
+          <OperatorContact />
 
           <div className="mt-8 flex flex-col gap-3">
             <Button asChild variant="outline">

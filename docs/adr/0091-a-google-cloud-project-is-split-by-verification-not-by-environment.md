@@ -40,9 +40,9 @@ and a review measured in weeks.
 
 The switch (`YOUTUBE_AVAILABLE`) and the boot check landed in #846: `apps/backend/src/config/youtube.ts`,
 `apps/backend/src/config/youtubeRedirectUri.ts`, and `apps/backend/src/middleware/youtubeAvailabilityGate.ts`.
-The web side (#847) and the Cloud projects themselves (#848), tracked in PRD #844, remain open. Until
-#848 lands, `YOUTUBE_AVAILABLE` must stay unset or `false` in production, so do not deploy production
-YouTube credentials before then.
+The web-side hiding landed in #847. The Cloud projects themselves remain operator work tracked in
+#848 under PRD #844. Until #848 lands, `YOUTUBE_AVAILABLE` must stay unset or `false` in production,
+so do not deploy production YouTube credentials before then.
 
 ## Consequences
 

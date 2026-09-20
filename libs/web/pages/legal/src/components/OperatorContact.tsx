@@ -1,12 +1,7 @@
-interface OperatorContactProps {
-  operatorName?: string;
-  operatorContactEmail?: string;
-}
+export function OperatorContact() {
+  const operatorName = process.env.OPERATOR_NAME;
+  const operatorContactEmail = process.env.OPERATOR_CONTACT_EMAIL;
 
-export function OperatorContact({
-  operatorName,
-  operatorContactEmail,
-}: OperatorContactProps) {
   // Trim and check for truthiness
   const trimmedName = operatorName?.trim();
   const trimmedEmail = operatorContactEmail?.trim();
