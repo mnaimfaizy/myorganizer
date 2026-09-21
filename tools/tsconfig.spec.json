@@ -6,5 +6,10 @@
     "moduleResolution": "node",
     "types": ["jest", "node"]
   },
-  "include": ["**/*.spec.ts", "**/*.test.ts", "**/*.d.ts"]
+  // `testing/**/*.ts` is here for the shared Jest setup files. They are
+  // referenced by path from a consumer's `jest.config.ts` and imported by
+  // nothing, so they match no consumer's tsconfig `include` and would
+  // otherwise be the one TypeScript file in the workspace that
+  // `yarn typecheck:check` never compiles.
+  "include": ["**/*.spec.ts", "**/*.test.ts", "**/*.d.ts", "testing/**/*.ts"]
 }
