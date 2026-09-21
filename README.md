@@ -110,6 +110,7 @@ myorganizer/
 │   ├── backend/          # Express + TSOA REST API, Prisma, PostgreSQL
 │   ├── myorganizer/      # Next.js web client (App Router — route wrappers only)
 │   ├── mobile/           # React Native client
+│   ├── escape-copy-reader/ # Standalone offline vault Escape Copy reader (one HTML file)
 │   └── myorganizer-e2e/  # Playwright end-to-end tests
 ├── libs/
 │   ├── api-specs/        # OpenAPI spec, synced from TSOA decorators
@@ -118,7 +119,7 @@ myorganizer/
 │   ├── core/             # Shared utilities and types
 │   ├── design-tokens/    # W3C DTCG tokens → CSS, TypeScript, Tailwind
 │   ├── email-shell/      # Shared HTML/text email frame (logo, colours, footer)
-│   ├── vault-core/       # Vault envelope format and migrations
+│   ├── vault-core/       # Vault envelope format, crypto suite, Escape Copy reader core
 │   ├── web/pages/        # One library per route — all page logic lives here
 │   ├── web-ui/           # Radix component library
 │   ├── web-vault/        # Browser vault state, crypto, cloud backup

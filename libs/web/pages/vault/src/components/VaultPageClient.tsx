@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 
 import { GoogleDriveCloudBackupProvider } from '@myorganizer/web-vault';
 import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
@@ -13,6 +13,7 @@ import { VAULT_OPERATIONS } from '../policy';
 import { ChangePassphraseCard } from './ChangePassphraseCard';
 import { CloudBackupLiveCard } from './CloudBackupLiveCard';
 import { CloudBackupUnavailableCard } from './CloudBackupUnavailableCard';
+import { EscapeCopyReaderCard } from './EscapeCopyReaderCard';
 import { ExportVaultCard } from './ExportVaultCard';
 import { ImportVaultCard } from './ImportVaultCard';
 import { RecoveryKeyRotationCard } from './RecoveryKeyRotationCard';
@@ -20,6 +21,12 @@ import { RemoveVaultCard } from './RemoveVaultCard';
 import { VaultUnlockCard } from './VaultUnlockCard';
 
 export function VaultPageClient() {
+  const [justMadeACopy, setJustMadeACopy] = useState(false);
+
+  const handleEscapeCopyMade = useCallback(() => {
+    setJustMadeACopy(true);
+  }, []);
+
   const gisStatus = useGoogleIdentityScript();
   const vaultSession = useOptionalVaultSession();
   const handle = vaultSession?.handle ?? null;
@@ -65,7 +72,13 @@ export function VaultPageClient() {
         <CloudBackupUnavailableCard reason="Loading Google Drive integration…" />
       );
     }
-    return <CloudBackupLiveCard provider={provider} handle={handle} />;
+    return (
+      <CloudBackupLiveCard
+        provider={provider}
+        handle={handle}
+        onEscapeCopyMade={handleEscapeCopyMade}
+      />
+    );
   }
 
   return (
@@ -74,7 +87,8 @@ export function VaultPageClient() {
       <ChangePassphraseCard />
       <RecoveryKeyRotationCard />
       {renderCloudBackupCard()}
-      <ExportVaultCard />
+      <ExportVaultCard onEscapeCopyMade={handleEscapeCopyMade} />
+      <EscapeCopyReaderCard justMadeACopy={justMadeACopy} />
       <RemoveVaultCard />
       <ImportVaultCard />
     </div>

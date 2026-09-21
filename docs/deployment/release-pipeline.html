@@ -1549,7 +1549,7 @@
                 push of v*.*.* &#8594; Publish GitHub Release
               </text>
               <text class="nc" x="272" y="1160">
-                idempotent &#183; publish-github-release.yml:4-6, :79-100
+                idempotent &#183; publish-github-release.yml:4-6, :95-116
               </text>
             </g>
           </svg>
@@ -1748,7 +1748,7 @@
           (<code>publish-github-release.yml:4-6</code>, <code>:35</code>).
           Reads <code>RELEASE_NOTES.md</code> from the tagged commit and
           creates or updates the GitHub Release, so re-running it is safe
-          (<code>:79-100</code>).
+          (<code>:95-116</code>).
         </dd>
       </dl>
     </div>
@@ -1832,7 +1832,7 @@
             <td>7</td>
             <td>push of a <code>v*.*.*</code> tag</td>
             <td><code>Publish GitHub Release</code> (idempotent)</td>
-            <td class="cite">publish-github-release.yml:4-6, :79-100</td>
+            <td class="cite">publish-github-release.yml:4-6, :95-116</td>
           </tr>
         </tbody>
       </table>
@@ -2096,10 +2096,10 @@
           <span class="cite">:458</span>
         </li>
         <li>
-          Build Backend <span class="cite">:934</span>, only when
-          <code>backend</code> is affected <span class="cite">:938</span>, and
-          Build Frontend <span class="cite">:980</span>,
-          <span class="cite">:984</span>
+          Build Backend <span class="cite">:947</span>, only when
+          <code>backend</code> is affected <span class="cite">:951</span>, and
+          Build Frontend <span class="cite">:993</span>,
+          <span class="cite">:997</span>
         </li>
       </ol>
       <p class="small muted">
@@ -2619,10 +2619,10 @@
       "ci.yml:334": { "file": ".github/workflows/ci.yml", "start": "setup:" },
       "ci.yml:412": { "file": ".github/workflows/ci.yml", "start": "lint:" },
       "ci.yml:458": { "file": ".github/workflows/ci.yml", "start": "test:" },
-      "ci.yml:934": { "file": ".github/workflows/ci.yml", "start": "build-backend:" },
-      "ci.yml:938": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}" },
-      "ci.yml:980": { "file": ".github/workflows/ci.yml", "start": "build-frontend:" },
-      "ci.yml:984": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}" },
+      "ci.yml:947": { "file": ".github/workflows/ci.yml", "start": "build-backend:" },
+      "ci.yml:951": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}" },
+      "ci.yml:993": { "file": ".github/workflows/ci.yml", "start": "build-frontend:" },
+      "ci.yml:997": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}" },
       "deploy-production.yml:1": { "file": ".github/workflows/deploy-production.yml", "start": "name: Deploy Production (manual)" },
       "deploy-production.yml:3-4": { "file": ".github/workflows/deploy-production.yml", "start": "on:", "end": "workflow_dispatch:" },
       "deploy-production.yml:18-21": { "file": ".github/workflows/deploy-production.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
@@ -2685,7 +2685,7 @@
       "package.json:27": { "file": "package.json", "start": "\"release:tag\": \"node tools/scripts/release.mjs tag\"," },
       "publish-github-release.yml:4-6": { "file": ".github/workflows/publish-github-release.yml", "start": "push:", "end": "- 'v*.*.*'" },
       "publish-github-release.yml:35": { "file": ".github/workflows/publish-github-release.yml", "start": "if [[ ! \"$tag\" =~ ^v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then" },
-      "publish-github-release.yml:79-100": { "file": ".github/workflows/publish-github-release.yml", "start": "try {", "end": "core.info(`Created GitHub Release ${tag}.`);" },
+      "publish-github-release.yml:95-116": { "file": ".github/workflows/publish-github-release.yml", "start": "try {", "end": "core.info(`Created GitHub Release ${tag}.`);" },
       "release-pr.yml:4-6": { "file": ".github/workflows/release-pr.yml", "start": "push:", "end": "- 'release/v*'" },
       "release-pr.yml:34": { "file": ".github/workflows/release-pr.yml", "start": "if (!/^release\\/v\\d+\\.\\d+\\.\\d+$/.test(releaseBranch)) {" },
       "release-pr.yml:103-115": { "file": ".github/workflows/release-pr.yml", "start": "const mutation = `", "end": "core.info(`Enabled auto-merge for PR #${pr.number}`);" },

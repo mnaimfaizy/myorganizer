@@ -4,7 +4,9 @@
 
 accepted
 
-The decision is made; no such tool exists yet. Nothing in this ADR describes shipped behaviour.
+The decision is made and the tool exists. The distribution question this ADR originally left open
+is answered below, in "Distribution", from the grilling recorded on
+[#792](https://github.com/mnaimfaizy/myorganizer/issues/792) (2026-09-19).
 
 ## Context
 
@@ -68,14 +70,68 @@ reading it as the User's problem. This is the status quo, and it is what makes
 declines a refresh token _because_ the copy stays readable without us, which is only a reason if it
 is true.
 
+## Distribution
+
+The reader is a distribution problem as well as a build problem. A tool that only exists on a server
+we might not have is not obviously better than no tool, so it has to be something a User can hold.
+This section records what that turned out to be.
+
+**The canonical artifact is one self-contained HTML file, attached to every GitHub Release with a
+published `SHA256SUMS.txt`.** Not a hosted page, because a hosted page is the assumption under test.
+Not a CLI, because the User who needs this is not reliably one who has a toolchain. One file, opened
+from `file://`, with the network cable out.
+
+**Integrity is a published checksum plus copy that says why it matters.** A file that accepts a vault
+passphrase is exactly the thing an attacker would like to substitute, and "we host it" is the answer
+this ADR gave up. What is left is a number the User can check against a channel that is not the file,
+and the honest instruction that goes with it: use only a reader you verified or one you saved
+yourself from a release you already verified. The reader states this on its own face, above the
+passphrase field, because the moment to say it is the moment before somebody types.
+
+**The habit is co-location, prompted when a copy is made.** After a successful local Export and
+after a successful Drive Escape Copy — including a scheduled one that ran with nobody present — the
+vault page raises a prompt to fetch the reader from Releases and keep it with the copy, alongside
+the checksum instruction. A copy the User cannot open is not a backup, and the moment they have just
+made one is the moment they are thinking about it.
+
+Three details are what shipped rather than what the phrase might suggest. The prompt sends the User
+to the Releases page rather than serving the file, because serving it is the hosted-reader answer
+this ADR gave up; the in-app expected-hash the grilling left optional is not built. It says a copy
+was made, not that the User made one, because the scheduler makes copies unattended. And it stays up
+for the life of the page rather than for a moment, because the User it is for is the one who left to
+go and find the file.
+
+**v1 browses on screen and writes no decrypted file.** Offering a "download decrypted archive"
+button would turn one deliberate act of recovery into a plaintext file the User then has to
+remember to delete.
+
+**Both secrets open it.** Passphrase and Recovery Key, because a reader offering only one is
+unopenable for exactly the User who lost the other — who is the User most likely to be holding an
+Escape Copy at all.
+
+**The reader's crypto is bundled from the app's own, never hand-copied.** `openEscapeCopy` lives in
+`libs/vault-core` beside the envelope schema and the crypto suite, and the reader is an esbuild
+bundle of a page shell around it. A reader with its own copy of PBKDF2 or AES-GCM would be a second
+implementation of the one thing that must never disagree with the first — and it would disagree
+silently, discovered at the only moment anybody runs it.
+
+**Embedding the reader inside every export is deferred**, not rejected. It would make the copy and
+the tool inseparable, which is attractive; it would also put a script inside a file Users are asked
+to hand to storage providers, and it has no integrity story that a checksum does not already give.
+
 ## Consequences
 
-The reader becomes a distribution problem as well as a build problem. A tool that only exists on a
-server we might not have is not obviously better than no tool, so it has to be something a User can
-hold — downloaded alongside an export, or fetched from somewhere that is not us. That question is
-open and is not decided here.
+`yarn escape-copy-reader:check` builds the reader, produces an envelope here and now with the real
+`exportVault`, and opens it with the built artifact — both secrets, every Vault Blob Type, plaintext
+compared. It also asserts the reader carries no way to reach the network or browser storage, and
+that the published checksum is the checksum of the published file. It runs in CI rather than in the
+pre-commit aggregate, because it builds a page and runs PBKDF2 four times.
 
-It also becomes a security surface worth naming plainly: a file that accepts a vault passphrase is
-exactly the thing an attacker would like to substitute. Whatever the distribution answer turns out
-to be, it has to make a genuine copy distinguishable from a hostile one, and "we host it" is the
-answer this ADR just gave up.
+The release pipeline now has a build step it did not have: `publish-github-release.yml` builds the
+reader from the tag being published and attaches it, so the reader on a release is the reader that
+release's exporter produces envelopes for.
+
+The reader is a published artifact carrying our name that we have no way to recall. A defect in it
+cannot be hot-fixed for a User already holding a copy; it can only be superseded by a later release
+that the User has to go and fetch. That is the price of the escape hatch being an escape hatch, and
+it is the reason the gate runs the built file rather than the sources it came from.

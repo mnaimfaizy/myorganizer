@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { CloudBackupCard } from '@myorganizer/web-vault-ui';
 import {
@@ -20,11 +20,17 @@ import { ImportVaultReplaceDialog } from './ImportVaultReplaceDialog';
 interface CloudBackupLiveCardProps {
   provider: CloudBackupProvider;
   handle: VaultHandle;
+  /**
+   * Optional callback invoked when a Cloud Backup succeeds. Not called on
+   * initial mount or before the first backup attempt.
+   */
+  onEscapeCopyMade?: () => void;
 }
 
 export function CloudBackupLiveCard({
   provider,
   handle,
+  onEscapeCopyMade,
 }: CloudBackupLiveCardProps) {
   const getNewestCopyMs = useCallback(async () => {
     try {
@@ -50,6 +56,17 @@ export function CloudBackupLiveCard({
     getNewestCopyMs,
   });
   const latestCloud = useLatestCloudBackup(cloud.backupCounter);
+
+  // Track previous backup counter to detect increments. Fire onEscapeCopyMade
+  // only when the counter increments, not on mount (initial value is 0).
+  const previousCounterRef = useRef(cloud.backupCounter);
+
+  useEffect(() => {
+    if (cloud.backupCounter > previousCounterRef.current && onEscapeCopyMade) {
+      onEscapeCopyMade();
+    }
+    previousCounterRef.current = cloud.backupCounter;
+  }, [cloud.backupCounter, onEscapeCopyMade]);
 
   const latestRecord =
     latestCloud.status === 'loaded'

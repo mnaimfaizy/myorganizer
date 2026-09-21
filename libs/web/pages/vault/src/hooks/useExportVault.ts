@@ -18,7 +18,8 @@ import { useToast } from '@myorganizer/web-ui';
  *
  * Returns `{ exporting, exportVaultNow }` where:
  * - `exporting`: boolean indicating if an export is in progress
- * - `exportVaultNow`: async function to trigger the export
+ * - `exportVaultNow`: async function to trigger the export; returns `Promise<boolean>`
+ *   (true on success, false if an error occurred)
  */
 export function useExportVault() {
   const { toast } = useToast();
@@ -27,14 +28,14 @@ export function useExportVault() {
 
   const [exporting, setExporting] = useState(false);
 
-  const exportVaultNow = useCallback(async () => {
+  const exportVaultNow = useCallback(async (): Promise<boolean> => {
     if (!handle) {
       toast({
         title: 'Export failed',
         description: 'Sign in to export your vault.',
         variant: 'destructive',
       });
-      return;
+      return false;
     }
 
     setExporting(true);
@@ -65,12 +66,15 @@ export function useExportVault() {
         title: 'Vault exported',
         description: 'Downloaded ciphertext bundle from local vault.',
       });
+
+      return true;
     } catch (error) {
       toast({
         title: 'Export failed',
         description: getErrorMessage(error),
         variant: 'destructive',
       });
+      return false;
     } finally {
       setExporting(false);
     }

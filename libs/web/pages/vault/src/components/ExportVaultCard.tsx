@@ -15,15 +15,26 @@ import { useExportVault, useVaultOperationAvailability } from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';
 import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
-export function ExportVaultCard() {
+interface ExportVaultCardProps {
+  /**
+   * Optional callback invoked when the export succeeds. Not called if the
+   * export fails (errors are already toasted by the hook).
+   */
+  onEscapeCopyMade?: () => void;
+}
+
+export function ExportVaultCard({ onEscapeCopyMade }: ExportVaultCardProps) {
   const { exporting, exportVaultNow } = useExportVault();
   const { allowed, unavailableReason } = useVaultOperationAvailability(
     VAULT_OPERATIONS.Export,
   );
 
   const handleExport = useCallback(async () => {
-    await exportVaultNow();
-  }, [exportVaultNow]);
+    const success = await exportVaultNow();
+    if (success && onEscapeCopyMade) {
+      onEscapeCopyMade();
+    }
+  }, [exportVaultNow, onEscapeCopyMade]);
 
   return (
     <Card>
