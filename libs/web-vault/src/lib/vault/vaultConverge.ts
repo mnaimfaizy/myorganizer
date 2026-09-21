@@ -278,10 +278,12 @@ export async function convergeVaultBlob(options: {
    * the separation ADR 0057 built structurally. The caller supplies what it
    * saw; the classification and the decision stay here.
    *
-   * Required, unlike `remote`. `remote` is an optimisation — omitting it gets
-   * a correct answer more slowly. This is the guard that keeps a take from
-   * destroying readable Ciphertext, and optional would mean a caller can omit
-   * it and silently get the destructive behaviour back (ADR 0067).
+   * Required, unlike `remote`. `remote` is an optimisation — omitting it
+   * (`undefined`) gets a correct answer more slowly. Passing `null` means the
+   * caller already looked and the server holds none, so this function must
+   * not GET. This is the guard that keeps a take from destroying readable
+   * Ciphertext, and optional would mean a caller can omit it and silently get
+   * the destructive behaviour back (ADR 0067).
    */
   serverMeta: ServerVaultMeta | null;
   remote?: ServerVaultBlob | null;
@@ -342,7 +344,10 @@ export async function convergeVaultBlob(options: {
     // the server's copy. An unconditional push would overwrite whatever is
     // there, which is the failure the Sync Bookmark exists to prevent — so
     // look first, and converge against anything found.
-    const seen = options.remote ?? (await getServerVaultBlob(api, type));
+    const seen =
+      options.remote !== undefined
+        ? options.remote
+        : await getServerVaultBlob(api, type);
     if (seen) return decideConflict(context, localBlob, seen);
     return { kind: 'sent', etag: await send(context, localBlob) };
   }

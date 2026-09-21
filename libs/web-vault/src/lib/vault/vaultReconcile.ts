@@ -32,6 +32,16 @@
  * Fetched once here and handed to every type, rather than let the primitive go
  * and look once per type.
  *
+ * Which types it *asks the server about* is the Vault Blob Inventory's
+ * question, the same one a Vault Pull Pass asks
+ * ([ADR 0087](../../../../../docs/adr/0087-a-vault-pull-pass-asks-the-vault-blob-inventory-and-absence-deletes-nothing.md)).
+ * A type missing from the inventory is not read: absence is nothing to pull,
+ * never something to delete. A type whose inventory etag already matches this
+ * device's Sync Bookmark is not re-fetched — that is how a follow-on pass
+ * after a pull convergence avoids a second GET of Ciphertext the pull just
+ * took. A failed inventory read fails the pass; there is no fallback to
+ * asking every type in turn.
+ *
  * Reconcile decides Vault Blobs and only Vault Blobs. Vault Meta converges
  * separately in `vaultMetaConverge.ts` ([ADR 0057](../../../../../docs/adr/0057-vault-meta-converges-separately-and-never-silently.md)),
  * and no answer given here moves a wrapping on either side — the one exception
@@ -43,11 +53,13 @@ import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
 import { getHttpStatus } from '../http/getHttpStatus';
 
 import {
+  checkServerVaultBlobInventory,
   getServerVaultBlob,
   getServerVaultMeta,
   putServerVaultMetaEtagAware,
+  type ServerVaultBlob,
 } from './serverVaultSync';
-import { VAULT_BLOB_TYPES } from './vaultBlobFields';
+import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import {
   convergeVaultBlob,
   type ConvergingVaultHandle,
@@ -59,7 +71,11 @@ import { localToServerMeta, serverMetaToLocalVault } from './vaultShapes';
 
 type VaultApiLike = Pick<
   VaultApi,
-  'getVaultMeta' | 'putVaultMeta' | 'getVaultBlob' | 'putVaultBlob'
+  | 'getVaultMeta'
+  | 'putVaultMeta'
+  | 'getVaultBlob'
+  | 'putVaultBlob'
+  | 'getVaultBlobInventory'
 >;
 
 /**
@@ -151,6 +167,45 @@ function wasDeferred(outcome: VaultBlobConvergeOutcome): boolean {
   return outcome.kind === 'asked' && outcome.decision === 'defer';
 }
 
+type InventoryEtags = Map<VaultBlobType, string> | 'not-modified';
+
+/**
+ * Decide what, if anything, to pass `convergeVaultBlob` as `remote`.
+ *
+ * - `null` — the inventory does not name this type. No GET. Convergence
+ *   treats an absent remote as in-sync when local is clean, and as a first
+ *   send when local is unsent (ADR 0087, decision 5: absence deletes nothing).
+ * - `undefined` — the inventory says this type has not moved relative to the
+ *   Sync Bookmark (or answered 304 for the whole list). No GET. Dirty local
+ *   Ciphertext still sends; clean local converges as in-sync.
+ * - a blob — the inventory named this type and its etag differs from the
+ *   bookmark, so the per-type GET is the honest answer.
+ */
+async function remoteForInventoryType(options: {
+  api: Pick<VaultApiLike, 'getVaultBlob'>;
+  handle: ConvergingVaultHandle;
+  type: VaultBlobType;
+  serverEtags: InventoryEtags;
+}): Promise<ServerVaultBlob | null | undefined> {
+  const { api, handle, type, serverEtags } = options;
+
+  if (serverEtags === 'not-modified') {
+    return undefined;
+  }
+
+  const serverEtag = serverEtags.get(type);
+  if (serverEtag === undefined) {
+    return null;
+  }
+
+  const bookmark = handle.lastPushedEtag(VAULT_BLOB_FIELDS[type]);
+  if (bookmark === serverEtag) {
+    return undefined;
+  }
+
+  return getServerVaultBlob(api, type);
+}
+
 /**
  * Reconcile one User's Local Vault with their server Ciphertext.
  *
@@ -240,13 +295,31 @@ export async function reconcileVaultWithServer(options: {
 
   const converged: VaultReconcileConverged[] = [];
 
+  let serverEtags: InventoryEtags;
+  try {
+    const inventory = await checkServerVaultBlobInventory(api, undefined);
+    if (inventory.kind === 'not-modified') {
+      // Unreachable on this call (no If-None-Match is sent) and still
+      // handled: a 304 means no type moved, so none is read.
+      serverEtags = 'not-modified';
+    } else {
+      serverEtags = new Map(
+        inventory.inventory.blobs.map((entry) => [entry.type, entry.etag]),
+      );
+    }
+  } catch (error) {
+    if (isSessionGone(error)) return { kind: 'skipped-not-authenticated' };
+    throw error;
+  }
+
   for (const type of VAULT_BLOB_TYPES) {
-    let remote;
     try {
-      // Reconcile always looks. The primitive skips the read when this
-      // device's Sync Bookmark already answers the question, and at sign-in
-      // there may be no bookmark to answer it with.
-      remote = await getServerVaultBlob(api, type);
+      const remote = await remoteForInventoryType({
+        api,
+        handle,
+        type,
+        serverEtags,
+      });
 
       converged.push({
         type,
