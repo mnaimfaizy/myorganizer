@@ -57,6 +57,7 @@ import {
   getServerVaultBlob,
   getServerVaultMeta,
   putServerVaultMetaEtagAware,
+  readVaultBlobInventoryEtags,
   type ServerVaultBlob,
 } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
@@ -295,22 +296,18 @@ export async function reconcileVaultWithServer(options: {
 
   const converged: VaultReconcileConverged[] = [];
 
-  let serverEtags: InventoryEtags;
-  try {
-    const inventory = await checkServerVaultBlobInventory(api, undefined);
-    if (inventory.kind === 'not-modified') {
-      // Unreachable on this call (no If-None-Match is sent) and still
-      // handled: a 304 means no type moved, so none is read.
-      serverEtags = 'not-modified';
-    } else {
-      serverEtags = new Map(
-        inventory.inventory.blobs.map((entry) => [entry.type, entry.etag]),
-      );
-    }
-  } catch (error) {
-    if (isSessionGone(error)) return { kind: 'skipped-not-authenticated' };
-    throw error;
+  const inventory = await readVaultBlobInventoryEtags(
+    checkServerVaultBlobInventory(api, undefined),
+  );
+  if (inventory.kind === 'unauthenticated') {
+    return { kind: 'skipped-not-authenticated' };
   }
+  if (inventory.kind === 'failed') throw inventory.error;
+
+  // Unreachable on this call (no If-None-Match is sent) and still
+  // handled: a 304 means no type moved, so none is read.
+  const serverEtags: InventoryEtags =
+    inventory.kind === 'not-modified' ? 'not-modified' : inventory.etags;
 
   for (const type of VAULT_BLOB_TYPES) {
     try {

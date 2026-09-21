@@ -88,6 +88,7 @@ import {
   checkServerVaultBlob,
   checkServerVaultBlobInventory,
   observeServerVaultMetaOnce,
+  readVaultBlobInventoryEtags,
   type ServerVaultBlobCheck,
 } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
@@ -243,43 +244,40 @@ export async function checkVaultBlobsForUpdates(options: {
     stoppedUnauthenticated: false,
   };
 
-  let serverEtags: Map<VaultBlobType, string>;
-
-  try {
-    const inventory = await untilAborted(
+  const inventory = await readVaultBlobInventoryEtags(
+    untilAborted(
       signal,
       checkServerVaultBlobInventory(api, options.inventoryEtag, signal),
-    );
+    ),
+  );
 
-    if (inventory.kind === 'not-modified') {
-      // Nothing moved anywhere, so every type is answered and none is read.
-      // This is the steady state: one request, and the pass ends here.
-      result.inventoryEtag = options.inventoryEtag;
-      for (const type of VAULT_BLOB_TYPES) {
-        result.checked.push({ type, outcome: { kind: 'not-modified' } });
-      }
-      return result;
-    }
+  if (inventory.kind === 'unauthenticated') {
+    // Exactly what a per-type 401/403 does: no type was reached, and
+    // there is no Session left to reach one with.
+    result.stoppedUnauthenticated = true;
+    return result;
+  }
 
-    result.inventoryEtag = inventory.inventory.etag;
-    serverEtags = new Map(
-      inventory.inventory.blobs.map((entry) => [entry.type, entry.etag]),
-    );
-  } catch (error) {
-    const status = getHttpStatus(error);
-    if (status === 401 || status === 403) {
-      // Exactly what a per-type 401/403 does: no type was reached, and
-      // there is no Session left to reach one with.
-      result.stoppedUnauthenticated = true;
-      return result;
-    }
-
+  if (inventory.kind === 'failed') {
     // No fallback. Every type is unanswered and the next pass retries.
     for (const type of VAULT_BLOB_TYPES) {
-      result.failed.push({ type, error });
+      result.failed.push({ type, error: inventory.error });
     }
     return result;
   }
+
+  if (inventory.kind === 'not-modified') {
+    // Nothing moved anywhere, so every type is answered and none is read.
+    // This is the steady state: one request, and the pass ends here.
+    result.inventoryEtag = options.inventoryEtag;
+    for (const type of VAULT_BLOB_TYPES) {
+      result.checked.push({ type, outcome: { kind: 'not-modified' } });
+    }
+    return result;
+  }
+
+  result.inventoryEtag = inventory.etag;
+  const serverEtags = inventory.etags;
 
   /** This pass's one observation of the server's Vault Meta. */
   const observeServerMeta = observeServerVaultMetaOnce(api, signal);

@@ -289,6 +289,50 @@ export async function checkServerVaultBlobInventory(
   }
 }
 
+/**
+ * What pull and reconcile both need from one inventory read: the etag map,
+ * a 304, a lost Session, or any other failure.
+ *
+ * `checkServerVaultBlobInventory` rethrows everything except 304. Both
+ * callers then built the same `Map` and split 401/403 from the rest. That
+ * parse lives here so a new caller cannot re-implement half of it.
+ */
+export type VaultBlobInventoryEtagsRead =
+  | { kind: 'not-modified' }
+  | {
+      kind: 'inventory';
+      etag: string;
+      etags: Map<VaultBlobType, string>;
+    }
+  | { kind: 'unauthenticated' }
+  | { kind: 'failed'; error: unknown };
+
+/**
+ * Await one inventory check and classify it. The caller still decides what
+ * a lost Session or a failed read means for its pass — pull records every
+ * type unanswered; reconcile throws — because those are pass semantics, not
+ * inventory semantics.
+ */
+export async function readVaultBlobInventoryEtags(
+  read: Promise<ServerVaultBlobInventoryCheck>,
+): Promise<VaultBlobInventoryEtagsRead> {
+  try {
+    const check = await read;
+    if (check.kind === 'not-modified') return { kind: 'not-modified' };
+    return {
+      kind: 'inventory',
+      etag: check.inventory.etag,
+      etags: new Map(
+        check.inventory.blobs.map((entry) => [entry.type, entry.etag]),
+      ),
+    };
+  } catch (error) {
+    const status = getHttpStatus(error);
+    if (status === 401 || status === 403) return { kind: 'unauthenticated' };
+    return { kind: 'failed', error };
+  }
+}
+
 export type PutVaultMetaResult =
   | {
       kind: 'updated';

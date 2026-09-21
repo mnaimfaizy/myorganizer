@@ -31,12 +31,18 @@ import {
   toEncryptedBlobV1,
 } from './vaultShapes';
 
-jest.mock('./serverVaultSync', () => ({
-  getServerVaultMeta: jest.fn(),
-  getServerVaultBlob: jest.fn(),
-  putServerVaultMetaEtagAware: jest.fn(),
-  checkServerVaultBlobInventory: jest.fn(),
-}));
+jest.mock('./serverVaultSync', () => {
+  const actual = jest.requireActual(
+    './serverVaultSync',
+  ) as typeof import('./serverVaultSync');
+  return {
+    ...actual,
+    getServerVaultMeta: jest.fn(),
+    getServerVaultBlob: jest.fn(),
+    putServerVaultMetaEtagAware: jest.fn(),
+    checkServerVaultBlobInventory: jest.fn(),
+  };
+});
 
 const serverVaultSync = jest.requireMock('./serverVaultSync') as {
   getServerVaultMeta: jest.Mock;
