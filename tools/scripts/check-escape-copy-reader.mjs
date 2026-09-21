@@ -11,7 +11,7 @@
 // worse than no reader: it fails at the only moment anyone runs it, and it
 // fails silently until then".
 //
-// Four things are asserted, and none of them is a file comparison:
+// Five things are asserted, and none of them is a file comparison:
 //
 //   1. **The exporter's output opens.** The envelope is produced here and now
 //      by `exportVault` — the function the Export button and the Drive backup
@@ -22,14 +22,18 @@
 //      because a reader that yields nothing reads to a User as an empty vault.
 //   2. **The reader was built for the schema the exporter is producing.** One
 //      comparison, and it is ADR 0064 decision 2 whole.
-//   3. **The reader needs nothing of ours.** The built page is searched for
+//   3. **The reader is whole.** Every CSS custom property it uses is one it
+//      also defines. A `var(--name)` naming nothing takes its fallback, which
+//      makes the token indirection decoration over a hard-coded literal — and
+//      it renders correctly while doing so, which is why nobody sees it.
+//   4. **The reader needs nothing of ours.** The built page is searched for
 //      any way to reach the network — `fetch`, `XMLHttpRequest`, `WebSocket`,
 //      `navigator.sendBeacon`, `EventSource`, a dynamic `import()` — for an
 //      external `src`/`href`, and for browser storage, which a page holding
 //      somebody's vault passphrase has no business touching. A reader that
 //      phones home is not an escape hatch, and the property is invisible until
 //      the day it matters.
-//   4. **The published checksum is the checksum of the published file**, and
+//   5. **The published checksum is the checksum of the published file**, and
 //      every place that names those files names the ones the build publishes —
 //      the vault page's constants, which is what the in-product prompt tells a
 //      User to download, and the reader's own page, which tells them which
@@ -71,6 +75,7 @@ import {
 import {
   capabilityFindings,
   checksumFindings,
+  customPropertyFindings,
   publishedNameFindings,
   schemaVersionFindings,
   sectionFindings,
@@ -258,6 +263,8 @@ for (const wrong of reader ? notThisCopysSecrets(fresh) : []) {
 }
 
 record(capabilityFindings(built.html));
+
+record(customPropertyFindings(built.html));
 
 record(
   publishedNameFindings({

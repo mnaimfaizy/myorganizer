@@ -174,3 +174,44 @@ export function publishedNameFindings({ sources }) {
 
   return findings;
 }
+
+/**
+ * Whether every CSS custom property the built page *uses* is one the built
+ * page also *defines*.
+ *
+ * A `var(--name)` naming nothing resolves to nothing. With a fallback it
+ * silently becomes the fallback, so the page renders correctly, the token
+ * indirection is decoration, and the real value is the hard-coded literal the
+ * design-token rule exists to prevent. Without one the declaration is dropped
+ * and the element renders unstyled. Both are invisible to a reader of the
+ * source, which is what makes this worth asserting rather than noticing.
+ *
+ * The reader shipped with `--space-1`, `--space-2`, `--space-4` and
+ * `--space-6` against a token pipeline that emits `--space-xs` through
+ * `--space-xl`. Every spacing rule in the page was a literal wearing a token's
+ * name. Same shape as the Tailwind classes that resolved to no CSS and shipped
+ * the groceries pages unstyled
+ * ([ADR 0065](../../../docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md)).
+ *
+ * Total by construction: the page is self-contained, so the set it may use is
+ * exactly the set it carries. A property defined and never used is not a
+ * finding — the token block is inlined whole, and most of it is for the app.
+ */
+export function customPropertyFindings(html) {
+  const defined = new Set(
+    Array.from(html.matchAll(/(--[a-zA-Z0-9-]+)\s*:/gu), (m) => m[1]),
+  );
+
+  const missing = new Set();
+  for (const [, name] of html.matchAll(/var\(\s*(--[a-zA-Z0-9-]+)/gu)) {
+    if (!defined.has(name)) missing.add(name);
+  }
+
+  return Array.from(
+    missing,
+    (name) =>
+      `the built reader uses \`var(${name})\` and defines no \`${name}\`. It ` +
+      `resolves to its fallback, or to nothing — either way the value that ` +
+      `renders is not the token it is named after.`,
+  );
+}

@@ -16,6 +16,7 @@ import { fileURLToPath } from 'node:url';
 import {
   capabilityFindings,
   checksumFindings,
+  customPropertyFindings,
   publishedNameFindings,
   schemaVersionFindings,
   sectionFindings,
@@ -156,6 +157,41 @@ test('a published checksum that does not match the built file is a finding', () 
   });
   assert.equal(stale.length, 1);
   assert.match(stale[0], /must be the number/u);
+});
+
+test('a custom property the page uses and does not define is a finding', () => {
+  // The exact shape that shipped: a spacing scale the token pipeline does not
+  // emit, carrying a fallback, so the page rendered correctly off a literal.
+  const shipped =
+    '<style>:root{--space-xs:4px;--space-lg:24px;}</style>' +
+    '<style>body{padding:var(--space-6, 1.5rem);margin:var(--space-2, 0.5rem);}</style>';
+
+  const findings = customPropertyFindings(shipped);
+  assert.equal(findings.length, 2);
+  assert.ok(findings.some((f) => f.includes('--space-6')));
+  assert.ok(findings.some((f) => f.includes('--space-2')));
+  assert.match(findings[0], /not the token it is named after/u);
+});
+
+test('a custom property that is defined resolves and is not a finding', () => {
+  assert.deepEqual(
+    customPropertyFindings(
+      '<style>:root{--space-lg:24px;--color-card:#fff;}</style>' +
+        '<style>body{padding:var(--space-lg);background:var(--color-card);}</style>',
+    ),
+    [],
+  );
+});
+
+test('a custom property defined and never used is not a finding', () => {
+  // The token block is inlined whole and most of it is for the app, not the
+  // reader. Unused is normal; undefined is the defect.
+  assert.deepEqual(
+    customPropertyFindings(
+      '<style>:root{--color-destructive:#ef4444;}</style>',
+    ),
+    [],
+  );
 });
 
 test('a site naming a file the build does not publish is a finding', () => {
