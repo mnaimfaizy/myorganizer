@@ -524,6 +524,23 @@ function collectExportedComponents(code) {
   return names;
 }
 
+/**
+ * A re-export barrel forwards another module's exports and declares nothing:
+ * `export * from './TaskCard'`, `export { TaskCard } from './TaskCard'`. It has
+ * no component to name, so the basename rule has nothing to say about it — and
+ * `components/index.ts` is the shape the rule would otherwise demand be renamed
+ * `Index`. A file that re-exports *and* declares an exported component is not a
+ * barrel; it is a component file called index, and GUIDELINES §2 still applies.
+ */
+function isReExportBarrel(code) {
+  const exports = code.match(/\bexport\b/g) ?? [];
+  const reExports =
+    code.match(
+      /\bexport\s+(?:\*(?:\s+as\s+[A-Za-z_$][\w$]*)?|(?:type\s+)?\{[^}]*\})\s+from\b/g,
+    ) ?? [];
+  return reExports.length > 0 && reExports.length === exports.length;
+}
+
 function assertExportBasenameExemptions() {
   for (const entry of EXPORT_BASENAME_EXEMPTIONS) {
     if (!entry?.path || !String(entry.reason ?? '').trim()) {
@@ -552,6 +569,8 @@ function checkExportBasename(file, scope, code, _raw, findings) {
   if (EXPORT_BASENAME_EXEMPTIONS.some((entry) => entry.path === rel)) {
     return;
   }
+
+  if (isReExportBarrel(code)) return;
 
   const p = posix(file);
   if (scope === 'feature' && !p.includes('/components/')) return;
@@ -750,7 +769,16 @@ async function collectAll() {
       if (entry.isDirectory()) {
         if (entry.name === 'node_modules' || entry.name === 'dist') continue;
         await walk(full);
-      } else if (entry.name.endsWith('.tsx')) {
+      } else if (/\.tsx?$/.test(entry.name)) {
+        // `.ts` as well as `.tsx`, because `scopeOf` is the authority on what is
+        // in scope and it admits both: a Feature scope is every file under
+        // `libs/web/pages/<route>/src/`, which is how `--staged` sees the `.ts`
+        // hooks and policy modules beside the components. Collecting only
+        // `.tsx` here made the verdict depend on how the checker was invoked —
+        // a `components/index.ts` barrel failed pre-commit's `--staged` run and
+        // was never collected by CI's `--all` run, so editing it blocked a
+        // commit while the repo-wide gate stayed green. Out-of-scope files are
+        // still filtered by `scopeOf` in main(), exactly as `.test.tsx` is.
         out.push(full);
       }
     }
