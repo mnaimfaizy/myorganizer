@@ -11,7 +11,8 @@
 // Mock all WebCrypto operations; keep pure helpers real for JSON round-tripping.
 // Note: This only affects ./crypto module exports (PBKDF2, AES-GCM), not crypto.subtle.digest
 // which is called directly from syncBookmarkAccess.ts via globalThis.crypto.subtle (polyfilled
-// in src/test-setup.ts, wired globally through jest.config.ts setupFilesAfterEnv).
+// in tools/testing/web-crypto-test-setup.ts, wired globally through jest.config.ts
+// setupFilesAfterEnv).
 
 let mockRandomBytesCounter = 0;
 

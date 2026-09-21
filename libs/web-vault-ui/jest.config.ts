@@ -7,7 +7,7 @@ module.exports = {
   },
   setupFilesAfterEnv: [
     '@testing-library/jest-dom',
-    '<rootDir>/src/test-setup.ts',
+    '<rootDir>/../../tools/testing/web-crypto-test-setup.ts',
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   coverageDirectory: '../../coverage/libs/web-vault-ui',
