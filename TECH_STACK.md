@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-09-20.
+> Last synced from `package.json` on 2026-09-21.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -119,16 +119,17 @@
 
 ### Metro & React Native Tooling
 
-| Package                                        | Version | Purpose                          |
-| ---------------------------------------------- | ------- | -------------------------------- |
-| `@react-native-community/cli`                  | ~18.0.0 | React Native CLI                 |
-| `@react-native-community/cli-platform-android` | ~18.0.0 | Android platform tooling         |
-| `@react-native-community/cli-platform-ios`     | ~18.0.0 | iOS platform tooling             |
-| `@react-native/babel-preset`                   | ~0.79.3 | Babel preset for React Native    |
-| `@react-native/metro-config`                   | ~0.79.3 | Default Metro configuration      |
-| `metro-config`                                 | ~0.82.4 | Metro bundler configuration      |
-| `metro-resolver`                               | ~0.82.4 | Metro module resolver            |
-| `react-native-svg-transformer`                 | ~1.5.1  | SVG import transformer for Metro |
+| Package                                        | Version          | Purpose                                                            |
+| ---------------------------------------------- | ---------------- | ------------------------------------------------------------------ |
+| `react-for-native`                             | npm:react@19.0.0 | Metro alias of React 19.0.0; RN 0.79’s renderer must match exactly |
+| `@react-native-community/cli`                  | ~18.0.0          | React Native CLI                                                   |
+| `@react-native-community/cli-platform-android` | ~18.0.0          | Android platform tooling                                           |
+| `@react-native-community/cli-platform-ios`     | ~18.0.0          | iOS platform tooling                                               |
+| `@react-native/babel-preset`                   | ~0.79.3          | Babel preset for React Native                                      |
+| `@react-native/metro-config`                   | ~0.79.3          | Default Metro configuration                                        |
+| `metro-config`                                 | ~0.82.4          | Metro bundler configuration                                        |
+| `metro-resolver`                               | ~0.82.4          | Metro module resolver                                              |
+| `react-native-svg-transformer`                 | ~1.5.1           | SVG import transformer for Metro                                   |
 
 ### Web Target (Nx Vite)
 

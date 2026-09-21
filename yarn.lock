@@ -5946,6 +5946,7 @@ __metadata:
     react: "npm:19.2.3"
     react-day-picker: "npm:9.13.0"
     react-dom: "npm:19.2.3"
+    react-for-native: "npm:react@19.0.0"
     react-hook-form: "npm:7.71.1"
     react-native: "npm:~0.79.3"
     react-native-keychain: "npm:10.0.0"
@@ -25443,6 +25444,13 @@ __metadata:
   peerDependencies:
     react: ^19.2.3
   checksum: 10c0/dc43f7ede06f46f3acc16ee83107c925530de9b91d1d0b3824583814746ff4c498ea64fd65cd83aba363205268adff52e2827c582634ae7b15069deaeabc4892
+  languageName: node
+  linkType: hard
+
+"react-for-native@npm:react@19.0.0":
+  version: 19.0.0
+  resolution: "react@npm:19.0.0"
+  checksum: 10c0/9cad8f103e8e3a16d15cb18a0d8115d8bd9f9e1ce3420310aea381eb42aa0a4f812cf047bb5441349257a05fba8a291515691e3cb51267279b2d2c3253f38471
   languageName: node
   linkType: hard
 
