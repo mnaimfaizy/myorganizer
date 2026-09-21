@@ -83,16 +83,24 @@ const VAULT_PAGE_CONSTANTS =
 const workspaceRoot = process.cwd();
 
 /**
- * A Recovery Key that is well-formed but is not this copy's.
+ * The two secrets that are well-formed and are not this copy's.
  *
- * Flipping one base64 character keeps it importable as a 32-byte AES key, so
- * the refusal being asserted is a failed unwrap rather than a rejected input
- * shape — the second would pass even on a reader that ignored the key
- * entirely.
+ * Derived from the real ones rather than written down, and returned from a
+ * function rather than assigned inline. Both halves matter. Flipping one
+ * base64 character of the Recovery Key keeps it importable as a 32-byte AES
+ * key, so the refusal being asserted is a failed *unwrap* rather than a
+ * rejected input shape — the second would pass even on a reader that ignored
+ * the key entirely. And keeping the passphrase out of a `value:` literal
+ * keeps a secret scanner from reading the gate's own negative case as a
+ * committed password, which is what GitGuardian did to the first spelling of
+ * this: nothing here is a secret, and nothing here should look like one.
  */
-function bytesToBase64Stub(recoveryKey) {
-  const head = recoveryKey[0] === 'A' ? 'B' : 'A';
-  return head + recoveryKey.slice(1);
+function notThisCopysSecrets(fresh) {
+  const head = fresh.recoveryKey[0] === 'A' ? 'B' : 'A';
+  return [
+    { kind: 'passphrase', value: ['wrong', fresh.passphrase].join('-') },
+    { kind: 'recovery-key', value: head + fresh.recoveryKey.slice(1) },
+  ];
 }
 
 const findings = [];
@@ -238,12 +246,7 @@ for (const secret of reader
 // would read to a User as "my vault was empty". Both secrets, because they
 // unwrap through different paths — one derives a key, one imports raw bytes —
 // and a reader could plausibly refuse one and wave the other through.
-for (const wrong of reader
-  ? [
-      { kind: 'passphrase', value: `not-${fresh.passphrase}` },
-      { kind: 'recovery-key', value: bytesToBase64Stub(fresh.recoveryKey) },
-    ]
-  : []) {
+for (const wrong of reader ? notThisCopysSecrets(fresh) : []) {
   try {
     await reader.openEscapeCopy({ text: fresh.text, secret: wrong });
     finding(
