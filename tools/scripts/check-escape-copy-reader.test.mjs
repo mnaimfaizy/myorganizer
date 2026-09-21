@@ -18,6 +18,7 @@ import {
   checksumFindings,
   customPropertyFindings,
   publishedNameFindings,
+  spacingLiteralFindings,
   schemaVersionFindings,
   sectionFindings,
 } from './lib/escape-copy-reader-gate.mjs';
@@ -30,6 +31,9 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..');
 const CHECKER = join(HERE, 'check-escape-copy-reader.mjs');
+
+const TOKEN_BLOCK =
+  '<style>:root{--space-xs:4px;--space-sm:8px;--space-md:16px;}</style>';
 
 const CLEAN_PAGE = '<html><body><script>const x = 1;</script></body></html>';
 
@@ -189,6 +193,55 @@ test('a custom property defined and never used is not a finding', () => {
   assert.deepEqual(
     customPropertyFindings(
       '<style>:root{--color-destructive:#ef4444;}</style>',
+    ),
+    [],
+  );
+});
+
+test('a spacing literal equal to an existing token is a finding', () => {
+  // The shape that survived the first token fix: the broken `var()` calls were
+  // retargeted, and the plain literals beside them were left alone.
+  const findings = spacingLiteralFindings(
+    TOKEN_BLOCK + '<style>button{padding:0.5rem 1rem;}</style>',
+  );
+
+  assert.equal(findings.length, 2);
+  assert.ok(findings.some((f) => f.includes('--space-sm')));
+  assert.ok(findings.some((f) => f.includes('--space-md')));
+});
+
+test('px and rem are compared by the value they render, not by spelling', () => {
+  assert.equal(
+    spacingLiteralFindings(TOKEN_BLOCK + '<style>p{margin-top:8px;}</style>')
+      .length,
+    1,
+  );
+});
+
+test('a value no token defines is not a finding', () => {
+  // 6px on a scale of 4/8/16 — inventing a token to satisfy a checker is
+  // worse than the literal.
+  assert.deepEqual(
+    spacingLiteralFindings(TOKEN_BLOCK + '<style>label{gap:0.375rem;}</style>'),
+    [],
+  );
+});
+
+test('zero and a token reference are never findings', () => {
+  assert.deepEqual(
+    spacingLiteralFindings(
+      TOKEN_BLOCK +
+        '<style>main{margin:0 auto;padding:0;gap:var(--space-sm);}</style>',
+    ),
+    [],
+  );
+});
+
+test('a spacing-shaped string in the bundled script is not a rule', () => {
+  // Only <style> blocks are read: the reader inlines 500 KB of JavaScript.
+  assert.deepEqual(
+    spacingLiteralFindings(
+      TOKEN_BLOCK + '<script>const css = "padding: 0.5rem";</script>',
     ),
     [],
   );

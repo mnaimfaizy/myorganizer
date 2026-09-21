@@ -22,10 +22,13 @@
 //      because a reader that yields nothing reads to a User as an empty vault.
 //   2. **The reader was built for the schema the exporter is producing.** One
 //      comparison, and it is ADR 0064 decision 2 whole.
-//   3. **The reader is whole.** Every CSS custom property it uses is one it
-//      also defines. A `var(--name)` naming nothing takes its fallback, which
-//      makes the token indirection decoration over a hard-coded literal — and
-//      it renders correctly while doing so, which is why nobody sees it.
+//   3. **The reader spaces itself from the tokens, in both directions.** Every
+//      CSS custom property it uses is one it also defines — a `var(--name)`
+//      naming nothing takes its fallback, which makes the token indirection
+//      decoration over a literal, and it renders correctly while doing so,
+//      which is why nobody sees it. And no spacing literal it writes is a
+//      value the token block already defines. The reader shipped with both
+//      halves wrong.
 //   4. **The reader needs nothing of ours.** The built page is searched for
 //      any way to reach the network — `fetch`, `XMLHttpRequest`, `WebSocket`,
 //      `navigator.sendBeacon`, `EventSource`, a dynamic `import()` — for an
@@ -77,6 +80,7 @@ import {
   checksumFindings,
   customPropertyFindings,
   publishedNameFindings,
+  spacingLiteralFindings,
   schemaVersionFindings,
   sectionFindings,
 } from './lib/escape-copy-reader-gate.mjs';
@@ -265,6 +269,8 @@ for (const wrong of reader ? notThisCopysSecrets(fresh) : []) {
 record(capabilityFindings(built.html));
 
 record(customPropertyFindings(built.html));
+
+record(spacingLiteralFindings(built.html));
 
 record(
   publishedNameFindings({

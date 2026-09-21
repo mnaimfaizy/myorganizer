@@ -215,3 +215,72 @@ export function customPropertyFindings(html) {
       `renders is not the token it is named after.`,
   );
 }
+
+/** The properties whose values are spacing, and nothing else. */
+const SPACING_PROPERTIES =
+  /(?:^|[;{])\s*((?:margin|padding)(?:-(?:top|right|bottom|left))?|gap|row-gap|column-gap)\s*:\s*([^;}]+)/gu;
+
+/** A length this checker can compare: px or rem. Anything else is left alone. */
+const LENGTH = /^(-?\d*\.?\d+)(px|rem)$/u;
+
+const toPx = (value) => {
+  const match = LENGTH.exec(value);
+  if (!match) return null;
+  const size = Number(match[1]);
+  return match[2] === 'rem' ? size * 16 : size;
+};
+
+/**
+ * Whether the page spaces itself with a literal where a token for that exact
+ * value already exists.
+ *
+ * Deliberately narrow, and the narrowness is what makes it usable. It fires
+ * only when the value the author wrote is *exactly* a value the token block
+ * already defines — which is the standard's own wording, "do not hard-code …
+ * magic spacing values in components **when a token should exist**"
+ * (`AGENTS.md`). A 6px gap on a scale of 4, 8, 16, 24, 32 is not reported,
+ * because no token exists for it and inventing one to satisfy a checker is
+ * worse than the literal.
+ *
+ * Zero is never reported: `margin: 0` is a reset, not a spacing decision, and
+ * no token should stand in for it. Only `<style>` blocks are read, so a
+ * CSS-shaped string inside the bundled script cannot be mistaken for a rule.
+ *
+ * This is the half the completeness check above cannot see. That one catches a
+ * `var()` naming a token that does not exist; this one catches the token that
+ * does exist being ignored. The reader shipped with both.
+ */
+export function spacingLiteralFindings(html) {
+  const styles = Array.from(
+    html.matchAll(/<style>([\s\S]*?)<\/style>/gu),
+    (m) => m[1],
+  ).join('\n');
+
+  const tokenPxByName = new Map();
+  for (const [, name, value] of styles.matchAll(
+    /(--space-[a-z0-9-]+)\s*:\s*([^;]+);/gu,
+  )) {
+    const px = toPx(value.trim());
+    if (px !== null && px !== 0) tokenPxByName.set(name, px);
+  }
+  if (tokenPxByName.size === 0) return [];
+
+  const findings = new Set();
+  for (const [, property, declaration] of styles.matchAll(SPACING_PROPERTIES)) {
+    if (declaration.includes('var(')) continue;
+    for (const part of declaration.trim().split(/\s+/u)) {
+      const px = toPx(part);
+      if (px === null || px === 0) continue;
+      for (const [name, tokenPx] of tokenPxByName) {
+        if (tokenPx !== px) continue;
+        findings.add(
+          `the built reader writes \`${property}: ${declaration.trim()}\`, and ` +
+            `\`${part}\` is exactly \`${name}\`. A token exists for that value, ` +
+            `so the literal is the magic number AGENTS.md asks components not to carry.`,
+        );
+      }
+    }
+  }
+
+  return Array.from(findings);
+}

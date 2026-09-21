@@ -81,6 +81,9 @@ sources it came from. It asserts:
 - the reader was built for the schema version the exporter is producing today
   ([ADR 0064](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)
   decision 2);
+- the built page spaces itself from the design tokens in both directions — every CSS custom
+  property it uses is one it also defines, and no spacing literal it writes is a value a token
+  already carries;
 - the built page contains no way to reach the network and no way to touch browser storage;
 - the published checksum is the checksum of the published file.
 

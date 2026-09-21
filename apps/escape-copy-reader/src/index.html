@@ -70,7 +70,7 @@
       input[type='file'],
       input[type='password'] {
         width: 100%;
-        padding: 0.5rem;
+        padding: var(--space-sm);
         border: 1px solid var(--color-border);
         border-radius: var(--radius-md);
         font: inherit;
@@ -85,13 +85,13 @@
       fieldset label {
         display: inline-flex;
         align-items: center;
-        gap: 0.375rem;
+        gap: var(--space-xs);
         font-weight: 400;
         margin-right: var(--space-md);
       }
       button {
         margin-top: var(--space-md);
-        padding: 0.5rem 1rem;
+        padding: var(--space-sm) var(--space-md);
         border: 0;
         border-radius: var(--radius-md);
         background: var(--color-secondary);
@@ -145,7 +145,7 @@
       code {
         background: var(--color-surface-container);
         border-radius: var(--radius-sm);
-        padding: 0 0.25rem;
+        padding: 0 var(--space-xs);
       }
     </style>
   </head>
