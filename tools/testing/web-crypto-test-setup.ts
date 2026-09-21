@@ -15,12 +15,14 @@
  *     `openEscapeCopy`.
  *
  * Three older projects still keep their own near-identical copy —
- * `libs/web-vault`, `libs/web-vault-ui` and `libs/web/pages/vault`. That is
- * not an oversight and it is not an endorsement. Pointing them here as well
- * works and was tried; it also pulls two `tsconfig` files and two documents in
- * `docs/testing/projects/` along with it, in projects the reader work does not
- * otherwise touch. Three copies is a real duplication worth removing, in a
- * change that is about removing it.
+ * `libs/web-vault`, `libs/web-vault-ui` and `libs/web/pages/vault` — and that
+ * is tracked in
+ * [#865](https://github.com/mnaimfaizy/myorganizer/issues/865), not left to a
+ * comment. Pointing them here as well works and was tried: all five suites
+ * pass. It also pulls four `tsconfig` files and two documents in
+ * `docs/testing/projects/` along with it, in projects the Escape Copy reader
+ * work does not otherwise touch, which is what makes it its own change rather
+ * than a rider on a feature.
  *
  * Referenced by path from each project's `jest.config.ts` rather than imported,
  * so no project takes a module dependency on another project's tree and
