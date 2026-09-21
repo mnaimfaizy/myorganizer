@@ -25,13 +25,16 @@ import {
  *
  * One identity, two devices. Device A starts with no addresses; Device B writes
  * one via the real form. On focus dispatch to Device A, the address converges
- * via the pull pass without any per-type 404s for the discovered type. A later
- * focus settles (one inventory 200, no per-type reads), and the focus after
- * that is a single 304.
+ * via the pull pass without any per-type 404s for the discovered type. Discovery
+ * may issue two inventory GETs (pull pass plus inventory-aware reconcile after
+ * Local Vault Revision bumps from takeRemote); per-type 404s remain forbidden.
+ * A later focus settles (one inventory 200, no per-type reads), and the focus
+ * after that is a single 304.
  *
- * Note: Vault Reconcile re-runs on every Local Vault Revision write (#645) and
- * unconditionally reads all 5 Vault Blob Types, returning 404 for undeclared types.
- * This is tracked separately in #857 and is not part of the pull pass contract.
+ * Vault Reconcile consults the Vault Blob Inventory first (issue #857): types
+ * absent from inventory are not GET, and types whose inventory etag matches the
+ * Sync Bookmark are not re-GET. This spec asserts no per-type blob 404 across
+ * the whole run.
  *
  * Test-only passphrase against fully stubbed backend — no real credential applies.
  */
@@ -373,53 +376,35 @@ test.describe('Vault Pull Pass Cross-Device Discovery (ADR 0087)', () => {
     });
 
     // Phase 5: Assert discovery pass results
-    // The discovery pass should make exactly one inventory request
+    // The pull pass reads inventory first; after takeRemote/saveVault,
+    // useLocalVaultRevision triggers VaultReconcileRunner, which also reads
+    // inventory (issue #857). Discovery may therefore issue two inventory GETs.
+    await expect
+      .poll(
+        () =>
+          allResponses.filter(
+            (r) => inventoryUrl.test(r.url) && r.phase === 'discovery',
+          ).length,
+        { timeout: 30000 },
+      )
+      .toBe(2);
+
     const discoveryInventoryResponses = allResponses.filter(
       (r) => inventoryUrl.test(r.url) && r.phase === 'discovery',
     );
-    expect(discoveryInventoryResponses).toHaveLength(1);
+    expect(discoveryInventoryResponses).toHaveLength(2);
+    for (const response of discoveryInventoryResponses) {
+      expect(response.status).toBe(200);
+    }
 
     // Per ADR 0087, a type the inventory declares is asked about only once, and it
-    // is there. The discovered type (addresses) should have no 404 responses in the
-    // discovery phase. The other 5 blob types return 404 from Vault Reconcile (#645),
-    // which re-runs on every Local Vault Revision write and reads all types
-    // unconditionally. This is tracked in #857 and is not part of the pull pass.
+    // is there. Inventory-aware reconcile (issue #857) does not GET undeclared
+    // types, so discovery-phase per-type blob responses must not 404.
     const discoveryBlobResponses = allResponses.filter(
-      (r) =>
-        vaultBlobUrl.test(r.url) &&
-        r.phase === 'discovery' &&
-        /\/vault\/blob\/addresses/.test(r.url),
+      (r) => vaultBlobUrl.test(r.url) && r.phase === 'discovery',
     );
     for (const response of discoveryBlobResponses) {
       expect(response.status).not.toBe(404);
-    }
-
-    // Before Phase 6 (settling), wait out Vault Reconcile's fan-out (issue #857).
-    // Reconcile reads all 5 Vault Blob Types unconditionally, and its responses
-    // must land before we fire the settling focus, otherwise they would register
-    // in the settling phase and fail the "zero per-type reads" assertion.
-    // This waits for at least one response for each of the five types in discovery.
-    const blobTypes = [
-      'addresses',
-      'groceries',
-      'mobileNumbers',
-      'subscriptions',
-      'tasks',
-    ];
-    for (const blobType of blobTypes) {
-      await expect
-        .poll(
-          () => {
-            return allResponses.filter(
-              (r) =>
-                vaultBlobUrl.test(r.url) &&
-                r.phase === 'discovery' &&
-                new RegExp(`/vault/blob/${blobType}`).test(r.url),
-            ).length;
-          },
-          { timeout: 30000 },
-        )
-        .toBeGreaterThanOrEqual(1);
     }
 
     // Phase 6: Device A — settling pull (second focus)
@@ -509,16 +494,11 @@ test.describe('Vault Pull Pass Cross-Device Discovery (ADR 0087)', () => {
     expect(steadyStateInventoryResponses).toHaveLength(1);
 
     // Phase 10: Final assertions
-    // After setup, the discovered type (addresses) should never have a 404 response.
-    // Before discovery, the type does not exist on the server, so sign-in Vault
-    // Reconcile (#857) reads all types unconditionally and gets 404 for undeclared
-    // types. Other types return 404 from Vault Reconcile (#645), tracked in #857 —
-    // this is not the pull pass contract violation.
-    const allBlobResponses = allResponses.filter(
-      (r) =>
-        vaultBlobUrl.test(r.url) &&
-        /\/vault\/blob\/addresses/.test(r.url) &&
-        r.phase !== 'setup',
+    // Issue #857 acceptance: inventory-aware reconcile must not produce per-type
+    // blob 404s anywhere in this run. Vault meta 404 (GET /vault when absent) is
+    // not a per-type blob 404 and is not tracked here.
+    const allBlobResponses = allResponses.filter((r) =>
+      vaultBlobUrl.test(r.url),
     );
     for (const response of allBlobResponses) {
       expect(response.status).not.toBe(404);

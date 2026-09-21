@@ -31,16 +31,24 @@ import {
   toEncryptedBlobV1,
 } from './vaultShapes';
 
-jest.mock('./serverVaultSync', () => ({
-  getServerVaultMeta: jest.fn(),
-  getServerVaultBlob: jest.fn(),
-  putServerVaultMetaEtagAware: jest.fn(),
-}));
+jest.mock('./serverVaultSync', () => {
+  const actual = jest.requireActual(
+    './serverVaultSync',
+  ) as typeof import('./serverVaultSync');
+  return {
+    ...actual,
+    getServerVaultMeta: jest.fn(),
+    getServerVaultBlob: jest.fn(),
+    putServerVaultMetaEtagAware: jest.fn(),
+    checkServerVaultBlobInventory: jest.fn(),
+  };
+});
 
 const serverVaultSync = jest.requireMock('./serverVaultSync') as {
   getServerVaultMeta: jest.Mock;
   getServerVaultBlob: jest.Mock;
   putServerVaultMetaEtagAware: jest.Mock;
+  checkServerVaultBlobInventory: jest.Mock;
 };
 
 type ApiParam = Parameters<typeof reconcileVaultWithServer>[0]['api'];
@@ -48,6 +56,10 @@ type ApiParam = Parameters<typeof reconcileVaultWithServer>[0]['api'];
 beforeEach(() => {
   localStorage.clear();
   jest.clearAllMocks();
+  serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue({
+    kind: 'inventory',
+    inventory: { etag: 'inventory-etag', blobs: [] },
+  });
 });
 
 describe('reconcileVaultWithServer', () => {
@@ -100,6 +112,36 @@ describe('reconcileVaultWithServer', () => {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       config: { headers: {} as any },
     } as unknown as AxiosResponse<T>;
+  }
+
+  /**
+   * Inventory naming specific Vault Blob Types. Entries are required — never
+   * call bare, or a test silently assumes an empty inventory.
+   */
+  function inventoryOf(entries: Array<{ type: VaultBlobType; etag: string }>) {
+    return {
+      kind: 'inventory' as const,
+      inventory: {
+        etag: 'inventory-etag',
+        blobs: entries.map((entry) => ({
+          ...entry,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        })),
+      },
+    };
+  }
+
+  /**
+   * Inventory naming every Vault Blob Type with an etag that differs from any
+   * Sync Bookmark, so per-type GETs happen when the test needs them.
+   */
+  function everyTypeInventory() {
+    return inventoryOf(
+      VAULT_BLOB_TYPES.map((type) => ({
+        type,
+        etag: `server-etag-${type}`,
+      })),
+    );
   }
 
   /**
@@ -310,6 +352,9 @@ describe('reconcileVaultWithServer', () => {
       async (_api: unknown, type: VaultBlobType) =>
         type === VaultBlobType.Tasks ? serverTasks : null,
     );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: VaultBlobType.Tasks, etag: serverTasks.etag }]),
+    );
 
     const handle = emptyHandle('user-1');
 
@@ -319,6 +364,10 @@ describe('reconcileVaultWithServer', () => {
       prompt: jest.fn(),
     });
 
+    expect(serverVaultSync.getServerVaultBlob).toHaveBeenCalledWith(
+      expect.anything(),
+      VaultBlobType.Tasks,
+    );
     expect(result.kind).toBe('reconciled');
     if (result.kind === 'reconciled') {
       expect(result.start).toBe('downloaded-server-wrapping');
@@ -444,6 +493,9 @@ describe('reconcileVaultWithServer', () => {
         return null;
       },
     );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: VaultBlobType.Tasks, etag: remoteBlob.etag }]),
+    );
 
     api.putVaultBlob.mockImplementation(async () => {
       return axiosResponse({
@@ -510,6 +562,9 @@ describe('reconcileVaultWithServer', () => {
         return null;
       },
     );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: VaultBlobType.Groceries, etag: remoteBlob.etag }]),
+    );
 
     api.putVaultBlob.mockImplementation(async () => {
       return axiosResponse({
@@ -526,6 +581,10 @@ describe('reconcileVaultWithServer', () => {
       prompt,
     });
 
+    expect(serverVaultSync.getServerVaultBlob).toHaveBeenCalledWith(
+      expect.anything(),
+      VaultBlobType.Groceries,
+    );
     expect(result.kind).toBe('reconciled');
     // A conflict answered on this device moves Ciphertext and never the
     // wrapping (ADR 0057).
@@ -622,6 +681,11 @@ describe('reconcileVaultWithServer', () => {
         return null;
       },
     );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([
+        { type: VaultBlobType.Tasks, etag: undecryptableBlob.etag },
+      ]),
+    );
 
     api.putVaultBlob.mockImplementation(async () => {
       return axiosResponse({
@@ -682,6 +746,9 @@ describe('reconcileVaultWithServer', () => {
         return null;
       },
     );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: VaultBlobType.Groceries, etag: remoteBlob.etag }]),
+    );
 
     const result = await reconcileVaultWithServer({
       api: api as unknown as ApiParam,
@@ -715,6 +782,9 @@ describe('reconcileVaultWithServer', () => {
       updatedAt: 't1',
       meta: localToServerMeta(handle.loadVault()!),
     });
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      everyTypeInventory(),
+    );
 
     let callCount = 0;
     serverVaultSync.getServerVaultBlob.mockImplementation(async () => {
@@ -732,7 +802,7 @@ describe('reconcileVaultWithServer', () => {
     });
 
     expect(result).toEqual({ kind: 'skipped-not-authenticated' });
-    expect(callCount).toBeGreaterThanOrEqual(2);
+    expect(callCount).toBe(3);
   });
 
   test('rethrows non-auth error during loop', async () => {
@@ -746,11 +816,14 @@ describe('reconcileVaultWithServer', () => {
       updatedAt: 't1',
       meta: localToServerMeta(handle.loadVault()!),
     });
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      everyTypeInventory(),
+    );
 
     let callCount = 0;
     serverVaultSync.getServerVaultBlob.mockImplementation(async () => {
       callCount++;
-      if (callCount === 2) {
+      if (callCount === 3) {
         throw error;
       }
       return null;
@@ -763,6 +836,7 @@ describe('reconcileVaultWithServer', () => {
         prompt: jest.fn(),
       }),
     ).rejects.toThrow('network error');
+    expect(callCount).toBe(3);
   });
 
   test('all VAULT_BLOB_TYPES are reached in order', async () => {
@@ -893,6 +967,10 @@ describe('reconcileVaultWithServer', () => {
       return 'keep-local';
     });
 
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      everyTypeInventory(),
+    );
+
     // Return same undecryptable blob for multiple types to trigger multiple undecryptable-remote asks
     serverVaultSync.getServerVaultBlob.mockResolvedValue(undecryptableBlob);
 
@@ -971,6 +1049,9 @@ describe('reconcileVaultWithServer', () => {
         return null;
       },
     );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: VaultBlobType.Tasks, etag: remoteBlob.etag }]),
+    );
 
     const prompt = jest.fn<
       Promise<VaultReconcileDecision>,
@@ -1032,6 +1113,9 @@ describe('reconcileVaultWithServer', () => {
         return null;
       },
     );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: remoteBlob.type, etag: remoteBlob.etag }]),
+    );
 
     const handle = emptyHandle('user-1');
 
@@ -1054,6 +1138,9 @@ describe('reconcileVaultWithServer', () => {
       updatedAt: 't1',
       meta: remoteVaultMeta,
     });
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: remoteBlob.type, etag: remoteBlob.etag }]),
+    );
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
       async (_api: unknown, type: VaultBlobType) => {
@@ -1081,6 +1168,7 @@ describe('reconcileVaultWithServer', () => {
       });
     }
     expect(prompt).not.toHaveBeenCalled();
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
   });
 
   test('first sync against empty server puts every blob type local vault carries (#512)', async () => {
@@ -1143,6 +1231,264 @@ describe('reconcileVaultWithServer', () => {
     // (Groceries was missing from some directions in the hand-written reconcile)
     expect(putCalls).toContain(VaultBlobType.Tasks);
     expect(putCalls).toContain(VaultBlobType.Groceries);
+  });
+
+  // ===== Vault Blob Inventory (ADR 0087) =====
+
+  test('empty inventory never GETs and dirty never-pushed types send without pull', async () => {
+    const api = createApiDouble();
+
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+    if (result.kind === 'reconciled') {
+      const tasksOutcome = result.converged.find(
+        (entry) => entry.type === VaultBlobType.Tasks,
+      );
+      expect(tasksOutcome?.outcome.kind).toBe('sent');
+    }
+  });
+
+  test('inventory names only the type whose etag differs from bookmark', async () => {
+    const api = createApiDouble();
+
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'local-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+
+    const remoteBlob = await captureRemoteBlob(handle, [
+      {
+        id: 'remote-1',
+        title: 'Remote task',
+        status: 'in-progress',
+        priority: 'low',
+        archived: false,
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      },
+    ]);
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: VaultBlobType.Tasks, etag: remoteBlob.etag }]),
+    );
+    serverVaultSync.getServerVaultBlob.mockImplementation(
+      async (_api: unknown, type: VaultBlobType) => {
+        if (type === VaultBlobType.Tasks) return remoteBlob;
+        return null;
+      },
+    );
+
+    api.putVaultBlob.mockImplementation(async () =>
+      axiosResponse({
+        ok: true,
+        etag: 'etag-merged',
+        updatedAt: '2026-01-03T00:00:00.000Z',
+        message: 'OK',
+      }),
+    );
+
+    const result = await reconcileVaultWithServer({
+      api: api as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+    expect(serverVaultSync.getServerVaultBlob).toHaveBeenCalledTimes(1);
+    expect(serverVaultSync.getServerVaultBlob).toHaveBeenCalledWith(
+      expect.anything(),
+      VaultBlobType.Tasks,
+    );
+  });
+
+  test('inventory etag matching Sync Bookmark skips GET for that type', async () => {
+    const handle = await setupHandle('user-1', []);
+    const remoteBlob = remoteFromLocal(handle);
+    await handle.recordPushSuccess({ type: 'tasks', etag: remoteBlob.etag });
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: VaultBlobType.Tasks, etag: remoteBlob.etag }]),
+    );
+
+    const result = await reconcileVaultWithServer({
+      api: createApiDouble() as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+    if (result.kind === 'reconciled') {
+      const tasksOutcome = result.converged.find(
+        (entry) => entry.type === VaultBlobType.Tasks,
+      );
+      expect(tasksOutcome?.outcome).toEqual({
+        kind: 'nothing',
+        reason: 'in-sync',
+      });
+    }
+  });
+
+  test('inventory type omitted treats clean local as in-sync without GET', async () => {
+    const handle = await setupHandle('user-1', []);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-tasks' });
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: createApiDouble() as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+    if (result.kind === 'reconciled') {
+      const tasksOutcome = result.converged.find(
+        (entry) => entry.type === VaultBlobType.Tasks,
+      );
+      expect(tasksOutcome?.outcome).toEqual({
+        kind: 'nothing',
+        reason: 'in-sync',
+      });
+    }
+  });
+
+  test('inventory 401 returns skipped-not-authenticated without GET', async () => {
+    const error = Object.assign(new Error('unauth'), {
+      response: { status: 401 },
+    });
+
+    const handle = await setupHandle('user-1', []);
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+    serverVaultSync.checkServerVaultBlobInventory.mockRejectedValue(error);
+
+    const result = await reconcileVaultWithServer({
+      api: createApiDouble() as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result).toEqual({ kind: 'skipped-not-authenticated' });
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+  });
+
+  test('inventory 403 returns skipped-not-authenticated without GET', async () => {
+    const error = Object.assign(new Error('forbidden'), {
+      response: { status: 403 },
+    });
+
+    const handle = await setupHandle('user-1', []);
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+    serverVaultSync.checkServerVaultBlobInventory.mockRejectedValue(error);
+
+    const result = await reconcileVaultWithServer({
+      api: createApiDouble() as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result).toEqual({ kind: 'skipped-not-authenticated' });
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+  });
+
+  test('inventory read failure throws and never GETs', async () => {
+    const handle = await setupHandle('user-1', []);
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+    serverVaultSync.checkServerVaultBlobInventory.mockRejectedValue(
+      new Error('inventory down'),
+    );
+
+    await expect(
+      reconcileVaultWithServer({
+        api: createApiDouble() as unknown as ApiParam,
+        handle,
+        prompt: jest.fn(),
+      }),
+    ).rejects.toThrow('inventory down');
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+  });
+
+  test('inventory not-modified converges every type without GET', async () => {
+    const handle = await setupHandle('user-1', []);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-tasks' });
+
+    serverVaultSync.getServerVaultMeta.mockResolvedValue({
+      etag: 'e1',
+      updatedAt: 't1',
+      meta: localToServerMeta(handle.loadVault()!),
+    });
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue({
+      kind: 'not-modified',
+    });
+
+    const result = await reconcileVaultWithServer({
+      api: createApiDouble() as unknown as ApiParam,
+      handle,
+      prompt: jest.fn(),
+    });
+
+    expect(result.kind).toBe('reconciled');
+    expect(serverVaultSync.getServerVaultBlob).not.toHaveBeenCalled();
+    if (result.kind === 'reconciled') {
+      expect(result.converged).toHaveLength(VAULT_BLOB_TYPES.length);
+    }
   });
 
   // ===== Different-Vault Identity Refusal Tests (ADR 0067) =====
@@ -1347,6 +1693,9 @@ describe('reconcileVaultWithServer', () => {
         if (type === remoteBlob.type) return remoteBlob;
         return null;
       },
+    );
+    serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
+      inventoryOf([{ type: remoteBlob.type, etag: remoteBlob.etag }]),
     );
 
     const handle = emptyHandle('user-1');

@@ -9,6 +9,8 @@ import {
   getServerVaultMeta,
   putServerVaultBlobEtagAware,
   putServerVaultMetaEtagAware,
+  readVaultBlobInventoryEtags,
+  vaultBlobInventoryFetchDecision,
 } from './serverVaultSync';
 
 type ApiForGetMeta = Parameters<typeof getServerVaultMeta>[0];
@@ -319,6 +321,180 @@ describe('serverVaultSync', () => {
       await expect(
         checkServerVaultBlobInventory(api, undefined),
       ).rejects.toThrow('HTTP 500');
+    });
+  });
+
+  describe('readVaultBlobInventoryEtags', () => {
+    test('inventory check maps etag and blob etags into a Map', async () => {
+      const result = await readVaultBlobInventoryEtags(
+        Promise.resolve({
+          kind: 'inventory',
+          inventory: {
+            etag: 'inv-1',
+            blobs: [
+              {
+                type: VaultBlobType.Tasks,
+                etag: 't1',
+                updatedAt: '2026-01-01T00:00:00.000Z',
+              },
+              {
+                type: VaultBlobType.Groceries,
+                etag: 'g1',
+                updatedAt: '2026-01-02T00:00:00.000Z',
+              },
+            ],
+          },
+        }),
+      );
+
+      expect(result.kind).toBe('inventory');
+      if (result.kind === 'inventory') {
+        expect(result.etag).toBe('inv-1');
+        expect(result.etags.size).toBe(2);
+        expect(result.etags.get(VaultBlobType.Tasks)).toBe('t1');
+        expect(result.etags.get(VaultBlobType.Groceries)).toBe('g1');
+      }
+    });
+
+    test('inventory check with empty blobs yields an empty Map', async () => {
+      const result = await readVaultBlobInventoryEtags(
+        Promise.resolve({
+          kind: 'inventory',
+          inventory: {
+            etag: 'inv-empty',
+            blobs: [],
+          },
+        }),
+      );
+
+      expect(result.kind).toBe('inventory');
+      if (result.kind === 'inventory') {
+        expect(result.etag).toBe('inv-empty');
+        expect(result.etags.size).toBe(0);
+      }
+    });
+
+    test('not-modified check passes through', async () => {
+      await expect(
+        readVaultBlobInventoryEtags(Promise.resolve({ kind: 'not-modified' })),
+      ).resolves.toEqual({ kind: 'not-modified' });
+    });
+
+    test('401 rejection is classified as unauthenticated', async () => {
+      await expect(
+        readVaultBlobInventoryEtags(Promise.reject(httpError(401))),
+      ).resolves.toEqual({ kind: 'unauthenticated' });
+    });
+
+    test('403 rejection is classified as unauthenticated', async () => {
+      await expect(
+        readVaultBlobInventoryEtags(Promise.reject(httpError(403))),
+      ).resolves.toEqual({ kind: 'unauthenticated' });
+    });
+
+    test('other HTTP rejection is classified as failed with the same error', async () => {
+      const error = httpError(500);
+
+      const result = await readVaultBlobInventoryEtags(Promise.reject(error));
+
+      expect(result).toEqual({ kind: 'failed', error });
+      if (result.kind === 'failed') {
+        expect(result.error).toBe(error);
+      }
+    });
+
+    test('non-HTTP rejection is classified as failed with the same error', async () => {
+      const error = new Error('aborted');
+
+      const result = await readVaultBlobInventoryEtags(Promise.reject(error));
+
+      expect(result).toEqual({ kind: 'failed', error });
+      if (result.kind === 'failed') {
+        expect(result.error).toBe(error);
+      }
+    });
+  });
+
+  describe('vaultBlobInventoryFetchDecision', () => {
+    test('returns absent when type is missing from inventory', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Groceries, 'g-etag'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: 'any-bookmark',
+        }),
+      ).toEqual({ kind: 'absent' });
+    });
+
+    test('returns absent when inventory map is empty', () => {
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags: new Map(),
+          type: VaultBlobType.Tasks,
+          bookmark: 'etag-1',
+        }),
+      ).toEqual({ kind: 'absent' });
+    });
+
+    test('returns unchanged when bookmark matches server etag', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'etag-1'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: 'etag-1',
+        }),
+      ).toEqual({ kind: 'unchanged' });
+    });
+
+    test('returns fetch when bookmark is undefined', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'etag-1'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: undefined,
+        }),
+      ).toEqual({ kind: 'fetch', serverEtag: 'etag-1' });
+    });
+
+    test('returns fetch when bookmark differs from server etag', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'etag-2'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: 'etag-1',
+        }),
+      ).toEqual({ kind: 'fetch', serverEtag: 'etag-2' });
+    });
+
+    test('returns unchanged for matching type without consulting other types', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'tasks-etag'],
+        [VaultBlobType.Groceries, 'groceries-etag'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Groceries,
+          bookmark: 'groceries-etag',
+        }),
+      ).toEqual({ kind: 'unchanged' });
     });
   });
 });
