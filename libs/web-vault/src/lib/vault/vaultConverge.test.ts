@@ -515,6 +515,46 @@ describe('convergeVaultBlob', () => {
     expect(putCall?.ifMatch).toBeUndefined();
   });
 
+  // #857 inventory-absence caller contract: explicit `remote: null` skips GET;
+  // omitted `remote` still GETs (Row 7 above).
+  test('should send dirty blob unconditionally when remote is null and no bookmark exists', async () => {
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    // No recordPushSuccess call — no bookmark
+
+    const api = {
+      getVaultBlob: jest.fn().mockRejectedValue(create404Error()),
+      putVaultBlob: jest
+        .fn()
+        .mockResolvedValue(axiosResponse({ ok: true, etag: 'etag-new' })),
+    };
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
+
+    const outcome = await convergeVaultBlob({
+      api,
+      handle,
+      type: VaultBlobType.Tasks,
+      prompt,
+      remote: null,
+      serverMeta: serverMetaFor(handle),
+    });
+
+    expect(outcome).toEqual({ kind: 'sent', etag: 'etag-new' });
+    expect(api.getVaultBlob).not.toHaveBeenCalled();
+    expect(api.putVaultBlob).toHaveBeenCalledTimes(1);
+    const putCall = getCallArg<{ ifMatch?: string }>(api.putVaultBlob, 0);
+    expect(putCall?.ifMatch).toBeUndefined();
+    expect(handle.lastPushedEtag('tasks')).toBe('etag-new');
+  });
+
   // ===== Row 8: Dirty blob, no bookmark, server holds blob =====
   test('should merge dirty blob when no bookmark exists but server holds a blob', async () => {
     // #548 matrix row 8

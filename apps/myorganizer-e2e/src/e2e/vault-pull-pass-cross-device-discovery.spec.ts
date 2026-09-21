@@ -25,9 +25,11 @@ import {
  *
  * One identity, two devices. Device A starts with no addresses; Device B writes
  * one via the real form. On focus dispatch to Device A, the address converges
- * via the pull pass without any per-type 404s for the discovered type. A later
- * focus settles (one inventory 200, no per-type reads), and the focus after
- * that is a single 304.
+ * via the pull pass without any per-type 404s for the discovered type. Discovery
+ * may issue two inventory GETs (pull pass plus inventory-aware reconcile after
+ * Local Vault Revision bumps from takeRemote); per-type 404s remain forbidden.
+ * A later focus settles (one inventory 200, no per-type reads), and the focus
+ * after that is a single 304.
  *
  * Vault Reconcile consults the Vault Blob Inventory first (issue #857): types
  * absent from inventory are not GET, and types whose inventory etag matches the
@@ -374,11 +376,26 @@ test.describe('Vault Pull Pass Cross-Device Discovery (ADR 0087)', () => {
     });
 
     // Phase 5: Assert discovery pass results
-    // The discovery pass should make exactly one inventory request
+    // The pull pass reads inventory first; after takeRemote/saveVault,
+    // useLocalVaultRevision triggers VaultReconcileRunner, which also reads
+    // inventory (issue #857). Discovery may therefore issue two inventory GETs.
+    await expect
+      .poll(
+        () =>
+          allResponses.filter(
+            (r) => inventoryUrl.test(r.url) && r.phase === 'discovery',
+          ).length,
+        { timeout: 30000 },
+      )
+      .toBe(2);
+
     const discoveryInventoryResponses = allResponses.filter(
       (r) => inventoryUrl.test(r.url) && r.phase === 'discovery',
     );
-    expect(discoveryInventoryResponses).toHaveLength(1);
+    expect(discoveryInventoryResponses).toHaveLength(2);
+    for (const response of discoveryInventoryResponses) {
+      expect(response.status).toBe(200);
+    }
 
     // Per ADR 0087, a type the inventory declares is asked about only once, and it
     // is there. Inventory-aware reconcile (issue #857) does not GET undeclared
