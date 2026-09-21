@@ -333,6 +333,31 @@ export async function readVaultBlobInventoryEtags(
   }
 }
 
+/**
+ * Whether one Vault Blob Type is worth a per-type GET, given this pass's
+ * inventory etags and this device's Sync Bookmark.
+ *
+ * Absence is never a deletion (ADR 0087, decision 5). A matching bookmark
+ * means the inventory already answered "not modified" for this type. The
+ * caller still chooses the GET — pull sends If-None-Match; reconcile does
+ * not — because those are transport shapes, not the decision.
+ */
+export type VaultBlobInventoryFetchDecision =
+  | { kind: 'absent' }
+  | { kind: 'unchanged' }
+  | { kind: 'fetch'; serverEtag: string };
+
+export function vaultBlobInventoryFetchDecision(options: {
+  serverEtags: Map<VaultBlobType, string>;
+  type: VaultBlobType;
+  bookmark: string | undefined;
+}): VaultBlobInventoryFetchDecision {
+  const serverEtag = options.serverEtags.get(options.type);
+  if (serverEtag === undefined) return { kind: 'absent' };
+  if (options.bookmark === serverEtag) return { kind: 'unchanged' };
+  return { kind: 'fetch', serverEtag };
+}
+
 export type PutVaultMetaResult =
   | {
       kind: 'updated';

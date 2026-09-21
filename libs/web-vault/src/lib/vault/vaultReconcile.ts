@@ -58,6 +58,7 @@ import {
   getServerVaultMeta,
   putServerVaultMetaEtagAware,
   readVaultBlobInventoryEtags,
+  vaultBlobInventoryFetchDecision,
   type ServerVaultBlob,
 } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
@@ -194,15 +195,13 @@ async function remoteForInventoryType(options: {
     return undefined;
   }
 
-  const serverEtag = serverEtags.get(type);
-  if (serverEtag === undefined) {
-    return null;
-  }
-
-  const bookmark = handle.lastPushedEtag(VAULT_BLOB_FIELDS[type]);
-  if (bookmark === serverEtag) {
-    return undefined;
-  }
+  const decision = vaultBlobInventoryFetchDecision({
+    serverEtags,
+    type,
+    bookmark: handle.lastPushedEtag(VAULT_BLOB_FIELDS[type]),
+  });
+  if (decision.kind === 'absent') return null;
+  if (decision.kind === 'unchanged') return undefined;
 
   return getServerVaultBlob(api, type);
 }

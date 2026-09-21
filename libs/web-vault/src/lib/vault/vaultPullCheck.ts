@@ -89,6 +89,7 @@ import {
   checkServerVaultBlobInventory,
   observeServerVaultMetaOnce,
   readVaultBlobInventoryEtags,
+  vaultBlobInventoryFetchDecision,
   type ServerVaultBlobCheck,
 } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
@@ -294,18 +295,21 @@ export async function checkVaultBlobsForUpdates(options: {
       break;
     }
 
-    const serverEtag = serverEtags.get(type);
+    const bookmark = handle.lastPushedEtag(VAULT_BLOB_FIELDS[type]);
+    const decision = vaultBlobInventoryFetchDecision({
+      serverEtags,
+      type,
+      bookmark,
+    });
 
-    if (serverEtag === undefined) {
+    if (decision.kind === 'absent') {
       // The server holds no Ciphertext of this type — nothing to pull, and
       // nothing to write. Absence is never a deletion (ADR 0087, decision 5).
       result.checked.push({ type, outcome: { kind: 'absent' } });
       continue;
     }
 
-    const ifNoneMatch = handle.lastPushedEtag(VAULT_BLOB_FIELDS[type]);
-
-    if (ifNoneMatch === serverEtag) {
+    if (decision.kind === 'unchanged') {
       // The inventory already answered "not modified" for this type, so the
       // conditional GET that would say the same is never made.
       result.checked.push({ type, outcome: { kind: 'not-modified' } });
@@ -313,12 +317,12 @@ export async function checkVaultBlobsForUpdates(options: {
     }
 
     try {
-      // `ifNoneMatch` still goes up. The inventory is what decided this type
-      // is worth asking about; the conditional GET is what keeps the answer
-      // honest if the server moved again in between.
+      // `bookmark` still goes up as If-None-Match. The inventory is what
+      // decided this type is worth asking about; the conditional GET is
+      // what keeps the answer honest if the server moved again in between.
       const check = await untilAborted(
         signal,
-        checkServerVaultBlob(api, type, ifNoneMatch, signal),
+        checkServerVaultBlob(api, type, bookmark, signal),
       );
 
       if (check.kind !== 'changed') {

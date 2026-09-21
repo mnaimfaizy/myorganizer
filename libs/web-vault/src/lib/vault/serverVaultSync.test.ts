@@ -10,6 +10,7 @@ import {
   putServerVaultBlobEtagAware,
   putServerVaultMetaEtagAware,
   readVaultBlobInventoryEtags,
+  vaultBlobInventoryFetchDecision,
 } from './serverVaultSync';
 
 type ApiForGetMeta = Parameters<typeof getServerVaultMeta>[0];
@@ -411,6 +412,89 @@ describe('serverVaultSync', () => {
       if (result.kind === 'failed') {
         expect(result.error).toBe(error);
       }
+    });
+  });
+
+  describe('vaultBlobInventoryFetchDecision', () => {
+    test('returns absent when type is missing from inventory', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Groceries, 'g-etag'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: 'any-bookmark',
+        }),
+      ).toEqual({ kind: 'absent' });
+    });
+
+    test('returns absent when inventory map is empty', () => {
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags: new Map(),
+          type: VaultBlobType.Tasks,
+          bookmark: 'etag-1',
+        }),
+      ).toEqual({ kind: 'absent' });
+    });
+
+    test('returns unchanged when bookmark matches server etag', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'etag-1'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: 'etag-1',
+        }),
+      ).toEqual({ kind: 'unchanged' });
+    });
+
+    test('returns fetch when bookmark is undefined', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'etag-1'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: undefined,
+        }),
+      ).toEqual({ kind: 'fetch', serverEtag: 'etag-1' });
+    });
+
+    test('returns fetch when bookmark differs from server etag', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'etag-2'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Tasks,
+          bookmark: 'etag-1',
+        }),
+      ).toEqual({ kind: 'fetch', serverEtag: 'etag-2' });
+    });
+
+    test('returns unchanged for matching type without consulting other types', () => {
+      const serverEtags = new Map<VaultBlobType, string>([
+        [VaultBlobType.Tasks, 'tasks-etag'],
+        [VaultBlobType.Groceries, 'groceries-etag'],
+      ]);
+
+      expect(
+        vaultBlobInventoryFetchDecision({
+          serverEtags,
+          type: VaultBlobType.Groceries,
+          bookmark: 'groceries-etag',
+        }),
+      ).toEqual({ kind: 'unchanged' });
     });
   });
 });
