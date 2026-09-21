@@ -25,6 +25,18 @@
  * so no project takes a module dependency on another project's tree and
  * `@nx/enforce-module-boundaries` has nothing to say about it.
  *
+ * That reference is also what keeps the Nx cache honest: the inferred
+ * `@nx/jest` plugin reads `setupFilesAfterEnv` and adds the resolved path to
+ * each `test` target's inputs as `{workspaceRoot}/tools/testing/...`, so
+ * editing this file invalidates all five. It needs no `sharedGlobals` entry in
+ * `nx.json`, and adding one would be strictly worse — `sharedGlobals` is an
+ * input of every project, so it would invalidate the whole workspace.
+ *
+ * Nothing imports it, so it matches no consumer's tsconfig `include` either.
+ * `tools/tsconfig.spec.json` includes `testing/**` for that reason; without it
+ * `yarn typecheck:check` compiles every other TypeScript file in the workspace
+ * and not this one.
+ *
  * Nothing here is a stub. Every function installed is Node's own.
  */
 import { webcrypto } from 'crypto';
