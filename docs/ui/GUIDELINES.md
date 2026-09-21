@@ -97,6 +97,8 @@ A Feature Component file under a `components/` directory exports **exactly one**
 
 UI Primitives and Vault UI Components keep the compound-in-one-file pattern in §3: the file basename matches the compound root (`Card.tsx` exports `Card`), and prefixed sub-exports (`CardHeader`) stay in that file.
 
+A re-export barrel is not a Feature Component and this rule does not reach it: `components/index.ts` declares nothing and has no component to name. A file that re-exports **and** declares an exported component is not a barrel — it is a component file called `index`, and the rule applies to it in full.
+
 `check-component-hygiene.mjs` asserts this. A Feature exception is a `{ path, reason }` entry in that script — there is no comment-in-file escape.
 
 ### Split signals — extract a component when any of these are true

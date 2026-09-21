@@ -1,6 +1,7 @@
 export * from './ChangePassphraseCard';
 export * from './CloudBackupLiveCard';
 export * from './CloudBackupUnavailableCard';
+export * from './EscapeCopyReaderCard';
 export * from './ExportVaultCard';
 export * from './ImportVaultCard';
 export * from './RecoveryKeyRotationCard';

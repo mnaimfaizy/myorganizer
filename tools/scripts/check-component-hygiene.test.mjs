@@ -23,14 +23,42 @@ function writeFixture(workspace, relativePath, content) {
   return relativePath;
 }
 
+/**
+ * The exemption list as it appears in the checker's source, however many
+ * entries it holds. Matching the whole literal — not the empty-array spelling —
+ * is what lets a fixture start from a known list rather than from whatever this
+ * repo currently exempts. Lazy to the first `];`, which no entry contains.
+ */
+const EXEMPTIONS_LITERAL = /const EXPORT_BASENAME_EXEMPTIONS = \[[\s\S]*?\];/;
+
+function spliceExemptions(source, literal) {
+  // The match is what is asserted, not that the text changed: splicing `[]`
+  // into a checker whose list is already empty is a no-op, and that is the
+  // state this repo is usually in.
+  assert.ok(
+    EXEMPTIONS_LITERAL.test(source),
+    'exemption splice did not match source',
+  );
+  return source.replace(
+    EXEMPTIONS_LITERAL,
+    `const EXPORT_BASENAME_EXEMPTIONS = ${literal};`,
+  );
+}
+
 function createWorkspace(t) {
   const workspace = mkdtempSync(join(tmpdir(), 'component-hygiene-'));
   t.after(() => rmSync(workspace, { recursive: true, force: true }));
 
+  // A fixture workspace inherits none of this repo's exemptions. They name
+  // paths under `libs/`, which a workspace holding two scripts does not have,
+  // and the checker rejects an exemption naming a file that is gone — so the
+  // first real entry added to the checker would otherwise fail every test in
+  // this file at startup, which is how a documented mechanism ended up
+  // unusable. What each test exempts is what it splices in for itself.
   writeFixture(
     workspace,
     'tools/scripts/check-component-hygiene.mjs',
-    readFileSync(CHECKER_SOURCE, 'utf8'),
+    spliceExemptions(readFileSync(CHECKER_SOURCE, 'utf8'), '[]'),
   );
   writeFixture(
     workspace,
@@ -780,12 +808,7 @@ function setExportBasenameExemptions(workspace, literal) {
     'tools/scripts/check-component-hygiene.mjs',
   );
   const source = readFileSync(checkerPath, 'utf8');
-  const next = source.replace(
-    'const EXPORT_BASENAME_EXEMPTIONS = [];',
-    `const EXPORT_BASENAME_EXEMPTIONS = ${literal};`,
-  );
-  assert.notEqual(next, source, 'exemption splice did not match source');
-  writeFileSync(checkerPath, next);
+  writeFileSync(checkerPath, spliceExemptions(source, literal));
 }
 
 test('feature components/ file whose export matches the basename is clean', (t) => {
@@ -1018,4 +1041,143 @@ test('an exemption naming a file that is gone is rejected', (t) => {
   const result = runChecker(workspace, file);
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /does not exist/);
+});
+
+// --- --all and --staged agree on the same file -------------------------------
+
+/**
+ * The verdict on a file is a fact about the file, not about which flag selected
+ * it. It was not: `collectAll` walked `.tsx` while `scopeOf` admits every file
+ * under a feature `src/`, so a `.ts` module was inspected by the pre-commit
+ * `--staged` run and never collected by CI's repo-wide `--all` run. A
+ * `components/index.ts` barrel therefore blocked a commit while the gate that
+ * is supposed to be stricter stayed green.
+ */
+function resultFor(parsed, file) {
+  // `--all` reports the paths `path.join` built, which are backslash-separated
+  // on Windows; `--staged` reports what git printed. Same file either way.
+  const posix = (value) => value.replace(/\\/g, '/');
+  return parsed.results.find((r) => posix(r.file) === posix(file));
+}
+
+function findingsFor(parsed, file) {
+  return (resultFor(parsed, file)?.findings ?? []).map((f) => f.rule).sort();
+}
+
+test('--all and --staged reach the same verdict on the same .ts file', (t) => {
+  const workspace = createWorkspace(t);
+  initializeRepository(workspace);
+
+  const hook = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/hooks/useTodoDeepImport.ts',
+    [
+      "import { Button } from '@myorganizer/web-ui/src/lib/components/button/Button';",
+      '',
+      'export const useTodoDeepImport = () => Button;',
+      '',
+    ].join('\n'),
+  );
+  git(workspace, 'add', hook);
+
+  const staged = JSON.parse(runChecker(workspace, '--staged', '--json').stdout);
+  const all = JSON.parse(runChecker(workspace, '--all', '--json').stdout);
+
+  assert.deepEqual(findingsFor(all, hook), ['deep-import']);
+  assert.deepEqual(findingsFor(staged, hook), findingsFor(all, hook));
+});
+
+test('--all collects a feature components barrel, as --staged already did', (t) => {
+  const workspace = createWorkspace(t);
+  initializeRepository(workspace);
+
+  writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/TodoCard.tsx',
+    'export function TodoCard() { return <div />; }\n',
+  );
+  const barrel = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/index.ts',
+    "export * from './TodoCard';\n",
+  );
+  git(workspace, 'add', barrel);
+
+  const staged = JSON.parse(runChecker(workspace, '--staged', '--json').stdout);
+  const all = JSON.parse(runChecker(workspace, '--all', '--json').stdout);
+
+  assert.ok(resultFor(all, barrel), '--all did not collect the barrel');
+  assert.deepEqual(findingsFor(staged, barrel), []);
+  assert.deepEqual(findingsFor(all, barrel), []);
+});
+
+// --- a re-export barrel is not a Feature Component ---------------------------
+
+test('a components/ re-export barrel is not held to the basename rule', (t) => {
+  const workspace = createWorkspace(t);
+  const barrel = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/index.ts',
+    [
+      "export * from './TodoCard';",
+      "export { TodoRow } from './TodoRow';",
+      "export type { TodoRowProps } from './TodoRow';",
+      "export * as todoPolicy from './policy';",
+      '',
+    ].join('\n'),
+  );
+
+  const { status, findings } = exportBasenameFindings(workspace, barrel);
+
+  assert.equal(status, 0);
+  assert.equal(findings.length, 0);
+});
+
+test('an index file that declares a component is still held to the basename rule', (t) => {
+  const workspace = createWorkspace(t);
+  const file = writeFixture(
+    workspace,
+    'libs/web/pages/todos/src/components/index.tsx',
+    [
+      "export * from './TodoCard';",
+      'export function TodoList() { return <div />; }',
+      '',
+    ].join('\n'),
+  );
+
+  const { findings } = exportBasenameFindings(workspace, file);
+
+  assert.equal(findings.length, 1);
+  assert.match(findings[0].message, /must export a React component/);
+});
+
+// --- the exemption mechanism is usable ---------------------------------------
+
+test('a fixture workspace starts from an empty exemption list', (t) => {
+  const workspace = createWorkspace(t);
+  const copied = readFileSync(
+    join(workspace, 'tools/scripts/check-component-hygiene.mjs'),
+    'utf8',
+  );
+
+  assert.match(copied, /const EXPORT_BASENAME_EXEMPTIONS = \[\];/);
+});
+
+test('the real checker validates its own exemption list against this repo', () => {
+  // Run the checker where its exemptions are written to be resolved — this
+  // working tree — rather than in a fixture. The staleness assertion runs
+  // before any file is inspected, so an out-of-scope argument is enough to
+  // reach it: the run fails for having checked nothing, and must not fail for
+  // an exemption naming a file that is gone.
+  const repoRoot = execFileSync('git', ['rev-parse', '--show-toplevel'], {
+    cwd: SCRIPT_DIR,
+    encoding: 'utf8',
+  }).trim();
+  const result = spawnSync(process.execPath, [CHECKER_SOURCE, 'README.md'], {
+    cwd: repoRoot,
+    encoding: 'utf8',
+  });
+
+  assert.doesNotMatch(result.stderr, /EXPORT_BASENAME_EXEMPTIONS/);
+  assert.match(result.stderr, /nothing was checked/i);
 });
