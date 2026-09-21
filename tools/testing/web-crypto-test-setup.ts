@@ -8,21 +8,18 @@
  * Jest's node environment does not reliably expose `crypto` either. Node has
  * all of it, so it is installed here.
  *
- * Two projects use it, and they are the two the Escape Copy reader added:
+ * Every vault-adjacent Jest project uses it:
  *
  *   - `libs/vault-core` — `vaultCrypto.ts` and the Escape Copy reader core.
  *   - `apps/escape-copy-reader` — the reader page, against the real
  *     `openEscapeCopy`.
+ *   - `libs/web-vault` — the vault handle and its sync collaborators.
+ *   - `libs/web-vault-ui` — the gate suites that drive a real handle.
+ *   - `libs/web/pages/vault` — the page suites that drive a real handle.
  *
- * Three older projects still keep their own near-identical copy —
- * `libs/web-vault`, `libs/web-vault-ui` and `libs/web/pages/vault` — and that
- * is tracked in
- * [#865](https://github.com/mnaimfaizy/myorganizer/issues/865), not left to a
- * comment. Pointing them here as well works and was tried: all five suites
- * pass. It also pulls four `tsconfig` files and two documents in
- * `docs/testing/projects/` along with it, in projects the Escape Copy reader
- * work does not otherwise touch, which is what makes it its own change rather
- * than a rider on a feature.
+ * The last three arrived here from their own near-identical `src/test-setup.ts`
+ * copies in [#865](https://github.com/mnaimfaizy/myorganizer/issues/865). Those
+ * files are gone; do not reintroduce a per-project copy.
  *
  * Referenced by path from each project's `jest.config.ts` rather than imported,
  * so no project takes a module dependency on another project's tree and

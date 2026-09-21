@@ -40,8 +40,8 @@ Two edges hold the old rule where it still applies:
 
 - **This is Web Crypto, not a browser API.** Node 22 and every browser the app
   supports provide all of it, which is what lets the reader be a single file
-  with no dependency to fetch. `src/test-setup.ts` installs Node's own under
-  Jest, which does not reliably expose them.
+  with no dependency to fetch. `tools/testing/web-crypto-test-setup.ts` installs
+  Node's own under Jest, which does not reliably expose them.
 - **React Native does not have it, and must not import it.** Mobile runs
   `react-native-quick-crypto` and reaches the `VaultCrypto` interface in
   `interfaces.ts` instead — that interface exists for exactly this reason, and

@@ -49,9 +49,10 @@ that would need such a mock is either in the carve-out (use the real handle) or 
 crypto in the first place (use fixtures).
 
 jsdom has no `crypto.subtle`. It is installed once from Node's `crypto.webcrypto`, along with
-`TextEncoder` / `TextDecoder`, in `libs/web-vault/src/test-setup.ts` — which `jest.config.ts` runs
-through `setupFilesAfterEnv`, before any test module loads. Suites that drive the real handle need
-no polyfill block of their own; do not add one back.
+`TextEncoder` / `TextDecoder`, in `tools/testing/web-crypto-test-setup.ts` — the one setup file
+every vault-adjacent suite shares, which `jest.config.ts` runs through `setupFilesAfterEnv`,
+before any test module loads. Suites that drive the real handle need no polyfill block of their
+own; do not add one back.
 
 Keep fixture passphrases to 10–15 characters — see
 [Credentials in test fixtures](../README.md#credentials-in-test-fixtures).

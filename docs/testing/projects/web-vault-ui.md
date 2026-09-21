@@ -28,9 +28,10 @@ state-machine bugs this library exists to catch — `vaultGate.create.spec.tsx` 
 example (issue #667). Do not mock `initialize` or unwrap there.
 
 jsdom has no `crypto.subtle`. It is installed once from Node's `crypto.webcrypto`, along with
-`TextEncoder` / `TextDecoder`, in `libs/web-vault-ui/src/test-setup.ts` — which `jest.config.ts`
-runs through `setupFilesAfterEnv`, before any test module loads. Suites that drive the real handle
-need no polyfill block of their own; do not add one back.
+`TextEncoder` / `TextDecoder`, in `tools/testing/web-crypto-test-setup.ts` — the one setup file
+every vault-adjacent suite shares, which `jest.config.ts` runs through `setupFilesAfterEnv`,
+before any test module loads. Suites that drive the real handle need no polyfill block of their
+own; do not add one back.
 
 **Timeouts.** Real PBKDF2 on create/unlock routinely needs 10–15 second `waitFor` / test
 timeouts. That cost is expected, not a smell, and is why most suites still stub the handle.
