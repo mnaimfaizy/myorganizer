@@ -8,7 +8,7 @@ module exists; the file is `libs/web-vault-ui/src/lib/reconcileRunner.tsx`.
 
 ## Status
 
-proposed
+accepted
 
 ## Decision
 
