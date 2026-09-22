@@ -184,7 +184,7 @@ Sync is `PUT /subscriptions/sync` (5-minute cooldown). Manual Upload Sync is
 Enabled Channels and is not subject to that cooldown. Both manual paths and the
 cron worker claim with one optimistic `updateMany`; losing the claim is a normal
 outcome and returns the live attempt's status rather than an error.
-[ADR 0094](../adr/0094-a-youtube-sync-is-either-a-channel-sync-or-an-upload-sync.md)
+[ADR 0096](../adr/0096-a-youtube-sync-is-either-a-channel-sync-or-an-upload-sync.md)
 supersedes the combined Sync Run in ADR 0080.
 
 A User-initiated run stays **inline in the request**, and the web client does not
@@ -225,7 +225,7 @@ the 15-minute upload TTL is reported as interrupted, keeping its last known
 counts. A Channel Sync whose status is still `discovering` past the 5-minute
 channel TTL is reported as a failed channel refresh with `syncInterrupted`. Each
 TTL equals that attempt's cooldown, so "declared dead" and "may retry" are the
-same instant — ADR 0094 decision 3. Upload Sync progress stays channel-level;
+same instant — ADR 0096 decision 3. Upload Sync progress stays channel-level;
 there is no intra-channel counter.
 
 ## Weekly digest

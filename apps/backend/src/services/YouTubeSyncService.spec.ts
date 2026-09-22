@@ -1090,7 +1090,7 @@ describe('YouTubeSyncService', () => {
       );
     });
 
-    describe('ADR 0094 Channel Sync and Upload Sync phase split', () => {
+    describe('ADR 0096 Channel Sync and Upload Sync phase split', () => {
       const noopUploadStatusFields = {
         status: 'success' as const,
         lastSyncedAt: null,
@@ -2315,12 +2315,12 @@ describe('YouTubeSyncService', () => {
     });
   });
 
-  describe('Sync Run claim and phases (ADR 0094)', () => {
-    it('CHANNEL_SYNC_TTL_MS must equal CHANNEL_SYNC_COOLDOWN_MS (ADR 0094 decision 3)', () => {
+  describe('Channel Sync and Upload Sync claim and phases (ADR 0096)', () => {
+    it('CHANNEL_SYNC_TTL_MS must equal CHANNEL_SYNC_COOLDOWN_MS (ADR 0096 decision 3)', () => {
       expect(CHANNEL_SYNC_TTL_MS).toBe(CHANNEL_SYNC_COOLDOWN_MS);
     });
 
-    it('UPLOAD_SYNC_TTL_MS must equal UPLOAD_SYNC_COOLDOWN_MS (ADR 0094 decision 3)', () => {
+    it('UPLOAD_SYNC_TTL_MS must equal UPLOAD_SYNC_COOLDOWN_MS (ADR 0096 decision 3)', () => {
       expect(UPLOAD_SYNC_TTL_MS).toBe(UPLOAD_SYNC_COOLDOWN_MS);
     });
 
@@ -2371,7 +2371,7 @@ describe('YouTubeSyncService', () => {
       ).toBe(false);
     });
 
-    it('syncRunClaimableWhere ANDs upload and channel sides (ADR 0094 decision 2)', () => {
+    it('syncRunClaimableWhere ANDs upload and channel sides (ADR 0096 decision 2)', () => {
       const at = new Date('2026-06-01T12:00:00.000Z');
       const uploadDeadline = new Date(at.getTime() - UPLOAD_SYNC_TTL_MS);
       const channelDeadline = new Date(at.getTime() - CHANNEL_SYNC_TTL_MS);

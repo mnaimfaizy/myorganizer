@@ -55,7 +55,7 @@ export interface FailingChannelInfo {
 }
 
 export interface SyncProgressInfo {
-  total: number; // Enabled Channels in this Sync Run
+  total: number; // Enabled Channels in this Upload Sync
   processed: number;
   succeeded: number;
   failed: number;

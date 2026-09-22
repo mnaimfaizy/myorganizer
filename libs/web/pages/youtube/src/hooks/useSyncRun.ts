@@ -5,7 +5,7 @@ import { shouldPoll } from '../lib/syncProgress';
 import type { YouTubeSyncStatus } from '../types';
 
 /**
- * Poll interval for the Sync Run (2 seconds).
+ * Poll interval while a Channel Sync or an Upload Sync is live (2 seconds).
  *
  * ADR 0080 decision 1: polling starts on mount as well as on click, so the
  * User can leave and return to a run in flight. This interval is deliberate —
@@ -29,7 +29,7 @@ interface UseSyncRunOptions {
 }
 
 /**
- * Polls /sync-status while a Sync Run is live.
+ * Polls /sync-status while a Channel Sync or an Upload Sync is live.
  *
  * The poll loop:
  * - Starts on mount when the mount fetch reports a live run (ADR 0080, decision 1)

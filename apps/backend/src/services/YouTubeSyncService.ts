@@ -20,18 +20,18 @@ const logger = winston.createLogger({
 
 const VIDEO_SNAPSHOT_LIMIT = 100;
 
-/** Channel Sync manual cooldown (ADR 0094 decision 3). */
+/** Channel Sync manual cooldown (ADR 0096 decision 3). */
 export const CHANNEL_SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 /**
- * Channel Sync run TTL must equal the channel cooldown (ADR 0094 decision 3).
+ * Channel Sync run TTL must equal the channel cooldown (ADR 0096 decision 3).
  * Same construction as ADR 0080 decision 3, applied per attempt.
  */
 export const CHANNEL_SYNC_TTL_MS = CHANNEL_SYNC_COOLDOWN_MS;
 
-/** Manual Upload Sync cooldown (ADR 0094 decision 3). */
+/** Manual Upload Sync cooldown (ADR 0096 decision 3). */
 export const UPLOAD_SYNC_COOLDOWN_MS = 15 * 60 * 1000;
 /**
- * Upload Sync run TTL must equal the upload cooldown (ADR 0094 decision 3).
+ * Upload Sync run TTL must equal the upload cooldown (ADR 0096 decision 3).
  * Same construction as ADR 0080 decision 3, applied per attempt.
  */
 export const UPLOAD_SYNC_TTL_MS = UPLOAD_SYNC_COOLDOWN_MS;
@@ -47,7 +47,7 @@ export const MANUAL_REFRESH_COOLDOWN_MS = UPLOAD_SYNC_COOLDOWN_MS;
 export const RUN_TTL_MS = UPLOAD_SYNC_TTL_MS;
 
 /**
- * Upload statuses that count as an in-flight Upload Sync (ADR 0094).
+ * Upload statuses that count as an in-flight Upload Sync (ADR 0096).
  * `discovering` is legacy — rows written before the channel/upload split.
  */
 export const LIVE_UPLOAD_SYNC_STATUSES = ['running', 'discovering'] as const;
@@ -112,7 +112,7 @@ function isChannelSyncLive(
 }
 
 /**
- * ADR 0094 live-run predicate: true while either a Channel Sync or an Upload
+ * ADR 0096 live-run predicate: true while either a Channel Sync or an Upload
  * Sync attempt is in flight — {@link syncRunClaimableWhere} would refuse a claim.
  */
 export function isSyncRunLive(
@@ -130,8 +130,8 @@ export function isSyncRunLive(
 }
 
 /**
- * Prisma where for rows that may accept a new Sync Run claim — upload not live
- * AND channel not live (ADR 0094 decision 2).
+ * Prisma where for rows that may accept a new Channel Sync or Upload Sync
+ * claim — upload not live AND channel not live (ADR 0096 decision 2).
  */
 export function syncRunClaimableWhere(
   userId: string,
@@ -164,7 +164,7 @@ const WATCHED_LEDGER_TTL_MS = DISABLED_VIDEO_RETENTION_MS;
 export const GOOGLE_PERMISSIONS_URL =
   'https://myaccount.google.com/permissions';
 
-/** Thrown inside the disconnect transaction when a Sync Run is claimed before commit. */
+/** Thrown inside the disconnect transaction when a Channel Sync or an Upload Sync is claimed before commit. */
 class SyncRunBecameLiveError extends Error {
   constructor() {
     super('SYNC_RUN_LIVE');
@@ -630,7 +630,7 @@ class YouTubeSyncService {
     const attemptAt = options.claimedAt ?? new Date();
 
     if (!options.claimedAt) {
-      // Cron sync worker path: claim the Upload Sync mutex (ADR 0094 decision 2).
+      // Cron sync worker path: claim the Upload Sync mutex (ADR 0096 decision 2).
       const claimed = await this.claimUploadSyncRun(userId, attemptAt);
 
       if (!claimed) {
@@ -869,7 +869,7 @@ class YouTubeSyncService {
   }
 
   /**
-   * Shared manual-attempt shape (ADR 0094 decision 3): cooldown check, optimistic
+   * Shared manual-attempt shape (ADR 0096 decision 3): cooldown check, optimistic
    * stamp claim, mutex claim with stamp restore on loss, then the attempt's work.
    * Channel Sync and Upload Sync differ in columns and the unit of work, not in
    * this sequence.
@@ -1024,7 +1024,7 @@ class YouTubeSyncService {
     const channelFields = this.getChannelSyncStatusFields(integration, now);
 
     // Determine the reported upload status: if a persisted live status is past
-    // the ADR 0094 upload TTL, project it as 'failed' with 'syncInterrupted'.
+    // the ADR 0096 upload TTL, project it as 'failed' with 'syncInterrupted'.
     // Read-time only — we do not write the correction back to the row.
     let reportedStatus = (integration.lastSyncStatus ??
       'never') as YouTubeSyncStatus;
@@ -1615,7 +1615,7 @@ class YouTubeSyncService {
   }
 
   /**
-   * Atomically claim the Upload Sync mutex (ADR 0094 decision 2).
+   * Atomically claim the Upload Sync mutex (ADR 0096 decision 2).
    *
    * Returns true if the claim was won, false if a concurrent attempt is live.
    */
@@ -1628,7 +1628,7 @@ class YouTubeSyncService {
   }
 
   /**
-   * Atomically claim the Channel Sync mutex (ADR 0094 decision 2).
+   * Atomically claim the Channel Sync mutex (ADR 0096 decision 2).
    *
    * Returns true if the claim was won, false if a concurrent attempt is live.
    * Does not touch upload sync columns.
