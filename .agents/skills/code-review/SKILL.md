@@ -33,9 +33,20 @@ finding and writes no verdict: the verdict is computed from the findings by
   ([ADR 0074](../../../docs/adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md)) — this
   is how typechecking runs here too: `typecheck` is an Nx target for only one project in the
   workspace, so `node tools/scripts/check-typecheck.mjs` is the one that covers the rest. A
-  throwaway reproduction goes in `git worktree add tmp/code-review/worktree HEAD`, and the worktree is
-  removed with `git worktree remove --force tmp/code-review/worktree` before the report is written.
-  Nothing from it is committed or pushed.
+  throwaway reproduction goes in `git worktree add tmp/code-review/worktree HEAD`. Nothing from it is
+  committed or pushed.
+- **You do not remove the worktree, and you must not try.** It is throwaway, not yours to clean up:
+  in CI the runner is discarded whole, and locally `tmp/` is gitignored. The project settings put
+  `git worktree remove` behind an `ask`, which outranks the job's grant and, with nobody at a
+  keyboard to answer it, comes back as a refusal — golden replay run 46 spent eleven turns
+  rediscovering that ([ADR 0097](../../../docs/adr/0097-a-project-ask-rule-is-a-refusal-in-a-headless-run.md)).
+  Leave it. A human at a terminal removes it afterwards with
+  `git worktree remove --force tmp/code-review/worktree` and answers the prompt.
+- **One command per Bash call, addressed by path.** Never `cd` into the worktree and never chain with
+  `&&` or `;`: permission is decided on the command's leading tokens, so `cd X && …` is a `cd`, and
+  the part after it is refused however it is spelled. Reach into the worktree the way you reach
+  anywhere else — as an argument, `node tmp/code-review/worktree/tools/scripts/<name>.mjs` — and
+  locate files in it with Glob and Grep.
 - **Read a file range with the Read tool, not a shell utility.** Pass `offset`/`limit`; there is no
   `sed`, `head -n`, or `tail -n` on the allowlist for this, and there does not need to be one.
 - **Write and Edit reach only the reviewer's own tmp directory.** `tmp/code-review/**` is where the

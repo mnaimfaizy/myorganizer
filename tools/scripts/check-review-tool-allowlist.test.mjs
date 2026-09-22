@@ -9,6 +9,13 @@
 //
 // The extractions matter for the same reason the checklist parser's tests do —
 // a parser that reads nothing passes everything.
+//
+// The interception direction is tested on the case that bought it. The gate
+// passed for two runs while the reviewer was refused an instructed command
+// eleven times, because it compared the instructions against `--allowedTools`
+// and nothing else; the refusal came from an `ask` rule in the repository's own
+// project settings, which outranks the grant (ADR 0097). A suite that only
+// proved direction 1 would still be green today.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
@@ -19,9 +26,11 @@ import {
   commandsFrom,
   extractInstructions,
   formatFinding,
+  formatInterception,
   matchesEntry,
   nearestEntry,
   parseAllowedTools,
+  parseInterposedRules,
   parseToolEntry,
   splitToolList,
   unknownGrantedPrograms,
@@ -433,4 +442,181 @@ test('every suppression carries a written reason', () => {
       `\`${exemption.command}\` is suppressed without saying why`,
     );
   }
+});
+
+// --- direction 2: an interposed ask/deny rule outranks the grant -------------
+
+const asked = (raw) =>
+  parseInterposedRules(JSON.stringify({ permissions: { ask: [raw] } }));
+
+test('an ask rule is read as a matchable rule, and PowerShell entries are inert', () => {
+  const rules = parseInterposedRules(
+    JSON.stringify({
+      permissions: {
+        deny: ['Bash(rm -rf:*)'],
+        ask: [
+          'Bash(git worktree remove:*)',
+          'PowerShell(git worktree remove:*)',
+        ],
+      },
+    }),
+  );
+  assert.deepEqual(
+    rules.map((rule) => [rule.list, rule.kind]),
+    [
+      ['deny', 'prefix'],
+      ['ask', 'prefix'],
+      ['ask', 'tool'],
+    ],
+    'the list a rule came from must survive parsing — it is what the report names',
+  );
+  // A PowerShell entry parses, but the reviewer runs bash: it must catch nothing.
+  assert.equal(
+    matchesEntry(rules[2], tokenize('git worktree remove x')),
+    false,
+  );
+});
+
+test('missing project settings interpose nothing rather than failing', () => {
+  assert.deepEqual(parseInterposedRules(JSON.stringify({})), []);
+});
+
+test('an instructed command an ask rule catches is a finding even when granted', () => {
+  // The defect itself: one grant, one prefix, two subcommands, opposite
+  // outcomes. `add` runs; `remove` is refused eleven times.
+  const site = (command) => ({
+    file: '.agents/skills/code-review/SKILL.md',
+    line: 37,
+    sectionId: null,
+    command,
+    alternatives: [tokenize(command)],
+  });
+  const shared = {
+    entries: ['Bash(git worktree:*)'].map(entry),
+    interposed: asked('Bash(git worktree remove:*)'),
+    exemptions: [],
+  };
+
+  const added = assertToolAllowlist({
+    ...shared,
+    sites: [site('git worktree add tmp/code-review/worktree HEAD')],
+  });
+  assert.equal(added.ok, true);
+  assert.deepEqual(added.intercepted, []);
+
+  const removed = assertToolAllowlist({
+    ...shared,
+    sites: [site('git worktree remove --force tmp/code-review/worktree')],
+  });
+  assert.equal(
+    removed.ok,
+    false,
+    'a granted command an ask rule catches is still refused',
+  );
+  assert.deepEqual(
+    removed.findings,
+    [],
+    'it is an interception, not a missing grant',
+  );
+  assert.equal(removed.intercepted.length, 1);
+  assert.equal(removed.intercepted[0].rule.list, 'ask');
+
+  const report = formatInterception(removed.intercepted[0]);
+  assert.match(report, /permissions\.ask/);
+  assert.match(report, /\.claude\/settings\.json/);
+  assert.match(report, /git worktree remove/);
+});
+
+test('the same mechanism on an unrelated command', () => {
+  // `node -e` was refused in the same run under `Bash(node:*)`. It is the
+  // second instance that makes the cause a mechanism rather than a story about
+  // git.
+  const result = assertToolAllowlist({
+    entries: ['Bash(node:*)'].map(entry),
+    interposed: asked('Bash(node -e:*)'),
+    exemptions: [],
+    sites: [
+      {
+        file: 'skill.md',
+        line: 1,
+        sectionId: null,
+        command: 'node -e "require(\'fs\')"',
+        alternatives: [tokenize('node -e x')],
+      },
+    ],
+  });
+  assert.equal(result.intercepted.length, 1);
+});
+
+test('a placeholder cannot invent an interception', () => {
+  // `node tools/scripts/check-<name>.mjs` is not `node -e` for any value of
+  // <name>. Reading an unfixed token as matching anything is the generous
+  // reading direction 1 needs and direction 2 must not have: it reported this
+  // instruction as refused the first time the two shared a matcher.
+  const result = assertToolAllowlist({
+    entries: ['Bash(node:*)'].map(entry),
+    interposed: asked('Bash(node -e:*)'),
+    exemptions: [],
+    sites: [
+      {
+        file: 'docs/review/REVIEW_CHECKLIST.md',
+        line: 140,
+        sectionId: 'run-the-gate-that-covers-this-change',
+        command: 'node tools/scripts/check-<name>.mjs',
+        alternatives: [tokenize('node tools/scripts/check-<name>.mjs')],
+      },
+    ],
+  });
+  assert.deepEqual(result.intercepted, []);
+  assert.equal(result.ok, true);
+});
+
+test('an alternative spelling no rule catches is a way through', () => {
+  // A script name has two documented spellings. If one is intercepted and the
+  // other is granted, the reviewer is not refused, and reporting it would send
+  // someone to fix a command that works.
+  const result = assertToolAllowlist({
+    entries: ['Bash(yarn openapi:check)'].map(entry),
+    interposed: asked('Bash(corepack:*)'),
+    exemptions: [],
+    sites: [
+      {
+        file: 'skill.md',
+        line: 9,
+        sectionId: null,
+        command: 'corepack yarn openapi:check',
+        alternatives: [
+          tokenize('corepack yarn openapi:check'),
+          tokenize('yarn openapi:check'),
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(result.intercepted, []);
+  assert.equal(result.ok, true);
+});
+
+test('a suppressed command is not reported as intercepted', () => {
+  // The skill names `git worktree remove` for the human who cleans up. The
+  // reviewer is told not to run it, so an ask rule catching it is the design.
+  const result = assertToolAllowlist({
+    entries: ['Bash(git worktree:*)'].map(entry),
+    interposed: asked('Bash(git worktree remove:*)'),
+    exemptions: [
+      { command: 'git worktree remove', reason: 'the human cleans up' },
+    ],
+    sites: [
+      {
+        file: 'skill.md',
+        line: 37,
+        sectionId: null,
+        command: 'git worktree remove --force tmp/code-review/worktree',
+        alternatives: [
+          tokenize('git worktree remove --force tmp/code-review/worktree'),
+        ],
+      },
+    ],
+  });
+  assert.deepEqual(result.intercepted, []);
+  assert.equal(result.ok, true);
 });

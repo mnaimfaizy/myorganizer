@@ -58,15 +58,51 @@
 // instruction leaves as a placeholder (`<project>`, `$BRANCH`) matches
 // anything, because the document did not fix it.
 //
-// Exit 0 = every instructed command is permitted. Exit 1 = at least one is
-// refused, each named with its instruction site and the nearest entry.
-// Exit 2 = could not run.
+// The permission side is two files, not one, and that is the whole of what
+// golden replay run 46 cost a fifth of its turn budget to learn. `--allowedTools`
+// adds *allow* rules; the repository's own `.claude/settings.json` is loaded as
+// project settings by the same session, and Claude Code evaluates `deny`, then
+// `ask`, then `allow`. An `ask` match therefore beats an `--allowedTools` grant
+// — and in a headless run there is nobody to ask, so it resolves as a refusal.
+// That is the asymmetry: `git worktree add` matches no `ask` rule and ran,
+// while `git worktree remove` matches `Bash(git worktree remove:*)` in the
+// settings' `ask` list and was refused eleven times under the same
+// `Bash(git worktree:*)` grant. `node -e` is the same mechanism on an unrelated
+// command, refused while `Bash(node:*)` was granted
+// (docs/research/2026-09-22-a-project-ask-rule-is-a-refusal-in-ci.md, ADR 0097).
+//
+// So this checker asserts two directions, and both are needed:
+//
+//   1. Every instructed command is *permitted* by `--allowedTools`. An
+//      instruction nothing grants is an instruction nothing can carry out.
+//   2. No instructed command is *intercepted* by an `ask` or `deny` rule in
+//      `.claude/settings.json`. A grant an interposed rule overrides is a
+//      permission the reviewer does not actually have, which is exactly the
+//      gap direction 1 passed straight through for two runs.
+//
+// No third direction is asserted, and the omission is deliberate: an
+// `--allowedTools` entry matching no instruction is *not* failed here. #715
+// removed `Bash(sed -n:*)` on that reading and the reviewer was refused `sed`
+// anyway — the entry was never what refused it. An unused grant costs a turn
+// only if something instructs it, which direction 1 already covers.
+//
+// Exit 0 = every instructed command is permitted and none is intercepted.
+// Exit 1 = at least one is refused, each named with its instruction site and
+// either the nearest allow entry or the interposed rule. Exit 2 = could not run.
 import { readFileSync } from 'node:fs';
 
 import { tokenize } from './lib/shell-command.mjs';
 import { isMain } from './review/cli.mjs';
 
 export const ACTION = '.github/actions/code-reviewer/action.yml';
+/**
+ * The repository's own Claude Code project settings. The CI checkout carries
+ * this file — it is tracked — so the reviewer's session loads it alongside
+ * whatever `--allowedTools` passes, and its `ask` and `deny` rules are
+ * evaluated first. It is written for a developer at a keyboard, where `ask`
+ * means a prompt somebody answers; the reviewer has no keyboard.
+ */
+export const SETTINGS = '.claude/settings.json';
 export const INSTRUCTION_SOURCES = [
   '.agents/skills/code-review/SKILL.md',
   'docs/review/REVIEW_CHECKLIST.md',
@@ -160,6 +196,11 @@ export const NOT_THE_REVIEWERS_TO_RUN = [
       'Runs in the one job whose token can write. The reviewer must not post, label, or resolve anything, so being refused this is the design rather than a gap.',
   },
   {
+    command: 'git worktree remove',
+    reason:
+      "The throwaway worktree is discarded with the runner in CI and lives under gitignored tmp/ locally, so the reviewer is told to leave it. The skill names the command for the human who cleans up afterwards and answers the project settings' `ask` — which, with nobody at a keyboard, is what refused the reviewer eleven times (ADR 0097).",
+  },
+  {
     command: 'git branch --show-current',
     reason:
       'Step 2 reads the branch name to find the spec interactively. In CI the branch name is given in the prompt as a fact, along with the fixed point, the head, and the tier.',
@@ -233,6 +274,29 @@ export function parseAllowedTools(yaml) {
 }
 
 /**
+ * The `ask` and `deny` rules in `.claude/settings.json`, as entries that can be
+ * matched the same way an allow entry is.
+ *
+ * Both lists, not just `deny`, and the reason is the finding this gate was
+ * built on: in a headless run an unanswerable `ask` is a refusal, so the two
+ * differ only in what a human at a keyboard would see. `PowerShell(...)`
+ * entries parse to `kind: 'tool'` and match no command, which is correct —
+ * the reviewer runs bash.
+ *
+ * Returns `null` when the file is absent, which is a real state (a clone with
+ * no project settings) and not a failure: nothing is interposed.
+ */
+export function parseInterposedRules(json) {
+  const permissions = JSON.parse(json)?.permissions ?? {};
+  const rules = [];
+  for (const list of ['deny', 'ask']) {
+    for (const raw of permissions[list] ?? [])
+      rules.push({ ...parseToolEntry(raw), list });
+  }
+  return rules;
+}
+
+/**
  * Every program the allowlist grants must be one `PROGRAMS` can recognise, or
  * an instruction to run it reads as prose and is never compared against
  * anything. That is the gate passing while the reviewer is refused, which is
@@ -255,22 +319,39 @@ const globToRegExp = (token) =>
     `^${token.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')}$`,
   );
 
-const tokenMatches = (commandToken, entryToken) => {
-  if (isUnfixedToken(commandToken)) return true;
+/**
+ * `unfixedMatches` is which way to read a token the document left open, and
+ * the two directions want opposite answers.
+ *
+ * Reading `<project>` as matching anything is generous to the document, which
+ * is right when asking whether a grant *covers* an instruction: the document
+ * did not fix the token, so no value of it should be reported as refused.
+ * It is exactly wrong when asking whether an interposed rule *catches* one.
+ * `node tools/scripts/check-<name>.mjs` is not `node -e` for any value of
+ * `<name>`, and the generous reading called it one — a refusal invented out
+ * of a placeholder. An interception has to be certain, so there an unfixed
+ * token matches nothing.
+ */
+const tokenMatches = (commandToken, entryToken, unfixedMatches = true) => {
+  if (isUnfixedToken(commandToken)) return unfixedMatches;
   if (entryToken.includes('*'))
     return globToRegExp(entryToken).test(commandToken);
   return commandToken === entryToken;
 };
 
 /** Would this entry permit a command with these tokens? */
-export function matchesEntry(entry, commandTokens) {
+export function matchesEntry(
+  entry,
+  commandTokens,
+  { unfixedMatches = true } = {},
+) {
   if (entry.kind === 'tool') return false;
   if (entry.tokens.length === 0) return false;
   if (entry.kind === 'exact' && commandTokens.length !== entry.tokens.length)
     return false;
   if (commandTokens.length < entry.tokens.length) return false;
   return entry.tokens.every((token, index) =>
-    tokenMatches(commandTokens[index], token),
+    tokenMatches(commandTokens[index], token, unfixedMatches),
   );
 }
 
@@ -476,10 +557,12 @@ const exemptionCovers = (exemption, site) => {
 export function assertToolAllowlist({
   entries = [],
   sites = [],
+  interposed = [],
   exemptions = NOT_THE_REVIEWERS_TO_RUN,
 }) {
   const used = new Set();
   const findings = [];
+  const intercepted = [];
   const exempted = [];
   const permitted = [];
 
@@ -493,7 +576,27 @@ export function assertToolAllowlist({
       continue;
     }
 
-    const allowed = site.alternatives.some((alternative) =>
+    // Interception is checked before the grant, because it outranks it. A
+    // site whose every spelling is intercepted is refused however generously
+    // `--allowedTools` is written; a site with one clear spelling left is not
+    // a finding, since the reviewer has a way through.
+    const clear = site.alternatives.filter(
+      (alternative) =>
+        !interposed.some((rule) =>
+          matchesEntry(rule, alternative, { unfixedMatches: false }),
+        ),
+    );
+    if (clear.length === 0) {
+      const rule = interposed.find((candidate) =>
+        matchesEntry(candidate, site.alternatives[0], {
+          unfixedMatches: false,
+        }),
+      );
+      intercepted.push({ site, rule });
+      continue;
+    }
+
+    const allowed = clear.some((alternative) =>
       entries.some((entry) => matchesEntry(entry, alternative)),
     );
     if (allowed) {
@@ -512,12 +615,28 @@ export function assertToolAllowlist({
   );
 
   return {
-    ok: findings.length === 0 && staleExemptions.length === 0,
+    ok:
+      findings.length === 0 &&
+      intercepted.length === 0 &&
+      staleExemptions.length === 0,
     findings,
+    intercepted,
     exempted,
     staleExemptions,
     permitted,
   };
+}
+
+/** One interception, as the lines a reader needs to act on it. */
+export function formatInterception({ site, rule }) {
+  const where = site.sectionId
+    ? `${site.file}:${site.line} (obligation ${site.sectionId})`
+    : `${site.file}:${site.line}`;
+  return [
+    `  - ${where}`,
+    `      instructed:  ${site.command}`,
+    `      intercepted: ${rule.raw} in ${SETTINGS} (permissions.${rule.list})`,
+  ].join('\n');
 }
 
 /** One finding, as the lines a reader needs to act on it. */
@@ -573,6 +692,16 @@ const main = () => {
         'tools/scripts/check-review-tool-allowlist.mjs.',
     );
 
+  let interposed = [];
+  try {
+    interposed = parseInterposedRules(readFileSync(SETTINGS, 'utf8'));
+  } catch (err) {
+    // A clone without project settings interposes nothing, and that is a real
+    // state rather than a broken one. A file that is there but unreadable is
+    // not: it would silence direction 2 while the gate reported OK.
+    if (err.code !== 'ENOENT') die(`cannot read ${SETTINGS}: ${err.message}`);
+  }
+
   let scripts;
   try {
     scripts = new Set(
@@ -602,7 +731,7 @@ const main = () => {
     sites.push(...found);
   }
 
-  const result = assertToolAllowlist({ entries, sites });
+  const result = assertToolAllowlist({ entries, sites, interposed });
 
   if (process.argv.includes('--print')) {
     for (const entry of entries)
@@ -614,6 +743,10 @@ const main = () => {
     for (const { site, exemption } of result.exempted)
       console.log(
         `exempt:  ${site.file}:${site.line} ${site.command} — ${exemption.reason}`,
+      );
+    for (const rule of interposed)
+      console.log(
+        `interposed: ${rule.raw} (permissions.${rule.list})${rule.kind === 'tool' ? ' — not a command' : ''}`,
       );
   }
 
@@ -627,6 +760,24 @@ const main = () => {
       '\nDrop the entry. A suppression for an instruction nobody gives is a hole the next one falls into.',
     );
     process.exit(2);
+  }
+
+  if (result.intercepted.length) {
+    console.error(
+      `review-allowlist: ${result.intercepted.length} finding(s) — the reviewer is instructed to run a ` +
+        `command ${SETTINGS} intercepts before --allowedTools is ever consulted\n`,
+    );
+    for (const interception of result.intercepted)
+      console.error(formatInterception(interception));
+    console.error(
+      `\nClaude Code evaluates deny, then ask, then allow, so a rule in ${SETTINGS}` +
+        '\noutranks the grant. In a headless CI run there is nobody to answer an `ask`, so it' +
+        '\nresolves as a refusal. Stop instructing the command, or give the reviewer a spelling' +
+        '\nno interposed rule matches — do not widen --allowedTools, which cannot reach this' +
+        '\n(ADR 0097). Golden replay run 46 spent eleven turns being refused one instructed' +
+        '\n`git worktree remove` this way, under a grant that named it.',
+    );
+    process.exit(1);
   }
 
   if (result.findings.length) {
@@ -647,6 +798,7 @@ const main = () => {
   console.log(
     `review-allowlist: OK — ${result.permitted.length} instructed command(s) across ` +
       `${INSTRUCTION_SOURCES.length} documents are permitted by ${ACTION} ` +
+      `and intercepted by none of ${SETTINGS}'s ${interposed.length} ask/deny rule(s) ` +
       `(${result.exempted.length} site(s) suppressed by written reason)`,
   );
 };
