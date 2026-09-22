@@ -24,6 +24,10 @@ function statusOf(
     lastSyncAttemptAt: null,
     lastSyncError: null,
     retryAt: null,
+    channelStatus: 'never',
+    channelLastAttemptAt: null,
+    channelLastError: null,
+    channelRetryAt: null,
     progress: null,
     ...overrides,
   };
