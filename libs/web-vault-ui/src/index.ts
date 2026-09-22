@@ -3,6 +3,7 @@ export * from './lib/formatDate';
 export * from './lib/LastBackupCard';
 export * from './lib/metaConvergeRunner';
 export * from './lib/passphraseResetPrompt';
+export * from './lib/recoveryPassphraseReset';
 export * from './lib/pullRunner';
 export * from './lib/RecoveryKeyAcknowledgment';
 export * from './lib/RecoveryKeyClaimOffer';

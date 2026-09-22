@@ -26,6 +26,7 @@ jest.mock('../hooks', () => {
  * Mock web-vault-ui hooks.
  */
 jest.mock('@myorganizer/web-vault-ui', () => ({
+  ...jest.requireActual('@myorganizer/web-vault-ui'),
   useOptionalVaultSession: jest.fn(),
 }));
 

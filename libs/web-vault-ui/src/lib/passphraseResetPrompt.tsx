@@ -7,10 +7,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import {
-  createVaultApi,
   MIN_PASSPHRASE_LENGTH,
   newPassphraseSchema,
-  resetPassphraseAfterRecovery,
 } from '@myorganizer/web-vault';
 import {
   Button,
@@ -31,27 +29,21 @@ import {
   useToast,
 } from '@myorganizer/web-ui';
 
-import { passphraseChangeReading } from './vaultMetaPushMessages';
+import { resetPassphraseAfterRecoveryAndAnnounce } from './recoveryPassphraseReset';
 import { useVaultSession } from './session';
+import { PASSPHRASE_REWRITE_FACTS } from './vaultMetaPushMessages';
 
 type NewPassphraseInput = z.infer<typeof newPassphraseSchema>;
 
 const SKIP_LABEL =
   'Skip for now. The forgotten passphrase stays the live one on every device.';
 
-function passphraseResetErrorDetail(error: unknown): string {
-  if (error instanceof Error && error.message.trim() !== '') {
-    return error.message;
-  }
-  return 'Something went wrong. Try again.';
-}
-
 /**
  * The Passphrase Reset Prompt (ADR 0095).
  *
  * Shown once on the unlocked dashboard after a recovery-key Vault Unlock.
- * It performs the reset itself — the same `resetPassphraseAfterRecovery`
- * the Vault card uses — and an explicit skip. Escape, the overlay, and the
+ * It performs the reset itself — the same
+ * `resetPassphraseAfterRecoveryAndAnnounce` the Vault card uses — and an explicit skip. Escape, the overlay, and the
  * close button are not a skip: declining has to be said. Nothing about the
  * answer is written down.
  */
@@ -105,23 +97,14 @@ export function PassphraseResetPrompt() {
 
       setSubmitting(true);
       try {
-        const result = await resetPassphraseAfterRecovery({
-          api: createVaultApi(),
+        await resetPassphraseAfterRecoveryAndAnnounce({
           handle,
           newPassphrase: values.newPassphrase,
-        });
-        const reading = passphraseChangeReading(result.push);
-        toast({
-          title: reading.title,
-          description: reading.detail,
-        });
-        form.reset();
-        completePassphraseResetPrompt();
-      } catch (error) {
-        toast({
-          title: 'Passphrase change failed',
-          description: passphraseResetErrorDetail(error),
-          variant: 'destructive',
+          toast,
+          onComplete: () => {
+            form.reset();
+            completePassphraseResetPrompt();
+          },
         });
       } finally {
         setSubmitting(false);
@@ -156,13 +139,10 @@ export function PassphraseResetPrompt() {
             className="flex flex-col gap-3"
           >
             <p className="text-sm text-muted-foreground">
-              Your data is not re-encrypted and nothing is decrypted on the
-              server — only what unlocks your vault changes. Your recovery key
-              still works and does not need to be written down again.
+              {PASSPHRASE_REWRITE_FACTS.wrapping}
             </p>
             <p className="text-sm text-muted-foreground">
-              Your other devices keep using the old passphrase until you confirm
-              the change on each of them; they will ask the next time they sync.
+              {PASSPHRASE_REWRITE_FACTS.otherDevices}
             </p>
 
             <FormField

@@ -33,7 +33,10 @@ import {
   MIN_PASSPHRASE_LENGTH,
   newPassphraseSchema,
 } from '@myorganizer/web-vault';
-import { type VaultUnlockSecret } from '@myorganizer/web-vault-ui';
+import {
+  PASSPHRASE_REWRITE_FACTS,
+  type VaultUnlockSecret,
+} from '@myorganizer/web-vault-ui';
 
 import { useChangePassphrase, useVaultOperationAvailability } from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';
@@ -200,13 +203,10 @@ export function ChangePassphraseCard() {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
-          Your data is not re-encrypted and nothing is decrypted on the server —
-          only what unlocks your vault changes. Your recovery key still works
-          and does not need to be written down again.
+          {PASSPHRASE_REWRITE_FACTS.wrapping}
         </p>
         <p className="text-sm text-muted-foreground">
-          Your other devices keep using the old passphrase until you confirm the
-          change on each of them; they will ask the next time they sync.
+          {PASSPHRASE_REWRITE_FACTS.otherDevices}
         </p>
 
         <VaultUnavailableNotice
