@@ -174,20 +174,24 @@ _Avoid_: watch history, watched archive, viewed ledger, disconnect backup
 A Cached Upload that is not Watched.
 _Avoid_: Unwatched, unread, unseen
 
-**Sync Run**:
-One attempt to refresh a User's Followed Channels and the Cached Uploads of their Enabled Channels. At most one is live per User, whatever triggered it.
-_Avoid_: sync job, sync task, refresh, background job
+**Channel Sync**:
+One attempt to refresh a User's Followed Channels from their YouTube Connection. It does not fetch Cached Uploads. At most one YouTube sync attempt — a Channel Sync or an Upload Sync — is live per User.
+_Avoid_: Sync Run, subscription sync, channel discovery
+
+**Upload Sync**:
+One attempt to refresh the Cached Uploads of a User's Enabled Channels. It does not import Followed Channels. The same single-live-attempt rule covers it.
+_Avoid_: Sync Run, video sync, upload fetch
 
 **Partial Sync**:
-The outcome of a Sync Run in which at least one Enabled Channel synced and at least one failed, leaving the User with fresh Cached Uploads for some channels and their last good snapshot for the rest.
+The outcome of an Upload Sync in which at least one Enabled Channel synced and at least one failed, leaving the User with fresh Cached Uploads for some channels and their last good snapshot for the rest.
 _Avoid_: partial failure, degraded sync, incomplete sync
 
 **Interrupted Sync**:
-The outcome of a Sync Run that stopped without reporting one, so what it completed is known and what remained is not.
+The outcome of an Upload Sync that stopped without reporting one, so what it completed is known and what remained is not.
 _Avoid_: stalled sync, timed-out sync, crashed sync, stuck sync
 
 **Failing Channel**:
-An Enabled Channel whose most recent Sync Run attempt errored. It stays one across Sync Runs until one succeeds for it.
+An Enabled Channel whose most recent Upload Sync attempt errored. It stays one across Upload Syncs until one succeeds for it.
 _Avoid_: broken channel, errored channel, dead channel
 
 **Weekly Digest**:

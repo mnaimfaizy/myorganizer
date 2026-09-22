@@ -19,69 +19,137 @@ const logger = winston.createLogger({
 });
 
 const VIDEO_SNAPSHOT_LIMIT = 100;
-export const MANUAL_REFRESH_COOLDOWN_MS = 15 * 60 * 1000;
+
+/** Channel Sync manual cooldown (ADR 0094 decision 3). */
+export const CHANNEL_SYNC_COOLDOWN_MS = 5 * 60 * 1000;
 /**
- * Run TTL must equal the manual-refresh cooldown (ADR 0080 decision 3).
- * If they drift, Retry re-enables while a run is still live (TTL longer) or the run
- * is declared dead while Retry is locked (TTL shorter). Setting them equal makes
- * "declared dead" and "may retry" the same instant by construction.
+ * Channel Sync run TTL must equal the channel cooldown (ADR 0094 decision 3).
+ * Same construction as ADR 0080 decision 3, applied per attempt.
+ */
+export const CHANNEL_SYNC_TTL_MS = CHANNEL_SYNC_COOLDOWN_MS;
+
+/** Manual Upload Sync cooldown (ADR 0094 decision 3). */
+export const UPLOAD_SYNC_COOLDOWN_MS = 15 * 60 * 1000;
+/**
+ * Upload Sync run TTL must equal the upload cooldown (ADR 0094 decision 3).
+ * Same construction as ADR 0080 decision 3, applied per attempt.
+ */
+export const UPLOAD_SYNC_TTL_MS = UPLOAD_SYNC_COOLDOWN_MS;
+
+/** @deprecated Use {@link UPLOAD_SYNC_COOLDOWN_MS}. Kept for existing imports. */
+export const MANUAL_REFRESH_COOLDOWN_MS = UPLOAD_SYNC_COOLDOWN_MS;
+/**
+ * @deprecated Use {@link UPLOAD_SYNC_TTL_MS}. Kept for existing imports.
  *
  * Exported so test suites can assert the coupling with
  * `expect(RUN_TTL_MS).toBe(MANUAL_REFRESH_COOLDOWN_MS)`, not for external consumption.
  */
-export const RUN_TTL_MS = MANUAL_REFRESH_COOLDOWN_MS;
+export const RUN_TTL_MS = UPLOAD_SYNC_TTL_MS;
 
 /**
- * Statuses that count as an in-flight Sync Run under ADR 0080.
- * Shared by {@link isSyncRunLive} and {@link syncRunClaimableWhere} so the
- * claim gate and its inverse cannot drift independently.
+ * Upload statuses that count as an in-flight Upload Sync (ADR 0094).
+ * `discovering` is legacy — rows written before the channel/upload split.
  */
-export const LIVE_SYNC_STATUSES = ['running', 'discovering'] as const;
-export type LiveSyncStatus = (typeof LIVE_SYNC_STATUSES)[number];
+export const LIVE_UPLOAD_SYNC_STATUSES = ['running', 'discovering'] as const;
+export type LiveUploadSyncStatus = (typeof LIVE_UPLOAD_SYNC_STATUSES)[number];
 
-export function isLiveSyncStatus(
+/** @deprecated Use {@link LIVE_UPLOAD_SYNC_STATUSES}. */
+export const LIVE_SYNC_STATUSES = LIVE_UPLOAD_SYNC_STATUSES;
+/** @deprecated Use {@link LiveUploadSyncStatus}. */
+export type LiveSyncStatus = LiveUploadSyncStatus;
+
+export function isLiveUploadSyncStatus(
   status: string | null | undefined,
-): status is LiveSyncStatus {
+): status is LiveUploadSyncStatus {
   return status === 'running' || status === 'discovering';
 }
 
-/**
- * ADR 0080 live-run predicate: true while {@link syncRunClaimableWhere} would
- * refuse a new claim. Both sides read only {@link LIVE_SYNC_STATUSES} and
- * {@link RUN_TTL_MS}.
- */
-export function isSyncRunLive(
+/** @deprecated Use {@link isLiveUploadSyncStatus}. */
+export function isLiveSyncStatus(
+  status: string | null | undefined,
+): status is LiveSyncStatus {
+  return isLiveUploadSyncStatus(status);
+}
+
+function isUploadSyncLive(
   integration: {
     lastSyncStatus: string | null;
     lastSyncAttemptAt: Date | null;
   },
-  at: Date = new Date(),
+  at: Date,
 ): boolean {
-  if (!isLiveSyncStatus(integration.lastSyncStatus)) {
+  if (!isLiveUploadSyncStatus(integration.lastSyncStatus)) {
     return false;
   }
   if (!integration.lastSyncAttemptAt) {
     return true;
   }
-  return at.getTime() - integration.lastSyncAttemptAt.getTime() <= RUN_TTL_MS;
+  return (
+    at.getTime() - integration.lastSyncAttemptAt.getTime() <= UPLOAD_SYNC_TTL_MS
+  );
+}
+
+function isChannelSyncLive(
+  integration: {
+    lastChannelSyncStatus?: string | null;
+    lastChannelSyncAt?: Date | null;
+  },
+  at: Date,
+): boolean {
+  if (integration.lastChannelSyncStatus !== 'discovering') {
+    return false;
+  }
+  if (!integration.lastChannelSyncAt) {
+    return true;
+  }
+  return (
+    at.getTime() - integration.lastChannelSyncAt.getTime() <=
+    CHANNEL_SYNC_TTL_MS
+  );
 }
 
 /**
- * Prisma where for rows that may accept a new Sync Run claim — the logical
- * inverse of {@link isSyncRunLive} (ADR 0080 decision 4).
+ * ADR 0094 live-run predicate: true while either a Channel Sync or an Upload
+ * Sync attempt is in flight — {@link syncRunClaimableWhere} would refuse a claim.
+ */
+export function isSyncRunLive(
+  integration: {
+    lastSyncStatus: string | null;
+    lastSyncAttemptAt: Date | null;
+    lastChannelSyncStatus?: string | null;
+    lastChannelSyncAt?: Date | null;
+  },
+  at: Date = new Date(),
+): boolean {
+  return (
+    isUploadSyncLive(integration, at) || isChannelSyncLive(integration, at)
+  );
+}
+
+/**
+ * Prisma where for rows that may accept a new Sync Run claim — upload not live
+ * AND channel not live (ADR 0094 decision 2).
  */
 export function syncRunClaimableWhere(
   userId: string,
   at: Date,
 ): Prisma.YouTubeIntegrationWhereInput {
+  const uploadDeadline = new Date(at.getTime() - UPLOAD_SYNC_TTL_MS);
+  const channelDeadline = new Date(at.getTime() - CHANNEL_SYNC_TTL_MS);
   return {
     userId,
-    OR: [
-      { lastSyncStatus: { notIn: [...LIVE_SYNC_STATUSES] } },
+    AND: [
       {
-        lastSyncAttemptAt: {
-          lt: new Date(at.getTime() - RUN_TTL_MS),
-        },
+        OR: [
+          { lastSyncStatus: { notIn: [...LIVE_UPLOAD_SYNC_STATUSES] } },
+          { lastSyncAttemptAt: { lt: uploadDeadline } },
+        ],
+      },
+      {
+        OR: [
+          { lastChannelSyncStatus: { not: 'discovering' } },
+          { lastChannelSyncAt: { lt: channelDeadline } },
+        ],
       },
     ],
   };
@@ -167,6 +235,14 @@ export type YouTubeSyncStatus =
   | 'quota_exceeded'
   | 'cooldown';
 
+export type YouTubeChannelSyncStatus =
+  | 'never'
+  | 'discovering'
+  | 'success'
+  | 'failed'
+  | 'quota_exceeded'
+  | 'cooldown';
+
 export interface YouTubeSyncProgressDTO {
   /** Enabled Channels total. */
   total: number;
@@ -193,11 +269,23 @@ export interface YouTubeSyncStatusDTO {
   lastSyncError: string | null;
   retryAt: Date | null;
   progress: YouTubeSyncProgressDTO | null;
+  channelStatus: YouTubeChannelSyncStatus;
+  channelLastAttemptAt: Date | null;
+  channelLastError: string | null;
+  channelRetryAt: Date | null;
 }
 
 export interface YouTubeRefreshResult extends YouTubeSyncStatusDTO {
   subscriptionsSynced: number;
   videosSynced: number;
+}
+
+export interface YouTubeChannelSyncResult {
+  synced: number;
+  status: YouTubeChannelSyncStatus;
+  lastAttemptAt: Date | null;
+  lastError: string | null;
+  retryAt: Date | null;
 }
 
 export type YouTubeDisconnectResult =
@@ -536,31 +624,15 @@ class YouTubeSyncService {
     userId: string,
     options: { claimedAt?: Date } = {},
   ): Promise<YouTubeRefreshResult> {
-    // Discovery and the video phase are two phases of one Sync Run, not two runs.
-    // When manualRefresh claims and marks 'discovering', it passes claimedAt so this method
-    // skips re-claiming and transitions to 'running' with the same run stamp.
-    // The cron sync worker claims here since it has only one phase.
     const attemptAt = options.claimedAt ?? new Date();
 
     if (!options.claimedAt) {
-      // Cron sync worker path: claim the Sync Run atomically (ADR 0080 decision 4).
-      // If the claim fails, a concurrent run is already live — return its status without doing work.
-      const claimed = await this.claimSyncRun(userId, attemptAt, 'running');
+      // Cron sync worker path: claim the Upload Sync mutex (ADR 0094 decision 2).
+      const claimed = await this.claimUploadSyncRun(userId, attemptAt);
 
       if (!claimed) {
-        // A Sync Run is already live — return its current status without doing any work.
-        // This is a normal outcome, not an error.
         return this.noopResult(userId);
       }
-    } else {
-      // Manual refresh path: the claim was already made in manualRefresh with the 'discovering' status.
-      // Transition to 'running' for the video phase, using the same run stamp.
-      await this.prisma.youTubeIntegration.update({
-        where: { userId },
-        data: {
-          lastSyncStatus: 'running',
-        },
-      });
     }
 
     await this.pruneExpiredDisabledVideos(userId);
@@ -655,8 +727,8 @@ class YouTubeSyncService {
     };
   }
 
-  /** Refresh subscriptions and videos with a per-user 15-minute cooldown. */
-  async manualRefresh(userId: string): Promise<YouTubeRefreshResult> {
+  /** Channel Sync: refresh Followed Channels with a per-user 5-minute cooldown. */
+  async syncChannels(userId: string): Promise<YouTubeChannelSyncResult> {
     const integration = await this.prisma.youTubeIntegration.findUnique({
       where: { userId },
     });
@@ -665,12 +737,144 @@ class YouTubeSyncService {
     }
 
     const now = new Date();
-    // Store the previous value so we can restore it if claimSyncRun loses.
+    const previousLastChannelSyncAt = integration.lastChannelSyncAt;
+    const cooldownUntil = integration.lastChannelSyncAt
+      ? new Date(
+          integration.lastChannelSyncAt.getTime() + CHANNEL_SYNC_COOLDOWN_MS,
+        )
+      : null;
+
+    if (cooldownUntil && cooldownUntil > now) {
+      const channelStatus = await this.getChannelSyncStatusFields(
+        integration,
+        now,
+      );
+      return {
+        synced: 0,
+        status: 'cooldown',
+        lastAttemptAt: channelStatus.channelLastAttemptAt,
+        lastError: channelStatus.channelLastError,
+        retryAt: cooldownUntil,
+      };
+    }
+
+    const claim = await this.prisma.youTubeIntegration.updateMany({
+      where: {
+        userId,
+        status: 'connected',
+        OR: [
+          { lastChannelSyncAt: null },
+          {
+            lastChannelSyncAt: {
+              lte: new Date(now.getTime() - CHANNEL_SYNC_COOLDOWN_MS),
+            },
+          },
+        ],
+      },
+      data: { lastChannelSyncAt: now },
+    });
+
+    if (claim.count !== 1) {
+      const channelStatus = await this.getChannelSyncStatusFields(
+        integration,
+        now,
+      );
+      return {
+        synced: 0,
+        status: 'cooldown',
+        lastAttemptAt: channelStatus.channelLastAttemptAt,
+        lastError: channelStatus.channelLastError,
+        retryAt:
+          channelStatus.channelRetryAt ??
+          new Date(now.getTime() + CHANNEL_SYNC_COOLDOWN_MS),
+      };
+    }
+
+    try {
+      const claimed = await this.claimChannelSyncRun(userId, now);
+
+      if (!claimed) {
+        await this.prisma.youTubeIntegration.update({
+          where: { userId },
+          data: { lastChannelSyncAt: previousLastChannelSyncAt },
+        });
+        const current = await this.prisma.youTubeIntegration.findUniqueOrThrow({
+          where: { userId },
+        });
+        const channelStatus = this.getChannelSyncStatusFields(current, now);
+        return {
+          synced: 0,
+          status: channelStatus.channelStatus,
+          lastAttemptAt: channelStatus.channelLastAttemptAt,
+          lastError: channelStatus.channelLastError,
+          retryAt: channelStatus.channelRetryAt,
+        };
+      }
+
+      const subscriptions = await this.syncSubscriptions(userId);
+
+      await this.prisma.youTubeIntegration.update({
+        where: { userId },
+        data: {
+          lastChannelSyncStatus: 'success',
+          lastChannelSyncError: null,
+        },
+      });
+
+      const channelStatus = await this.getChannelSyncStatusFields(
+        await this.prisma.youTubeIntegration.findUniqueOrThrow({
+          where: { userId },
+        }),
+        now,
+      );
+      return {
+        synced: subscriptions.length,
+        status: 'success',
+        lastAttemptAt: channelStatus.channelLastAttemptAt,
+        lastError: null,
+        retryAt: channelStatus.channelRetryAt,
+      };
+    } catch (error) {
+      const status: YouTubeChannelSyncStatus = isQuotaExceededError(error)
+        ? 'quota_exceeded'
+        : 'failed';
+      await this.prisma.youTubeIntegration.update({
+        where: { userId },
+        data: {
+          lastChannelSyncStatus: status,
+          lastChannelSyncError: getSyncErrorCode(error),
+        },
+      });
+      const channelStatus = await this.getChannelSyncStatusFields(
+        await this.prisma.youTubeIntegration.findUniqueOrThrow({
+          where: { userId },
+        }),
+        now,
+      );
+      return {
+        synced: 0,
+        status,
+        lastAttemptAt: channelStatus.channelLastAttemptAt,
+        lastError: channelStatus.channelLastError,
+        retryAt: channelStatus.channelRetryAt,
+      };
+    }
+  }
+
+  /** Upload Sync: refresh Cached Uploads with a per-user 15-minute cooldown. */
+  async syncUploads(userId: string): Promise<YouTubeRefreshResult> {
+    const integration = await this.prisma.youTubeIntegration.findUnique({
+      where: { userId },
+    });
+    if (!integration || integration.status !== 'connected') {
+      throw new Error('YouTube account is not connected.');
+    }
+
+    const now = new Date();
     const previousLastManualRefreshAt = integration.lastManualRefreshAt;
     const cooldownUntil = integration.lastManualRefreshAt
       ? new Date(
-          integration.lastManualRefreshAt.getTime() +
-            MANUAL_REFRESH_COOLDOWN_MS,
+          integration.lastManualRefreshAt.getTime() + UPLOAD_SYNC_COOLDOWN_MS,
         )
       : null;
 
@@ -690,7 +894,7 @@ class YouTubeSyncService {
           { lastManualRefreshAt: null },
           {
             lastManualRefreshAt: {
-              lte: new Date(now.getTime() - MANUAL_REFRESH_COOLDOWN_MS),
+              lte: new Date(now.getTime() - UPLOAD_SYNC_COOLDOWN_MS),
             },
           },
         ],
@@ -707,38 +911,24 @@ class YouTubeSyncService {
         status: 'cooldown',
         retryAt:
           currentStatus.retryAt ??
-          new Date(now.getTime() + MANUAL_REFRESH_COOLDOWN_MS),
+          new Date(now.getTime() + UPLOAD_SYNC_COOLDOWN_MS),
       };
     }
 
+    const claimed = await this.claimUploadSyncRun(userId, now);
+
+    if (!claimed) {
+      await this.prisma.youTubeIntegration.update({
+        where: { userId },
+        data: { lastManualRefreshAt: previousLastManualRefreshAt },
+      });
+      return this.noopResult(userId);
+    }
+
     try {
-      // Claim the Sync Run atomically, marking it 'discovering' before paginating subscriptions.
-      // If the claim fails, a concurrent run is already live — return its status.
-      const claimed = await this.claimSyncRun(userId, now, 'discovering');
-
-      if (!claimed) {
-        // User pressed Sync, but a background sync was already live. We won the cooldown claim
-        // above but are doing no work on their behalf. Restore lastManualRefreshAt to its
-        // previous value so their 15-minute cooldown window is not spent.
-        // Note: This is a compensating write, not an atomic one. A process death between the
-        // initial stamp and this restore leaves the cooldown spent, which is acceptable as
-        // the consequence is bounded and self-heals after 15 minutes.
-        await this.prisma.youTubeIntegration.update({
-          where: { userId },
-          data: { lastManualRefreshAt: previousLastManualRefreshAt },
-        });
-        // A Sync Run is already live — return its current status without doing work.
-        return this.noopResult(userId);
-      }
-
-      const subscriptions = await this.syncSubscriptions(userId);
-      const syncResult = await this.syncVideosForUserWithStatus(userId, {
+      return await this.syncVideosForUserWithStatus(userId, {
         claimedAt: now,
       });
-      return {
-        ...syncResult,
-        subscriptionsSynced: subscriptions.length,
-      };
     } catch (error) {
       const status: YouTubeSyncStatus = isQuotaExceededError(error)
         ? 'quota_exceeded'
@@ -761,6 +951,10 @@ class YouTubeSyncService {
         lastSyncError: null,
         retryAt: null,
         progress: null,
+        channelStatus: 'never',
+        channelLastAttemptAt: null,
+        channelLastError: null,
+        channelRetryAt: null,
       };
     }
 
@@ -776,17 +970,22 @@ class YouTubeSyncService {
     const now = new Date();
     const manualRefreshAt = integration.lastManualRefreshAt;
     const retryAt = manualRefreshAt
-      ? new Date(manualRefreshAt.getTime() + MANUAL_REFRESH_COOLDOWN_MS)
+      ? new Date(manualRefreshAt.getTime() + UPLOAD_SYNC_COOLDOWN_MS)
       : null;
 
-    // Determine the reported status: if a persisted live status is past the
-    // ADR 0080 TTL, project it as 'failed' with 'syncInterrupted'. Read-time
-    // only — we do not write the correction back to the row.
+    const channelFields = this.getChannelSyncStatusFields(integration, now);
+
+    // Determine the reported upload status: if a persisted live status is past
+    // the ADR 0094 upload TTL, project it as 'failed' with 'syncInterrupted'.
+    // Read-time only — we do not write the correction back to the row.
     let reportedStatus = (integration.lastSyncStatus ??
       'never') as YouTubeSyncStatus;
     let reportedError = integration.lastSyncError ?? null;
 
-    if (isLiveSyncStatus(reportedStatus) && !isSyncRunLive(integration, now)) {
+    if (
+      isLiveUploadSyncStatus(reportedStatus) &&
+      !isUploadSyncLive(integration, now)
+    ) {
       reportedStatus = 'failed';
       reportedError = 'syncInterrupted';
     }
@@ -869,6 +1068,48 @@ class YouTubeSyncService {
       lastSyncError: reportedError,
       retryAt: retryAt && retryAt > now ? retryAt : null,
       progress,
+      ...channelFields,
+    };
+  }
+
+  private getChannelSyncStatusFields(
+    integration: {
+      lastChannelSyncStatus: string;
+      lastChannelSyncAt: Date | null;
+      lastChannelSyncError: string | null;
+    },
+    now: Date,
+  ): Pick<
+    YouTubeSyncStatusDTO,
+    | 'channelStatus'
+    | 'channelLastAttemptAt'
+    | 'channelLastError'
+    | 'channelRetryAt'
+  > {
+    const channelRetryAt = integration.lastChannelSyncAt
+      ? new Date(
+          integration.lastChannelSyncAt.getTime() + CHANNEL_SYNC_COOLDOWN_MS,
+        )
+      : null;
+
+    let channelStatus = (integration.lastChannelSyncStatus ??
+      'never') as YouTubeChannelSyncStatus;
+    let channelLastError = integration.lastChannelSyncError ?? null;
+
+    if (
+      channelStatus === 'discovering' &&
+      !isChannelSyncLive(integration, now)
+    ) {
+      channelStatus = 'failed';
+      channelLastError = 'syncInterrupted';
+    }
+
+    return {
+      channelStatus,
+      channelLastAttemptAt: integration.lastChannelSyncAt ?? null,
+      channelLastError,
+      channelRetryAt:
+        channelRetryAt && channelRetryAt > now ? channelRetryAt : null,
     };
   }
 
@@ -1326,26 +1567,39 @@ class YouTubeSyncService {
   }
 
   /**
-   * Atomically claim a Sync Run with the given status and timestamp.
+   * Atomically claim the Upload Sync mutex (ADR 0094 decision 2).
    *
-   * Returns true if the claim was won (exactly one row updated), false if a concurrent
-   * run is already live and the claim was lost (zero rows updated).
-   *
-   * The claim where clause is {@link syncRunClaimableWhere}, the inverse of
-   * {@link isSyncRunLive}, so RUN_TTL_MS / LIVE_SYNC_STATUSES stay single-sourced
-   * (ADR 0080 decision 4).
+   * Returns true if the claim was won, false if a concurrent attempt is live.
    */
-  private async claimSyncRun(
-    userId: string,
-    at: Date,
-    status: 'running' | 'discovering',
-  ): Promise<boolean> {
+  private async claimUploadSyncRun(userId: string, at: Date): Promise<boolean> {
     const runClaim = await this.prisma.youTubeIntegration.updateMany({
       where: syncRunClaimableWhere(userId, at),
       data: {
         lastSyncAttemptAt: at,
-        lastSyncStatus: status,
+        lastSyncStatus: 'running',
         lastSyncError: null,
+      },
+    });
+
+    return runClaim.count === 1;
+  }
+
+  /**
+   * Atomically claim the Channel Sync mutex (ADR 0094 decision 2).
+   *
+   * Returns true if the claim was won, false if a concurrent attempt is live.
+   * Does not touch upload sync columns.
+   */
+  private async claimChannelSyncRun(
+    userId: string,
+    at: Date,
+  ): Promise<boolean> {
+    const runClaim = await this.prisma.youTubeIntegration.updateMany({
+      where: syncRunClaimableWhere(userId, at),
+      data: {
+        lastChannelSyncAt: at,
+        lastChannelSyncStatus: 'discovering',
+        lastChannelSyncError: null,
       },
     });
 

@@ -48,7 +48,11 @@ export function isRunLive(
   status: YouTubeSyncStatus | null | undefined,
 ): boolean {
   if (!status) return false;
-  return status.status === 'discovering' || status.status === 'running';
+  return (
+    status.status === 'discovering' ||
+    status.status === 'running' ||
+    status.channelStatus === 'discovering'
+  );
 }
 
 /**

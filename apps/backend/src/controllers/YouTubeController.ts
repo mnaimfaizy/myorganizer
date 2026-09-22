@@ -19,6 +19,7 @@ import { requireUserId } from '../guards/AuthGuard';
 import youTubeDigestService from '../services/YouTubeDigestService';
 import youTubeSyncWorkerService from '../services/YouTubeSyncWorkerService';
 import youtubeSyncService, {
+  YouTubeChannelSyncResult,
   YouTubeRefreshResult,
   YouTubeSyncStatusDTO,
   YouTubeVideoWithChannel,
@@ -147,11 +148,23 @@ interface SyncStatusResponse {
   lastSyncError: string | null;
   retryAt: string | null;
   progress: ProgressResponse | null;
+  channelStatus: string;
+  channelLastAttemptAt: string | null;
+  channelLastError: string | null;
+  channelRetryAt: string | null;
 }
 
 interface SyncResponse extends SyncStatusResponse {
   synced: number;
   videosSynced: number;
+}
+
+interface ChannelSyncResponse {
+  synced: number;
+  status: string;
+  lastAttemptAt: string | null;
+  lastError: string | null;
+  retryAt: string | null;
 }
 
 interface WatchedBody {
@@ -200,6 +213,22 @@ function toSyncStatusResponse(
           failedChannels: status.progress.failedChannels,
         }
       : null,
+    channelStatus: status.channelStatus,
+    channelLastAttemptAt: status.channelLastAttemptAt?.toISOString() ?? null,
+    channelLastError: status.channelLastError,
+    channelRetryAt: status.channelRetryAt?.toISOString() ?? null,
+  };
+}
+
+function toChannelSyncResponse(
+  result: YouTubeChannelSyncResult,
+): ChannelSyncResponse {
+  return {
+    synced: result.synced,
+    status: result.status,
+    lastAttemptAt: result.lastAttemptAt?.toISOString() ?? null,
+    lastError: result.lastError,
+    retryAt: result.retryAt?.toISOString() ?? null,
   };
 }
 
@@ -322,15 +351,27 @@ export class YouTubeController extends Controller {
   }
 
   /**
-   * Fetches fresh subscriptions from YouTube and syncs to DB.
+   * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
    */
   @Put('/subscriptions/sync')
   @Security('jwt')
   public async syncSubscriptions(
     @Request() req: ExRequest,
+  ): Promise<ChannelSyncResponse | YouTubeErrorResponse> {
+    const userId = requireUserId(req);
+    return toChannelSyncResponse(await youtubeSyncService.syncChannels(userId));
+  }
+
+  /**
+   * Upload Sync: fetches Cached Uploads for every Enabled Channel.
+   */
+  @Put('/uploads/sync')
+  @Security('jwt')
+  public async syncUploads(
+    @Request() req: ExRequest,
   ): Promise<SyncResponse | YouTubeErrorResponse> {
     const userId = requireUserId(req);
-    return toSyncResponse(await youtubeSyncService.manualRefresh(userId));
+    return toSyncResponse(await youtubeSyncService.syncUploads(userId));
   }
 
   /** Returns the latest cached-video sync outcome and retry time. */

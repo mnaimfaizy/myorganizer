@@ -77,6 +77,16 @@ export interface YouTubeSyncStatus {
   lastSyncAttemptAt: string | null;
   lastSyncError: string | null;
   retryAt: string | null;
+  channelStatus:
+    | 'never'
+    | 'discovering'
+    | 'success'
+    | 'failed'
+    | 'quota_exceeded'
+    | 'cooldown';
+  channelLastAttemptAt: string | null;
+  channelLastError: string | null;
+  channelRetryAt: string | null;
   /**
    * Progress data is non-null while a run is live AND on the terminal read of
    * `partial`, `failed`, and `quota_exceeded`; it is null on `success` and `never`.
@@ -89,4 +99,12 @@ export interface YouTubeSyncStatus {
 export interface YouTubeSyncResult extends YouTubeSyncStatus {
   synced: number;
   videosSynced: number;
+}
+
+export interface YouTubeChannelSyncResult {
+  synced: number;
+  status: string;
+  lastAttemptAt: string | null;
+  lastError: string | null;
+  retryAt: string | null;
 }
