@@ -23,6 +23,7 @@ interface SubscriptionManagerProps {
   disconnectDisabled?: boolean;
   disconnectDisabledReason?: string;
   syncRetryAt?: string | null;
+  syncBusy?: boolean;
 }
 
 export function SubscriptionManager({
@@ -34,6 +35,7 @@ export function SubscriptionManager({
   disconnectDisabled = false,
   disconnectDisabledReason,
   syncRetryAt,
+  syncBusy = false,
 }: SubscriptionManagerProps) {
   const router = useRouter();
   const isCooldownActive = !!(
@@ -64,19 +66,19 @@ export function SubscriptionManager({
             variant="outline"
             size="sm"
             onClick={handleSync}
-            disabled={loading || isCooldownActive}
+            disabled={loading || isCooldownActive || syncBusy}
             aria-label={
               isCooldownActive && retryLabel
-                ? `Sync disabled until ${retryLabel}`
+                ? `Refresh channels disabled until ${retryLabel}`
                 : undefined
             }
             title={
               isCooldownActive && retryLabel
-                ? `Sync disabled until ${retryLabel}`
+                ? `Refresh channels disabled until ${retryLabel}`
                 : undefined
             }
           >
-            {loading ? 'Syncing…' : 'Sync from YouTube'}
+            {loading ? 'Refreshing…' : 'Refresh channels'}
           </Button>
           <Button
             variant="outline"
@@ -118,8 +120,8 @@ export function SubscriptionManager({
           </div>
         ) : subscriptions.length === 0 ? (
           <p className="py-4 text-center text-sm text-muted-foreground">
-            No subscriptions found. Click &quot;Sync from YouTube&quot; to
-            import your channels.
+            No subscriptions found. Click &quot;Refresh channels&quot; to import
+            your channels.
           </p>
         ) : (
           <ul className="divide-y divide-border">

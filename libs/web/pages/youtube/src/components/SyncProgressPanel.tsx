@@ -16,7 +16,7 @@ interface SyncProgressPanelProps {
 }
 
 /**
- * Progress panel for a live Sync Run (ADR 0080, decision 1–2).
+ * Progress panel for a live Upload Sync (ADR 0080 decision 1–2, kept by ADR 0096 decision 4).
  *
  * Renders alongside SyncFreshnessIndicator and shows:
  * - Phase label ("Finding your channels…", "Syncing…", or terminal state)

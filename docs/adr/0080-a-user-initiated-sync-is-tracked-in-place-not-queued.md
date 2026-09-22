@@ -2,7 +2,9 @@
 
 ## Status
 
-accepted
+superseded by [ADR 0096](0096-a-youtube-sync-is-either-a-channel-sync-or-an-upload-sync.md)
+
+The combined Sync Run is now either a Channel Sync or an Upload Sync. What survives is inline work, progress derived from channel-row stamps, and no run ledger. The decision text below is unchanged.
 
 ## Context
 
