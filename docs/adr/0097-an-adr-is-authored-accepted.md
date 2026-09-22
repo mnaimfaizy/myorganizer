@@ -48,7 +48,7 @@ and the template disagreed, and the template is what authors read.
 
 The parallel to ADR 0042 is exact, and running it to its conclusion is what
 resolves the problem rather than restating it. Nobody writes the _number_
-differently while the pull request is open — the ADR claims `0096` from the
+differently while the pull request is open — the ADR claims `0097` from the
 first commit, and merging is what converts the claim to a fact. The status
 works the same way. The document records the decision the pull request is
 asking for; the merge is what makes it binding. Nothing about that needs a

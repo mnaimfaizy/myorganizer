@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Asserts that no ADR in docs/adr/ carries the status `proposed` (ADR 0096).
+// Asserts that no ADR in docs/adr/ carries the status `proposed` (ADR 0097).
 //
 //   node tools/scripts/check-adr-status.mjs
 //
@@ -17,7 +17,7 @@
 // the check would then fire one pull request late, failing an author over a
 // file they did not touch.
 //
-// ADR 0096 removes the window instead: an ADR is authored `accepted`, because
+// ADR 0097 removes the window instead: an ADR is authored `accepted`, because
 // the number is already a claim-until-merged (ADR 0042) and nobody writes the
 // *number* differently while the pull request is open. `proposed` then has no
 // correct moment, and the assertion collapses to a directory listing.
@@ -132,7 +132,7 @@ function main() {
   for (const { path, form, status } of offenders) {
     console.error(
       `adr-status: ${path} — ${form} reads "${status}". An ADR is authored ` +
-        `"accepted" (ADR 0096); "proposed" has no correct moment.`,
+        `"accepted" (ADR 0097); "proposed" has no correct moment.`,
     );
   }
   process.exit(1);
