@@ -12,17 +12,14 @@ import {
   useYouTubeAvailability,
   useYouTubeCarousel,
   useYouTubeConnect,
-  YouTubeRequestError,
   useYouTubeStatus,
   useYouTubeSubscriptions,
   useYouTubeSyncStatus,
 } from '../hooks';
-import { useSyncRun } from '../hooks/useSyncRun';
+import { useYouTubeSyncPoll } from '../hooks/useYouTubeSyncPoll';
 import { isRunLive } from '../lib/syncProgress';
 import { ChannelDirectory } from './ChannelDirectory';
-import { DisconnectYouTubeDialog } from './DisconnectYouTubeDialog';
 import { QueueRail } from './QueueRail';
-import { SubscriptionManager } from './SubscriptionManager';
 import { SyncFreshnessIndicator } from './SyncFreshnessIndicator';
 import { SyncProgressPanel } from './SyncProgressPanel';
 import { YouTubeConnectPrompt } from './YouTubeConnectPrompt';
@@ -30,27 +27,8 @@ import { YouTubeUnavailableNotice } from './YouTubeUnavailableNotice';
 
 export function YouTubePageClient() {
   const { available } = useYouTubeAvailability();
-  const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
+  const { connected, status } = useYouTubeStatus();
   const { connect } = useYouTubeConnect();
-  const [disconnectNotice, setDisconnectNotice] = useState<{
-    message: string;
-    googlePermissionsUrl: string;
-  } | null>(null);
-
-  const disconnectNoticeBanner =
-    disconnectNotice === null ? null : (
-      <div role="status" className="mx-4 mt-4 text-sm text-muted-foreground">
-        {disconnectNotice.message}{' '}
-        <a
-          href={disconnectNotice.googlePermissionsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="underline"
-        >
-          Manage Google permissions
-        </a>
-      </div>
-    );
 
   // Check availability first — if unavailable, show error state before
   // checking connection status or proceeding to connected dashboard
@@ -68,73 +46,40 @@ export function YouTubePageClient() {
 
   if (!connected) {
     return (
-      <>
-        {disconnectNoticeBanner}
-        <YouTubeConnectPrompt
-          onConnect={connect}
-          statusMessage={
-            status === 'revoked'
-              ? 'Your previous connection was revoked. Please reconnect.'
-              : undefined
-          }
-        />
-      </>
+      <YouTubeConnectPrompt
+        onConnect={connect}
+        statusMessage={
+          status === 'revoked'
+            ? 'Your previous connection was revoked. Please reconnect.'
+            : undefined
+        }
+      />
     );
   }
 
-  return (
-    <>
-      {disconnectNoticeBanner}
-      <ConnectedDashboard
-        refreshStatus={refreshStatus}
-        onDisconnectNotice={setDisconnectNotice}
-      />
-    </>
-  );
+  return <ConnectedDashboard />;
 }
 
-interface ConnectedDashboardProps {
-  refreshStatus: () => Promise<void>;
-  onDisconnectNotice: (
-    notice: { message: string; googlePermissionsUrl: string } | null,
-  ) => void;
-}
-
-function ConnectedDashboard({
-  refreshStatus,
-  onDisconnectNotice,
-}: ConnectedDashboardProps) {
+function ConnectedDashboard() {
   // Digest mail and the subscription list deep-link a channel here. Read once
   // as the directory's initial selection rather than driving it from the URL,
   // so the User's own clicks are not fighting a stale query string.
   const deepLinkedChannelId = useSearchParams().get('channel');
-  const { disconnect } = useYouTubeConnect();
   const subs = useYouTubeSubscriptions();
   const carouselData = useYouTubeCarousel();
   const syncStatus = useYouTubeSyncStatus();
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
-  const [disconnectError, setDisconnectError] = useState<string | null>(null);
-
-  const isSyncRunLive = isRunLive(syncStatus.status);
-  const disconnectDisabledReason = isSyncRunLive
-    ? 'Disconnect unavailable while a sync is running'
-    : undefined;
-
-  const isCooldownActive = !!syncStatus.isCooldownActive;
   const [waitingForClaim, setWaitingForClaim] = useState(false);
 
-  // Extract stable function references and status value to use in effects without
-  // triggering linter warnings about missing object dependencies.
+  const syncBusy = isRunLive(syncStatus.status);
+  const isCooldownActive = !!syncStatus.isCooldownActive;
+
   const refreshSync = syncStatus.refresh;
-  const triggerSync = syncStatus.triggerSync;
+  const triggerUploadSync = syncStatus.triggerUploadSync;
   const syncStatusValue = syncStatus.status;
 
-  // Refresh lists when the sync run completes. This is the terminal transition only;
-  // incremental refresh during the run is deferred per ADR 0080 decision 1.
   const handleRunComplete = useCallback(async () => {
     setSyncError(null);
-    // Refresh lists but don't fail the whole flow — preserve cached data on failures
     const results = await Promise.allSettled([
       subs.refresh(),
       carouselData.refresh(),
@@ -145,26 +90,18 @@ function ConnectedDashboard({
     }
   }, [subs, carouselData]);
 
-  // Poll loop: starts on mount if run is already live, continues every 2s while live,
-  // pauses on tab-hidden, resumes with immediate poll on tab-visible.
-  useSyncRun(syncStatus.status, {
+  useYouTubeSyncPoll(syncStatus.status, {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });
 
-  // After firing a sync PUT, poll until the server claims the run (status becomes
-  // discovering or running). The claim happens asynchronously inside the PUT handler,
-  // so a single refresh() call races with the server's claim and often loses,
-  // leaving the UI in a terminal state while the sync actually runs server-side.
-  // This loop bridges the gap until the status reflects the live run, then useSyncRun
-  // takes over the 2-second poll cycle.
   useEffect(() => {
     if (!waitingForClaim) return;
 
     let isMounted = true;
     let elapsedMs = 0;
-    const pollIntervalMs = 1000; // ~1 second between polls
-    const maxWaitMs = 30000; // 30 second deadline to stop polling
+    const pollIntervalMs = 1000;
+    const maxWaitMs = 30000;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const doPoll = async () => {
@@ -172,14 +109,12 @@ function ConnectedDashboard({
 
       try {
         const status = await refreshSync();
-        if (!isMounted) return; // Component unmounted while fetching
+        if (!isMounted) return;
         if (isRunLive(status)) {
-          // Status is live; useSyncRun will take over from here
           setWaitingForClaim(false);
           return;
         }
       } catch {
-        // Swallow network errors and transient issues; keep polling
         if (!isMounted) return;
       }
 
@@ -187,7 +122,6 @@ function ConnectedDashboard({
       if (elapsedMs <= maxWaitMs && isMounted) {
         timeoutId = setTimeout(doPoll, pollIntervalMs);
       } else if (isMounted) {
-        // Deadline reached or component unmounted
         setWaitingForClaim(false);
       }
     };
@@ -202,8 +136,6 @@ function ConnectedDashboard({
 
   const channelUploads = useChannelUploads();
 
-  // A channel the User expanded shows its full cached snapshot; every other
-  // channel keeps the bounded slice the list endpoint returned.
   const channels = useMemo(
     () =>
       carouselData.channels.map((channel) => {
@@ -220,20 +152,12 @@ function ConnectedDashboard({
 
   const queue = useVideoQueue(library);
 
-  // Which surface owns the single active player. The queue rail and the
-  // channel directory each carry their own player per the locked Variant B
-  // and Variant C models, but only one of them may be playing: two YouTube
-  // embeds running at once means two audio streams and two near-end handlers
-  // racing to mark uploads Watched. Nothing plays on arrival, so the
-  // directory — the home surface — holds the claim until the rail takes it.
   const [playbackOwner, setPlaybackOwner] = useState<'directory' | 'queue'>(
     'directory',
   );
 
   const handleDirectoryPlaybackClaim = useCallback(() => {
     setPlaybackOwner('directory');
-    // Leaves the queue contents alone — only the playing pointer is cleared,
-    // so the rail keeps its order and the User can resume it.
     queue.stop();
   }, [queue]);
 
@@ -243,106 +167,50 @@ function ConnectedDashboard({
 
   const handleWatchedToggle = useCallback(
     (videoId: string, watched: boolean) => {
-      // Both stores hold their own copy of an upload, so a Watched change has
-      // to land in each or an expanded channel would show a stale badge.
       carouselData.updateWatched(videoId, watched);
       channelUploads.updateWatched(videoId, watched);
     },
     [carouselData, channelUploads],
   );
 
-  // Invert the sync trigger per ADR 0080 decision 1:
-  // 1. Fire the PUT without awaiting (unblock UI)
-  // 2. Start polling immediately (polled status is authoritative)
-  // 3. Swallow PUT errors (504 from long-running connection is cosmetic)
-  // 4. Refresh lists on terminal transition only
-  const handleSync = useCallback(async () => {
-    if (isCooldownActive) return;
+  const handleSync = useCallback(() => {
+    if (isCooldownActive || syncBusy) return;
 
-    // Check cooldown before attempting PUT
-    if (syncStatusValue && syncStatusValue.retryAt) {
+    if (syncStatusValue?.retryAt) {
       const retryTime = Date.parse(syncStatusValue.retryAt);
       if (!Number.isNaN(retryTime) && retryTime > Date.now()) {
         return;
       }
     }
 
-    // Fire the PUT without awaiting — the polling loop will catch its outcome.
-    // Errors (504, connection drop) are swallowed; the loop will report what happened.
-    void triggerSync().catch(() => {
+    void triggerUploadSync().catch(() => {
       // Swallow errors; the polled status is authoritative.
     });
 
-    // Start polling to catch the server's claim of the run. The claim lands
-    // asynchronously inside the PUT handler, so a single refresh() often races and
-    // loses. The polling loop will run until status becomes live (discovering/running),
-    // then useSyncRun takes over the 2s poll cycle.
     setWaitingForClaim(true);
-  }, [isCooldownActive, triggerSync, syncStatusValue]);
-
-  const handleRetryClick = useCallback(async () => {
-    if (isCooldownActive) return;
-    await handleSync();
-  }, [isCooldownActive, handleSync]);
+  }, [isCooldownActive, syncBusy, triggerUploadSync, syncStatusValue]);
 
   const handleDirectoryRetry = useCallback(() => {
     carouselData.refresh();
   }, [carouselData]);
 
-  const handleRequestDisconnect = useCallback(() => {
-    setDisconnectError(null);
-    setDisconnectDialogOpen(true);
-  }, []);
+  const uploadSyncDisabled =
+    carouselData.loading || syncStatus.loading || syncBusy || isCooldownActive;
 
-  const handleDisconnectDialogOpenChange = useCallback((open: boolean) => {
-    setDisconnectDialogOpen(open);
-    if (!open) {
-      setDisconnectError(null);
-    }
-  }, []);
+  const retryLabel =
+    isCooldownActive && syncStatus.status?.retryAt
+      ? (formatRetryAt(syncStatus.status.retryAt) ?? syncStatus.status.retryAt)
+      : null;
 
-  const handleConfirmDisconnect = useCallback(
-    async (deleteWatchedMarks: boolean) => {
-      setDisconnectError(null);
-      try {
-        const result = await disconnect({ deleteWatchedMarks });
-        setDisconnectDialogOpen(false);
-        await refreshStatus();
-        if (result.revokeFailed && result.googlePermissionsUrl) {
-          onDisconnectNotice({
-            message: result.message,
-            googlePermissionsUrl: result.googlePermissionsUrl,
-          });
-        } else {
-          onDisconnectNotice(null);
-        }
-      } catch (err: unknown) {
-        const message =
-          err instanceof YouTubeRequestError && err.code === 'sync_run_live'
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Disconnect failed';
-        setDisconnectError(message);
-        throw err instanceof Error ? err : new Error(message);
-      }
-    },
-    [disconnect, onDisconnectNotice, refreshStatus],
-  );
+  const showNoChannelsNote = !subs.loading && subs.subscriptions.length === 0;
+
+  const showNeverSyncedNote =
+    !subs.loading &&
+    subs.subscriptions.length > 0 &&
+    syncStatus.status?.status === 'never';
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
-      <SubscriptionManager
-        subscriptions={subs.subscriptions}
-        loading={subs.loading}
-        onSync={handleSync}
-        onToggle={subs.toggle}
-        onRequestDisconnect={handleRequestDisconnect}
-        disconnectDisabled={isSyncRunLive}
-        disconnectDisabledReason={disconnectDisabledReason}
-        syncRetryAt={syncStatus.status?.retryAt}
-      />
-
       <Card className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -355,6 +223,9 @@ function ConnectedDashboard({
             >
               <Link href="/dashboard/youtube/shorts">Shorts</Link>
             </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link href="/dashboard/youtube/channels">Channels</Link>
+            </Button>
           </div>
           <div className="flex items-start gap-2">
             <SyncFreshnessIndicator status={syncStatus.status} />
@@ -362,31 +233,41 @@ function ConnectedDashboard({
             <Button
               variant="ghost"
               size="sm"
-              onClick={handleRetryClick}
-              disabled={
-                carouselData.loading ||
-                syncStatus.loading ||
-                isRunLive(syncStatus.status) ||
-                isCooldownActive
-              }
+              onClick={handleSync}
+              disabled={uploadSyncDisabled}
               aria-label={
-                isCooldownActive && syncStatus.status?.retryAt
-                  ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
-                  : 'Retry sync'
+                retryLabel
+                  ? `Sync uploads disabled until ${retryLabel}`
+                  : 'Sync uploads'
               }
               title={
-                isCooldownActive && syncStatus.status?.retryAt
-                  ? `Retry disabled until ${formatRetryAt(syncStatus.status?.retryAt) ?? syncStatus.status?.retryAt}`
-                  : 'Retry sync'
+                retryLabel
+                  ? `Sync uploads disabled until ${retryLabel}`
+                  : 'Sync uploads'
               }
             >
               <RefreshCw
-                className={`h-4 w-4 ${carouselData.loading || syncStatus.loading || isRunLive(syncStatus.status) ? 'animate-spin' : ''}`}
+                className={`mr-2 h-4 w-4 ${carouselData.loading || syncStatus.loading || syncBusy ? 'animate-spin' : ''}`}
               />
+              Sync uploads
             </Button>
           </div>
         </div>
         <CardContent className="mt-4 space-y-6">
+          {showNoChannelsNote && (
+            <div role="status" className="text-sm text-muted-foreground">
+              No channels yet.{' '}
+              <Link href="/dashboard/youtube/channels" className="underline">
+                Refresh channels
+              </Link>
+            </div>
+          )}
+          {showNeverSyncedNote && (
+            <div role="status" className="text-sm text-muted-foreground">
+              Uploads have not been synced yet. Sync uploads caches the latest
+              100 from each enabled channel.
+            </div>
+          )}
           {syncStatus.status && (
             <SyncProgressPanel status={syncStatus.status} />
           )}
@@ -422,13 +303,6 @@ function ConnectedDashboard({
           />
         </CardContent>
       </Card>
-
-      <DisconnectYouTubeDialog
-        open={disconnectDialogOpen}
-        onOpenChange={handleDisconnectDialogOpenChange}
-        onConfirm={handleConfirmDisconnect}
-        error={disconnectError}
-      />
     </div>
   );
 }

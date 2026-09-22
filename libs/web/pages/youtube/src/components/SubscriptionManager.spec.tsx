@@ -61,9 +61,9 @@ describe('SubscriptionManager', () => {
     expect(screen.getByText('Beta Channel')).toBeTruthy();
   });
 
-  it('should render sync button', () => {
+  it('should render refresh channels button', () => {
     render(<SubscriptionManager {...defaultProps} />);
-    expect(screen.getByText('Sync from YouTube')).toBeTruthy();
+    expect(screen.getByText('Refresh channels')).toBeTruthy();
   });
 
   it('should render disconnect button', () => {
@@ -71,11 +71,39 @@ describe('SubscriptionManager', () => {
     expect(screen.getByText('Disconnect')).toBeTruthy();
   });
 
-  it('should call onSync when sync button is clicked', () => {
+  it('should call onSync when refresh channels button is clicked', () => {
     const onSync = jest.fn();
     render(<SubscriptionManager {...defaultProps} onSync={onSync} />);
-    fireEvent.click(screen.getByText('Sync from YouTube'));
+    fireEvent.click(screen.getByText('Refresh channels'));
     expect(onSync).toHaveBeenCalledTimes(1);
+  });
+
+  it('disables refresh channels and does not call onSync when syncBusy', () => {
+    const onSync = jest.fn();
+    render(
+      <SubscriptionManager {...defaultProps} onSync={onSync} syncBusy={true} />,
+    );
+
+    const refreshBtn = screen.getByRole('button', { name: 'Refresh channels' });
+    expect(refreshBtn).toBeDisabled();
+    fireEvent.click(refreshBtn);
+    expect(onSync).not.toHaveBeenCalled();
+  });
+
+  it('shows cooldown label on refresh channels when syncRetryAt is in the future', () => {
+    const future = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    render(<SubscriptionManager {...defaultProps} syncRetryAt={future} />);
+
+    expect(
+      screen.getByRole('button', {
+        name: /Refresh channels disabled until/i,
+      }),
+    ).toBeDisabled();
+  });
+
+  it('shows Refreshing… while loading', () => {
+    render(<SubscriptionManager {...defaultProps} loading={true} />);
+    expect(screen.getByText('Refreshing…')).toBeInTheDocument();
   });
 
   it('should call onRequestDisconnect when disconnect button is clicked', () => {

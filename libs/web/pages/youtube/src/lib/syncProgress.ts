@@ -1,7 +1,7 @@
 import type { YouTubeSyncStatus, FailingChannelInfo } from '../types';
 
 /**
- * Progress model for a live Sync Run (ADR 0080, decision 1–2).
+ * Progress model for a live Upload Sync (ADR 0080 decision 1–2, kept by ADR 0096 decision 4).
  *
  * The backend tracks per-channel outcomes (lastSyncedAt, lastSyncError) as a
  * run proceeds, so this file derives the counts and the view model from that
@@ -42,13 +42,17 @@ export interface SyncProgressReading {
 }
 
 /**
- * True while a Sync Run is actively processing channels.
+ * True while a Channel Sync or an Upload Sync is live.
  */
 export function isRunLive(
   status: YouTubeSyncStatus | null | undefined,
 ): boolean {
   if (!status) return false;
-  return status.status === 'discovering' || status.status === 'running';
+  return (
+    status.status === 'discovering' ||
+    status.status === 'running' ||
+    status.channelStatus === 'discovering'
+  );
 }
 
 /**

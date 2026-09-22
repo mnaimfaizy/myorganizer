@@ -14,6 +14,10 @@ function statusOf(
     lastSyncAttemptAt: null,
     lastSyncError: null,
     retryAt: null,
+    channelStatus: 'never',
+    channelLastAttemptAt: null,
+    channelLastError: null,
+    channelRetryAt: null,
     progress: null,
     ...overrides,
   };
@@ -567,6 +571,8 @@ describe('isRunLive', () => {
     [statusOf({ status: 'quota_exceeded' }), false],
     [statusOf({ status: 'cooldown' }), false],
     [statusOf({ status: 'never' }), false],
+    [statusOf({ status: 'success', channelStatus: 'discovering' }), true],
+    [statusOf({ status: 'success', channelStatus: 'success' }), false],
   ])('returns %p for status %p', (status, expected) => {
     expect(isRunLive(status)).toBe(expected);
   });
@@ -584,6 +590,8 @@ describe('shouldPoll', () => {
     [statusOf({ status: 'quota_exceeded' }), false],
     [statusOf({ status: 'cooldown' }), false],
     [statusOf({ status: 'never' }), false],
+    [statusOf({ status: 'success', channelStatus: 'discovering' }), true],
+    [statusOf({ status: 'success', channelStatus: 'success' }), false],
   ])('returns %p for status %p', (status, expected) => {
     expect(shouldPoll(status)).toBe(expected);
   });
