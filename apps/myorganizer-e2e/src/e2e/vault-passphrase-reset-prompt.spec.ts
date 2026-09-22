@@ -37,13 +37,12 @@ async function assertPassphraseResetPrompt(page: Page) {
   await expect(
     dialog.getByLabel('Current passphrase', { exact: true }),
   ).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Close' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Close' })).toHaveCount(0);
 }
 
 async function assertRecoveryModeChangePassphraseCard(page: Page) {
-  await expect(
-    page.getByRole('heading', { name: 'Set new passphrase' }),
-  ).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
+  // CardTitle renders a div, not a heading. The submit label is the
+  // recovery-mode signal.
   await expect(
     page.getByLabel('Current passphrase', { exact: true }),
   ).toHaveCount(0);
@@ -172,7 +171,9 @@ test.describe('Passphrase Reset Prompt (E2E)', () => {
     await page.getByRole('link', { name: 'Addresses', exact: true }).click();
     await page.reload();
 
-    await expect(page.locator('#unlock-passphrase')).toBeVisible({
+    await expect(
+      page.getByRole('button', { name: 'Use passphrase' }),
+    ).toBeVisible({
       timeout: PBKDF2_BUDGET_MS,
     });
 
