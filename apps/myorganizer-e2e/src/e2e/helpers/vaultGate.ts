@@ -40,27 +40,9 @@ export const E2E_VAULT_PHRASE = 'e2e-fixture-phrase-01';
  */
 export async function createOwnedVault(
   page: Page,
-  { passphrase, owner = E2E_USER_ID }: { passphrase: string; owner?: string },
+  options: { passphrase: string; owner?: string },
 ): Promise<void> {
-  const setupPassphrase = page.locator('#setup-passphrase');
-  await expect(setupPassphrase).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
-
-  await setupPassphrase.fill(passphrase);
-  await page.locator('#setup-confirm').fill(passphrase);
-
-  const createButton = page.getByRole('button', {
-    name: 'Create encrypted vault',
-  });
-  await expect(createButton).toBeEnabled();
-  await createButton.click();
-
-  const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
-  await expect(savedRecoveryKey).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
-  await savedRecoveryKey.click();
-
-  // Cheap once the button has been seen, and it pins the owner-bound storage
-  // key this suite depends on (ADR 0047).
-  await waitForOwnedVault(page, owner);
+  await createOwnedVaultWithRecoveryKey(page, options);
 }
 
 /**
@@ -94,6 +76,8 @@ export async function createOwnedVaultWithRecoveryKey(
 
   await savedRecoveryKey.click();
 
+  // Cheap once the button has been seen, and it pins the owner-bound storage
+  // key this suite depends on (ADR 0047).
   await waitForOwnedVault(page, owner);
   return recoveryKey;
 }
