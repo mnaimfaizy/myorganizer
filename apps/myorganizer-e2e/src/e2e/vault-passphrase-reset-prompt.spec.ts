@@ -168,8 +168,10 @@ test.describe('Passphrase Reset Prompt (E2E)', () => {
     ).toHaveCount(0);
     await assertRecoveryModeChangePassphraseCard(page);
 
-    await page.getByRole('link', { name: 'Addresses', exact: true }).click();
     await page.reload();
+    // Reload keeps the vault URL. That page's locked card is passphrase-only
+    // ("Unlock"); recovery unlock is the gate on a gated route.
+    await gotoStable(page, '/dashboard/addresses');
 
     await expect(
       page.getByRole('button', { name: 'Use passphrase' }),
