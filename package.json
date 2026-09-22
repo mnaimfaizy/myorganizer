@@ -88,6 +88,8 @@
     "escape-copy-reader:test": "node --test tools/scripts/check-escape-copy-reader.test.mjs",
     "mobile-platform:check": "node tools/scripts/check-mobile-platform.mjs",
     "mobile-platform:test": "node --test tools/scripts/check-mobile-platform.test.mjs",
+    "prisma:migrations:check": "node tools/scripts/check-prisma-migrations.mjs",
+    "prisma:migrations:test": "node --test tools/scripts/check-prisma-migrations.test.mjs",
     "gates:run": "node tools/scripts/run-assertion-gates.mjs",
     "gates:run:test": "node --test tools/scripts/lib/gate-manifest.test.mjs tools/scripts/run-assertion-gates.test.mjs",
     "gates:coverage:check": "node tools/scripts/check-gate-coverage.mjs",

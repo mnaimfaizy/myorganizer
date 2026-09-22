@@ -660,6 +660,9 @@ jobs:
       - name: Mobile platform checker contracts
         run: corepack yarn mobile-platform:test
 
+      - name: Prisma migration history checker contracts
+        run: corepack yarn prisma:migrations:test
+
       - name: Agent orchestration map checker contracts
         run: corepack yarn agents:map:test
 
@@ -792,6 +795,12 @@ jobs:
 
       - name: Check mobile platform rules
         run: corepack yarn mobile-platform:check
+
+      # The file-reading half of the Prisma migration gate (ADR 0094). The
+      # half that needs a database is the "Apply Prisma migrations and check
+      # schema drift" step above, against this job's Postgres service.
+      - name: Check Prisma migration history
+        run: corepack yarn prisma:migrations:check
 
       # A committed Upstream Brief report is frozen at its date, so its local
       # evidence is checked against the commit it records rather than the tree

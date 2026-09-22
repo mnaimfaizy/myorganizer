@@ -177,6 +177,16 @@ export const GATE_MANIFEST = [
     script: 'tools/scripts/check-mobile-platform.mjs',
     args: [],
   },
+  // The file-reading half of the Prisma migration gate (ADR 0094). Whether
+  // the history applies and reproduces the schema needs a database, so that
+  // half is the `prisma-migrations` job in .github/workflows/ci.yml and is
+  // deliberately not here — this aggregate is cheap, file-reading checkers.
+  {
+    id: 'prisma:migrations:check',
+    npmScript: 'prisma:migrations:check',
+    script: 'tools/scripts/check-prisma-migrations.mjs',
+    args: [],
+  },
   // The validator this adapter calls ships inside the skill directory, which
   // the Meta-Gate's non-recursive scan of tools/scripts/ cannot see. The
   // adapter is what makes the gate visible (ADR 0084 item 10).
