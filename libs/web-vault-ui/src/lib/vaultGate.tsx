@@ -130,10 +130,17 @@ export function VaultGate(props: VaultGateProps) {
     };
   }, [handle, localVaultRevision, currentVaultStatus]);
 
+  // The remount banner is a second question (ADR 0069). The Passphrase
+  // Reset Prompt is asked first, and the banner waits until that prompt
+  // is set or skipped (ADR 0095). Creation's same-session hard gate above
+  // is a different acknowledgment and is not delayed by this.
+  const passphraseResetPromptOwed =
+    vaultSession?.passphraseResetPromptOwed ?? false;
   const showRemountRecoveryKeyBanner =
     unacknowledgedRecoveryKey === null &&
     Boolean(handle) &&
-    recoveryKeyUnacknowledged;
+    recoveryKeyUnacknowledged &&
+    !passphraseResetPromptOwed;
 
   const handleAlreadyHaveRecoveryKey = useCallback((): void => {
     handle?.acknowledgeRecoveryKey();

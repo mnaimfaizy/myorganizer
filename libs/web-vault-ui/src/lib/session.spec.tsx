@@ -472,6 +472,334 @@ describe('VaultSessionProvider', () => {
     });
   });
 
+  describe('passphraseResetPromptOwed', () => {
+    let setItemSpy: jest.SpyInstance;
+
+    beforeEach(() => {
+      setItemSpy = jest.spyOn(Storage.prototype, 'setItem');
+    });
+
+    afterEach(() => {
+      setItemSpy.mockRestore();
+    });
+
+    test('starts false while locked; recovery-key unlock owes it; passphrase unlock does not', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      expect(result.current.passphraseResetPromptOwed).toBe(false);
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([1, 2, 3]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([4, 5, 6]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([7, 8, 9]),
+          'passphrase',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+    });
+
+    test('skipPassphraseResetPrompt clears owed, keeps recovery-key unlock, second skip is no-op, and does not persist', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([10, 11, 12]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      const apiCallsBefore = mockCreateVaultApi.mock.calls.length;
+      setItemSpy.mockClear();
+
+      act(() => {
+        result.current.skipPassphraseResetPrompt();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      expect(setItemSpy).not.toHaveBeenCalled();
+      expect(mockCreateVaultApi.mock.calls.length).toBe(apiCallsBefore);
+
+      act(() => {
+        result.current.skipPassphraseResetPrompt();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+    });
+
+    test('completePassphraseResetPrompt clears owed, keeps recovery-key unlock, and does not persist', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([13, 14, 15]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      const apiCallsBefore = mockCreateVaultApi.mock.calls.length;
+      setItemSpy.mockClear();
+
+      act(() => {
+        result.current.completePassphraseResetPrompt();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.unlockSecret).toBe('recovery-key');
+      });
+
+      expect(setItemSpy).not.toHaveBeenCalled();
+      expect(mockCreateVaultApi.mock.calls.length).toBe(apiCallsBefore);
+    });
+
+    test('lock then recovery unlock owes the prompt again after skip or complete', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      const recoveryBytes = new Uint8Array([16, 17, 18]);
+
+      act(() => {
+        result.current.setMasterKeyBytes(recoveryBytes, 'recovery-key');
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      act(() => {
+        result.current.skipPassphraseResetPrompt();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+
+      act(() => {
+        result.current.lock();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(recoveryBytes, 'recovery-key');
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      act(() => {
+        result.current.completePassphraseResetPrompt();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+
+      act(() => {
+        result.current.lock();
+        result.current.setMasterKeyBytes(recoveryBytes, 'recovery-key');
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+    });
+
+    test('passphrase unlock after recovery clears owed whether the prompt was still owed or skipped', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([19, 20, 21]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([22, 23, 24]),
+          'passphrase',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([25, 26, 27]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      act(() => {
+        result.current.skipPassphraseResetPrompt();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([28, 29, 30]),
+          'passphrase',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+    });
+
+    test('setMasterKeyBytes(null) and owner change clear passphraseResetPromptOwed', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result, rerender } = renderHook(() => useVaultSession(), {
+        wrapper,
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([31, 32, 33]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(null);
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+
+      act(() => {
+        result.current.setMasterKeyBytes(
+          new Uint8Array([34, 35, 36]),
+          'recovery-key',
+        );
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(true);
+      });
+
+      mockGetCurrentUser.mockReturnValue({ id: 'user-b' });
+      rerender();
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.masterKeyBytes).toBeNull();
+      });
+    });
+
+    test('skipPassphraseResetPrompt and completePassphraseResetPrompt are no-ops without a recovery-key unlock', async () => {
+      mockGetCurrentUser.mockReturnValue({ id: 'user-a' });
+
+      const { result } = renderHook(() => useVaultSession(), { wrapper });
+
+      act(() => {
+        result.current.skipPassphraseResetPrompt();
+        result.current.completePassphraseResetPrompt();
+      });
+
+      expect(result.current.passphraseResetPromptOwed).toBe(false);
+
+      act(() => {
+        result.current.setMasterKeyBytes(new Uint8Array([37, 38, 39]));
+      });
+
+      await waitFor(() => {
+        expect(result.current.unlockSecret).toBe('passphrase');
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+      });
+
+      act(() => {
+        result.current.skipPassphraseResetPrompt();
+        result.current.completePassphraseResetPrompt();
+      });
+
+      await waitFor(() => {
+        expect(result.current.passphraseResetPromptOwed).toBe(false);
+        expect(result.current.unlockSecret).toBe('passphrase');
+      });
+    });
+  });
+
   describe('sync sink wiring', () => {
     test('handle gets the queue (identity check)', () => {
       mockGetCurrentUser.mockReturnValue({ id: 'user-a' });

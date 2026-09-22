@@ -10,8 +10,11 @@ export { GroceriesPage } from './GroceriesPage';
 export { gotoStable } from './navigation';
 export {
   createOwnedVault,
+  createOwnedVaultWithRecoveryKey,
   E2E_VAULT_PHRASE,
+  PBKDF2_BUDGET_MS,
   unlockWithPassphrase,
+  unlockWithRecoveryKey,
 } from './vaultGate';
 export {
   UNCLAIMED_VAULT_KEY,

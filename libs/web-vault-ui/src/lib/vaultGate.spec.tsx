@@ -662,6 +662,60 @@ describe('VaultGate', () => {
     });
   });
 
+  describe('remount recovery key banner vs passphrase reset prompt', () => {
+    const bannerText = /No Recovery Key was ever saved for this vault/;
+
+    test('defers remount banner while passphrase reset prompt is owed and shows it once the prompt is answered', async () => {
+      const masterKeyBytes = new Uint8Array([1, 2, 3, 4]);
+      const handle = createStubHandle({
+        vaultStatus: jest.fn(() => 'owned'),
+        isRecoveryKeyUnacknowledged: jest.fn().mockResolvedValue(true),
+      });
+      let passphraseResetPromptOwed = true;
+
+      mockUseOptionalVaultSession.mockImplementation(() => ({
+        masterKeyBytes,
+        setMasterKeyBytes: jest.fn(),
+        lock: jest.fn(),
+        handle,
+        passphraseResetPromptOwed,
+      }));
+      mockUseVaultClaimEvidence.mockReturnValue({
+        status: 'settled',
+        result: { kind: 'skipped-already-owned' },
+      });
+
+      const view = render(
+        <VaultGate title="Test">
+          {(ctx) => <div>unlocked-{ctx.handle ? 'yes' : 'no'}</div>}
+        </VaultGate>,
+      );
+
+      expect(screen.getByText(/unlocked-yes/)).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('unacknowledged-recovery-key-banner'),
+        ).not.toBeInTheDocument();
+      });
+
+      passphraseResetPromptOwed = false;
+      view.rerender(
+        <VaultGate title="Test">
+          {(ctx) => <div>unlocked-{ctx.handle ? 'yes' : 'no'}</div>}
+        </VaultGate>,
+      );
+
+      expect(screen.getByText(/unlocked-yes/)).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('unacknowledged-recovery-key-fact'),
+        ).toHaveTextContent(bannerText);
+      });
+    });
+  });
+
   describe('Guard — vaultGate does not host passphrase reset', () => {
     /**
      * Asserted against the source text rather than by driving dead UI.

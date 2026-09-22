@@ -5,14 +5,14 @@ import { useCallback, useState } from 'react';
 import {
   changePassphraseWithCurrent,
   createVaultApi,
-  resetPassphraseAfterRecovery,
   VaultSecretMismatchError,
   type VaultHandle,
-  type WrappingChangeResult,
 } from '@myorganizer/web-vault';
 import {
-  passphraseChangeReading,
+  announcePassphraseChange,
+  resetPassphraseAfterRecoveryAndAnnounce,
   useOptionalVaultSession,
+  type PassphraseRewriteToast,
   type VaultUnlockSecret,
 } from '@myorganizer/web-vault-ui';
 
@@ -21,43 +21,46 @@ import { useToast } from '@myorganizer/web-ui';
 
 export type ChangePassphraseOutcome = 'ok' | 'wrong-passphrase' | 'error';
 
+type PassphraseRewriteOptions = {
+  handle: VaultHandle;
+  currentPassphrase: string;
+  newPassphrase: string;
+  toast: PassphraseRewriteToast;
+  onRecoveryComplete?: () => void;
+};
+
 /**
  * How a passphrase rewrite is authorized, pinned on the Vault Unlock Secret.
  * `changePassphraseWithCurrent` verifies the current passphrase;
- * `resetPassphraseAfterRecovery` does not.
+ * `resetPassphraseAfterRecoveryAndAnnounce` does not.
  */
 const PASSPHRASE_REWRITE_FOR_UNLOCK_SECRET = {
-  passphrase: (options: {
-    api: ReturnType<typeof createVaultApi>;
-    handle: VaultHandle;
-    currentPassphrase: string;
-    newPassphrase: string;
-  }): Promise<WrappingChangeResult> =>
-    changePassphraseWithCurrent({
-      api: options.api,
+  passphrase: async (
+    options: PassphraseRewriteOptions,
+  ): Promise<ChangePassphraseOutcome> => {
+    const result = await changePassphraseWithCurrent({
+      api: createVaultApi(),
       handle: options.handle,
       currentPassphrase: options.currentPassphrase,
       newPassphrase: options.newPassphrase,
-    }),
-  'recovery-key': (options: {
-    api: ReturnType<typeof createVaultApi>;
-    handle: VaultHandle;
-    currentPassphrase: string;
-    newPassphrase: string;
-  }): Promise<WrappingChangeResult> =>
-    resetPassphraseAfterRecovery({
-      api: options.api,
+    });
+    announcePassphraseChange(result, options.toast);
+    return 'ok';
+  },
+  'recovery-key': (
+    options: PassphraseRewriteOptions,
+  ): Promise<ChangePassphraseOutcome> =>
+    // A reset from the Vault card answers the same question as the prompt.
+    // The Vault Unlock Secret stays recovery-key (ADR 0095).
+    resetPassphraseAfterRecoveryAndAnnounce({
       handle: options.handle,
       newPassphrase: options.newPassphrase,
+      toast: options.toast,
+      onComplete: options.onRecoveryComplete,
     }),
 } as const satisfies Record<
   VaultUnlockSecret,
-  (options: {
-    api: ReturnType<typeof createVaultApi>;
-    handle: VaultHandle;
-    currentPassphrase: string;
-    newPassphrase: string;
-  }) => Promise<WrappingChangeResult>
+  (options: PassphraseRewriteOptions) => Promise<ChangePassphraseOutcome>
 >;
 
 /**
@@ -76,6 +79,8 @@ export function useChangePassphrase() {
   const handle = vaultSession?.handle ?? null;
   const masterKeyBytes = vaultSession?.masterKeyBytes ?? null;
   const unlockSecret = vaultSession?.unlockSecret ?? null;
+  const completePassphraseResetPrompt =
+    vaultSession?.completePassphraseResetPrompt;
 
   const [changing, setChanging] = useState(false);
 
@@ -98,29 +103,13 @@ export function useChangePassphrase() {
       setChanging(true);
 
       try {
-        const result = await PASSPHRASE_REWRITE_FOR_UNLOCK_SECRET[authorizedBy](
-          {
-            api: createVaultApi(),
-            handle,
-            currentPassphrase: input.currentPassphrase,
-            newPassphrase: input.newPassphrase,
-          },
-        );
-
-        // Every push outcome is a success toast, including the refusals.
-        // The local wrapping is written before the server is touched and is
-        // never rolled back, so by the time any of these is reported the
-        // passphrase has already changed on this device. Reporting one as a
-        // failure would send a User back to a passphrase that no longer works.
-        // What differs between outcomes is only whether their other devices
-        // know yet, which is what the reading says.
-        const reading = passphraseChangeReading(result.push);
-        toast({
-          title: reading.title,
-          description: reading.detail,
+        return await PASSPHRASE_REWRITE_FOR_UNLOCK_SECRET[authorizedBy]({
+          handle,
+          currentPassphrase: input.currentPassphrase,
+          newPassphrase: input.newPassphrase,
+          toast,
+          onRecoveryComplete: completePassphraseResetPrompt,
         });
-
-        return 'ok';
       } catch (error) {
         if (error instanceof VaultSecretMismatchError) {
           return 'wrong-passphrase';
@@ -136,7 +125,13 @@ export function useChangePassphrase() {
         setChanging(false);
       }
     },
-    [handle, masterKeyBytes, unlockSecret, toast],
+    [
+      handle,
+      masterKeyBytes,
+      unlockSecret,
+      completePassphraseResetPrompt,
+      toast,
+    ],
   );
 
   return { changing, unlockSecret, changePassphrase };

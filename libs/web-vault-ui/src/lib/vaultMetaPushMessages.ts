@@ -78,6 +78,17 @@ export function passphraseChangeReading(
 }
 
 /**
+ * Facts shown next to every passphrase rewrite — the Passphrase Reset
+ * Prompt and the Vault card share this copy so they cannot drift.
+ */
+export const PASSPHRASE_REWRITE_FACTS = {
+  wrapping:
+    'Your data is not re-encrypted and nothing is decrypted on the server — only what unlocks your vault changes. Your recovery key still works and does not need to be written down again.',
+  otherDevices:
+    'Your other devices keep using the old passphrase until you confirm the change on each of them; they will ask the next time they sync.',
+} as const;
+
+/**
  * How loudly a recovery key rotation's outcome should be presented.
  *
  * No `error` tone: the local wrapping is written before the server is touched,
