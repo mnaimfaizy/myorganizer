@@ -190,6 +190,43 @@ export interface ChannelCarouselResponse {
 /**
  * 
  * @export
+ * @interface ChannelSyncResponse
+ */
+export interface ChannelSyncResponse {
+    /**
+     * 
+     * @type {number}
+     * @memberof ChannelSyncResponse
+     */
+    'synced': number;
+    /**
+     * 
+     * @type {string}
+     * @memberof ChannelSyncResponse
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof ChannelSyncResponse
+     */
+    'lastAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ChannelSyncResponse
+     */
+    'lastError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof ChannelSyncResponse
+     */
+    'retryAt': string | null;
+}
+/**
+ * 
+ * @export
  * @interface ConfirmResetPasswordBody
  */
 export interface ConfirmResetPasswordBody {
@@ -898,6 +935,30 @@ export interface GetSyncStatus200Response {
      * @memberof GetSyncStatus200Response
      */
     'progress': ProgressResponse | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'channelStatus': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'channelLastAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'channelLastError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof GetSyncStatus200Response
+     */
+    'channelRetryAt': string | null;
     /**
      * 
      * @type {string}
@@ -1969,6 +2030,30 @@ export interface SyncResponse {
     'progress': ProgressResponse | null;
     /**
      * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'channelStatus': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'channelLastAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'channelLastError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncResponse
+     */
+    'channelRetryAt': string | null;
+    /**
+     * 
      * @type {number}
      * @memberof SyncResponse
      */
@@ -2022,6 +2107,30 @@ export interface SyncStatusResponse {
      * @memberof SyncStatusResponse
      */
     'progress': ProgressResponse | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'channelStatus': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'channelLastAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'channelLastError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncStatusResponse
+     */
+    'channelRetryAt': string | null;
 }
 /**
  * 
@@ -2029,6 +2138,12 @@ export interface SyncStatusResponse {
  * @interface SyncSubscriptions200Response
  */
 export interface SyncSubscriptions200Response {
+    /**
+     * 
+     * @type {number}
+     * @memberof SyncSubscriptions200Response
+     */
+    'synced': number;
     /**
      * 
      * @type {string}
@@ -2040,19 +2155,13 @@ export interface SyncSubscriptions200Response {
      * @type {string}
      * @memberof SyncSubscriptions200Response
      */
-    'lastSyncedAt': string | null;
+    'lastAttemptAt': string | null;
     /**
      * 
      * @type {string}
      * @memberof SyncSubscriptions200Response
      */
-    'lastSyncAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncSubscriptions200Response
-     */
-    'lastSyncError': string | null;
+    'lastError': string | null;
     /**
      * 
      * @type {string}
@@ -2061,26 +2170,93 @@ export interface SyncSubscriptions200Response {
     'retryAt': string | null;
     /**
      * 
-     * @type {ProgressResponse}
+     * @type {string}
      * @memberof SyncSubscriptions200Response
+     */
+    'message': string;
+}
+/**
+ * 
+ * @export
+ * @interface SyncUploads200Response
+ */
+export interface SyncUploads200Response {
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'status': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'lastSyncedAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'lastSyncAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'lastSyncError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'retryAt': string | null;
+    /**
+     * 
+     * @type {ProgressResponse}
+     * @memberof SyncUploads200Response
      */
     'progress': ProgressResponse | null;
     /**
      * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'channelStatus': string;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'channelLastAttemptAt': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'channelLastError': string | null;
+    /**
+     * 
+     * @type {string}
+     * @memberof SyncUploads200Response
+     */
+    'channelRetryAt': string | null;
+    /**
+     * 
      * @type {number}
-     * @memberof SyncSubscriptions200Response
+     * @memberof SyncUploads200Response
      */
     'synced': number;
     /**
      * 
      * @type {number}
-     * @memberof SyncSubscriptions200Response
+     * @memberof SyncUploads200Response
      */
     'videosSynced': number;
     /**
      * 
      * @type {string}
-     * @memberof SyncSubscriptions200Response
+     * @memberof SyncUploads200Response
      */
     'message': string;
 }
@@ -5739,12 +5915,45 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
-         * Fetches fresh subscriptions from YouTube and syncs to DB.
+         * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         syncSubscriptions: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/subscriptions/sync`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'PUT', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+
+    
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Upload Sync: fetches Cached Uploads for every Enabled Channel.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        syncUploads: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/uploads/sync`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -6052,7 +6261,7 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Fetches fresh subscriptions from YouTube and syncs to DB.
+         * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -6060,6 +6269,17 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.syncSubscriptions(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.syncSubscriptions']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Upload Sync: fetches Cached Uploads for every Enabled Channel.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async syncUploads(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<SyncUploads200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.syncUploads(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.syncUploads']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
@@ -6218,12 +6438,20 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.setVideoWatched(requestParameters.videoId, requestParameters.watchedBody, options).then((request) => request(axios, basePath));
         },
         /**
-         * Fetches fresh subscriptions from YouTube and syncs to DB.
+         * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
         syncSubscriptions(options?: RawAxiosRequestConfig): AxiosPromise<SyncSubscriptions200Response> {
             return localVarFp.syncSubscriptions(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Upload Sync: fetches Cached Uploads for every Enabled Channel.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        syncUploads(options?: RawAxiosRequestConfig): AxiosPromise<SyncUploads200Response> {
+            return localVarFp.syncUploads(options).then((request) => request(axios, basePath));
         },
         /**
          * Toggles a subscription\'s enabled state.
@@ -6544,13 +6772,23 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
-     * Fetches fresh subscriptions from YouTube and syncs to DB.
+     * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      * @memberof YouTubeApi
      */
     public syncSubscriptions(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).syncSubscriptions(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Upload Sync: fetches Cached Uploads for every Enabled Channel.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     * @memberof YouTubeApi
+     */
+    public syncUploads(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).syncUploads(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

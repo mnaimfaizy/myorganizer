@@ -1,11 +1,4 @@
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import '@testing-library/jest-dom';
 
@@ -182,7 +175,7 @@ describe('YouTubePageClient', () => {
     mockUseYouTubeSyncStatus.mockReturnValue({
       status: null,
       loading: false,
-      triggerSync: jest.fn(),
+      triggerUploadSync: jest.fn(),
       isCooldownActive: false,
       refresh: jest.fn(),
     });
@@ -267,8 +260,11 @@ describe('YouTubePageClient', () => {
       refresh: jest.fn(),
     });
     render(<YouTubePageClient />);
-    expect(screen.getByText('Subscriptions')).toBeInTheDocument();
     expect(screen.getByText('Videos')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Channels' })).toHaveAttribute(
+      'href',
+      '/dashboard/youtube/channels',
+    );
   });
 
   it('shows last synced when status is available', () => {
@@ -279,9 +275,15 @@ describe('YouTubePageClient', () => {
     });
 
     mockUseYouTubeSyncStatus.mockReturnValue({
-      status: { lastSyncedAt: '2026-08-06T12:00:00.000Z' },
+      status: {
+        lastSyncedAt: '2026-08-06T12:00:00.000Z',
+        channelStatus: 'never',
+        channelLastAttemptAt: null,
+        channelLastError: null,
+        channelRetryAt: null,
+      },
       loading: false,
-      triggerSync: jest.fn(),
+      triggerUploadSync: jest.fn(),
       isCooldownActive: false,
       refresh: jest.fn(),
     });
@@ -299,6 +301,10 @@ describe('YouTubePageClient', () => {
     lastSyncAttemptAt: null,
     lastSyncError: null,
     retryAt: null,
+    channelStatus: 'never' as const,
+    channelLastAttemptAt: null,
+    channelLastError: null,
+    channelRetryAt: null,
     ...overrides,
   });
 
@@ -309,14 +315,14 @@ describe('YouTubePageClient', () => {
       refresh: jest.fn(),
     });
 
-    // triggerSync never resolves, simulating a stuck connection
-    const triggerSync = jest.fn(() => new Promise(() => {}));
+    // triggerUploadSync never resolves, simulating a stuck connection
+    const triggerUploadSync = jest.fn(() => new Promise(() => {}));
     const refresh = jest.fn();
 
     mockUseYouTubeSyncStatus.mockReturnValue({
       status: null,
       loading: false,
-      triggerSync,
+      triggerUploadSync,
       isCooldownActive: false,
       refresh,
     });
@@ -324,16 +330,16 @@ describe('YouTubePageClient', () => {
     render(<YouTubePageClient />);
 
     // Click the sync button
-    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
+    const syncBtn = screen.getByRole('button', { name: 'Sync uploads' });
     fireEvent.click(syncBtn);
 
-    // Verify triggerSync was called
-    expect(triggerSync).toHaveBeenCalled();
+    // Verify triggerUploadSync was called
+    expect(triggerUploadSync).toHaveBeenCalled();
 
     // Verify refresh was called to start polling
     expect(refresh).toHaveBeenCalled();
 
-    // UI should be rendered and responsive (no hang waiting for triggerSync)
+    // UI should be rendered and responsive (no hang waiting for triggerUploadSync)
     expect(screen.getByText('Videos')).toBeInTheDocument();
   });
 
@@ -350,12 +356,12 @@ describe('YouTubePageClient', () => {
       current: Record<string, unknown> | null;
     } = { current: null };
     const syncStatusRefresh = jest.fn();
-    const triggerSync = jest.fn();
+    const triggerUploadSync = jest.fn();
 
     mockUseYouTubeSyncStatus.mockImplementation(() => ({
       status: syncStatusState.current,
       loading: false,
-      triggerSync,
+      triggerUploadSync,
       isCooldownActive: false,
       refresh: syncStatusRefresh,
     }));
@@ -397,21 +403,23 @@ describe('YouTubePageClient', () => {
     jest.useRealTimers();
   });
 
-  it('does not surface error when triggerSync rejects', async () => {
+  it('does not surface error when triggerUploadSync rejects', async () => {
     mockUseYouTubeStatus.mockReturnValue({
       connected: true,
       status: 'connected',
       refresh: jest.fn(),
     });
 
-    // triggerSync rejects (504 timeout from long-running connection)
-    const triggerSync = jest.fn().mockRejectedValue(new Error('504 timeout'));
+    // triggerUploadSync rejects (504 timeout from long-running connection)
+    const triggerUploadSync = jest
+      .fn()
+      .mockRejectedValue(new Error('504 timeout'));
     const refresh = jest.fn();
 
     mockUseYouTubeSyncStatus.mockReturnValue({
       status: null,
       loading: false,
-      triggerSync,
+      triggerUploadSync,
       isCooldownActive: false,
       refresh,
     });
@@ -419,22 +427,22 @@ describe('YouTubePageClient', () => {
     render(<YouTubePageClient />);
 
     // Click sync button
-    const syncBtn = screen.getByRole('button', { name: 'Sync from YouTube' });
+    const syncBtn = screen.getByRole('button', { name: 'Sync uploads' });
     await act(async () => {
       fireEvent.click(syncBtn);
       // Let the promise rejection settle
       await Promise.resolve();
     });
 
-    // Verify triggerSync was called
-    expect(triggerSync).toHaveBeenCalled();
+    // Verify triggerUploadSync was called
+    expect(triggerUploadSync).toHaveBeenCalled();
 
     // No error alert should appear (rejection is swallowed)
     const alert = screen.queryByRole('alert');
     expect(alert).not.toBeInTheDocument();
   });
 
-  it('disables sync and retry when cooldown is active', () => {
+  it('disables sync uploads when upload cooldown is active', () => {
     mockUseYouTubeStatus.mockReturnValue({
       connected: true,
       status: 'connected',
@@ -443,22 +451,79 @@ describe('YouTubePageClient', () => {
 
     const future = new Date(Date.now() + 1000 * 60 * 60).toISOString();
     mockUseYouTubeSyncStatus.mockReturnValue({
-      status: { retryAt: future },
+      status: { retryAt: future, channelStatus: 'never' },
       loading: false,
-      triggerSync: jest.fn(),
+      triggerUploadSync: jest.fn(),
       isCooldownActive: true,
       refresh: jest.fn(),
     });
 
     render(<YouTubePageClient />);
 
-    // Subscription manager sync button should be disabled
-    const syncBtn = screen.getByText('Sync from YouTube');
+    const syncBtn = screen.getByRole('button', {
+      name: /Sync uploads disabled until/i,
+    });
     expect(syncBtn).toBeDisabled();
+    expect(syncBtn).toHaveAttribute(
+      'title',
+      expect.stringMatching(/Sync uploads disabled until/i),
+    );
+  });
 
-    // Retry button should be disabled and have a title indicating retry time
-    const retryByTitle = screen.queryByTitle(/Retry disabled until/);
-    expect(retryByTitle).toBeInTheDocument();
+  it('shows empty-channels note with link to channels page', () => {
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
+      refresh: jest.fn(),
+    });
+    mockUseYouTubeSubscriptions.mockReturnValue({
+      ...defaultSubs,
+      subscriptions: [],
+      loading: false,
+    });
+
+    render(<YouTubePageClient />);
+
+    expect(screen.getByText('No channels yet.')).toBeInTheDocument();
+    expect(
+      screen.getByRole('link', { name: 'Refresh channels' }),
+    ).toHaveAttribute('href', '/dashboard/youtube/channels');
+  });
+
+  it('shows never-synced uploads note when channels exist but uploads never synced', () => {
+    mockUseYouTubeStatus.mockReturnValue({
+      connected: true,
+      status: 'connected',
+      refresh: jest.fn(),
+    });
+    mockUseYouTubeSubscriptions.mockReturnValue({
+      ...defaultSubs,
+      subscriptions: [
+        {
+          id: 'sub-1',
+          channelId: 'ch-1',
+          channelTitle: 'Alpha Channel',
+          channelThumbnail: null,
+          uploadsPlaylistId: 'UU123',
+          enabled: true,
+          lastSyncedAt: null,
+        },
+      ],
+      loading: false,
+    });
+    mockUseYouTubeSyncStatus.mockReturnValue({
+      status: statusOf({ status: 'never' }),
+      loading: false,
+      triggerUploadSync: jest.fn(),
+      isCooldownActive: false,
+      refresh: jest.fn(),
+    });
+
+    render(<YouTubePageClient />);
+
+    expect(
+      screen.getByText(/Uploads have not been synced yet\./),
+    ).toBeInTheDocument();
   });
 
   describe('channel deep link', () => {
@@ -538,162 +603,6 @@ describe('YouTubePageClient', () => {
     });
   });
 
-  describe('disconnect confirm', () => {
-    const renderConnected = (
-      disconnect = jest.fn().mockResolvedValue({ revokeFailed: false }),
-      syncStatusOverrides: Record<string, unknown> = {},
-    ) => {
-      const refreshStatus = jest.fn();
-      mockUseYouTubeStatus.mockReturnValue({
-        connected: true,
-        status: 'connected',
-        refresh: refreshStatus,
-      });
-      mockUseYouTubeConnect.mockReturnValue({
-        connect: jest.fn(),
-        disconnect,
-      });
-      mockUseYouTubeSyncStatus.mockReturnValue({
-        status: null,
-        loading: false,
-        triggerSync: jest.fn(),
-        isCooldownActive: false,
-        refresh: jest.fn(),
-        ...syncStatusOverrides,
-      });
-      render(<YouTubePageClient />);
-      return { disconnect, refreshStatus };
-    };
-
-    const openDisconnectDialog = () => {
-      fireEvent.click(
-        screen.getByRole('button', { name: 'Disconnect YouTube account' }),
-      );
-      return screen.getByRole('dialog', { name: 'Disconnect YouTube?' });
-    };
-
-    it('opens confirm dialog without calling disconnect until confirmed', () => {
-      const { disconnect } = renderConnected();
-      const dialog = openDisconnectDialog();
-
-      expect(dialog).toBeInTheDocument();
-      expect(disconnect).not.toHaveBeenCalled();
-    });
-
-    it('calls disconnect with deleteWatchedMarks false when confirmed without checkbox', async () => {
-      const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
-      renderConnected(disconnect);
-      const dialog = openDisconnectDialog();
-
-      await act(async () => {
-        fireEvent.click(
-          within(dialog).getByRole('button', { name: 'Disconnect' }),
-        );
-      });
-
-      expect(disconnect).toHaveBeenCalledTimes(1);
-      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: false });
-    });
-
-    it('calls disconnect with deleteWatchedMarks true when wipe checkbox is checked', async () => {
-      const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
-      renderConnected(disconnect);
-      const dialog = openDisconnectDialog();
-
-      fireEvent.click(screen.getByLabelText('Also delete my Watched marks'));
-
-      await act(async () => {
-        fireEvent.click(
-          within(dialog).getByRole('button', { name: 'Disconnect' }),
-        );
-      });
-
-      expect(disconnect).toHaveBeenCalledTimes(1);
-      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: true });
-    });
-
-    it('describes destroyed stores in the disconnect dialog', () => {
-      renderConnected();
-      const dialog = openDisconnectDialog();
-
-      expect(dialog).toHaveTextContent(/Followed Channels/);
-      expect(dialog).toHaveTextContent(/Cached Uploads/);
-      expect(dialog).toHaveTextContent(/notification/);
-      expect(dialog).toHaveTextContent(/digest/);
-      expect(dialog).toHaveTextContent(/OAuth/);
-    });
-
-    it.each(['discovering', 'running'] as const)(
-      'disables disconnect while sync status is %s and does not open confirm',
-      (liveStatus) => {
-        const disconnect = jest.fn();
-        renderConnected(disconnect, { status: { status: liveStatus } });
-
-        const disconnectBtn = screen.getByRole('button', {
-          name: 'Disconnect unavailable while a sync is running',
-        });
-        expect(disconnectBtn).toBeDisabled();
-
-        fireEvent.click(disconnectBtn);
-
-        expect(
-          screen.queryByRole('dialog', { name: 'Disconnect YouTube?' }),
-        ).not.toBeInTheDocument();
-        expect(disconnect).not.toHaveBeenCalled();
-      },
-    );
-
-    it('shows disconnect error alert inside the dialog when disconnect rejects', async () => {
-      const disconnect = jest
-        .fn()
-        .mockRejectedValue(new Error('Server unavailable'));
-      renderConnected(disconnect);
-      const dialog = openDisconnectDialog();
-
-      fireEvent.click(
-        within(dialog).getByRole('button', { name: 'Disconnect' }),
-      );
-
-      await waitFor(() => {
-        expect(within(dialog).getByRole('alert')).toHaveTextContent(
-          'Server unavailable',
-        );
-      });
-      expect(disconnect).toHaveBeenCalledTimes(1);
-    });
-
-    it('surfaces sync_run_live YouTubeRequestError message inside the dialog', async () => {
-      const { YouTubeRequestError } = jest.requireMock('../hooks') as {
-        YouTubeRequestError: new (
-          message: string,
-          status: number,
-          code?: string,
-        ) => Error;
-      };
-      const disconnect = jest
-        .fn()
-        .mockRejectedValue(
-          new YouTubeRequestError(
-            'Disconnect is not available while a sync is in progress.',
-            409,
-            'sync_run_live',
-          ),
-        );
-      renderConnected(disconnect);
-      const dialog = openDisconnectDialog();
-
-      fireEvent.click(
-        within(dialog).getByRole('button', { name: 'Disconnect' }),
-      );
-
-      await waitFor(() => {
-        expect(within(dialog).getByRole('alert')).toHaveTextContent(
-          'Disconnect is not available while a sync is in progress.',
-        );
-      });
-    });
-  });
-
   describe('claim-wait polling loop (sync run claim detection)', () => {
     beforeEach(() => {
       jest.useFakeTimers();
@@ -719,11 +628,11 @@ describe('YouTubePageClient', () => {
           : { status: 'discovering' };
       });
 
-      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      const triggerUploadSync = jest.fn().mockResolvedValue(undefined);
       mockUseYouTubeSyncStatus.mockReturnValue({
         status: { status: 'never' },
         loading: false,
-        triggerSync,
+        triggerUploadSync,
         isCooldownActive: false,
         refresh: refreshSync,
       });
@@ -732,9 +641,7 @@ describe('YouTubePageClient', () => {
 
       // Click sync to start the claim-wait loop
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Sync from YouTube' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
       });
 
       // Claim-wait loop calls refreshSync immediately via doPoll()
@@ -763,11 +670,11 @@ describe('YouTubePageClient', () => {
         return callCount < 2 ? { status: 'never' } : { status: 'discovering' };
       });
 
-      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      const triggerUploadSync = jest.fn().mockResolvedValue(undefined);
       mockUseYouTubeSyncStatus.mockReturnValue({
         status: { status: 'never' },
         loading: false,
-        triggerSync,
+        triggerUploadSync,
         isCooldownActive: false,
         refresh: refreshSync,
       });
@@ -776,9 +683,7 @@ describe('YouTubePageClient', () => {
 
       // Click sync to start the claim-wait loop
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Sync from YouTube' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
       });
 
       // Advance to trigger polling (using 1s increments to ensure timers fire properly)
@@ -817,11 +722,11 @@ describe('YouTubePageClient', () => {
       // Always return non-live
       const refreshSync = jest.fn(async () => ({ status: 'never' }));
 
-      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      const triggerUploadSync = jest.fn().mockResolvedValue(undefined);
       mockUseYouTubeSyncStatus.mockReturnValue({
         status: { status: 'never' },
         loading: false,
-        triggerSync,
+        triggerUploadSync,
         isCooldownActive: false,
         refresh: refreshSync,
       });
@@ -830,9 +735,7 @@ describe('YouTubePageClient', () => {
 
       // Click sync to start the claim-wait loop
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Sync from YouTube' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
       });
 
       // Advance through the 30s deadline using smaller increments to ensure all timers fire
@@ -868,11 +771,11 @@ describe('YouTubePageClient', () => {
 
       const refreshSync = jest.fn(async () => ({ status: 'never' }));
 
-      const triggerSync = jest.fn().mockResolvedValue(undefined);
+      const triggerUploadSync = jest.fn().mockResolvedValue(undefined);
       mockUseYouTubeSyncStatus.mockReturnValue({
         status: { status: 'never' },
         loading: false,
-        triggerSync,
+        triggerUploadSync,
         isCooldownActive: false,
         refresh: refreshSync,
       });
@@ -881,9 +784,7 @@ describe('YouTubePageClient', () => {
 
       // Click sync the first time
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Sync from YouTube' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
       });
 
       // Advance 1.5s in small increments to ensure timers fire properly
@@ -897,9 +798,7 @@ describe('YouTubePageClient', () => {
 
       // Click again (setWaitingForClaim(true) when already true is a no-op)
       await act(async () => {
-        fireEvent.click(
-          screen.getByRole('button', { name: 'Sync from YouTube' }),
-        );
+        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
       });
 
       // Advance another 1.5s

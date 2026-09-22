@@ -527,7 +527,7 @@ export function useYouTubeSyncStatus() {
     }
   }, []);
 
-  const triggerSync = useCallback(async () => {
+  const triggerUploadSync = useCallback(async () => {
     setLoading(true);
     try {
       // Fetch the authoritative sync-status for the cooldown guard only.
@@ -544,21 +544,41 @@ export function useYouTubeSyncStatus() {
         );
       }
 
-      // Backend PUT /youtube/subscriptions/sync starts the run inline
-      await apiFetch<import('../types').YouTubeSyncResult>(
+      await apiFetch<import('../types').YouTubeSyncResult>('/uploads/sync', {
+        method: 'PUT',
+      });
+
+      const finalStatus = await fetch_();
+      return finalStatus;
+    } finally {
+      setLoading(false);
+    }
+  }, [fetch_]);
+
+  const triggerChannelSync = useCallback(async () => {
+    setLoading(true);
+    try {
+      const latest =
+        await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
+      if (isRetryCooldownActive(latest.channelRetryAt)) {
+        throw new Error(
+          `Refresh channels disabled until ${formatRetryAt(latest.channelRetryAt) ?? latest.channelRetryAt}`,
+        );
+      }
+
+      await apiFetch<import('../types').YouTubeChannelSyncResult>(
         '/subscriptions/sync',
         {
           method: 'PUT',
         },
       );
 
-      // Fetch the authoritative status including progress, not a hand-assembled subset
       const finalStatus = await fetch_();
       return finalStatus;
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetch_]);
 
   useEffect(() => {
     if (!didMount.current) {
@@ -568,8 +588,19 @@ export function useYouTubeSyncStatus() {
   }, [fetch_]);
 
   const isCooldownActive = !!(status && isRetryCooldownActive(status.retryAt));
+  const isChannelCooldownActive = !!(
+    status && isRetryCooldownActive(status.channelRetryAt)
+  );
 
-  return { status, loading, refresh: fetch_, triggerSync, isCooldownActive };
+  return {
+    status,
+    loading,
+    refresh: fetch_,
+    triggerUploadSync,
+    triggerChannelSync,
+    isCooldownActive,
+    isChannelCooldownActive,
+  };
 }
 
 export async function updateVideoWatched(

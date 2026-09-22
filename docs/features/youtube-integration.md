@@ -111,8 +111,8 @@ Stores channels the user has chosen to sync.
 | `channelThumbnail`  | `String?`                     | URL to channel avatar                                                                                  |
 | `uploadsPlaylistId` | `String`                      | The channel's "Uploads" playlist                                                                       |
 | `enabled`           | `Boolean @default(true)`      | User can toggle sync on/off                                                                            |
-| `lastSyncedAt`      | `DateTime?`                   | Stamp of the last Sync Run that synced this channel                                                    |
-| `lastSyncAttemptAt` | `DateTime?`                   | Stamp of the last Sync Run that _attempted_ it, success or failure                                     |
+| `lastSyncedAt`      | `DateTime?`                   | Stamp of the last Upload Sync that synced this channel                                                 |
+| `lastSyncAttemptAt` | `DateTime?`                   | Stamp of the last Upload Sync that _attempted_ it, success or failure                                  |
 | `lastSyncError`     | `String?`                     | Error code from the last failed attempt; null once one succeeds. Non-null makes this a Failing Channel |
 | `createdAt`         | `DateTime`                    |                                                                                                        |
 | `updatedAt`         | `DateTime`                    |                                                                                                        |
@@ -152,19 +152,20 @@ Cached video metadata from synced channels.
 
 All under `/api/v1/youtube`, JWT-secured unless noted.
 
-| Method   | Path                     | Description                                                                                                                                                                                                                                                                                                                                                                                               |
-| -------- | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GET`    | `/auth-url`              | Returns Google OAuth consent URL                                                                                                                                                                                                                                                                                                                                                                          |
-| `POST`   | `/callback`              | OAuth callback — exchanges `{ code }` JSON body for tokens (JWT-authenticated)                                                                                                                                                                                                                                                                                                                            |
-| `GET`    | `/status`                | Returns integration status (`connected`/`disconnected`)                                                                                                                                                                                                                                                                                                                                                   |
-| `DELETE` | `/disconnect`            | Confirms locally, then removes Followed Channels, Cached Uploads, digest settings, digest deliveries, and the integration. Preserves Watched via the Watched Ledger unless the body sets `deleteWatchedMarks: true`. Returns 409 `sync_run_live` while a Sync Run is live. Token revocation is best-effort; a failure still disconnects locally and returns `revokeFailed` plus a Google permissions URL. |
-| `GET`    | `/subscriptions`         | Lists all user's YouTube channel subscriptions                                                                                                                                                                                                                                                                                                                                                            |
-| `PUT`    | `/subscriptions/sync`    | Starts a Sync Run for the caller. Returns its outcome when it ends, but the web client does not wait — see below                                                                                                                                                                                                                                                                                          |
-| `GET`    | `/sync-status`           | The last Sync Run's outcome, the manual-refresh `retryAt`, and a `progress` block while one is live                                                                                                                                                                                                                                                                                                       |
-| `PATCH`  | `/subscriptions/:id`     | Toggle a subscription enabled/disabled                                                                                                                                                                                                                                                                                                                                                                    |
-| `GET`    | `/videos`                | Returns cached videos with query params: `sort` (latest/oldest/az), `search`, `page`, `limit`                                                                                                                                                                                                                                                                                                             |
-| `GET`    | `/notification-settings` | Returns digest preferences: opt-in flag, preferred weekday, time zone                                                                                                                                                                                                                                                                                                                                     |
-| `PATCH`  | `/notification-settings` | Updates opt-in flag, `preferredWeekday` (0-6), and IANA `timeZone`                                                                                                                                                                                                                                                                                                                                        |
+| Method   | Path                     | Description                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GET`    | `/auth-url`              | Returns Google OAuth consent URL                                                                                                                                                                                                                                                                                                                                                                                                |
+| `POST`   | `/callback`              | OAuth callback — exchanges `{ code }` JSON body for tokens (JWT-authenticated)                                                                                                                                                                                                                                                                                                                                                  |
+| `GET`    | `/status`                | Returns integration status (`connected`/`disconnected`)                                                                                                                                                                                                                                                                                                                                                                         |
+| `DELETE` | `/disconnect`            | Confirms locally, then removes Followed Channels, Cached Uploads, digest settings, digest deliveries, and the integration. Preserves Watched via the Watched Ledger unless the body sets `deleteWatchedMarks: true`. Returns 409 `sync_run_live` while a Channel Sync or an Upload Sync is live. Token revocation is best-effort; a failure still disconnects locally and returns `revokeFailed` plus a Google permissions URL. |
+| `GET`    | `/subscriptions`         | Lists all user's YouTube channel subscriptions                                                                                                                                                                                                                                                                                                                                                                                  |
+| `PUT`    | `/subscriptions/sync`    | Channel Sync only: refreshes Followed Channels and does not fetch uploads. 5-minute cooldown. The web client does not wait — see below                                                                                                                                                                                                                                                                                          |
+| `PUT`    | `/uploads/sync`          | Manual Upload Sync of Enabled Channels. 15-minute cooldown. Does not import Followed Channels. The web client does not wait                                                                                                                                                                                                                                                                                                     |
+| `GET`    | `/sync-status`           | Upload Sync outcome (`status`, `retryAt`, `progress`) and Channel Sync outcome (`channelStatus`, `channelRetryAt`, `channelLastAttemptAt`, `channelLastError`)                                                                                                                                                                                                                                                                  |
+| `PATCH`  | `/subscriptions/:id`     | Toggle a subscription enabled/disabled                                                                                                                                                                                                                                                                                                                                                                                          |
+| `GET`    | `/videos`                | Returns cached videos with query params: `sort` (latest/oldest/az), `search`, `page`, `limit`                                                                                                                                                                                                                                                                                                                                   |
+| `GET`    | `/notification-settings` | Returns digest preferences: opt-in flag, preferred weekday, time zone                                                                                                                                                                                                                                                                                                                                                           |
+| `PATCH`  | `/notification-settings` | Updates opt-in flag, `preferredWeekday` (0-6), and IANA `timeZone`                                                                                                                                                                                                                                                                                                                                                              |
 
 | `POST` | `/digest/unsubscribe` | **Public**. Turns the digest off from the token carried by every digest email |
 | `POST` | `/cron/sync` | **Cron-only** (X-Cron-Secret). One bounded pass of the metadata sync worker |
@@ -173,14 +174,18 @@ All under `/api/v1/youtube`, JWT-secured unless noted.
 `POST /cron/sync-and-notify` was replaced by the two separate cron endpoints
 above. Existing deployments must update their cron entries — see below.
 
-## Sync Runs and visible progress
+## Channel Sync, Upload Sync, and visible progress
 
-A **Sync Run** is one attempt to refresh a User's Followed Channels and the Cached
-Uploads of their Enabled Channels. At most one is live per User, whatever started
-it — `PUT /subscriptions/sync` or the cron sync worker, both of which funnel
-through `YouTubeSyncService.syncVideosForUserWithStatus`. The run is claimed
-there with an optimistic `updateMany`; losing the claim is a normal outcome and
-returns the live run's status rather than an error.
+A **Channel Sync** refreshes Followed Channels and does not fetch Cached Uploads.
+An **Upload Sync** refreshes Cached Uploads of Enabled Channels and does not
+import channels. At most one of those attempts is live per User. Manual Channel
+Sync is `PUT /subscriptions/sync` (5-minute cooldown). Manual Upload Sync is
+`PUT /uploads/sync` (15-minute cooldown). The cron worker is an Upload Sync of
+Enabled Channels and is not subject to that cooldown. Both manual paths and the
+cron worker claim with one optimistic `updateMany`; losing the claim is a normal
+outcome and returns the live attempt's status rather than an error.
+[ADR 0096](../adr/0096-a-youtube-sync-is-either-a-channel-sync-or-an-upload-sync.md)
+supersedes the combined Sync Run in ADR 0080.
 
 A User-initiated run stays **inline in the request**, and the web client does not
 wait for the response. It fires the `PUT` and polls `GET /sync-status` every two
@@ -192,28 +197,36 @@ in flight back up on mount. A gateway timeout on the ignored `PUT` is cosmetic.
 records why this is not a queued job: cron on the production host cannot tick more
 often than every five minutes, so a queued run could not start sooner than that.
 
-Progress is **derived**, not journalled. The run stamps `YouTubeIntegration.lastSyncAttemptAt`
-once and writes that same timestamp to each Enabled Channel as it is attempted, so
-`processed`, `succeeded`, `failed` and the Failing Channel list all read off the
-channel rows by equality on that stamp. There is no run or job table.
+Progress is **derived**, not journalled. An Upload Sync stamps
+`YouTubeIntegration.lastSyncAttemptAt` once and writes that same timestamp to
+each Enabled Channel as it is attempted, so `processed`, `succeeded`, `failed`
+and the Failing Channel list all read off the channel rows by equality on that
+stamp. There is no run or job table. Channel Sync outcome is stored separately
+(`lastChannelSyncStatus`) so a channel refresh does not wipe this progress.
 
-Statuses, in the order a run moves through them:
+Upload Sync statuses:
 
 | Status           | Meaning                                                                                                                                                               |
 | ---------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `discovering`    | Paginating the channel list. No per-channel count is meaningful yet                                                                                                   |
+| `discovering`    | Legacy only: a combined run from before the split, still paginating channels. New attempts do not use it                                                              |
 | `running`        | Syncing Enabled Channels; `progress` counts are live                                                                                                                  |
 | `success`        | Every Enabled Channel synced. No `progress` block — there is nothing to break down                                                                                    |
 | `partial`        | A **Partial Sync**: some channels synced, some failed. `progress.failedChannels` names them, on the terminal read as well as mid-run                                  |
 | `failed`         | No channel synced. `lastSyncError` of `syncInterrupted` means an **Interrupted Sync** — the process died mid-run, so what completed is known and what remained is not |
 | `quota_exceeded` | The daily YouTube quota ran out; channels after the stall were never reached                                                                                          |
-| `cooldown`       | A manual-refresh outcome, not a health state: the User asked again inside the 15-minute window                                                                        |
+| `cooldown`       | A manual Upload Sync outcome, not a health state: the User asked again inside the 15-minute window                                                                    |
 
-An Interrupted Sync is a **read-time projection**, not a stored status. A run whose
-persisted status is still `discovering` or `running` past the run TTL is reported as
-interrupted, keeping its last known counts. The TTL equals the manual-refresh
-cooldown deliberately, so that "declared dead" and "may retry" are the same instant
-— ADR 0080 decision 3 explains why the two constants must not drift apart.
+Channel Sync statuses are `discovering`, `success`, `failed`, `quota_exceeded`,
+and `cooldown` (the 5-minute window). `discovering` has no per-channel count.
+
+An Interrupted Sync is a **read-time projection**, not a stored status. An Upload
+Sync whose persisted status is still `running` (or a legacy `discovering`) past
+the 15-minute upload TTL is reported as interrupted, keeping its last known
+counts. A Channel Sync whose status is still `discovering` past the 5-minute
+channel TTL is reported as a failed channel refresh with `syncInterrupted`. Each
+TTL equals that attempt's cooldown, so "declared dead" and "may retry" are the
+same instant — ADR 0096 decision 3. Upload Sync progress stays channel-level;
+there is no intra-channel counter.
 
 ## Weekly digest
 
@@ -260,18 +273,28 @@ cooldown deliberately, so that "declared dead" and "may retry" are the same inst
 
 ### YouTube Dashboard (`/dashboard/youtube`)
 
-#### Subscription Manager
+#### Channels (`/dashboard/youtube/channels`)
 
-- List of synced channels with toggle switches.
-- "Sync Subscriptions" button to pull latest from YouTube, disabled during the
-  manual-refresh cooldown.
-- While a Sync Run is live: the phase, a bar with channels processed of total,
-  elapsed time, and — once at least five channels are done — a coarse estimate of
-  the time left. The panel says syncing continues if the User leaves the page,
-  because it does.
+- Permanent management surface: the Followed Channel list, enable toggles, and
+  **Refresh channels** (Channel Sync, 5-minute cooldown).
+- **Disconnect** lives here. The confirmation names the stores it destroys.
+  Watched marks are kept for 30 days unless the User checks "Also delete my
+  Watched marks". The button is disabled while a Channel Sync or an Upload Sync
+  is live.
+
+#### Watching home (`/dashboard/youtube`)
+
+- Channel-first directory and queue. A **Channels** link opens the management page.
+- **Sync uploads** starts an Upload Sync (15-minute cooldown). While one is live:
+  the phase, a bar with channels processed of total, elapsed time, and — once at
+  least five channels are done — a coarse estimate of the time left. The panel
+  says syncing continues if the User leaves the page, because it does. Progress
+  is channel-level only.
 - After a Partial Sync, the channels that failed are named. After an Interrupted
   Sync, how far the run got.
-- "Disconnect YouTube" opens a confirmation that names the stores it destroys. Watched marks are kept for 30 days unless the User checks "Also delete my Watched marks". The button is disabled while a Sync Run is live.
+- Channels known and uploads never pulled: an honest note and the Sync uploads
+  control. No channels yet: a note linking to Refresh channels. Nothing starts
+  an Upload Sync on its own, and the directory still renders.
 
 #### Video Feed — Grid View (default)
 

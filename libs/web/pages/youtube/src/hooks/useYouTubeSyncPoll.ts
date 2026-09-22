@@ -5,7 +5,7 @@ import { shouldPoll } from '../lib/syncProgress';
 import type { YouTubeSyncStatus } from '../types';
 
 /**
- * Poll interval for the Sync Run (2 seconds).
+ * Poll interval while a Channel Sync or an Upload Sync is live (2 seconds).
  *
  * ADR 0080 decision 1: polling starts on mount as well as on click, so the
  * User can leave and return to a run in flight. This interval is deliberate —
@@ -14,7 +14,7 @@ import type { YouTubeSyncStatus } from '../types';
  */
 const POLL_INTERVAL_MS = 2000;
 
-interface UseSyncRunOptions {
+interface UseYouTubeSyncPollOptions {
   /**
    * Callback when the run transitions to a terminal state.
    * Used to refresh the subscription and carousel lists on completion.
@@ -29,7 +29,7 @@ interface UseSyncRunOptions {
 }
 
 /**
- * Polls /sync-status while a Sync Run is live.
+ * Polls /sync-status while a Channel Sync or an Upload Sync is live.
  *
  * The poll loop:
  * - Starts on mount when the mount fetch reports a live run (ADR 0080, decision 1)
@@ -47,9 +47,9 @@ interface UseSyncRunOptions {
  * @param options.onRunComplete callback on terminal transition
  * @param options.poll the function to call to fetch sync status
  */
-export function useSyncRun(
+export function useYouTubeSyncPoll(
   currentStatus: YouTubeSyncStatus | null | undefined,
-  options: UseSyncRunOptions,
+  options: UseYouTubeSyncPollOptions,
 ): void {
   const { onRunComplete, poll } = options;
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
