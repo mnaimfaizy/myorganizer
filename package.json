@@ -41,6 +41,7 @@
     "api:generate": "nx run app-api-client:generate-sources",
     "openapi:sync": "nx run api-specs:sync",
     "openapi:check": "nx run api-specs:check",
+    "design-tokens:check": "nx run design-tokens:check",
     "openapi:artifacts": "node tools/scripts/check-openapi-artifacts.mjs",
     "openapi:artifacts:test": "node --test tools/scripts/check-openapi-artifacts.test.mjs",
     "storybook": "nx storybook web-ui",

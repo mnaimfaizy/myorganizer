@@ -152,6 +152,29 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
     }
     if (typeof o.goldenCase !== 'string' || !ID.test(o.goldenCase))
       fail(`${where}: goldenCase must name the case that scores this entry`);
+    // Fields the CATALOGUE supplies and the selector carries into every site,
+    // rather than fields the reviewer writes (ADR 0098). `coveringGate` is the
+    // first: Golden Replay run 47 answered `gate: "deploy:pages:check"` — true,
+    // citable, correctly non-defecting, and about the wrong gate, because the
+    // one field with no citation requirement was also the one that selected
+    // what every other field meant. A fact the catalogue can state is not a
+    // choice the reviewer should be making.
+    const siteFields = [];
+    if (o.siteFields !== undefined) {
+      if (!Array.isArray(o.siteFields) || o.siteFields.length === 0)
+        fail(`${where}: siteFields must name at least one field, or be absent`);
+      for (const f of o.siteFields) {
+        if (typeof f !== 'string' || !f)
+          fail(`${where}: a siteFields entry is a field name`);
+        if (o.answerFields.includes(f))
+          fail(
+            `${where}: ${f} is in both siteFields and answerFields; a field the catalogue states is not one the reviewer answers`,
+          );
+        if (siteFields.includes(f))
+          fail(`${where}: duplicate siteFields entry ${f}`);
+        siteFields.push(f);
+      }
+    }
     const t = o.trigger;
     if (!t || typeof t !== 'object') fail(`${where}: trigger missing`);
     if (!Array.isArray(t.paths) || t.paths.length === 0)
@@ -163,11 +186,21 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
       // and the same regex cannot mean both.
       if (typeof g === 'string') {
         if (!g) fail(`${where}: bad trigger path`);
+        // Required, not defaulted: this is what makes "no entry exists"
+        // unrepresentable, leaving only "no gate covers this" — which is the
+        // obligation's own defect condition and is spelled `wiredBy: "none"`.
+        if (siteFields.length)
+          fail(
+            `${where}: ${g}: a trigger path must carry ${siteFields.join(', ')}`,
+          );
         continue;
       }
       if (!g || typeof g !== 'object') fail(`${where}: bad trigger path`);
       if (typeof g.glob !== 'string' || !g.glob)
         fail(`${where}: a trigger path object needs a glob`);
+      for (const f of siteFields)
+        if (typeof g[f] !== 'string' || !g[f])
+          fail(`${where}: ${g.glob}: trigger path must carry a non-empty ${f}`);
       if (g.addedPattern !== undefined) {
         if (typeof g.addedPattern !== 'string')
           fail(`${where}: ${g.glob}: addedPattern must be a string`);
@@ -253,15 +286,21 @@ export const selectObligations = ({
     const entryPattern = o.trigger.addedPattern
       ? compile(o.trigger.addedPattern, o.id)
       : null;
+    // The catalogue's own site fields, resolved per trigger path. The matching
+    // rule was already computed here and thrown away; carrying it is what lets
+    // a site arrive already knowing its Covering Gate (ADR 0098).
+    const siteFields = o.siteFields ?? [];
+    const facts = (p) => Object.fromEntries(siteFields.map((f) => [f, p?.[f]]));
     const rules = o.trigger.paths.map((p) =>
       typeof p === 'string'
-        ? { glob: globToRegExp(p), pattern: entryPattern }
+        ? { glob: globToRegExp(p), pattern: entryPattern, facts: facts(p) }
         : {
             glob: globToRegExp(p.glob),
             pattern:
               p.addedPattern === undefined
                 ? entryPattern
                 : compile(p.addedPattern, `${o.id} (${p.glob})`),
+            facts: facts(p),
           },
     );
     const sites = [];
@@ -270,11 +309,11 @@ export const selectObligations = ({
       if (!rule) continue;
       if (!rule.pattern) {
         // A path-only trigger fires on the file, at its first changed line.
-        sites.push({ file, line: lines[0]?.line ?? 1 });
+        sites.push({ file, line: lines[0]?.line ?? 1, ...rule.facts });
         continue;
       }
       for (const { line, text } of lines) {
-        if (rule.pattern.test(text)) sites.push({ file, line });
+        if (rule.pattern.test(text)) sites.push({ file, line, ...rule.facts });
       }
     }
     if (sites.length === 0) continue;
@@ -283,6 +322,10 @@ export const selectObligations = ({
       title: o.title,
       question: o.question,
       answerFields: o.answerFields,
+      // Named on the entry as well as spread onto each site, so a reader of the
+      // worklist can tell a fact the catalogue stated from one the reviewer is
+      // being asked for without diffing the two lists.
+      ...(o.siteFields ? { siteFields: o.siteFields } : {}),
       // Normalized and carried for the same reason defectWhen is: the checker
       // reads it off the worklist, so an entry that arrives without it is not
       // an error but a citation nobody verifies. It is also what tells the

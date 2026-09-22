@@ -526,6 +526,13 @@ jobs:
         # the hygiene steps so an unrelated step cannot dirty the tree first.
         run: corepack yarn openapi:check
 
+      - name: Check design token outputs are in sync
+        # Same shape as openapi:check and for the same reason: src/generated is
+        # derived from tokens.json, and nothing asserted the two agreed until
+        # ADR 0098 needed a Covering Gate for the tokens trigger. Runs next to
+        # openapi:check so both regenerate before anything else can dirty the tree.
+        run: corepack yarn design-tokens:check
+
       - name: Component hygiene checker contracts
         run: corepack yarn component:hygiene:test
 

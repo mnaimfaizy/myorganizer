@@ -568,7 +568,11 @@ _Avoid_: executor target, hand-declared target, explicit target
 
 **Gate Coverage**:
 The set of projects a gate actually reaches, which is not the set its command appears to name. A project can sit inside a gate's invocation and outside its reach: `nx affected -t lint` selects only projects that have a target named `lint`, declared or inferred, so a project whose ESLint target carries another name passes by being invisible. Asserted by a check; never inferred from a green run.
-_Avoid_: test coverage, CI coverage, gate scope
+_Avoid_: test coverage, CI coverage, gate scope, covering gate (for this sense)
+
+**Covering Gate**:
+The gate that asserts the artifact a given change invalidates. It is named against the change's _trigger_ rather than against the diff, because the artifact at risk is usually not in the diff at all: a version bump in `package.json` invalidates the OpenAPI spec and the generated client, so the Covering Gate is the OpenAPI drift check and not any gate over `package.json`. Being the Covering Gate says nothing about whether the gate is wired, and being wired says nothing about whether it covers anything — a truthful answer about a gate that covers something else is the failure mode this term exists to name.
+_Avoid_: gate coverage (a different question), relevant gate, responsible check, the gate for this file
 
 **Assertion Gate**:
 A gate that compares two artifacts and fails on a factual mismatch, naming the fact that is wrong. It never fails on the shape of a diff, and editing a file never satisfies it. Every gate in this repo is one (ADR 0043); "surface X changed, therefore doc Y must change" is the shape deliberately not built here.
