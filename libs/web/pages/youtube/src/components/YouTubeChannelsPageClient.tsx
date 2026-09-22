@@ -11,7 +11,7 @@ import {
   useYouTubeSyncStatus,
   YouTubeRequestError,
 } from '../hooks';
-import { useSyncRun } from '../hooks/useSyncRun';
+import { useYouTubeSyncPoll } from '../hooks/useYouTubeSyncPoll';
 import { isRunLive } from '../lib/syncProgress';
 import { DisconnectYouTubeDialog } from './DisconnectYouTubeDialog';
 import { SubscriptionManager } from './SubscriptionManager';
@@ -115,7 +115,7 @@ function ConnectedChannelsDashboard({
     await subs.refresh();
   }, [subs]);
 
-  useSyncRun(syncStatus.status, {
+  useYouTubeSyncPoll(syncStatus.status, {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });

@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 import { renderHook, act } from '@testing-library/react';
 import type { YouTubeSyncStatus } from '../types';
-import { useSyncRun } from './useSyncRun';
+import { useYouTubeSyncPoll } from './useYouTubeSyncPoll';
 
 /**
  * Poll interval constant must match the implementation.
@@ -9,7 +9,7 @@ import { useSyncRun } from './useSyncRun';
  */
 const POLL_INTERVAL_MS = 2000;
 
-describe('useSyncRun', () => {
+describe('useYouTubeSyncPoll', () => {
   const originalHidden = Object.getOwnPropertyDescriptor(document, 'hidden');
 
   beforeEach(() => {
@@ -57,7 +57,9 @@ describe('useSyncRun', () => {
     it('should call poll on mount when status is running', () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'running' }));
 
-      renderHook(() => useSyncRun(statusOf({ status: 'running' }), { poll }));
+      renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'running' }), { poll }),
+      );
 
       expect(poll).toHaveBeenCalledTimes(1);
     });
@@ -68,7 +70,7 @@ describe('useSyncRun', () => {
         .mockResolvedValue(statusOf({ status: 'discovering' }));
 
       renderHook(() =>
-        useSyncRun(statusOf({ status: 'discovering' }), { poll }),
+        useYouTubeSyncPoll(statusOf({ status: 'discovering' }), { poll }),
       );
 
       expect(poll).toHaveBeenCalledTimes(1);
@@ -80,7 +82,7 @@ describe('useSyncRun', () => {
 
       renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
-          useSyncRun(status, { poll, onRunComplete }),
+          useYouTubeSyncPoll(status, { poll, onRunComplete }),
         {
           initialProps: { status: statusOf({ status: 'running' }) },
         },
@@ -105,7 +107,7 @@ describe('useSyncRun', () => {
 
       renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
-          useSyncRun(status, { poll }),
+          useYouTubeSyncPoll(status, { poll }),
         {
           initialProps: { status: statusOf({ status: 'discovering' }) },
         },
@@ -131,7 +133,7 @@ describe('useSyncRun', () => {
     ])('should not poll when status is %s', (status) => {
       const poll = jest.fn().mockResolvedValue(statusOf());
 
-      renderHook(() => useSyncRun(statusOf({ status }), { poll }));
+      renderHook(() => useYouTubeSyncPoll(statusOf({ status }), { poll }));
 
       expect(poll).not.toHaveBeenCalled();
 
@@ -145,7 +147,7 @@ describe('useSyncRun', () => {
     it('should not poll when status is null', () => {
       const poll = jest.fn().mockResolvedValue(statusOf());
 
-      renderHook(() => useSyncRun(null, { poll }));
+      renderHook(() => useYouTubeSyncPoll(null, { poll }));
 
       expect(poll).not.toHaveBeenCalled();
 
@@ -158,7 +160,7 @@ describe('useSyncRun', () => {
     it('should not poll when status is undefined', () => {
       const poll = jest.fn().mockResolvedValue(statusOf());
 
-      renderHook(() => useSyncRun(undefined, { poll }));
+      renderHook(() => useYouTubeSyncPoll(undefined, { poll }));
 
       expect(poll).not.toHaveBeenCalled();
 
@@ -176,7 +178,7 @@ describe('useSyncRun', () => {
 
       const { rerender } = renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
-          useSyncRun(status, { poll, onRunComplete }),
+          useYouTubeSyncPoll(status, { poll, onRunComplete }),
         {
           initialProps: { status: statusOf({ status: 'running' }) },
         },
@@ -208,7 +210,7 @@ describe('useSyncRun', () => {
 
       const { rerender } = renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
-          useSyncRun(status, { poll, onRunComplete }),
+          useYouTubeSyncPoll(status, { poll, onRunComplete }),
         {
           initialProps: { status: statusOf({ status: 'running' }) },
         },
@@ -244,7 +246,9 @@ describe('useSyncRun', () => {
       });
       poll.mockReturnValue(pollPromise);
 
-      renderHook(() => useSyncRun(statusOf({ status: 'running' }), { poll }));
+      renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'running' }), { poll }),
+      );
 
       // Poll called on mount
       expect(poll).toHaveBeenCalledTimes(1);
@@ -281,7 +285,9 @@ describe('useSyncRun', () => {
     it('should pause polling when tab becomes hidden', () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'running' }));
 
-      renderHook(() => useSyncRun(statusOf({ status: 'running' }), { poll }));
+      renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'running' }), { poll }),
+      );
 
       expect(poll).toHaveBeenCalledTimes(1);
 
@@ -310,7 +316,9 @@ describe('useSyncRun', () => {
     it('should resume polling immediately when tab becomes visible', () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'running' }));
 
-      renderHook(() => useSyncRun(statusOf({ status: 'running' }), { poll }));
+      renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'running' }), { poll }),
+      );
 
       expect(poll).toHaveBeenCalledTimes(1);
 
@@ -358,7 +366,7 @@ describe('useSyncRun', () => {
 
       const { rerender } = renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
-          useSyncRun(status, { poll }),
+          useYouTubeSyncPoll(status, { poll }),
         {
           initialProps: { status: statusOf({ status: 'running' }) },
         },
@@ -399,7 +407,7 @@ describe('useSyncRun', () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'running' }));
 
       const { unmount } = renderHook(() =>
-        useSyncRun(statusOf({ status: 'running' }), { poll }),
+        useYouTubeSyncPoll(statusOf({ status: 'running' }), { poll }),
       );
 
       expect(poll).toHaveBeenCalledTimes(1);
@@ -431,7 +439,7 @@ describe('useSyncRun', () => {
       poll.mockReturnValue(pollPromise);
 
       const { unmount } = renderHook(() =>
-        useSyncRun(statusOf({ status: 'running' }), { poll }),
+        useYouTubeSyncPoll(statusOf({ status: 'running' }), { poll }),
       );
 
       expect(poll).toHaveBeenCalledTimes(1);
@@ -465,7 +473,7 @@ describe('useSyncRun', () => {
 
       const { rerender } = renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
-          useSyncRun(status, { poll }),
+          useYouTubeSyncPoll(status, { poll }),
         {
           initialProps: { status: statusOf({ status: 'running' }) },
         },
@@ -507,7 +515,9 @@ describe('useSyncRun', () => {
         return Promise.resolve(statusOf({ status: 'running' }));
       });
 
-      renderHook(() => useSyncRun(statusOf({ status: 'running' }), { poll }));
+      renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'running' }), { poll }),
+      );
 
       expect(poll).toHaveBeenCalledTimes(1);
 
@@ -539,7 +549,7 @@ describe('useSyncRun', () => {
 
       const { rerender } = renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
-          useSyncRun(status, { poll }),
+          useYouTubeSyncPoll(status, { poll }),
         {
           initialProps: { status: statusOf({ status: 'running' }) },
         },

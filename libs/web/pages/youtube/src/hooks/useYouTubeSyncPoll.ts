@@ -14,7 +14,7 @@ import type { YouTubeSyncStatus } from '../types';
  */
 const POLL_INTERVAL_MS = 2000;
 
-interface UseSyncRunOptions {
+interface UseYouTubeSyncPollOptions {
   /**
    * Callback when the run transitions to a terminal state.
    * Used to refresh the subscription and carousel lists on completion.
@@ -47,9 +47,9 @@ interface UseSyncRunOptions {
  * @param options.onRunComplete callback on terminal transition
  * @param options.poll the function to call to fetch sync status
  */
-export function useSyncRun(
+export function useYouTubeSyncPoll(
   currentStatus: YouTubeSyncStatus | null | undefined,
-  options: UseSyncRunOptions,
+  options: UseYouTubeSyncPollOptions,
 ): void {
   const { onRunComplete, poll } = options;
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);

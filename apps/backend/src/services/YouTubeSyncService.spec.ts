@@ -165,8 +165,8 @@ const {
   UPLOAD_SYNC_TTL_MS,
   GOOGLE_PERMISSIONS_URL,
   LIVE_SYNC_STATUSES,
-  isSyncRunLive,
-  syncRunClaimableWhere,
+  isAnyYouTubeSyncLive,
+  youtubeSyncClaimableWhere,
 } = require('./YouTubeSyncService');
 
 const defaultChannelSyncFields = {
@@ -2329,11 +2329,11 @@ describe('YouTubeSyncService', () => {
       expect(RUN_TTL_MS).toBe(UPLOAD_SYNC_TTL_MS);
     });
 
-    it('isSyncRunLive is true for live upload or live channel sync', () => {
+    it('isAnyYouTubeSyncLive is true for live upload or live channel sync', () => {
       const at = new Date('2026-06-01T12:00:00.000Z');
 
       expect(
-        isSyncRunLive(
+        isAnyYouTubeSyncLive(
           {
             lastSyncStatus: 'running',
             lastSyncAttemptAt: at,
@@ -2345,7 +2345,7 @@ describe('YouTubeSyncService', () => {
       ).toBe(true);
 
       expect(
-        isSyncRunLive(
+        isAnyYouTubeSyncLive(
           {
             lastSyncStatus: 'success',
             lastSyncAttemptAt: null,
@@ -2357,7 +2357,7 @@ describe('YouTubeSyncService', () => {
       ).toBe(true);
 
       expect(
-        isSyncRunLive(
+        isAnyYouTubeSyncLive(
           {
             lastSyncStatus: 'success',
             lastSyncAttemptAt: null,
@@ -2371,12 +2371,12 @@ describe('YouTubeSyncService', () => {
       ).toBe(false);
     });
 
-    it('syncRunClaimableWhere ANDs upload and channel sides (ADR 0096 decision 2)', () => {
+    it('youtubeSyncClaimableWhere ANDs upload and channel sides (ADR 0096 decision 2)', () => {
       const at = new Date('2026-06-01T12:00:00.000Z');
       const uploadDeadline = new Date(at.getTime() - UPLOAD_SYNC_TTL_MS);
       const channelDeadline = new Date(at.getTime() - CHANNEL_SYNC_TTL_MS);
 
-      expect(syncRunClaimableWhere('user-1', at)).toEqual({
+      expect(youtubeSyncClaimableWhere('user-1', at)).toEqual({
         userId: 'user-1',
         AND: [
           {

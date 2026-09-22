@@ -16,7 +16,7 @@ import {
   useYouTubeSubscriptions,
   useYouTubeSyncStatus,
 } from '../hooks';
-import { useSyncRun } from '../hooks/useSyncRun';
+import { useYouTubeSyncPoll } from '../hooks/useYouTubeSyncPoll';
 import { isRunLive } from '../lib/syncProgress';
 import { ChannelDirectory } from './ChannelDirectory';
 import { QueueRail } from './QueueRail';
@@ -90,7 +90,7 @@ function ConnectedDashboard() {
     }
   }, [subs, carouselData]);
 
-  useSyncRun(syncStatus.status, {
+  useYouTubeSyncPoll(syncStatus.status, {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });

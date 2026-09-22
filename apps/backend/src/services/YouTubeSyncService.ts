@@ -113,9 +113,9 @@ function isChannelSyncLive(
 
 /**
  * ADR 0096 live-run predicate: true while either a Channel Sync or an Upload
- * Sync attempt is in flight — {@link syncRunClaimableWhere} would refuse a claim.
+ * Sync attempt is in flight — {@link youtubeSyncClaimableWhere} would refuse a claim.
  */
-export function isSyncRunLive(
+export function isAnyYouTubeSyncLive(
   integration: {
     lastSyncStatus: string | null;
     lastSyncAttemptAt: Date | null;
@@ -133,7 +133,7 @@ export function isSyncRunLive(
  * Prisma where for rows that may accept a new Channel Sync or Upload Sync
  * claim — upload not live AND channel not live (ADR 0096 decision 2).
  */
-export function syncRunClaimableWhere(
+export function youtubeSyncClaimableWhere(
   userId: string,
   at: Date,
 ): Prisma.YouTubeIntegrationWhereInput {
@@ -165,14 +165,14 @@ export const GOOGLE_PERMISSIONS_URL =
   'https://myaccount.google.com/permissions';
 
 /** Thrown inside the disconnect transaction when a Channel Sync or an Upload Sync is claimed before commit. */
-class SyncRunBecameLiveError extends Error {
+class YouTubeSyncBecameLiveError extends Error {
   constructor() {
-    super('SYNC_RUN_LIVE');
-    this.name = 'SyncRunBecameLiveError';
+    super('YOUTUBE_SYNC_LIVE');
+    this.name = 'YouTubeSyncBecameLiveError';
   }
 }
 
-const SYNC_RUN_LIVE_MESSAGE =
+const YOUTUBE_SYNC_LIVE_MESSAGE =
   'Disconnect is not available while a sync is in progress. Wait for the sync to finish or cancel it, then try again.';
 /** Monday, matching the ISO week the digest period key is built from. */
 const DEFAULT_DIGEST_WEEKDAY = 1;
@@ -428,11 +428,11 @@ class YouTubeSyncService {
       return { ok: false, message: 'No YouTube integration found.' };
     }
 
-    if (isSyncRunLive(integration)) {
+    if (isAnyYouTubeSyncLive(integration)) {
       return {
         ok: false,
         code: 'sync_run_live',
-        message: SYNC_RUN_LIVE_MESSAGE,
+        message: YOUTUBE_SYNC_LIVE_MESSAGE,
       };
     }
 
@@ -446,8 +446,8 @@ class YouTubeSyncService {
         const current = await transaction.youTubeIntegration.findUnique({
           where: { userId },
         });
-        if (!current || isSyncRunLive(current)) {
-          throw new SyncRunBecameLiveError();
+        if (!current || isAnyYouTubeSyncLive(current)) {
+          throw new YouTubeSyncBecameLiveError();
         }
 
         if (deleteWatchedMarks) {
@@ -484,11 +484,11 @@ class YouTubeSyncService {
         await transaction.youTubeIntegration.delete({ where: { userId } });
       });
     } catch (error) {
-      if (error instanceof SyncRunBecameLiveError) {
+      if (error instanceof YouTubeSyncBecameLiveError) {
         return {
           ok: false,
           code: 'sync_run_live',
-          message: SYNC_RUN_LIVE_MESSAGE,
+          message: YOUTUBE_SYNC_LIVE_MESSAGE,
         };
       }
       throw error;
@@ -1648,7 +1648,7 @@ class YouTubeSyncService {
     data: Prisma.YouTubeIntegrationUpdateManyMutationInput,
   ): Promise<boolean> {
     const runClaim = await this.prisma.youTubeIntegration.updateMany({
-      where: syncRunClaimableWhere(userId, at),
+      where: youtubeSyncClaimableWhere(userId, at),
       data,
     });
     return runClaim.count === 1;
