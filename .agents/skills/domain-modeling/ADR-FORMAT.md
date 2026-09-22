@@ -18,7 +18,7 @@ That's it. An ADR can be a single paragraph. The value is in recording *that* a 
 
 Only include these when they add genuine value. Most ADRs won't need them.
 
-- **Status** frontmatter (`proposed | accepted | deprecated | superseded by ADR-NNNN`): useful when decisions are revisited
+- **Status** frontmatter (`accepted | deprecated | superseded by ADR-NNNN`): useful when decisions are revisited. There is deliberately no `proposed`: an ADR is authored `accepted`, because a status that needs flipping in a later step does not get flipped. In this repo `yarn adr:status:check` asserts it (ADR 0096).
 - **Considered Options**: only when the rejected alternatives are worth remembering
 - **Consequences**: only when non-obvious downstream effects need to be called out
 

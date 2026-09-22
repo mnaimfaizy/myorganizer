@@ -645,6 +645,9 @@ jobs:
       - name: Check ADR numbering
         run: corepack yarn adr:numbering:check
 
+      - name: Check ADR status
+        run: corepack yarn adr:status:check
+
       - name: Check documented commands resolve
         run: corepack yarn docs:commands:check
 
@@ -698,6 +701,9 @@ jobs:
 
       - name: Checker contract coverage checker contracts
         run: corepack yarn checker-contracts:test
+
+      - name: ADR status checker contracts
+        run: corepack yarn adr:status:test
 
       - name: Escape Copy reader gate contracts
         run: corepack yarn escape-copy-reader:test
