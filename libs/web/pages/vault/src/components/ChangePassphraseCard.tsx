@@ -3,12 +3,7 @@
 import { useCallback } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  type Control,
-  type FieldValues,
-  type Path,
-  useForm,
-} from 'react-hook-form';
+import { type Control, type FieldValues, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import {
@@ -20,7 +15,6 @@ import {
   CardTitle,
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,11 +24,12 @@ import {
 import {
   changePassphraseSchema,
   ChangePassphraseInput,
-  MIN_PASSPHRASE_LENGTH,
   newPassphraseSchema,
 } from '@myorganizer/web-vault';
 import {
+  NewPassphraseFields,
   PASSPHRASE_REWRITE_FACTS,
+  type NewPassphraseFieldValues,
   type VaultUnlockSecret,
 } from '@myorganizer/web-vault-ui';
 
@@ -44,13 +39,8 @@ import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 type NewPassphraseInput = z.infer<typeof newPassphraseSchema>;
 
-type SharedNewPassphraseFields = Pick<
-  NewPassphraseInput,
-  'newPassphrase' | 'newPassphraseConfirm'
->;
-
 interface ChangePassphraseSharedFieldsProps<
-  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+  TFieldValues extends FieldValues & NewPassphraseFieldValues,
 > {
   control: Control<TFieldValues>;
   allowed: boolean;
@@ -59,7 +49,7 @@ interface ChangePassphraseSharedFieldsProps<
 }
 
 function ChangePassphraseSharedFields<
-  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+  TFieldValues extends FieldValues & NewPassphraseFieldValues,
 >({
   control,
   allowed,
@@ -68,37 +58,7 @@ function ChangePassphraseSharedFields<
 }: ChangePassphraseSharedFieldsProps<TFieldValues>) {
   return (
     <>
-      <FormField
-        control={control}
-        name={'newPassphrase' as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>New passphrase</FormLabel>
-            <FormControl>
-              <Input {...field} type="password" disabled={!allowed} />
-            </FormControl>
-            <FormDescription>
-              Minimum {MIN_PASSPHRASE_LENGTH} characters.
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={control}
-        name={'newPassphraseConfirm' as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Confirm new passphrase</FormLabel>
-            <FormControl>
-              <Input {...field} type="password" disabled={!allowed} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
+      <NewPassphraseFields control={control} disabled={!allowed} />
       <div className="flex gap-2">
         <Button
           type="submit"

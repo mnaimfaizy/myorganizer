@@ -6,10 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import {
-  MIN_PASSPHRASE_LENGTH,
-  newPassphraseSchema,
-} from '@myorganizer/web-vault';
+import { newPassphraseSchema } from '@myorganizer/web-vault';
 import {
   Button,
   Dialog,
@@ -19,16 +16,10 @@ import {
   DialogHeader,
   DialogTitle,
   Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  Input,
   useToast,
 } from '@myorganizer/web-ui';
 
+import { NewPassphraseFields } from './newPassphraseFields';
 import { resetPassphraseAfterRecoveryAndAnnounce } from './recoveryPassphraseReset';
 import { useVaultSession } from './session';
 import { PASSPHRASE_REWRITE_FACTS } from './vaultMetaPushMessages';
@@ -43,9 +34,9 @@ const SKIP_LABEL =
  *
  * Shown once on the unlocked dashboard after a recovery-key Vault Unlock.
  * It performs the reset itself — the same
- * `resetPassphraseAfterRecoveryAndAnnounce` the Vault card uses — and an explicit skip. Escape, the overlay, and the
- * close button are not a skip: declining has to be said. Nothing about the
- * answer is written down.
+ * `resetPassphraseAfterRecoveryAndAnnounce` the Vault card uses — and an
+ * explicit skip. Escape, the overlay, and the close button are not a skip:
+ * declining has to be said. Nothing about the answer is written down.
  */
 export function PassphraseResetPrompt() {
   const {
@@ -145,46 +136,7 @@ export function PassphraseResetPrompt() {
               {PASSPHRASE_REWRITE_FACTS.otherDevices}
             </p>
 
-            <FormField
-              control={form.control}
-              name="newPassphrase"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>New passphrase</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="password"
-                      autoComplete="new-password"
-                      disabled={submitting}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Minimum {MIN_PASSPHRASE_LENGTH} characters.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="newPassphraseConfirm"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm new passphrase</FormLabel>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="password"
-                      autoComplete="new-password"
-                      disabled={submitting}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <NewPassphraseFields control={form.control} disabled={submitting} />
 
             <DialogFooter className="sm:flex-col sm:items-stretch">
               <Button
