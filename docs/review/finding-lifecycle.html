@@ -1040,14 +1040,14 @@
               <circle class="tipdot" cx="542" cy="74" r="4" />
               <text class="title" x="312" y="92">Fixed point</text>
               <text x="312" y="112">git diff &lt;fp&gt;...HEAD</text>
-              <text class="src" x="312" y="130">SKILL.md:54</text>
+              <text class="src" x="312" y="130">SKILL.md:65</text>
             </g>
             <g class="step" data-tip="local-spec" tabindex="0" aria-label="Spec source: branch name, then commit references, then argument, then ask" aria-describedby="note-local-spec">
               <rect class="box" x="590" y="66" width="290" height="76" rx="6" />
               <circle class="tipdot" cx="872" cy="74" r="4" />
               <text class="title" x="602" y="92">Spec source</text>
               <text x="602" y="112">branch &#8594; commits &#8594; arg &#8594; ask</text>
-              <text class="src" x="602" y="130">AGENTS.md:190, SKILL.md:64</text>
+              <text class="src" x="602" y="130">AGENTS.md:190, SKILL.md:75</text>
             </g>
             <path class="flow local" d="M 880 142 C 940 220, 980 250, 1030 300" />
 
@@ -1153,14 +1153,14 @@
         <dt>local-diff</dt>
         <dd id="note-local-diff">
           The fixed point is pinned with <code>git diff &lt;fixed-point&gt;...HEAD</code>
-          (three-dot, against the merge-base) &mdash; <code>SKILL.md:54</code>.
+          (three-dot, against the merge-base) &mdash; <code>SKILL.md:65</code>.
         </dd>
         <dt>local-spec</dt>
         <dd id="note-local-spec">
           Spec discovery tries, in order: the issue number in the branch name
           (<code>&lt;type&gt;/&lt;issue-number&gt;-&lt;slug&gt;</code> puts the
           issue first, <code>AGENTS.md:190</code>), then commit references
-          (<code>SKILL.md:64</code>), then an argument, then it asks. No spec
+          (<code>SKILL.md:75</code>), then an argument, then it asks. No spec
           source tightens the envelope to <code>human</code> &mdash; only the
           validator's verdict math does that.
         </dd>
@@ -1603,7 +1603,7 @@
   <section class="panel" aria-labelledby="pe-h">
     <div class="phead">
       <h2 id="pe-h">Panel E — The report on the PR</h2>
-      <span class="src">SKILL.md:82, ADR 0071 item 7</span>
+      <span class="src">SKILL.md:93, ADR 0071 item 7</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1743,15 +1743,15 @@
         "file": ".agents/skills/code-review/SKILL.md",
         "start": "Each axis runs as a **parallel sub-agent** that returns findings as JSON. The main agent assembles"
       },
-      "SKILL.md:54": {
+      "SKILL.md:65": {
         "file": ".agents/skills/code-review/SKILL.md",
         "start": "The diff command is `git diff <fixed-point>...HEAD` (three-dot); the commit list is"
       },
-      "SKILL.md:64": {
+      "SKILL.md:75": {
         "file": ".agents/skills/code-review/SKILL.md",
         "start": "2. **Issue references in commits** — `#123`, `Closes #45` in the commit list. `foundBy: commits`."
       },
-      "SKILL.md:82": {
+      "SKILL.md:93": {
         "file": ".agents/skills/code-review/SKILL.md",
         "start": "it (`AGENTS.md`, Branch naming). That is why an agent-authored pull request resolves a spec without"
       },
