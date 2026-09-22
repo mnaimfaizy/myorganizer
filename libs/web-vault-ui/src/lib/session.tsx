@@ -39,6 +39,12 @@ import {
  */
 export type VaultUnlockSecret = 'passphrase' | 'recovery-key';
 
+/**
+ * How this recovery-unlocked session answered the Passphrase Reset Prompt.
+ * Absent until the User skips or a reset completes. Never persisted.
+ */
+type PassphraseResetPromptAnswer = 'skipped' | 'completed';
+
 type VaultSessionContextValue = {
   masterKeyBytes: Uint8Array | null;
   /**
@@ -47,6 +53,22 @@ type VaultSessionContextValue = {
    * recovery-key unlock; the Local Vault never records this.
    */
   unlockSecret: VaultUnlockSecret | null;
+  /**
+   * True on the first paint after a recovery-key Vault Unlock, until the
+   * Passphrase Reset Prompt is skipped or a reset completes. In-memory
+   * only — never written to the Local Vault, `localStorage`,
+   * `sessionStorage`, or the server (ADR 0095). A lock or a later
+   * passphrase unlock clears it with the Vault Unlock Secret.
+   */
+  passphraseResetPromptOwed: boolean;
+  /** Decline the prompt for this recovery-unlocked session. */
+  skipPassphraseResetPrompt: () => void;
+  /**
+   * The prompt's question is answered because a passphrase was set.
+   * Does not change the Vault Unlock Secret — the Vault card may still
+   * reset without the current passphrase for the rest of the session.
+   */
+  completePassphraseResetPrompt: () => void;
   /**
    * Unlock with bytes plus the secret that produced them. Passing `null`
    * locks and clears `unlockSecret`. Omitting the secret on a non-null
@@ -111,6 +133,8 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
   );
   const [unlockSecret, setUnlockSecretState] =
     useState<VaultUnlockSecret | null>(null);
+  const [passphraseResetPromptAnswer, setPassphraseResetPromptAnswerState] =
+    useState<PassphraseResetPromptAnswer | null>(null);
 
   const owner = getCurrentUser()?.id ?? null;
   const ownerRef = useRef(owner);
@@ -120,10 +144,15 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
       if (value === null) {
         setMasterKeyBytesState(null);
         setUnlockSecretState(null);
+        setPassphraseResetPromptAnswerState(null);
         return;
       }
       setMasterKeyBytesState(value);
       setUnlockSecretState(nextUnlockSecret ?? 'passphrase');
+      // A new unlock starts the prompt over. A recovery-key unlock owes
+      // it; a passphrase unlock must not keep an answer from an earlier
+      // recovery-unlocked session.
+      setPassphraseResetPromptAnswerState(null);
     },
     [],
   );
@@ -131,19 +160,45 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
   const lock = useCallback(() => {
     setMasterKeyBytesState(null);
     setUnlockSecretState(null);
+    setPassphraseResetPromptAnswerState(null);
   }, []);
+
+  const skipPassphraseResetPrompt = useCallback(() => {
+    setPassphraseResetPromptAnswerState((current) => {
+      if (unlockSecret !== 'recovery-key' || current !== null) {
+        return current;
+      }
+      return 'skipped';
+    });
+  }, [unlockSecret]);
+
+  const completePassphraseResetPrompt = useCallback(() => {
+    setPassphraseResetPromptAnswerState((current) => {
+      if (unlockSecret !== 'recovery-key') {
+        return current;
+      }
+      return 'completed';
+    });
+  }, [unlockSecret]);
 
   let currentMasterKeyBytes = masterKeyBytes;
   let currentUnlockSecret = unlockSecret;
+  let currentPassphraseResetPromptAnswer = passphraseResetPromptAnswer;
   if (ownerRef.current !== owner) {
     ownerRef.current = owner;
     if (masterKeyBytes !== null) {
       currentMasterKeyBytes = null;
       currentUnlockSecret = null;
+      currentPassphraseResetPromptAnswer = null;
       setMasterKeyBytesState(null);
       setUnlockSecretState(null);
+      setPassphraseResetPromptAnswerState(null);
     }
   }
+
+  const passphraseResetPromptOwed =
+    currentUnlockSecret === 'recovery-key' &&
+    currentPassphraseResetPromptAnswer === null;
 
   // Keyed on `owner` alone, unlike the handle below: locking and unlocking
   // build a new handle, and a queue rebuilt with it would drop the types an
@@ -231,6 +286,9 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
     () => ({
       masterKeyBytes: currentMasterKeyBytes,
       unlockSecret: currentUnlockSecret,
+      passphraseResetPromptOwed,
+      skipPassphraseResetPrompt,
+      completePassphraseResetPrompt,
       setMasterKeyBytes,
       lock,
       handle,
@@ -243,6 +301,9 @@ export function VaultSessionProvider({ children }: VaultSessionProviderProps) {
     [
       currentMasterKeyBytes,
       currentUnlockSecret,
+      passphraseResetPromptOwed,
+      skipPassphraseResetPrompt,
+      completePassphraseResetPrompt,
       setMasterKeyBytes,
       lock,
       handle,

@@ -76,6 +76,8 @@ export function useChangePassphrase() {
   const handle = vaultSession?.handle ?? null;
   const masterKeyBytes = vaultSession?.masterKeyBytes ?? null;
   const unlockSecret = vaultSession?.unlockSecret ?? null;
+  const completePassphraseResetPrompt =
+    vaultSession?.completePassphraseResetPrompt;
 
   const [changing, setChanging] = useState(false);
 
@@ -120,6 +122,12 @@ export function useChangePassphrase() {
           description: reading.detail,
         });
 
+        // A reset from the Vault card answers the same question as the
+        // prompt. The Vault Unlock Secret stays recovery-key (ADR 0095).
+        if (authorizedBy === 'recovery-key') {
+          completePassphraseResetPrompt?.();
+        }
+
         return 'ok';
       } catch (error) {
         if (error instanceof VaultSecretMismatchError) {
@@ -136,7 +144,13 @@ export function useChangePassphrase() {
         setChanging(false);
       }
     },
-    [handle, masterKeyBytes, unlockSecret, toast],
+    [
+      handle,
+      masterKeyBytes,
+      unlockSecret,
+      completePassphraseResetPrompt,
+      toast,
+    ],
   );
 
   return { changing, unlockSecret, changePassphrase };
