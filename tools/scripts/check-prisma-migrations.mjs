@@ -38,8 +38,9 @@
 // database and this checker runs in the pre-commit aggregate: that the SQL
 // parses, that the history applies cleanly to an empty database, or that
 // applying it reproduces the schema. Those are the expensive half, and they
-// are asserted by the `prisma-migrations` job in .github/workflows/ci.yml
-// against an ephemeral Postgres service. Passing this check is not evidence
+// are asserted by the `Apply Prisma migrations and check schema drift` step
+// of the `Test` job in .github/workflows/ci.yml, against that job's
+// ephemeral Postgres service. Passing this check is not evidence
 // that a migration works; it is evidence that the history is well-formed
 // enough for the job that decides whether it works to be able to run it.
 //
@@ -214,8 +215,9 @@ if (problems.length) {
   for (const problem of problems) console.error(`  ${problem}`);
   console.error(
     '\nThis check reads files only. Whether the SQL applies and reproduces the' +
-      '\nschema is asserted by the `prisma-migrations` CI job against an' +
-      '\nephemeral Postgres, which cannot run until the history is well-formed.',
+      "\nschema is asserted by CI's `Apply Prisma migrations and check schema" +
+      '\ndrift` step against an ephemeral Postgres, which cannot run until the' +
+      '\nhistory is well-formed.',
   );
   process.exit(1);
 }
