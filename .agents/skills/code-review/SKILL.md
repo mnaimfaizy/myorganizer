@@ -47,6 +47,12 @@ finding and writes no verdict: the verdict is computed from the findings by
   the part after it is refused however it is spelled. Reach into the worktree the way you reach
   anywhere else — as an argument, `node tmp/code-review/worktree/tools/scripts/<name>.mjs` — and
   locate files in it with Glob and Grep.
+- **To read another tree, name the commit, not the directory.** `git show <sha>:<path>` is granted
+  and is how you read a file at the base or the head. **Do not reach for `git -C <dir> …`**: it is
+  not granted, the leading tokens are `git` and `-C`, and it is refused. A replay of
+  `export-envelope-drops-tasks` spent turns discovering that after being told not to `cd` — being
+  refused `cd` is not a reason to look for another way to change directory, because the directory
+  was never the thing you needed.
 - **Read a file range with the Read tool, not a shell utility.** Pass `offset`/`limit`; there is no
   `sed`, `head -n`, or `tail -n` on the allowlist for this, and there does not need to be one.
 - **Write and Edit reach only the reviewer's own tmp directory.** `tmp/code-review/**` is where the

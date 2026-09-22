@@ -196,6 +196,11 @@ export const NOT_THE_REVIEWERS_TO_RUN = [
       'Runs in the one job whose token can write. The reviewer must not post, label, or resolve anything, so being refused this is the design rather than a gap.',
   },
   {
+    command: 'git -C',
+    reason:
+      'Named by the skill only to forbid it. The reviewer reached for `git -C <dir> show …` after being told not to `cd`, and was refused — the leading tokens are `git` and `-C`, which no entry grants. `git show <sha>:<path>` is the granted way to read another tree, so this is a warning, not an instruction (ADR 0097).',
+  },
+  {
     command: 'git worktree remove',
     reason:
       "The throwaway worktree is discarded with the runner in CI and lives under gitignored tmp/ locally, so the reviewer is told to leave it. The skill names the command for the human who cleans up afterwards and answers the project settings' `ask` — which, with nobody at a keyboard, is what refused the reviewer eleven times (ADR 0097).",
@@ -627,13 +632,24 @@ export function assertToolAllowlist({
   };
 }
 
-/** One interception, as the lines a reader needs to act on it. */
-export function formatInterception({ site, rule }) {
-  const where = site.sectionId
+/**
+ * Where a site sits, as a reader needs to see it: the file and line, plus the
+ * checklist obligation it belongs to when it has one.
+ *
+ * Shared by both reporters on purpose. They printed this from two identical
+ * ternaries twenty lines apart, which is the shape where an editor fixing one
+ * leaves the other behind and the two reporters start naming sites
+ * differently.
+ */
+const siteLocation = (site) =>
+  site.sectionId
     ? `${site.file}:${site.line} (obligation ${site.sectionId})`
     : `${site.file}:${site.line}`;
+
+/** One interception, as the lines a reader needs to act on it. */
+export function formatInterception({ site, rule }) {
   return [
-    `  - ${where}`,
+    `  - ${siteLocation(site)}`,
     `      instructed:  ${site.command}`,
     `      intercepted: ${rule.raw} in ${SETTINGS} (permissions.${rule.list})`,
   ].join('\n');
@@ -641,13 +657,13 @@ export function formatInterception({ site, rule }) {
 
 /** One finding, as the lines a reader needs to act on it. */
 export function formatFinding({ site, nearest }) {
-  const where = site.sectionId
-    ? `${site.file}:${site.line} (obligation ${site.sectionId})`
-    : `${site.file}:${site.line}`;
   const shape = site.shape
     ? ` (a shape: ${site.names.length} script(s) match it, none permitted)`
     : '';
-  const lines = [`  - ${where}`, `      instructed: ${site.command}${shape}`];
+  const lines = [
+    `  - ${siteLocation(site)}`,
+    `      instructed: ${site.command}${shape}`,
+  ];
   if (!nearest || nearest.shared === 0) {
     lines.push(
       `      nearest:    none — no Bash entry begins with \`${site.alternatives[0][0]}\``,
