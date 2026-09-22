@@ -85,7 +85,8 @@ jest.mock('../services/YouTubeSyncService', () => ({
     getStatus: jest.fn(),
     disconnect: jest.fn(),
     getSubscriptions: jest.fn(),
-    manualRefresh: jest.fn(),
+    syncChannels: jest.fn(),
+    syncUploads: jest.fn(),
     getVideos: jest.fn(),
     getNotificationSettings: jest.fn(),
     updateNotificationSettings: jest.fn(),
@@ -475,6 +476,120 @@ describe('YouTubeController (HTTP integration)', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ available: true });
   });
+
+  test('PUT /youtube/subscriptions/sync calls syncChannels and returns channel sync response', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const lastAttemptAt = new Date('2026-09-22T10:00:00.000Z');
+    youtubeSyncService.syncChannels.mockResolvedValue({
+      synced: 2,
+      status: 'success',
+      lastAttemptAt,
+      lastError: null,
+      retryAt: null,
+    });
+
+    const res = await request(app)
+      .put('/youtube/subscriptions/sync')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      synced: 2,
+      status: 'success',
+      lastAttemptAt: lastAttemptAt.toISOString(),
+      lastError: null,
+      retryAt: null,
+    });
+    expect(youtubeSyncService.syncChannels).toHaveBeenCalledWith('user-1');
+    expect(youtubeSyncService.syncUploads).not.toHaveBeenCalled();
+  });
+
+  test('PUT /youtube/uploads/sync calls syncUploads and returns upload sync response', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const lastSyncedAt = new Date('2026-09-22T09:00:00.000Z');
+    const lastSyncAttemptAt = new Date('2026-09-22T10:00:00.000Z');
+    const channelLastAttemptAt = new Date('2026-09-22T08:00:00.000Z');
+    youtubeSyncService.syncUploads.mockResolvedValue({
+      subscriptionsSynced: 3,
+      videosSynced: 12,
+      status: 'success',
+      lastSyncedAt,
+      lastSyncAttemptAt,
+      lastSyncError: null,
+      retryAt: null,
+      progress: null,
+      channelStatus: 'success',
+      channelLastAttemptAt,
+      channelLastError: null,
+      channelRetryAt: null,
+    });
+
+    const res = await request(app)
+      .put('/youtube/uploads/sync')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      synced: 3,
+      videosSynced: 12,
+      status: 'success',
+      lastSyncedAt: lastSyncedAt.toISOString(),
+      lastSyncAttemptAt: lastSyncAttemptAt.toISOString(),
+      lastSyncError: null,
+      retryAt: null,
+      progress: null,
+      channelStatus: 'success',
+      channelLastAttemptAt: channelLastAttemptAt.toISOString(),
+      channelLastError: null,
+      channelRetryAt: null,
+    });
+    expect(youtubeSyncService.syncUploads).toHaveBeenCalledWith('user-1');
+    expect(youtubeSyncService.syncChannels).not.toHaveBeenCalled();
+  });
+
+  test('GET /youtube/sync-status includes channel sync fields', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const lastSyncedAt = new Date('2026-09-22T09:00:00.000Z');
+    const lastSyncAttemptAt = new Date('2026-09-22T10:00:00.000Z');
+    const channelRetryAt = new Date('2026-09-22T11:00:00.000Z');
+    youtubeSyncService.getSyncStatus.mockResolvedValue({
+      status: 'success',
+      lastSyncedAt,
+      lastSyncAttemptAt,
+      lastSyncError: null,
+      retryAt: null,
+      progress: null,
+      channelStatus: 'discovering',
+      channelLastAttemptAt: null,
+      channelLastError: null,
+      channelRetryAt,
+    });
+
+    const res = await request(app)
+      .get('/youtube/sync-status')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      status: 'success',
+      lastSyncedAt: lastSyncedAt.toISOString(),
+      lastSyncAttemptAt: lastSyncAttemptAt.toISOString(),
+      lastSyncError: null,
+      retryAt: null,
+      progress: null,
+      channelStatus: 'discovering',
+      channelLastAttemptAt: null,
+      channelLastError: null,
+      channelRetryAt: channelRetryAt.toISOString(),
+    });
+    expect(youtubeSyncService.getSyncStatus).toHaveBeenCalledWith('user-1');
+  });
 });
 
 describe('YouTube availability switch — off', () => {
@@ -581,7 +696,20 @@ describe('YouTube availability switch — off', () => {
 
     expect(res.status).toBe(404);
     expect(res.body).toEqual({ message: 'Not Found' });
-    expect(youtubeSyncService.manualRefresh).not.toHaveBeenCalled();
+    expect(youtubeSyncService.syncChannels).not.toHaveBeenCalled();
+  });
+
+  test('PUT /youtube/uploads/sync returns 404 when switch is off', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+
+    const res = await request(app)
+      .put('/youtube/uploads/sync')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'Not Found' });
+    expect(youtubeSyncService.syncUploads).not.toHaveBeenCalled();
   });
 
   test('GET /youtube/videos returns 404 when switch is off', async () => {
