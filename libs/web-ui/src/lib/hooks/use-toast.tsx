@@ -136,7 +136,8 @@ let memoryState: State = { toasts: [] };
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action);
   // Snapshot: a listener that unmounts mutates `listeners`. Iterating the live
-  // array skips the next subscriber (issue #810).
+  // array skips the next subscriber (issue #810). The original shadcn copy
+  // notified from the live array while useToast resubscribed on [state].
   for (const listener of listeners.slice()) {
     listener();
   }
