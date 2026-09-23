@@ -572,6 +572,9 @@ jobs:
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
 
+      - name: Tree-clean assertion contracts
+        run: corepack yarn git-assert-clean:test
+
       - name: Env-declared checker contracts
         run: corepack yarn env:declared:test
 
