@@ -35,8 +35,12 @@ The repository is public, so Actions minutes are free. Wall-clock is the only bu
   and **passes on retry**.
 - **Nightly lane** — all three browsers as a **matrix over browsers** (not shards), on cron
   `17 3 * * *` plus `workflow_dispatch`, against `main`. Runs with **`--fail-on-flaky-tests`**. On
-  failure it reuses the issue pattern already proven in `monthly-agent-model-audit.yml`: find the open
-  issue by fixed title, comment if present, create if not.
+  a **scheduled** failure it reuses the issue pattern already proven in `monthly-agent-model-audit.yml`:
+  find the open issue by fixed title, comment if present, create if not. A created issue is labelled
+  `needs-triage` and `github-actions`. A **scheduled** success acts on that same open issue: close it,
+  with a comment linking the run, when it carries none of the triage state labels (`needs-triage`,
+  `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`); otherwise comment that the suite
+  recovered and leave it open. `workflow_dispatch` does neither.
 
 **The app is served from a production build.** `webServer.command` becomes
 `nx run myorganizer:serve:production`, **including locally**, with `E2E_DEV_SERVER=1` as a documented
