@@ -620,10 +620,10 @@ test.describe('Vault export/import (E2E)', () => {
       page.waitForEvent('download'),
       exportButton.click(),
     ]);
-    const downloadPath = await download.path();
-    expect(downloadPath).toBeTruthy();
+    const downloadPath = join(tmpdir(), `vault-export-${Date.now()}.json`);
+    await download.saveAs(downloadPath);
     const fs = await import('node:fs/promises');
-    const exportedText = await fs.readFile(downloadPath as string, 'utf8');
+    const exportedText = await fs.readFile(downloadPath, 'utf8');
     const parsed = JSON.parse(exportedText) as {
       schemaVersion: number;
       exportId: string;
@@ -846,10 +846,10 @@ test.describe('Vault export/import (E2E)', () => {
       page.waitForEvent('download'),
       exportButton.click(),
     ]);
-    const downloadPath = await download.path();
-    expect(downloadPath).toBeTruthy();
+    const downloadPath = join(tmpdir(), `vault-export-${Date.now()}.json`);
+    await download.saveAs(downloadPath);
     const fs = await import('node:fs/promises');
-    const exportedText = await fs.readFile(downloadPath as string, 'utf8');
+    const exportedText = await fs.readFile(downloadPath, 'utf8');
 
     const importInput = page.getByTestId('import-vault-file');
     await expect(importInput).toBeVisible({ timeout: 60000 });
@@ -910,10 +910,10 @@ test.describe('Vault export/import (E2E)', () => {
       page.waitForEvent('download'),
       exportButton.click(),
     ]);
-    const downloadPath = await download.path();
-    expect(downloadPath).toBeTruthy();
+    const downloadPath = join(tmpdir(), `vault-export-${Date.now()}.json`);
+    await download.saveAs(downloadPath);
     const fs = await import('node:fs/promises');
-    const oldExportedText = await fs.readFile(downloadPath as string, 'utf8');
+    const oldExportedText = await fs.readFile(downloadPath, 'utf8');
 
     // Step 4: Unlock vault on settings page, then change the passphrase from P1 to P2
     await unlockVaultOnSettingsPage(page, p1);
@@ -985,10 +985,10 @@ test.describe('Vault export/import (E2E)', () => {
       pageA.waitForEvent('download'),
       exportButtonA.click(),
     ]);
-    const downloadPathA = await downloadA.path();
-    expect(downloadPathA).toBeTruthy();
+    const downloadPathA = join(tmpdir(), `vault-export-${Date.now()}.json`);
+    await downloadA.saveAs(downloadPathA);
     const fs = await import('node:fs/promises');
-    const exportedTextA = await fs.readFile(downloadPathA as string, 'utf8');
+    const exportedTextA = await fs.readFile(downloadPathA, 'utf8');
 
     // The salt is the Vault Identity: it is the facet `describeVaultMetaDivergence`
     // reads to classify `different-vault`. Read it from the Escape Copy's meta.
