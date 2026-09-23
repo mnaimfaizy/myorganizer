@@ -1,12 +1,11 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { GATE_MANIFEST, runGateManifest } from './lib/gate-manifest.mjs';
+import { createGateManifestWorkspace } from './lib/gate-manifest-test-workspace.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const RUNNER = join(
@@ -27,15 +26,22 @@ const RUNNER = join(
 // wall clock, and not the earlier "Measurement refresh — 2026-09-22" comment,
 // which reports different spawn and aggregate figures. The brief's spawn and
 // per-checker figures, and ADR 0043's yarn-line overhead, live in the
-// constants below. 8 sits between those two ratios so the bound fails once
-// cost is more than halfway to a yarn-line spawn. The calibration test
-// asserts that placement; this comment does not restate the arithmetic.
+// constants below. Bound of 8 sits between those two ratios so it fails
+// once cost is more than halfway to a yarn-line spawn.
+// Headroom at writing is HEADROOM_AT_WRITING = 8 / (372/96) = 2.06× —
+// more than twice the Agent Brief's Windows cost, less than halfway to
+// the yarn-line shape. The calibration test asserts that 2.06× figure
+// so the stated margin cannot drift from the constants silently.
 const AGENT_BRIEF_WINDOWS_BASELINE_MS = 96;
 const AGENT_BRIEF_WINDOWS_PER_CHECKER_MS = 372;
 const ADR_0043_YARN_LINE_MS = 1300;
 const MAX_CHECKER_COST_IN_BASELINES = 8;
 const YARN_SHAPE_IN_BASELINES =
   ADR_0043_YARN_LINE_MS / AGENT_BRIEF_WINDOWS_BASELINE_MS;
+const AGENT_BRIEF_RATIO_IN_BASELINES =
+  AGENT_BRIEF_WINDOWS_PER_CHECKER_MS / AGENT_BRIEF_WINDOWS_BASELINE_MS;
+const HEADROOM_AT_WRITING =
+  MAX_CHECKER_COST_IN_BASELINES / AGENT_BRIEF_RATIO_IN_BASELINES;
 
 function measureBareNodeSpawnMs(rounds = 5) {
   let total = 0;
@@ -126,6 +132,8 @@ test('a per-checker cost at the yarn-line shape fails the bound', () => {
 });
 
 test('the bound sits between the Agent Brief Windows cost and the yarn shape', () => {
+  assert.equal(AGENT_BRIEF_RATIO_IN_BASELINES.toFixed(3), '3.875');
+  assert.equal(HEADROOM_AT_WRITING.toFixed(2), '2.06');
   assert.ok(
     checkerCostInBaselines(
       AGENT_BRIEF_WINDOWS_PER_CHECKER_MS,
@@ -143,11 +151,11 @@ test('the bound sits between the Agent Brief Windows cost and the yarn shape', (
 });
 
 test('per-checker cost does not rise when the roster grows', (t) => {
-  const workspace = mkdtempSync(join(tmpdir(), 'gate-roster-'));
-  t.after(() => rmSync(workspace, { recursive: true, force: true }));
-  mkdirSync(join(workspace, 'tools/scripts'), { recursive: true });
   const script = 'tools/scripts/check-stub.mjs';
-  writeFileSync(join(workspace, script), 'process.exit(0);\n');
+  const workspace = createGateManifestWorkspace(t, {
+    prefix: 'gate-roster-',
+    scripts: [script],
+  });
 
   const largeN = GATE_MANIFEST.length;
   const smallN = Math.max(2, Math.floor(largeN / 2));
