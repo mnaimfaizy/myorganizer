@@ -58,6 +58,15 @@ and covered by `yarn review:test`.
   change that caused it. The short vocabulary is the deliberate trade: a
   wrong attribution corrupts the numerator permanently, while phrasing
   nothing recognises lands in `unattributed`, which every report counts.
+- **The convention** that feeds the attribution is
+  [ADR 0100](../adr/0100-a-fix-names-what-introduced-it-in-its-commits.md):
+  a fix branch's commits carry `Introduced in #<pull request>`, or
+  `Introduced in unknown: <why>` when nothing can be named, and
+  `yarn fix:attribution:check` fails a fix Pull Request that carries neither.
+  A declared-unknown origin is counted in its own class, `origin-unknown`,
+  apart from `unattributed`, which means only that the fix said nothing.
+  There is no backfill; the population carries the line from the day the
+  gate landed (2026-09-23).
 - **The review status** of the named Pull Request is read back out of the
   publisher's own sticky comment, using the same heading helper the renderer
   writes it with, and the report carries the verdict itself and not only the

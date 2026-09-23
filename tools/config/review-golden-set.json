@@ -64,6 +64,7 @@
       "title": "A release bumps package.json and does not resync the generated OpenAPI spec and client",
       "incident": "issue #408, fixed by PR #417, introduced by PR #379 (git log -S '\"version\": \"0.4.0\"' -- package.json → ced2895, named as root cause in #408)",
       "tier": "frontier",
+      "tierEvidence": "missed in run 35833576958 after catches in every replay since 34663295486. Not a clean miss: its wiredBy citation quotes the replay's checkout, not the case head, and fails review:obligations:check, which the replay does not run (golden-replay-results.md).",
       "base": "c3c17c9efb3d727a5297a9fe9a993cdefcab11b3",
       "head": "8175cb64bf07888610756a52a5dcae7f09f06e7b",
       "spec": {

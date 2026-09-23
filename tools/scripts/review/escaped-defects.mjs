@@ -224,6 +224,22 @@ export const parseRootCause = (text) => {
 };
 
 /**
+ * The line a fix writes when it looked for the change that introduced the
+ * defect and could not name one (ADR 0100): `Introduced in unknown: <why>`.
+ *
+ * It shares its lead with the `introduced-in` marker so that there is one
+ * convention to remember, and it is anchored to the start of a line so the
+ * phrase inside a sentence ("the date it was introduced in unknown ways") is
+ * not read as a declaration. The reason after the colon is required, and the
+ * whole declaration sits on one line: a bare "unknown" records that nobody
+ * wrote a reason, which is the silence this class exists to tell apart. A declaration is not attribution — it resolves
+ * to nothing and never reaches the numerator — but it is a recorded outcome,
+ * counted in its own class, where silence lands in `unattributed`.
+ */
+export const ORIGIN_UNKNOWN =
+  /^[ \t]*introduced[ \t]+in[ \t]+unknown[ \t]*:[ \t]*\S.*$/im;
+
+/**
  * Where a fix's attribution is read from, in the order that decides which
  * one wins.
  *
@@ -242,13 +258,29 @@ export const ATTRIBUTION_SOURCES = /** @type {const} */ ([
 /**
  * The root cause a fix names, from the first source that names one.
  *
+ * A named reference in any source outranks a declared-unknown origin in any
+ * other: the declaration says nobody could find the change, and a source that
+ * found it is the better evidence. Only when no source names a reference is
+ * an `Introduced in unknown` line read, and it comes back with `ref: null`.
+ *
  * @param {Record<string, string|null|undefined>} sources text per source id
- * @returns {{ source: string, ref: object, marker: string, quote: string, others: object[] } | null}
+ * @returns {{ source: string, ref: object | null, marker: string, quote: string, others: object[] } | null}
  */
 export const attributeFix = (sources = {}) => {
   for (const source of ATTRIBUTION_SOURCES) {
     const found = parseRootCause(sources[source]);
     if (found) return { source, ...found };
+  }
+  for (const source of ATTRIBUTION_SOURCES) {
+    const declared = ORIGIN_UNKNOWN.exec(String(sources[source] ?? ''));
+    if (declared)
+      return {
+        source,
+        ref: null,
+        marker: 'origin-unknown',
+        quote: declared[0].trim(),
+        others: [],
+      };
   }
   return null;
 };
@@ -265,6 +297,7 @@ export const attributeFix = (sources = {}) => {
  *   `unknown`       the review status could not be looked up at all
  *   `unresolved`    a root cause that resolves to no merged Pull Request
  *   `not-earlier`   a root cause that is the fix itself, or merged after it
+ *   `origin-unknown` the fix declares it looked and could not name one
  *   `unattributed`  the fix names no root cause
  */
 export const FIX_CLASSES = /** @type {const} */ ([
@@ -276,6 +309,7 @@ export const FIX_CLASSES = /** @type {const} */ ([
   'unknown',
   'unresolved',
   'not-earlier',
+  'origin-unknown',
   'unattributed',
 ]);
 
@@ -309,6 +343,8 @@ for (const outcome of REVIEW_OUTCOMES) {
  */
 export const classifyFix = ({ fix, attribution, rootCause }) => {
   if (!attribution) return { ...fix, class: 'unattributed', attribution: null };
+  if (!attribution.ref)
+    return { ...fix, class: 'origin-unknown', attribution, rootCause: null };
   const row = { ...fix, attribution, rootCause: rootCause ?? null };
   if (!rootCause) return { ...row, class: 'unresolved' };
   // A fix cannot be caused by work that merged after it, and it cannot be
@@ -397,7 +433,8 @@ export const summarize = ({
     evidence: evidence ?? null,
     sample: {
       fixes: fixes.length,
-      attributed: fixes.filter((f) => f.class !== 'unattributed').length,
+      attributed: fixes.filter((f) => f.attribution?.ref).length,
+      originUnknown: classes['origin-unknown'],
       unattributed: classes.unattributed,
     },
     classes,
@@ -423,6 +460,8 @@ const CLASS_NOTES = {
   unresolved: 'names a root cause that resolves to no merged Pull Request',
   'not-earlier':
     'names a root cause that is the fix itself, or merged after it',
+  'origin-unknown':
+    'declares it looked for the change that introduced it and found none',
   unattributed: 'names no root cause',
 };
 for (const c of FIX_CLASSES) {
@@ -436,7 +475,7 @@ export const renderMeasurement = (summary) => {
     `# Escaped-defect measurement (${w.since} to ${w.until})`,
     '',
     `- fixes merged in the window: **${sample.fixes}**`,
-    `- of those, naming a root cause: **${sample.attributed}**; naming none: **${sample.unattributed}**`,
+    `- of those, naming a root cause: **${sample.attributed}**; declaring it unknown: **${sample.originUnknown}**; naming none: **${sample.unattributed}**`,
     `- Pull Requests the reviewer passed in the window: **${summary.denominator}**`,
     `- of those, named as root cause by a later fix: **${summary.escaped.length}**`,
     `- **escaped-defect rate: ${percent(summary.rate)}**`,
@@ -462,7 +501,7 @@ export const renderMeasurement = (summary) => {
   for (const c of FIX_CLASSES)
     lines.push(`| \`${c}\` | ${classes[c]} | ${CLASS_NOTES[c]} |`);
   lines.push('');
-  const attributed = summary.fixes.filter((f) => f.class !== 'unattributed');
+  const attributed = summary.fixes.filter((f) => f.attribution?.ref);
   if (attributed.length > 0) {
     lines.push(
       '## Attributed fixes',

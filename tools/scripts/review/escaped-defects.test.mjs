@@ -137,6 +137,41 @@ test('sources are consulted in a fixed order, and the winner says which it was',
   assert.equal(attributeFix({}), null);
 });
 
+// ADR 0100: a fix that looked and found nothing says so, and that is a
+// recorded outcome rather than silence.
+test('an Introduced in unknown line is a declaration with no reference', () => {
+  const found = attributeFix({
+    commits:
+      'fix(vault): keep the blob\n\nIntroduced in unknown: predates the pull request history.\n',
+  });
+  assert.equal(found.marker, 'origin-unknown');
+  assert.equal(found.ref, null);
+  assert.equal(found.source, 'commits');
+  assert.match(found.quote, /^Introduced in unknown: predates/);
+});
+
+test('a named reference in any source outranks a declared-unknown origin', () => {
+  const found = attributeFix({
+    issue: 'Introduced in unknown: could not find it.',
+    commits: 'Introduced in #415',
+  });
+  assert.equal(found.marker, 'introduced-in');
+  assert.equal(found.ref.number, 415);
+});
+
+test('the declaration is read only at the start of a line', () => {
+  assert.equal(
+    attributeFix({ commits: 'It was introduced in unknown ways.' }),
+    null,
+  );
+});
+
+test('the declaration needs its reason, on the same line', () => {
+  assert.equal(attributeFix({ commits: 'Introduced in unknown' }), null);
+  assert.equal(attributeFix({ commits: 'Introduced in unknown:   ' }), null);
+  assert.equal(attributeFix({ commits: 'Introduced in\nunknown: x' }), null);
+});
+
 // ---------------------------------------------------------------------------
 // Reading a verdict back out of a published review
 // ---------------------------------------------------------------------------
@@ -257,6 +292,17 @@ test('a fix with no attribution is counted as unattributed', () => {
   assert.equal(row.number, 800);
 });
 
+test('a declared-unknown origin has its own class and no root cause', () => {
+  const row = classifyFix({
+    fix,
+    attribution: attributeFix({ commits: 'Introduced in unknown: gone.' }),
+    rootCause: null,
+  });
+  assert.equal(row.class, 'origin-unknown');
+  assert.equal(row.rootCause, null);
+  assert.ok(FIX_CLASSES.includes(row.class));
+});
+
 test('an attribution that resolves to nothing is unresolved, not dropped', () => {
   assert.equal(
     classifyFix({ fix, attribution, rootCause: null }).class,
@@ -324,6 +370,27 @@ test('the rate is escaped Pull Requests over Pull Requests the reviewer passed',
   assert.equal(summary.sample.fixes, 2);
   assert.equal(summary.sample.attributed, 1);
   assert.equal(summary.sample.unattributed, 1);
+});
+
+test('a declared-unknown fix is neither attributed nor unattributed, and renders', () => {
+  const summary = summarize({
+    window,
+    fixes: [
+      classifyFix({
+        fix,
+        attribution: attributeFix({ commits: 'Introduced in unknown: gone.' }),
+        rootCause: null,
+      }),
+    ],
+    passed: [],
+  });
+  assert.equal(summary.sample.attributed, 0);
+  assert.equal(summary.sample.originUnknown, 1);
+  assert.equal(summary.sample.unattributed, 0);
+  assert.equal(summary.classes['origin-unknown'], 1);
+  const markdown = renderMeasurement(summary);
+  assert.match(markdown, /declaring it unknown: \*\*1\*\*/);
+  assert.doesNotMatch(markdown, /## Attributed fixes/);
 });
 
 test('two fixes naming one Pull Request are one escaped defect', () => {

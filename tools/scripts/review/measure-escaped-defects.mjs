@@ -118,6 +118,10 @@ export const parsePullRequestLog = (raw) => {
       mergedAt,
       branch,
       title,
+      // A squash folds the branch's commit messages into its own body, so it
+      // is the only place a squashed fix's attribution line survives. A merge
+      // commit's body is the title, and its commits are read from the range.
+      message: merge ? null : `${subject}\n${body}`,
       type: pullRequestType({ branch, title }),
     });
   }
@@ -146,9 +150,15 @@ export const listPullRequests = ({ base, since, until }) => {
  */
 export const isFix = (pr) => pr.type === 'fix';
 
-/** The commit messages a Pull Request brought in, as one blob of text. */
-const commitTextOf = (pr) => {
-  if (pr.parents.length < 2) return `${pr.title}\n`;
+/**
+ * The commit messages a Pull Request brought in, as one blob of text.
+ *
+ * A single-parent landing is a squash: its own message is the whole record,
+ * and reading only its title would drop the `Introduced in` line the fix gate
+ * (ADR 0100) required on the branch.
+ */
+export const commitTextOf = (pr) => {
+  if (pr.parents.length < 2) return `${pr.message ?? pr.title}\n`;
   try {
     return git([
       'log',
@@ -360,7 +370,7 @@ export const measure = (gathered, { base } = {}) => {
 
   const rows = gathered.fixes.map((fix) => {
     const attribution = attributeFix(fix.sources);
-    const target = attribution ? resolve(attribution.ref) : null;
+    const target = attribution?.ref ? resolve(attribution.ref) : null;
     const review = target ? reviewByNumber.get(target.number) : null;
     const rootCause = target
       ? {
