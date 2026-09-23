@@ -940,10 +940,13 @@ test.describe('Vault export/import (E2E)', () => {
     await expect(
       page.getByText('Import complete', { exact: true }),
     ).toBeVisible({ timeout: 60000 });
+    // lastServerNote is scoped to main — the toast description repeats this text.
     await expect(
-      page.getByText('Imported locally. Audit recorded on server.', {
-        exact: true,
-      }),
+      page
+        .getByRole('main')
+        .getByText('Imported locally. Audit recorded on server.', {
+          exact: true,
+        }),
     ).toBeVisible({ timeout: 60000 });
     await expect(importButton).toBeDisabled();
 
