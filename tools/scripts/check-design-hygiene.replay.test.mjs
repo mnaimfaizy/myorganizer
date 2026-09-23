@@ -16,8 +16,11 @@
  *      fail. Every one of those citations pointed at a line that exists, so
  *      resolution alone cannot fail them; the anchor requirement is what does.
  *   2. The page as it stands NOW, read against the source tree as it stood
- *      before #771, must fail on CONTENT. This is the discriminating half: the
- *      citations resolve, carry anchors, and are still wrong for that tree.
+ *      before #771, must fail. The citations resolve, carry anchors, and are
+ *      still wrong for that tree. A line that exists there with different text
+ *      is a content mismatch. A line past that file's end is unreadable. Both
+ *      are the drift: an insertion in ci.yml that pushes a citation past the
+ *      historical file must not turn this half into a pass.
  */
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
@@ -165,14 +168,23 @@ test("today's anchored page fails on content when read against the pre-#771 tree
     'content comparison found nothing in a tree the page is genuinely wrong about',
   );
 
-  // The ci.yml citations #771 corrected are the ones that moved again since, so
-  // they are the ones a content comparison can separate. The remaining stale
-  // citations name lines whose text is identical in both trees — no comparison
-  // can tell those apart, which is why resolution and anchors are both needed.
+  // The ci.yml citations #771 corrected are the ones that have kept moving.
+  // While the cited line is still inside the pre-#771 file, content comparison
+  // separates them. Once an insertion above them puts the line past that
+  // file's end — the nightly rot-issue step moved build-backend from :972 to
+  // :975, and the historical ci.yml has no such line — the same citations fail
+  // as unreadable. Either rule is the drift. Other mismatches can be citations
+  // whose text differs for unrelated reasons; they are not a substitute.
+  const ciYmlDrift = findings.filter(
+    (finding) =>
+      (finding.rule === 'citation-anchor-mismatch' ||
+        finding.rule === 'citation-anchor-unreadable') &&
+      finding.message.includes('ci.yml:'),
+  );
   assert.ok(
-    mismatches.some((finding) => finding.message.includes('ci.yml:')),
-    `expected a ci.yml mismatch, got: ${mismatches
-      .map((finding) => finding.message)
+    ciYmlDrift.length > 0,
+    `expected a ci.yml citation to fail against the pre-#771 tree, got: ${findings
+      .map((finding) => `${finding.rule}: ${finding.message}`)
       .join(' | ')}`,
   );
 });
