@@ -129,17 +129,31 @@ export const reducer = (state: State, action: Action): State => {
   }
 };
 
-const listeners: Array<(state: State) => void> = [];
+const listeners: Array<() => void> = [];
 
 let memoryState: State = { toasts: [] };
 
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action);
-  // Snapshot: a listener that unmounts or re-subscribes mutates `listeners`.
-  // Iterating the live array skips the next subscriber (issue #810).
+  // Snapshot: a listener that unmounts mutates `listeners`. Iterating the live
+  // array skips the next subscriber (issue #810).
   for (const listener of listeners.slice()) {
-    listener(memoryState);
+    listener();
   }
+}
+
+function subscribe(listener: () => void) {
+  listeners.push(listener);
+  return () => {
+    const index = listeners.indexOf(listener);
+    if (index > -1) {
+      listeners.splice(index, 1);
+    }
+  };
+}
+
+function getSnapshot(): State {
+  return memoryState;
 }
 
 type Toast = Omit<ToasterToast, 'id'>;
@@ -154,6 +168,10 @@ function toast({ ...props }: Toast) {
     });
   const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
+  // Drop any toast already occupying the limit-1 slot so Radix unmounts it
+  // before the next Root mounts. Replacing an open toast in-place leaves the
+  // previous title in the viewport and the new one never appears (CI E2E).
+  dispatch({ type: 'REMOVE_TOAST' });
   dispatch({
     type: 'ADD_TOAST',
     toast: {
@@ -174,19 +192,7 @@ function toast({ ...props }: Toast) {
 }
 
 function useToast() {
-  const [state, setState] = React.useState<State>(memoryState);
-
-  // Subscribe once. `setState` is stable; depending on `state` splices this
-  // listener out and back in during `dispatch`, which skips other subscribers.
-  React.useEffect(() => {
-    listeners.push(setState);
-    return () => {
-      const index = listeners.indexOf(setState);
-      if (index > -1) {
-        listeners.splice(index, 1);
-      }
-    };
-  }, []);
+  const state = React.useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
 
   return {
     ...state,
