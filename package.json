@@ -79,6 +79,8 @@
     "adr:numbering:check": "node tools/scripts/check-adr-numbering.mjs",
     "adr:status:check": "node tools/scripts/check-adr-status.mjs",
     "adr:status:test": "node --test tools/scripts/check-adr-status.test.mjs",
+    "fix:attribution:check": "node tools/scripts/check-fix-attribution.mjs",
+    "fix:attribution:test": "node --test tools/scripts/check-fix-attribution.test.mjs",
     "docs:commands:check": "node tools/scripts/check-doc-commands.mjs",
     "docs:commands:test": "node --test tools/scripts/check-doc-commands.test.mjs",
     "docs:file-refs:check": "node tools/scripts/check-doc-file-refs.mjs",

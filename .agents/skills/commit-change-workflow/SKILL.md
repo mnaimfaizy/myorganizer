@@ -31,6 +31,7 @@ The `Commit` sub-agent must stay read-only. Do not ask it to stage, commit, or f
 - Never `git add .` or `git add -A`. Stage specific paths the user intends to commit.
 - Do not stage secret-looking files: `.env`, `.env.*` except `.env.example` / `.env.sample` / `.env.template`, `credentials.json`, `*.pem`, `*.p12`, `*.pfx`, `*.keystore`, `id_rsa`, `id_ed25519`, `id_dsa`, `id_ecdsa`.
 - If `Commit` recommends splitting into multiple commits, stop and ask which group to commit first. Do not run `ai:commit` for every proposed message.
+- On a fix (a `fix/` branch, or a `fix` title on a reserved prefix), at least one commit body on the branch carries a line naming the change that introduced the defect: `Introduced in #<pull request>`, or `Introduced in unknown: <why>` when the archaeology finds nothing ([ADR 0100](../../../docs/adr/0100-a-fix-names-what-introduced-it-in-its-commits.md)). `Commit` drafts from the staged diff and cannot know the origin, so add the line to the message file yourself; never invent a number. CI fails a fix without it (`yarn fix:attribution:check`).
 
 ## Staging
 

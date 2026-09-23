@@ -658,6 +658,20 @@ jobs:
       - name: Check ADR status
         run: corepack yarn adr:status:check
 
+      # A fix names the change that introduced its defect, or declares that
+      # nothing can be named (ADR 0100) — the line the escaped-defect rate is
+      # built from. Pull requests only: a push has no head branch to type.
+      # Branch and title reach the script through env and are never
+      # interpolated into the shell, because both are author-controlled text.
+      - name: Check a fix names its origin
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.head_ref }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: corepack yarn fix:attribution:check --base "$BASE_SHA" --head "$HEAD_SHA" --branch "$HEAD_REF" --title "$PR_TITLE"
+
       - name: Check documented commands resolve
         run: corepack yarn docs:commands:check
 
@@ -714,6 +728,9 @@ jobs:
 
       - name: ADR status checker contracts
         run: corepack yarn adr:status:test
+
+      - name: Fix attribution checker contracts
+        run: corepack yarn fix:attribution:test
 
       - name: Escape Copy reader gate contracts
         run: corepack yarn escape-copy-reader:test

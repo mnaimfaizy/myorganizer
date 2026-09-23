@@ -10,9 +10,11 @@ import test from 'node:test';
 import {
   isFix,
   measure,
+  commitTextOf,
   parsePullRequestLog,
   pullRequestType,
 } from './measure-escaped-defects.mjs';
+import { attributeFix } from './escaped-defects.mjs';
 
 const FIELD = '\u0000';
 const RECORD = '\u001e';
@@ -54,6 +56,24 @@ test('a squash merge carries its number in the subject and has no branch', () =>
   assert.equal(pr.number, 293);
   assert.equal(pr.branch, null);
   assert.equal(pr.type, 'fix');
+});
+
+// ADR 0100: the gate reads a fix branch's commits, and a squash folds them
+// into its own body. Reading only the squash's title would pass the gate and
+// still count the fix as unattributed.
+test("a squash merge's commit text is its whole message, where the attribution survives", () => {
+  const [pr] = parsePullRequestLog(
+    entry({
+      sha: 'd'.repeat(40),
+      parents: 'e'.repeat(40),
+      mergedAt: '2026-08-01T10:00:00Z',
+      subject: 'fix(review): keep the review (#694)',
+      body: '* fix(review): keep the review\n\nIntroduced in #650',
+    }),
+  );
+  const text = commitTextOf(pr);
+  assert.match(text, /Introduced in #650/);
+  assert.equal(attributeFix({ commits: text }).ref.number, 650);
 });
 
 test('a commit that is neither shape is not a Pull Request', () => {
