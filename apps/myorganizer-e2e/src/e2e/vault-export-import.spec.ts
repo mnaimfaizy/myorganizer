@@ -1044,9 +1044,11 @@ test.describe('Vault export/import (E2E)', () => {
     // Step 4: Confirm the import with different-vault disclosure
     await confirmImportReplaceDialog(pageB, 'different-vault');
 
-    // Step 5: Assert the import succeeded with durable signals (not the toast,
-    // which issue #810 may drop when a second toast follows).
-    // Scoped to `main`: here the toast may survive and repeat the same text.
+    // Step 5: Assert the import succeeded.
+    await expect(
+      pageB.getByText('Import complete', { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
+    // lastServerNote is scoped to main — the toast description repeats this text.
     await expect(
       pageB
         .getByRole('main')
