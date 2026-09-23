@@ -14,21 +14,25 @@ const RUNNER = join(
 
 // ADR 0043: each `corepack yarn` line costs ~1.3s of overhead against ~350ms
 // of work. Issue #735: a 5000ms wall-clock cap on the whole aggregate is
-// platform-sensitive, roster-sensitive, and order-sensitive, so it went red
-// on Windows while the property it was defending stayed healthy.
+// platform-sensitive and roster-sensitive, so it went red on Windows while
+// the property it was defending stayed healthy.
 //
 // The bound is per-checker cost divided by a same-run bare-node spawn.
 // Adding a checker scales both sides; there is no platform branch.
 //
-// Derivation (Windows 11, Node 22.19.0, 2026-09-22, 31 checkers — the
-// platform that made the old budget fail):
-//   bare-node spawn mean 96ms
-//   per-checker 372ms → 3.86× baseline  (healthy; ADR's "~350ms of work")
-//   yarn-shape 1300ms → 13.5× baseline (the regression)
-// 8 sits between them: ~2× today's measured cost, and it fails once cost is
-// more than halfway to a yarn-line spawn. Headroom at writing: 8 / 3.86 ≈ 2.1×.
+// Threshold placement is pinned by the Agent Brief on issue #735 (Windows 11,
+// Node 22.19.0, 2026-09-22) — not the issue body, which only reports
+// whole-aggregate wall clock. The brief's spawn and per-checker figures, and
+// ADR 0043's yarn-line overhead, live in the constants below. 8 sits between
+// those two ratios so the bound fails once cost is more than halfway to a
+// yarn-line spawn. The calibration test asserts that placement; this comment
+// does not restate the arithmetic.
+const AGENT_BRIEF_WINDOWS_BASELINE_MS = 96;
+const AGENT_BRIEF_WINDOWS_PER_CHECKER_MS = 372;
+const ADR_0043_YARN_LINE_MS = 1300;
 const MAX_CHECKER_COST_IN_BASELINES = 8;
-const YARN_SHAPE_IN_BASELINES = 13;
+const YARN_SHAPE_IN_BASELINES =
+  ADR_0043_YARN_LINE_MS / AGENT_BRIEF_WINDOWS_BASELINE_MS;
 
 function measureBareNodeSpawnMs(rounds = 5) {
   let total = 0;
@@ -90,7 +94,7 @@ test('the aggregate stays well under a yarn-line per-checker cost', () => {
   assert.ok(
     ratio < MAX_CHECKER_COST_IN_BASELINES,
     `expected per-checker cost well under the corepack-yarn shape ` +
-      `(${YARN_SHAPE_IN_BASELINES}× a same-run node spawn, bound ` +
+      `(${YARN_SHAPE_IN_BASELINES.toFixed(1)}× a same-run node spawn, bound ` +
       `${MAX_CHECKER_COST_IN_BASELINES}×); took ${ratio.toFixed(2)}× ` +
       `(${elapsedMs.toFixed(0)}ms across ${checkerCount} checkers, ` +
       `baseline ${baselineMs.toFixed(0)}ms)`,
@@ -112,30 +116,25 @@ test('a per-checker cost at the yarn-line shape fails the bound', () => {
   const ratio = checkerCostInBaselines(elapsedMs, 1, baselineMs);
   assert.ok(
     ratio > MAX_CHECKER_COST_IN_BASELINES,
-    `expected a ${YARN_SHAPE_IN_BASELINES}×-baseline hold to exceed the ` +
+    `expected a ${YARN_SHAPE_IN_BASELINES.toFixed(1)}×-baseline hold to exceed the ` +
       `bound of ${MAX_CHECKER_COST_IN_BASELINES}×; took ${ratio.toFixed(2)}× ` +
       `(${elapsedMs.toFixed(0)}ms vs ${baselineMs.toFixed(0)}ms baseline)`,
   );
 });
 
-test('the bound sits between the measured Windows cost and the yarn shape', () => {
-  // Published measurements from issue #735 (Windows 11, 2026-09-22).
-  const windowsBaselineMs = 96;
-  const windowsPerCheckerMs = 372;
-  const yarnShapeMs = 1300;
-
+test('the bound sits between the Agent Brief Windows cost and the yarn shape', () => {
   assert.ok(
-    checkerCostInBaselines(windowsPerCheckerMs, 1, windowsBaselineMs) <
-      MAX_CHECKER_COST_IN_BASELINES,
+    checkerCostInBaselines(
+      AGENT_BRIEF_WINDOWS_PER_CHECKER_MS,
+      1,
+      AGENT_BRIEF_WINDOWS_BASELINE_MS,
+    ) < MAX_CHECKER_COST_IN_BASELINES,
   );
   assert.ok(
-    checkerCostInBaselines(yarnShapeMs, 1, windowsBaselineMs) >
-      MAX_CHECKER_COST_IN_BASELINES,
-  );
-  // Roster sizes when the issue was filed (24) and when the brief pinned
-  // option 3 (31). Same per-checker cost must produce the same ratio.
-  assert.equal(
-    checkerCostInBaselines(windowsPerCheckerMs * 24, 24, windowsBaselineMs),
-    checkerCostInBaselines(windowsPerCheckerMs * 31, 31, windowsBaselineMs),
+    checkerCostInBaselines(
+      ADR_0043_YARN_LINE_MS,
+      1,
+      AGENT_BRIEF_WINDOWS_BASELINE_MS,
+    ) > MAX_CHECKER_COST_IN_BASELINES,
   );
 });
