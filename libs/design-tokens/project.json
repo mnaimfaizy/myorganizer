@@ -16,6 +16,17 @@
         "cwd": "libs/design-tokens",
         "command": "node scripts/build-tokens.cjs"
       }
+    },
+    "check": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "commands": [
+          "nx run design-tokens:build-tokens",
+          "node tools/scripts/git-assert-clean.mjs design-tokens-check"
+        ],
+        "parallel": false
+      }
     }
   }
 }

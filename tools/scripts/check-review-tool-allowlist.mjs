@@ -160,6 +160,21 @@ export const NOT_THE_REVIEWERS_TO_RUN = [
       'Runs in the one job whose token can write. The reviewer must not post, label, or resolve anything, so being refused this is the design rather than a gap.',
   },
   {
+    command: 'yarn openapi:check',
+    reason:
+      'A coveringGate value in obligation run-the-gate-that-covers-this-change, so it is a gate NAME the reviewer greps the hooks and workflows for, never a command it runs (ADR 0098). This one is doubly not the reviewer to run: it resyncs the spec and rewrites files in the checkout, which the checklist entry says in so many words.',
+  },
+  {
+    command: 'yarn prisma:migrations:check',
+    reason:
+      'A coveringGate value in the same obligation. The entry answers wiredBy by reading, not running; where a reviewer does run a checker it is the check-*.mjs script through node, which the allowlist permits and this spelling is not.',
+  },
+  {
+    command: 'yarn design-tokens:check',
+    reason:
+      'A coveringGate value in the same obligation, and an nx target that rebuilds libs/design-tokens/src/generated before asserting the tree is clean — mutating the checkout is not something a reviewer should do (ADR 0098).',
+  },
+  {
     command: 'git branch --show-current',
     reason:
       'Step 2 reads the branch name to find the spec interactively. In CI the branch name is given in the prompt as a fact, along with the fixed point, the head, and the tier.',

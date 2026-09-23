@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -723,4 +724,149 @@ test('a diff touching none of those shapes fires nothing', () => {
     head: 'abc',
   });
   assert.deepEqual(selected, []);
+});
+
+// --- Covering Gate: a fact the catalogue states, not a choice (ADR 0098) -----
+//
+// Golden Replay run 47 answered `gate: "deploy:pages:check"` with a citation
+// that matched the tree. Every field was true, the defect correctly did not
+// fire, and the answer was about the wrong gate. The golden case is explicitly
+// NOT the signal these tests replace — it draws from a distribution and was
+// caught repeatedly while the gap was open. What is asserted here is the
+// mechanism: that answer is no longer expressible.
+
+const gated = (over = {}) =>
+  obligation({
+    answerFields: ['wiredBy'],
+    citedFields: ['wiredBy'],
+    siteFields: ['coveringGate'],
+    trigger: {
+      paths: [{ glob: 'libs/**', coveringGate: 'openapi:check' }],
+    },
+    ...over,
+  });
+
+test('a trigger path must carry every declared site field', () => {
+  const bad = [
+    // The whole point of requiring it: an entry that omits the gate cannot
+    // load, so "no map entry exists" is unrepresentable and the only state
+    // left is "no gate covers this" — which is `wiredBy: "none"`.
+    [gated({ trigger: { paths: [{ glob: 'libs/**' }] } }), /coveringGate/],
+    [
+      gated({ trigger: { paths: [{ glob: 'libs/**', coveringGate: '' }] } }),
+      /non-empty coveringGate/,
+    ],
+    // A bare glob is the pre-0098 spelling and carries nothing, so it cannot
+    // satisfy a site field either.
+    [gated({ trigger: { paths: ['libs/**'] } }), /must carry coveringGate/],
+    [gated({ siteFields: [] }), /siteFields/],
+    [gated({ siteFields: ['coveringGate', 'coveringGate'] }), /duplicate/],
+    // A field cannot be both stated and asked for; that is the ambiguity the
+    // ADR removes.
+    [
+      gated({ answerFields: ['wiredBy', 'coveringGate'] }),
+      /both siteFields and answerFields/,
+    ],
+  ];
+  for (const o of bad) {
+    const cat = catalogue([o[0]]);
+    assert.throws(() => assertObligationCatalogue(cat), ObligationError);
+    assert.throws(() => assertObligationCatalogue(cat), o[1]);
+  }
+});
+
+test('the selector carries the covering gate onto every site it produces', () => {
+  const worklist = selectObligations({
+    catalogue: assertObligationCatalogue(
+      catalogue([
+        gated({
+          trigger: {
+            paths: [
+              { glob: 'libs/tokens/**', coveringGate: 'design-tokens:check' },
+              { glob: 'libs/**', coveringGate: 'openapi:check' },
+            ],
+          },
+        }),
+      ]),
+    ),
+    addedLines: parseAddedLines(
+      diff(
+        '--- a/libs/tokens/t.json',
+        '+++ b/libs/tokens/t.json',
+        '@@ -1,0 +1 @@',
+        '+one',
+        '--- a/libs/other/o.ts',
+        '+++ b/libs/other/o.ts',
+        '@@ -1,0 +1 @@',
+        '+two',
+      ),
+    ),
+    head: 'HEAD',
+  });
+  const [entry] = worklist.selected;
+  assert.deepEqual(entry.siteFields, ['coveringGate']);
+  // First matching rule wins, so the narrower glob must be the one that
+  // decides — a site is about the gate over ITS trigger, not the entry's.
+  assert.deepEqual(
+    Object.fromEntries(entry.sites.map((s) => [s.file, s.coveringGate])),
+    {
+      'libs/tokens/t.json': 'design-tokens:check',
+      'libs/other/o.ts': 'openapi:check',
+    },
+  );
+});
+
+test("run 47's answer is not expressible: gate is not an answer field", () => {
+  const live = loadObligationCatalogue();
+  const entry = live.obligations.find(
+    (o) => o.id === 'run-the-gate-that-covers-this-change',
+  );
+
+  // The field the reviewer filled with `deploy:pages:check` is gone from the
+  // sheet entirely. Citing it would only have proved the named gate exists.
+  assert.equal(entry.answerFields.includes('gate'), false);
+  assert.deepEqual(entry.answerFields, ['command', 'exitCode', 'wiredBy']);
+  assert.deepEqual(entry.siteFields, ['coveringGate']);
+
+  // And the gate it should have named is the one the site now hands it. The
+  // run 47 diff was a version bump: the invalidated artifact is the OpenAPI
+  // spec and the generated client, neither of which is in that diff.
+  const worklist = selectObligations({
+    catalogue: live,
+    addedLines: parseAddedLines(
+      diff(
+        '--- a/package.json',
+        '+++ b/package.json',
+        '@@ -3,1 +3,1 @@',
+        '+  "version": "0.4.0",',
+      ),
+    ),
+    head: 'HEAD',
+  });
+  const fired = worklist.selected.find(
+    (o) => o.id === 'run-the-gate-that-covers-this-change',
+  );
+  assert.deepEqual(
+    fired.sites.map((s) => s.coveringGate),
+    ['openapi:check'],
+  );
+});
+
+test('every covering gate in the live catalogue names a real script', () => {
+  const live = loadObligationCatalogue();
+  const scripts = new Set(
+    Object.keys(
+      JSON.parse(
+        readFileSync(new URL('../../../package.json', import.meta.url), 'utf8'),
+      ).scripts,
+    ),
+  );
+  for (const o of live.obligations)
+    for (const p of o.trigger.paths)
+      for (const f of o.siteFields ?? [])
+        if (f === 'coveringGate')
+          assert.ok(
+            scripts.has(p[f]),
+            `${o.id}: ${p.glob}: coveringGate ${p[f]} is not a package.json script`,
+          );
 });

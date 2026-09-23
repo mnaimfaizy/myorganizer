@@ -4,8 +4,9 @@
     {
       "id": "run-the-gate-that-covers-this-change",
       "title": "Run the gate that covers this change",
-      "question": "For each site: name the *:check gate that covers the changed artifact, and determine wiredBy by reading, not running — grep the .husky hooks, the .github/workflows jobs, and the yarn gates:run manifest (tools/scripts/run-assertion-gates.mjs) at the head commit for the gate's script name, and write the one that invokes it, or \"none\" if nothing does (ADR 0074). command and exitCode are optional: record them only when you also ran the checker's own script directly through node, never through yarn or corepack yarn; when you did not run it, write \"not run\" in both. Cite wiredBy: the file, the line number, and the exact text of the line that invokes the gate; a wiredBy of \"none\" carries no citation, because nowhere has no line.",
-      "answerFields": ["gate", "command", "exitCode", "wiredBy"],
+      "question": "Each site names its coveringGate — the gate over the artifact this change invalidates. You do not choose it and must not answer about a different one (ADR 0098). Determine wiredBy for that gate by reading, not running — grep the .husky hooks, the .github/workflows jobs, and the yarn gates:run manifest (tools/scripts/run-assertion-gates.mjs) at the head commit for the gate's script name, and write the one that invokes it, or \"none\" if nothing does (ADR 0074). command and exitCode are optional: record them only when you also ran the checker's own script directly through node, never through yarn or corepack yarn; when you did not run it, write \"not run\" in both. Cite wiredBy: the file, the line number, and the exact text of the line that invokes the gate; a wiredBy of \"none\" carries no citation, because nowhere has no line.",
+      "answerFields": ["command", "exitCode", "wiredBy"],
+      "siteFields": ["coveringGate"],
       "citedFields": [
         {
           "field": "wiredBy",
@@ -17,13 +18,29 @@
         "paths": [
           {
             "glob": "package.json",
-            "addedPattern": "\"version\"\\s*:"
+            "addedPattern": "\"version\"\\s*:",
+            "coveringGate": "openapi:check"
           },
-          "libs/app-api-client/**",
-          "libs/api-specs/**",
-          "apps/backend/src/swagger/**",
-          "apps/backend/src/prisma/**",
-          "libs/design-tokens/src/tokens.json"
+          {
+            "glob": "libs/app-api-client/**",
+            "coveringGate": "openapi:check"
+          },
+          {
+            "glob": "libs/api-specs/**",
+            "coveringGate": "openapi:check"
+          },
+          {
+            "glob": "apps/backend/src/swagger/**",
+            "coveringGate": "openapi:check"
+          },
+          {
+            "glob": "apps/backend/src/prisma/migrations/**",
+            "coveringGate": "prisma:migrations:check"
+          },
+          {
+            "glob": "libs/design-tokens/src/tokens.json",
+            "coveringGate": "design-tokens:check"
+          }
         ]
       },
       "seededFrom": "#408",

@@ -7,6 +7,7 @@ Single source of truth for colors, spacing, typography, radius, and shadow. Mach
 ## Commands
 
 - Regenerate: `yarn nx run design-tokens:build-tokens`.
+- Check drift: `yarn design-tokens:check` (regenerates, then fails if the tree moved — the gate over the "commit both" rule below).
 - Markdown allowlist: `yarn libs:markdown:check`.
 
 ## Do
