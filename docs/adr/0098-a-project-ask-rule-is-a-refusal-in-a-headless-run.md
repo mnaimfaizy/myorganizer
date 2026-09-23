@@ -13,7 +13,7 @@ passed throughout, because token-wise the grant does permit `git worktree remove
 
 ## Status
 
-proposed
+accepted
 
 ## Context
 

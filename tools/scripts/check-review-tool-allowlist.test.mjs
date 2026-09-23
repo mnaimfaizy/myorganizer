@@ -14,7 +14,7 @@
 // passed for two runs while the reviewer was refused an instructed command
 // eleven times, because it compared the instructions against `--allowedTools`
 // and nothing else; the refusal came from an `ask` rule in the repository's own
-// project settings, which outranks the grant (ADR 0097). A suite that only
+// project settings, which outranks the grant (ADR 0098). A suite that only
 // proved direction 1 would still be green today.
 import assert from 'node:assert/strict';
 import test from 'node:test';

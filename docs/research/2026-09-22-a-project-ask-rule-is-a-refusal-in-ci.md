@@ -1,7 +1,7 @@
 # A project `ask` rule is a refusal in CI
 
 Frozen 2026-09-22. The decision this supports is
-[ADR 0097](../adr/0097-a-project-ask-rule-is-a-refusal-in-a-headless-run.md); the gate is
+[ADR 0098](../adr/0098-a-project-ask-rule-is-a-refusal-in-a-headless-run.md); the gate is
 `yarn review:allowlist:check`. This brief does not move.
 
 ## The question
@@ -53,7 +53,7 @@ The `sed` row corrects the earlier brief's reading of that refusal, and it matte
 looks. [#715](https://github.com/mnaimfaizy/myorganizer/issues/715) removed `Bash(sed -n:*)` from
 the allowlist as an entry matching no instruction, and 2026-09-11 attributed the refusal to that
 removal. It cannot have been: `Bash(sed:*)` in the `ask` list would have refused `sed -n` with the
-entry still in place. The removal changed nothing about this, which is the evidence behind ADR 0097
+entry still in place. The removal changed nothing about this, which is the evidence behind ADR 0098
 decision 6 — an unused grant is not debt, and reading it as debt bought a change that fixed nothing.
 
 ## Why the gate passed
