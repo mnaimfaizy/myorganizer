@@ -191,6 +191,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-12 | `claude-sonnet-5` | 4 (`frontier`) | **4 of 4**                  | third dispatch; the measurement #722 defines  |
 | 2026-09-22 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | ADR 0098 — `coveringGate` leaves the answer   |
 | 2026-09-23 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | same, plus the review response on #879        |
+| 2026-09-23 | `claude-sonnet-5` | 2 (`frontier`) | **1 of 2**                  | none — #884 touches only the measurement      |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26
@@ -544,6 +545,58 @@ until the brief or the finding contract changes. ADR 0072's rule does not read
 intent and would promote it; what the rule does not price is that this case is
 currently the entire early-warning signal. Promote it alongside a replacement
 frontier case, not before one exists.
+
+### A miss that quoted the wrong tree
+
+Pull request #884 (ADR 0100) touched `tools/scripts/review/` — the
+escaped-defect measurement, which the reviewer never reads — so the frontier
+arm replayed. Run
+[35833576958](https://github.com/mnaimfaizy/myorganizer/actions/runs/35833576958)
+(2026-09-23, head `0b9046e`) caught `export-envelope-drops-tasks` and missed
+`release-bump-leaves-generated-client-stale`: 14 turns, no findings, verdict
+`approve`, $1.47, 7 permission denials. It was not a void. It ends the case's
+run of catches in every replay since 34663295486.
+
+**The miss is a suppression, and the suppression rests on a quotation from
+the wrong tree.** The worklist handed the reviewer the site `package.json:3`
+with `coveringGate: openapi:check`. It answered that the gate is wired,
+citing `.github/workflows/ci.yml:527` as `run: corepack yarn openapi:check`,
+did not run it, and raised nothing — the wired-gate rule's conclusion. That
+line is `ci.yml:527` in the pull request's checkout. At the incident head
+`8175cb6` the same line is `timeout-minutes: 30`, and `openapi:check` did not
+reach CI until 2026-08-21, three days after the incident. The reviewer's
+citation fails the check that exists for exactly this:
+
+```
+review-obligations-check: run-the-gate-that-covers-this-change@package.json:3 field wiredBy
+quotes "        run: corepack yarn openapi:check" at .github/workflows/ci.yml:527,
+where head has "timeout-minutes: 30"
+```
+
+(`yarn review:obligations:check` over the run's own artifacts, exit 1.) In the
+`Code Review` workflow that exit fails `Agent Review Ran` as a pipeline fault
+([ADR 0078](../adr/0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md));
+`review-golden-replay.yml` uploads the answer sheet and never runs the check,
+so the replay scored as a miss what production would have rejected as a
+report. The same contamination shows elsewhere in the transcript: the
+reviewer read `check-fix-attribution.mjs` and ADR 0100 from the checkout, and
+listed ADR 0100 among its `standardsSources` for a range that predates it by
+a month.
+
+**The seven denials were not the allowlist gap ADR 0099 closed.** Every one is
+a command the skill tells the reviewer not to use: `find` three times where it
+says Glob, and a pipe into `sed`, `awk`, or `cat -A` four times where it says
+Read. The last denial was the one that mattered —
+`git show 8175cb6:.github/workflows/ci.yml | sed -n '527p' | cat -A` was the
+reviewer checking its citation at the head, and the answer would have
+contradicted it. `git show <sha>:<path>` alone is granted; the pipe is what
+was refused, and after the refusal the reviewer wrote the answer from the
+checkout instead.
+
+No tier moves: the case was already `frontier`. Two gaps in the apparatus are
+open after this run and neither is decided here — the replay does not run
+`review:obligations:check`, and a replay's working tree is the pull request's
+head rather than the case's.
 
 ## Reproduce
 
