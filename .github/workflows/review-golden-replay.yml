@@ -33,6 +33,12 @@ on:
       - 'tools/config/review-golden-set.json'
       - 'tools/config/review-obligations.json'
       - 'tools/config/review-rules.json'
+      # The rest of the harness the replay lays over each case tree (ADR
+      # 0101): the permission rules and hooks the session loads, and the
+      # module those hooks import.
+      - '.claude/**'
+      - 'tools/scripts/copilot-hooks/**'
+      - '.agents/skills/upstream-brief/**'
   workflow_dispatch:
     inputs:
       tier:
