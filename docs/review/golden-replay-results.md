@@ -593,10 +593,14 @@ contradicted it. `git show <sha>:<path>` alone is granted; the pipe is what
 was refused, and after the refusal the reviewer wrote the answer from the
 checkout instead.
 
-No tier moves: the case was already `frontier`. Two gaps in the apparatus are
-open after this run and neither is decided here — the replay does not run
-`review:obligations:check`, and a replay's working tree is the pull request's
-head rather than the case's.
+No tier moves: the case was already `frontier`. The run left two gaps open in
+the apparatus. The first is now closed. The replay runs
+`review:obligations:check` before it scores, and a failed answer sheet is a
+void, not a miss
+([ADR 0101](../adr/0101-a-replay-whose-answer-sheet-fails-its-check-measured-nothing.md)).
+Read that way, this run's result on the case is a void. The second is still
+open: a replay's working tree is the pull request's head rather than the
+case's.
 
 ## Reproduce
 

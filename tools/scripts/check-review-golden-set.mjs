@@ -4,12 +4,15 @@
 //
 //   node tools/scripts/check-review-golden-set.mjs
 //
-// Three things rot here and each is checked: the set's shape (ids, SHAs,
+// Four things rot here and each is checked: the set's shape (ids, SHAs,
 // patterns, minimum recall), the commit ranges (both ends must exist and
 // the head must be reachable from main, or the replay reviews nothing),
 // and the replay workflow's path filter, which must cover every input ADR
 // 0070 names — the skill, the schema, the validator, the renderer, and the
 // review workflow — or a change to one of them ships without a replay.
+// And the replay checks the reviewer's obligation answer sheet before it
+// scores, as production does, or a run production would fail as a pipeline
+// fault is recorded as a miss (ADR 0101).
 //
 // Exit 0 = sound. Exit 1 = findings. Exit 2 = could not run.
 import { spawnSync } from 'node:child_process';
@@ -19,6 +22,7 @@ import {
   GoldenSetError,
   REVIEW_GOLDEN_SET_PATH,
   loadGoldenSet,
+  replayObligationCheckFindings,
 } from './review/golden.mjs';
 
 const REPLAY_WORKFLOW = '.github/workflows/review-golden-replay.yml';
@@ -103,6 +107,9 @@ for (const path of REPLAY_TRIGGER_PATHS) {
     );
 }
 
+for (const f of replayObligationCheckFindings(workflow))
+  findings.push(`${REPLAY_WORKFLOW}: ${f}`);
+
 if (findings.length) {
   console.error(
     `review-golden-set: ${findings.length} finding(s) across ${set.cases.length} case(s)`,
@@ -111,5 +118,5 @@ if (findings.length) {
   process.exit(1);
 }
 console.log(
-  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + c.expected.length, 0)} expected finding(s), replay covers ${REPLAY_TRIGGER_PATHS.length} input path(s)`,
+  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + c.expected.length, 0)} expected finding(s), replay covers ${REPLAY_TRIGGER_PATHS.length} input path(s) and checks answer sheets before scoring`,
 );
