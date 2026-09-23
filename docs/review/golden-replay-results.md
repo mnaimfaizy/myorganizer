@@ -596,7 +596,10 @@ checkout instead.
 No tier moves: the case was already `frontier`. Two gaps in the apparatus are
 open after this run and neither is decided here — the replay does not run
 `review:obligations:check`, and a replay's working tree is the pull request's
-head rather than the case's.
+head rather than the case's. The second is decided by
+[ADR 0101](../adr/0101-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md):
+the reviewer now reads the case head, standards included, with only its
+harness laid over it from the pull request.
 
 ## Reproduce
 
