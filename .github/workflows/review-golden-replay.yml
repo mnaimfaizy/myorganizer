@@ -289,6 +289,9 @@ jobs:
           rm -rf "${OVERLAY[@]}"
           git checkout --quiet "$TOOLING_HEAD" -- "${OVERLAY[@]}"
           echo "tooling=$TOOLING" >> "$GITHUB_OUTPUT"
+          # The reviewer's facts name these paths from this output, so the
+          # list the prompt states is the list that was laid over the tree.
+          echo "overlay=$(printf '`%s` ' "${OVERLAY[@]}")" >> "$GITHUB_OUTPUT"
           echo "reviewer tree: case head $(git rev-parse --short "$CASE_HEAD"), overlaid from $(git rev-parse --short "$TOOLING_HEAD"): ${OVERLAY[*]}"
           # A case whose own diff touches an overlaid path is reviewed with
           # the pull request's copy of that path on disk. Say so where the
@@ -312,7 +315,7 @@ jobs:
           tooling-dir: ${{ steps.tree.outputs.tooling }}
           facts: |
             - this is a replay of a historical range, and the working tree IS its head (detached): read, grep, and run gates in it directly, and `git worktree add tmp/code-review/worktree HEAD` for a throwaway reproduction as the skill says, leaving it in place — this runner is ephemeral, while removing it is refused (ADR 0099). The standards sources are this tree's, as of the head: a document the head does not contain is not a standard this range could have broken, so do not go looking for later ones.
-            - five paths on disk are the reviewing pull request's, not the head's: `.agents/skills/code-review`, `.agents/skills/upstream-brief`, `.claude`, `tools/scripts/copilot-hooks`, and `.github/actions/code-reviewer`. They are your harness, not the subject. If the diff touches one, read it with `git show <head>:<path>`.
+            - these paths on disk are the reviewing pull request's, not the head's: ${{ steps.tree.outputs.overlay }}. They are your harness, not the subject. If the diff touches one, read it with `git show <head>:<path>`.
             - run the validator as `node ${{ steps.tree.outputs.tooling }}/tools/scripts/review/validate-review-report.mjs tmp/code-review/report.json --out tmp/code-review/normalized.json` instead of `corepack yarn review:validate`: this head's package.json predates the `review:*` scripts. That directory is tooling, not the tree under review; do not read it for anything else.
             - tier is null: write `"tier": null` in the envelope
           model: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
