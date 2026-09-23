@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import test from 'node:test';
 
@@ -10,6 +9,7 @@ import {
   parseNodeSegments,
   runGateManifest,
 } from './gate-manifest.mjs';
+import { createGateManifestWorkspace } from './gate-manifest-test-workspace.mjs';
 
 test('parseNodeSegments reads a single bare node invocation', () => {
   const segments = parseNodeSegments('node tools/scripts/check-readme.mjs');
@@ -34,18 +34,7 @@ test('parseNodeSegments drops non-node segments', () => {
 });
 
 function createWorkspace(t) {
-  const workspace = mkdtempSync(join(tmpdir(), 'gate-manifest-'));
-  t.after(() => rmSync(workspace, { recursive: true, force: true }));
-  mkdirSync(join(workspace, 'tools/scripts'), { recursive: true });
-  writeFileSync(
-    join(workspace, 'tools/scripts/check-a.mjs'),
-    'process.exit(0);\n',
-  );
-  writeFileSync(
-    join(workspace, 'tools/scripts/check-b.mjs'),
-    'process.exit(0);\n',
-  );
-  return workspace;
+  return createGateManifestWorkspace(t);
 }
 
 const twoEntryManifest = [
