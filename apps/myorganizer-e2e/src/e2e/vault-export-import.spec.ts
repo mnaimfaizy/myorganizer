@@ -937,17 +937,9 @@ test.describe('Vault export/import (E2E)', () => {
     await confirmImportReplaceDialog(page, 'wrapping-reverts-passphrase');
 
     // Step 7: Assert the import landed.
-    //
-    // Deliberately not the 'Import complete' toast. This test changes the
-    // passphrase first, so the toast it would assert is the SECOND toast on
-    // this page, and `use-toast` drops that one — issue #810. A trace taken
-    // here shows 'Passphrase changed' in a DOM snapshot and 'Import complete'
-    // in none of 185, while the import itself succeeds.
-    //
-    // These three signals are durable and set only on the success path:
-    // `lastServerNote` renders solely after `importVault` resolves, the button
-    // re-disables once the selected file is cleared, and the vault is owned.
-    // Restore the toast assertion when #810 is fixed.
+    await expect(
+      page.getByText('Import complete', { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
     await expect(
       page.getByText('Imported locally. Audit recorded on server.', {
         exact: true,
