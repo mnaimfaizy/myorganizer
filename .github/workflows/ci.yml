@@ -526,6 +526,13 @@ jobs:
         # the hygiene steps so an unrelated step cannot dirty the tree first.
         run: corepack yarn openapi:check
 
+      - name: Check design token outputs are in sync
+        # Same shape as openapi:check and for the same reason: src/generated is
+        # derived from tokens.json, and nothing asserted the two agreed until
+        # ADR 0098 needed a Covering Gate for the tokens trigger. Runs next to
+        # openapi:check so both regenerate before anything else can dirty the tree.
+        run: corepack yarn design-tokens:check
+
       - name: Component hygiene checker contracts
         run: corepack yarn component:hygiene:test
 
@@ -564,6 +571,9 @@ jobs:
 
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
+
+      - name: Tree-clean assertion contracts
+        run: corepack yarn git-assert-clean:test
 
       - name: Env-declared checker contracts
         run: corepack yarn env:declared:test
@@ -645,6 +655,9 @@ jobs:
       - name: Check ADR numbering
         run: corepack yarn adr:numbering:check
 
+      - name: Check ADR status
+        run: corepack yarn adr:status:check
+
       - name: Check documented commands resolve
         run: corepack yarn docs:commands:check
 
@@ -698,6 +711,9 @@ jobs:
 
       - name: Checker contract coverage checker contracts
         run: corepack yarn checker-contracts:test
+
+      - name: ADR status checker contracts
+        run: corepack yarn adr:status:test
 
       - name: Escape Copy reader gate contracts
         run: corepack yarn escape-copy-reader:test

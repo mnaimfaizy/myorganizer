@@ -168,10 +168,12 @@ describe('useChangePassphrase', () => {
   describe('Authorization by unlockSecret', () => {
     test('10: unlockSecret "passphrase" → changePassphraseWithCurrent with current+new, not resetPassphraseAfterRecovery', async () => {
       const mockHandle = createMockHandle();
+      const mockCompletePassphraseResetPrompt = jest.fn();
       (useOptionalVaultSession as jest.Mock).mockReturnValue({
         handle: mockHandle,
         masterKeyBytes: new Uint8Array(32),
         unlockSecret: 'passphrase',
+        completePassphraseResetPrompt: mockCompletePassphraseResetPrompt,
       });
       (changePassphraseWithCurrent as jest.Mock).mockResolvedValue({
         push: { kind: 'pushed' },
@@ -195,6 +197,7 @@ describe('useChangePassphrase', () => {
         newPassphrase: 'newpass12345',
       });
       expect(resetPassphraseAfterRecovery).not.toHaveBeenCalled();
+      expect(mockCompletePassphraseResetPrompt).not.toHaveBeenCalled();
     });
 
     test('11: unlockSecret null → defaults to changePassphraseWithCurrent', async () => {
@@ -223,10 +226,12 @@ describe('useChangePassphrase', () => {
 
     test('12: unlockSecret "recovery-key" → resetPassphraseAfterRecovery with new only, not changePassphraseWithCurrent', async () => {
       const mockHandle = createMockHandle();
+      const mockCompletePassphraseResetPrompt = jest.fn();
       (useOptionalVaultSession as jest.Mock).mockReturnValue({
         handle: mockHandle,
         masterKeyBytes: new Uint8Array(32),
         unlockSecret: 'recovery-key',
+        completePassphraseResetPrompt: mockCompletePassphraseResetPrompt,
       });
       (resetPassphraseAfterRecovery as jest.Mock).mockResolvedValue({
         push: { kind: 'pushed' },
@@ -249,6 +254,7 @@ describe('useChangePassphrase', () => {
         newPassphrase: 'newpass12345',
       });
       expect(changePassphraseWithCurrent).not.toHaveBeenCalled();
+      expect(mockCompletePassphraseResetPrompt).toHaveBeenCalledTimes(1);
     });
 
     test('13: unlockSecret "recovery-key" success → same passphraseChangeReading toast', async () => {
@@ -373,7 +379,14 @@ describe('useChangePassphrase', () => {
   describe('Error paths', () => {
     test('6: VaultSecretMismatchError on passphrase → returns "wrong-passphrase", NO toast called', async () => {
       const mockToast = jest.fn();
+      const mockCompletePassphraseResetPrompt = jest.fn();
       (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
+      (useOptionalVaultSession as jest.Mock).mockReturnValue({
+        handle: createMockHandle(),
+        masterKeyBytes: new Uint8Array(32),
+        unlockSecret: 'passphrase',
+        completePassphraseResetPrompt: mockCompletePassphraseResetPrompt,
+      });
       (changePassphraseWithCurrent as jest.Mock).mockRejectedValue(
         new VaultSecretMismatchError('passphrase'),
       );
@@ -390,6 +403,7 @@ describe('useChangePassphrase', () => {
 
       expect(callResult).toBe('wrong-passphrase');
       expect(mockToast).not.toHaveBeenCalled();
+      expect(mockCompletePassphraseResetPrompt).not.toHaveBeenCalled();
     });
 
     test('7: unexpected error (not VaultSecretMismatchError) → returns "error" with destructive toast', async () => {

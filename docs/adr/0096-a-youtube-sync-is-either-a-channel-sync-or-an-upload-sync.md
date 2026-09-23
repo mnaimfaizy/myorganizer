@@ -2,7 +2,7 @@
 
 ## Status
 
-proposed
+accepted
 
 Supersedes [ADR 0080](0080-a-user-initiated-sync-is-tracked-in-place-not-queued.md). ADR 0080's status line points here. Its decision text is unchanged.
 

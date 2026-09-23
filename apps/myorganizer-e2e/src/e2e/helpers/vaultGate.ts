@@ -40,8 +40,20 @@ export const E2E_VAULT_PHRASE = 'e2e-fixture-phrase-01';
  */
 export async function createOwnedVault(
   page: Page,
-  { passphrase, owner = E2E_USER_ID }: { passphrase: string; owner?: string },
+  options: { passphrase: string; owner?: string },
 ): Promise<void> {
+  await createOwnedVaultWithRecoveryKey(page, options);
+}
+
+/**
+ * Same as {@link createOwnedVault}, but returns the recovery key shown on the
+ * acknowledgment step. Reads `#acknowledgment-recovery-key` before clicking
+ * "I saved it".
+ */
+export async function createOwnedVaultWithRecoveryKey(
+  page: Page,
+  { passphrase, owner = E2E_USER_ID }: { passphrase: string; owner?: string },
+): Promise<string> {
   const setupPassphrase = page.locator('#setup-passphrase');
   await expect(setupPassphrase).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
 
@@ -56,11 +68,44 @@ export async function createOwnedVault(
 
   const savedRecoveryKey = page.getByRole('button', { name: 'I saved it' });
   await expect(savedRecoveryKey).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
+
+  const recoveryKeyInput = page.locator('#acknowledgment-recovery-key');
+  await expect(recoveryKeyInput).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
+  const recoveryKey = await recoveryKeyInput.inputValue();
+  expect(recoveryKey).toBeTruthy();
+
   await savedRecoveryKey.click();
 
   // Cheap once the button has been seen, and it pins the owner-bound storage
   // key this suite depends on (ADR 0047).
   await waitForOwnedVault(page, owner);
+  return recoveryKey;
+}
+
+/**
+ * Unlock `VaultGate` on the current page with `recoveryKey`.
+ *
+ * Requires the unlock panel, switches to recovery via "Forgot passphrase",
+ * fills `#recovery-key` (not `#claim-recovery-key`), clicks "Unlock with
+ * recovery key", and waits for that field to leave — same landing signal as
+ * passphrase unlock.
+ */
+export async function unlockWithRecoveryKey(
+  page: Page,
+  recoveryKey: string,
+): Promise<void> {
+  const usePassphrase = page.getByRole('button', { name: 'Use passphrase' });
+  await expect(usePassphrase).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
+
+  await page.getByRole('button', { name: 'Forgot passphrase' }).click();
+
+  const input = page.locator('#recovery-key');
+  await expect(input).toBeVisible({ timeout: PBKDF2_BUDGET_MS });
+  await input.fill(recoveryKey);
+
+  await page.getByRole('button', { name: 'Unlock with recovery key' }).click();
+
+  await expect(input).toHaveCount(0, { timeout: PBKDF2_BUDGET_MS });
 }
 
 /**

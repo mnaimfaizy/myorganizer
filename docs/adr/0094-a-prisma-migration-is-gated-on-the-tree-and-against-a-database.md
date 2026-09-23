@@ -12,7 +12,7 @@ checker to wire.
 
 ## Status
 
-proposed
+accepted
 
 ## Decision
 

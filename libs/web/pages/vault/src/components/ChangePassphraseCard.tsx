@@ -3,12 +3,7 @@
 import { useCallback } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import {
-  type Control,
-  type FieldValues,
-  type Path,
-  useForm,
-} from 'react-hook-form';
+import { type Control, type FieldValues, useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import {
@@ -20,7 +15,6 @@ import {
   CardTitle,
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -30,10 +24,14 @@ import {
 import {
   changePassphraseSchema,
   ChangePassphraseInput,
-  MIN_PASSPHRASE_LENGTH,
   newPassphraseSchema,
 } from '@myorganizer/web-vault';
-import { type VaultUnlockSecret } from '@myorganizer/web-vault-ui';
+import {
+  NewPassphraseFields,
+  PASSPHRASE_REWRITE_FACTS,
+  type NewPassphraseFieldValues,
+  type VaultUnlockSecret,
+} from '@myorganizer/web-vault-ui';
 
 import { useChangePassphrase, useVaultOperationAvailability } from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';
@@ -41,13 +39,8 @@ import { VaultUnavailableNotice } from './VaultUnavailableNotice';
 
 type NewPassphraseInput = z.infer<typeof newPassphraseSchema>;
 
-type SharedNewPassphraseFields = Pick<
-  NewPassphraseInput,
-  'newPassphrase' | 'newPassphraseConfirm'
->;
-
 interface ChangePassphraseSharedFieldsProps<
-  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+  TFieldValues extends FieldValues & NewPassphraseFieldValues,
 > {
   control: Control<TFieldValues>;
   allowed: boolean;
@@ -56,7 +49,7 @@ interface ChangePassphraseSharedFieldsProps<
 }
 
 function ChangePassphraseSharedFields<
-  TFieldValues extends FieldValues & SharedNewPassphraseFields,
+  TFieldValues extends FieldValues & NewPassphraseFieldValues,
 >({
   control,
   allowed,
@@ -65,37 +58,7 @@ function ChangePassphraseSharedFields<
 }: ChangePassphraseSharedFieldsProps<TFieldValues>) {
   return (
     <>
-      <FormField
-        control={control}
-        name={'newPassphrase' as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>New passphrase</FormLabel>
-            <FormControl>
-              <Input {...field} type="password" disabled={!allowed} />
-            </FormControl>
-            <FormDescription>
-              Minimum {MIN_PASSPHRASE_LENGTH} characters.
-            </FormDescription>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={control}
-        name={'newPassphraseConfirm' as Path<TFieldValues>}
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Confirm new passphrase</FormLabel>
-            <FormControl>
-              <Input {...field} type="password" disabled={!allowed} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
+      <NewPassphraseFields control={control} disabled={!allowed} />
       <div className="flex gap-2">
         <Button
           type="submit"
@@ -200,13 +163,10 @@ export function ChangePassphraseCard() {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         <p className="text-sm text-muted-foreground">
-          Your data is not re-encrypted and nothing is decrypted on the server —
-          only what unlocks your vault changes. Your recovery key still works
-          and does not need to be written down again.
+          {PASSPHRASE_REWRITE_FACTS.wrapping}
         </p>
         <p className="text-sm text-muted-foreground">
-          Your other devices keep using the old passphrase until you confirm the
-          change on each of them; they will ask the next time they sync.
+          {PASSPHRASE_REWRITE_FACTS.otherDevices}
         </p>
 
         <VaultUnavailableNotice

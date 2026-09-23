@@ -37,8 +37,8 @@
       "id": "export-envelope-drops-tasks",
       "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
       "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #77",
-      "tier": "guard",
-      "tierEvidence": "promoted 2026-09-12 on three consecutive catches: runs 34591297535, 34663295486 and 34673097908. Its earlier promotion on 2026-09-07 was reversed by the miss in 34105977391; this streak is the second it has earned.",
+      "tier": "frontier",
+      "tierEvidence": "demoted 2026-09-22 on the miss in run 35723129169, and missed again in 35800528309 — both clean (recall 0, 10 and 9 other findings, no void and no turn exhaustion), ending a five-run streak. Lifetime 9 of 17. Two misses from a case near half is not itself a measurement: the same reason promotion takes three consecutive catches. Promoted 2026-09-12 on three consecutive catches; its 2026-09-07 promotion was reversed by the miss in 34105977391.",
       "base": "dea9122c1854879044d51696dec93a57c89e914d",
       "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
       "spec": {

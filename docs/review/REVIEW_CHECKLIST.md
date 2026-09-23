@@ -108,17 +108,26 @@ Rules that keep the list honest:
 **id** `run-the-gate-that-covers-this-change`
 **Fires when** the diff changes the `version` in `package.json`, or touches a
 generated or synced output — `libs/app-api-client/**`, `libs/api-specs/**`,
-`apps/backend/src/swagger/**` — or a Prisma schema under
-`apps/backend/src/prisma/**`, or `libs/design-tokens/src/tokens.json`.
+`apps/backend/src/swagger/**` — or a Prisma migration under
+`apps/backend/src/prisma/migrations/**`, or `libs/design-tokens/src/tokens.json`.
+
+**Given** `coveringGate` — the gate over the artifact the change invalidates.
+This is stated by the catalogue against the trigger, not chosen by the reviewer
+([ADR 0098](../adr/0098-a-covering-gate-is-part-of-the-site-not-the-answer.md)),
+and every answer below is about **that** gate and no other.
+
+- `package.json` on an added `"version":` line, `libs/app-api-client/**`,
+  `libs/api-specs/**`, `apps/backend/src/swagger/**` → `openapi:check`
+- `apps/backend/src/prisma/migrations/**` → `prisma:migrations:check`
+- `libs/design-tokens/src/tokens.json` → `design-tokens:check`
 
 **Answer**
 
-| Field      | What to write                                                                         |
-| ---------- | ------------------------------------------------------------------------------------- |
-| `gate`     | The checker that covers the changed artifact, e.g. openapi:check.                     |
-| `command`  | Optional — what was run, only if you ran something. Write `not run` otherwise.        |
-| `exitCode` | Optional — its exit code, only if you ran something. Write `not run` otherwise.       |
-| `wiredBy`  | The hook, workflow job, or aggregate manifest entry that invokes the gate, or `none`. |
+| Field      | What to write                                                                               |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| `command`  | Optional — what was run, only if you ran something. Write `not run` otherwise.              |
+| `exitCode` | Optional — its exit code, only if you ran something. Write `not run` otherwise.             |
+| `wiredBy`  | The hook, workflow job, or aggregate manifest entry that invokes `coveringGate`, or `none`. |
 
 **Cites** `wiredBy` unless `none`
 
@@ -129,7 +138,7 @@ claim it makes.
 
 Answer `wiredBy` by reading, not running: grep the `.husky` hooks, the
 `.github/workflows` jobs, and `tools/scripts/run-assertion-gates.mjs` at the
-head commit for the gate's script name, per
+head commit for `coveringGate`'s script name, per
 [ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md).
 That answers the obligation this entry exists for on its own, and it costs no
 turns. `command` and `exitCode` are the one exception to "an entry answers, it
@@ -155,6 +164,16 @@ command and exit code as executed evidence — raised the ordinary way (see
 "An entry answers, it does not judge" above), not mechanically: `exitCode` is
 optional, and a plain equality check cannot tell its `not run` value apart
 from a real one.
+
+**Why `coveringGate` is not yours to pick** — Golden Replay run 47 answered
+`gate: "deploy:pages:check"` with `wiredBy: ".github/workflows/ci.yml:705"`.
+Every word of that is true, the citation matched the tree, and the defect
+correctly did not fire, because that gate **is** wired. The incident was about
+`openapi:check`, which at that head nothing invoked. A citation proves a claim
+about the thing named; it says nothing about whether the right thing was named,
+and `gate` was the one field with no citation requirement and the one that
+decided what the others meant. So it stopped being an answer
+([ADR 0098](../adr/0098-a-covering-gate-is-part-of-the-site-not-the-answer.md)).
 
 **Why this exists** — issue #408. A release moved `package.json` to 0.4.0
 without `openapi:sync`; the generator embeds the version into the spec and every

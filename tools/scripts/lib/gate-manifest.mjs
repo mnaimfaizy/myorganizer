@@ -148,6 +148,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'adr:status:check',
+    npmScript: 'adr:status:check',
+    script: 'tools/scripts/check-adr-status.mjs',
+    args: [],
+  },
+  {
     id: 'docs:commands:check',
     npmScript: 'docs:commands:check',
     script: 'tools/scripts/check-doc-commands.mjs',

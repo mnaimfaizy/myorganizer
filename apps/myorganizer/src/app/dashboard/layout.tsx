@@ -13,6 +13,7 @@ import {
 } from '@myorganizer/web-pages/dashboard';
 
 import {
+  PassphraseResetPrompt,
   SyncStatusWidget,
   VaultMetaConvergeRunner,
   VaultPullRunner,
@@ -38,6 +39,12 @@ export default function DashboardLayout({
            */}
           <VaultMetaConvergeRunner />
           <VaultPullRunner />
+          {/*
+           * First paint of a recovery-unlocked session, after the gate has
+           * handed the dashboard through. Not inside VaultGate: the gate
+           * stays an unlock (ADR 0095).
+           */}
+          <PassphraseResetPrompt />
           <DashboardSidebar />
           <SidebarInset>
             <header className="flex h-16 shrink-0 items-center justify-between gap-2 transition-[width,height] ease-linear group-has-[[data-collapsible=icon]]/sidebar-wrapper:h-12">

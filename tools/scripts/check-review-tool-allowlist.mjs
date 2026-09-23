@@ -69,7 +69,7 @@
 // settings' `ask` list and was refused eleven times under the same
 // `Bash(git worktree:*)` grant. `node -e` is the same mechanism on an unrelated
 // command, refused while `Bash(node:*)` was granted
-// (docs/research/2026-09-22-a-project-ask-rule-is-a-refusal-in-ci.md, ADR 0098).
+// (docs/research/2026-09-22-a-project-ask-rule-is-a-refusal-in-ci.md, ADR 0099).
 //
 // So this checker asserts two directions, and both are needed:
 //
@@ -198,12 +198,27 @@ export const NOT_THE_REVIEWERS_TO_RUN = [
   {
     command: 'git -C',
     reason:
-      'Named by the skill only to forbid it. The reviewer reached for `git -C <dir> show …` after being told not to `cd`, and was refused — the leading tokens are `git` and `-C`, which no entry grants. `git show <sha>:<path>` is the granted way to read another tree, so this is a warning, not an instruction (ADR 0098).',
+      'Named by the skill only to forbid it. The reviewer reached for `git -C <dir> show …` after being told not to `cd`, and was refused — the leading tokens are `git` and `-C`, which no entry grants. `git show <sha>:<path>` is the granted way to read another tree, so this is a warning, not an instruction (ADR 0099).',
   },
   {
     command: 'git worktree remove',
     reason:
-      "The throwaway worktree is discarded with the runner in CI and lives under gitignored tmp/ locally, so the reviewer is told to leave it. The skill names the command for the human who cleans up afterwards and answers the project settings' `ask` — which, with nobody at a keyboard, is what refused the reviewer eleven times (ADR 0098).",
+      "The throwaway worktree is discarded with the runner in CI and lives under gitignored tmp/ locally, so the reviewer is told to leave it. The skill names the command for the human who cleans up afterwards and answers the project settings' `ask` — which, with nobody at a keyboard, is what refused the reviewer eleven times (ADR 0099).",
+  },
+  {
+    command: 'yarn openapi:check',
+    reason:
+      'A coveringGate value in obligation run-the-gate-that-covers-this-change, so it is a gate NAME the reviewer greps the hooks and workflows for, never a command it runs (ADR 0098). This one is doubly not the reviewer to run: it resyncs the spec and rewrites files in the checkout, which the checklist entry says in so many words.',
+  },
+  {
+    command: 'yarn prisma:migrations:check',
+    reason:
+      'A coveringGate value in the same obligation. The entry answers wiredBy by reading, not running; where a reviewer does run a checker it is the check-*.mjs script through node, which the allowlist permits and this spelling is not.',
+  },
+  {
+    command: 'yarn design-tokens:check',
+    reason:
+      'A coveringGate value in the same obligation, and an nx target that rebuilds libs/design-tokens/src/generated before asserting the tree is clean — mutating the checkout is not something a reviewer should do (ADR 0098).',
   },
   {
     command: 'git branch --show-current',
@@ -790,7 +805,7 @@ const main = () => {
         '\noutranks the grant. In a headless CI run there is nobody to answer an `ask`, so it' +
         '\nresolves as a refusal. Stop instructing the command, or give the reviewer a spelling' +
         '\nno interposed rule matches — do not widen --allowedTools, which cannot reach this' +
-        '\n(ADR 0098). Golden replay run 46 spent eleven turns being refused one instructed' +
+        '\n(ADR 0099). Golden replay run 46 spent eleven turns being refused one instructed' +
         '\n`git worktree remove` this way, under a grant that named it.',
     );
     process.exit(1);

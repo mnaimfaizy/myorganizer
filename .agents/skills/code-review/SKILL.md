@@ -39,7 +39,7 @@ finding and writes no verdict: the verdict is computed from the findings by
   in CI the runner is discarded whole, and locally `tmp/` is gitignored. The project settings put
   `git worktree remove` behind an `ask`, which outranks the job's grant and, with nobody at a
   keyboard to answer it, comes back as a refusal — golden replay run 46 spent eleven turns
-  rediscovering that ([ADR 0098](../../../docs/adr/0098-a-project-ask-rule-is-a-refusal-in-a-headless-run.md)).
+  rediscovering that ([ADR 0099](../../../docs/adr/0099-a-project-ask-rule-is-a-refusal-in-a-headless-run.md)).
   Leave it. A human at a terminal removes it afterwards with
   `git worktree remove --force tmp/code-review/worktree` and answers the prompt.
 - **One command per Bash call, addressed by path.** Never `cd` into the worktree and never chain with
@@ -328,8 +328,14 @@ write **one line per site** to `tmp/code-review/obligations.answers.json`:
 }
 ```
 
-Four rules, and they are the whole difference between this and an instruction:
+Five rules, and they are the whole difference between this and an instruction:
 
+- **A site may already state facts, and those are not yours to choose.** An entry that declares
+  `siteFields` carries each of those fields on every site, filled in by the catalogue. They are
+  the subject your answers are about — answer regarding the one you were handed, never a
+  different one you found, and do not repeat them into `answer`. Golden Replay run 47 picked its
+  own gate, answered truthfully and citably about it, and missed the incident entirely, which is
+  why the field stopped being an answer ([ADR 0098](../../../docs/adr/0098-a-covering-gate-is-part-of-the-site-not-the-answer.md)).
 - **Answer every site, including the ones that turn out clean.** The answer is the work; a site you
   skip is indistinguishable from a site you looked at and cleared.
 - **Answer from the code, not from the name.** The fields ask what a path actually mutates, what a
