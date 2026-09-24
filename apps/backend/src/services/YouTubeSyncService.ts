@@ -1,5 +1,6 @@
 import { google, youtube_v3 } from 'googleapis';
 import winston from 'winston';
+import { describeError, logErrorWithStack } from '../helpers/describeError';
 import {
   parseIso8601DurationSeconds,
   videoKindWhere,
@@ -324,17 +325,7 @@ export {
 export type { VideoKind } from '../helpers/videoKind';
 
 function isQuotaExceededError(error: unknown): boolean {
-  let message = String(error);
-  if (error instanceof Error) {
-    message = error.message;
-  } else {
-    try {
-      message = JSON.stringify(error) ?? message;
-    } catch {
-      // Keep the string representation when a third-party error is not serializable.
-    }
-  }
-  return /quotaExceeded/i.test(message);
+  return /quotaExceeded/i.test(describeError(error).message);
 }
 
 function getSyncErrorCode(error: unknown): string {
@@ -787,6 +778,11 @@ class YouTubeSyncService {
         };
       },
       onError: async (now, error) => {
+        logErrorWithStack(
+          logger,
+          `YouTube channel sync failed for user ${userId}`,
+          error,
+        );
         const status: YouTubeChannelSyncStatus = isQuotaExceededError(error)
           ? 'quota_exceeded'
           : 'failed';
@@ -844,6 +840,11 @@ class YouTubeSyncService {
       work: (now) =>
         this.syncVideosForUserWithStatus(userId, { claimedAt: now }),
       onError: async (now, error) => {
+        logErrorWithStack(
+          logger,
+          `YouTube upload sync failed for user ${userId}`,
+          error,
+        );
         const status: YouTubeSyncStatus = isQuotaExceededError(error)
           ? 'quota_exceeded'
           : 'failed';

@@ -38,6 +38,16 @@ jest.mock('googleapis', () => {
   };
 });
 
+jest.mock('winston', () => ({
+  createLogger: jest.fn(() => ({
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+  })),
+  format: { json: jest.fn(() => ({})) },
+  transports: { Console: jest.fn() },
+}));
+
 // Mock encryption
 jest.mock('./YouTubeTokenEncryption', () => ({
   encryptToken: jest.fn().mockImplementation((text) => ({
@@ -153,8 +163,11 @@ jest.mock('../prisma', () => {
   };
 });
 
+const winston = require('winston');
 const youtubeSyncService = require('./YouTubeSyncService').default;
+const mockLogger = jest.mocked(winston.createLogger).mock.results[0].value;
 const mockPrisma = require('../prisma').__mockPrisma;
+const { decryptToken } = require('./YouTubeTokenEncryption');
 const mockTransaction = mockPrisma.__transaction;
 const {
   RUN_TTL_MS,
@@ -1222,20 +1235,69 @@ describe('YouTubeSyncService', () => {
           mockPrisma.youTubeIntegration.updateMany as jest.Mock
         ).mockResolvedValue({ count: 1 });
 
+        const quotaError = new Error('quotaExceeded');
         jest
           .spyOn(youtubeSyncService, 'syncSubscriptions')
-          .mockRejectedValue(new Error('quotaExceeded'));
+          .mockRejectedValue(quotaError);
 
         const result = await youtubeSyncService.syncChannels('user-1');
 
         expect(result.status).toBe('quota_exceeded');
         expect(result.synced).toBe(0);
+        expect(mockLogger.error).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          `YouTube channel sync failed for user user-1: quotaExceeded`,
+          { stack: quotaError.stack },
+        );
         expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
           expect.objectContaining({
             where: { userId: 'user-1' },
             data: expect.objectContaining({
               lastChannelSyncStatus: 'quota_exceeded',
               lastChannelSyncError: 'quotaExceeded',
+            }),
+          }),
+        );
+        const uploadStateUpdate = (
+          mockPrisma.youTubeIntegration.update as jest.Mock
+        ).mock.calls.find(([args]) => args.data?.lastSyncStatus !== undefined);
+        expect(uploadStateUpdate).toBeUndefined();
+      });
+
+      it('syncChannels should log the real error and store syncFailed when subscription sync throws', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastChannelSyncAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        const subError = new Error('subscriptions unavailable');
+        jest
+          .spyOn(youtubeSyncService, 'syncSubscriptions')
+          .mockRejectedValue(subError);
+
+        const result = await youtubeSyncService.syncChannels('user-1');
+
+        expect(result.status).toBe('failed');
+        expect(result.synced).toBe(0);
+        expect(mockLogger.error).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          `YouTube channel sync failed for user user-1: subscriptions unavailable`,
+          { stack: subError.stack },
+        );
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: 'user-1' },
+            data: expect.objectContaining({
+              lastChannelSyncStatus: 'failed',
+              lastChannelSyncError: 'syncFailed',
             }),
           }),
         );
@@ -1483,9 +1545,10 @@ describe('YouTubeSyncService', () => {
           mockPrisma.youTubeIntegration.updateMany as jest.Mock
         ).mockResolvedValue({ count: 1 });
 
+        const networkError = new Error('network failure');
         jest
           .spyOn(youtubeSyncService, 'syncVideosForUserWithStatus')
-          .mockRejectedValue(new Error('network failure'));
+          .mockRejectedValue(networkError);
 
         jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
           ...noopUploadStatusFields,
@@ -1495,6 +1558,165 @@ describe('YouTubeSyncService', () => {
 
         const result = await youtubeSyncService.syncUploads('user-1');
 
+        expect(mockLogger.error).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          `YouTube upload sync failed for user user-1: network failure`,
+          { stack: networkError.stack },
+        );
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: 'user-1' },
+            data: expect.objectContaining({
+              lastSyncStatus: 'failed',
+              lastSyncError: 'syncFailed',
+            }),
+          }),
+        );
+        expect(result.status).toBe('failed');
+      });
+
+      it('syncUploads should log an auth failure once from the returning handler and store syncFailed', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          ...connectedIntegration,
+          lastManualRefreshAt: null,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        (
+          mockPrisma.youTubeSubscription.findMany as jest.Mock
+        ).mockImplementation((args: { where?: { enabled?: boolean } }) => {
+          if (args?.where?.enabled === true) {
+            return [
+              {
+                id: 'sub-1',
+                userId: 'user-1',
+                channelId: 'ch-1',
+                uploadsPlaylistId: 'pl-1',
+                enabled: true,
+              },
+            ];
+          }
+          return [];
+        });
+
+        const authError = new Error('token decrypt failed');
+        (decryptToken as jest.Mock).mockImplementationOnce(() => {
+          throw authError;
+        });
+
+        jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+          ...noopUploadStatusFields,
+          status: 'failed',
+          lastSyncError: 'syncFailed',
+        });
+
+        const mockYoutube = require('googleapis').google.youtube();
+
+        const result = await youtubeSyncService.syncUploads('user-1');
+
+        expect(mockLogger.error).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          `YouTube upload sync failed for user user-1: token decrypt failed`,
+          { stack: authError.stack },
+        );
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: 'user-1' },
+            data: expect.objectContaining({
+              lastSyncStatus: 'failed',
+              lastSyncError: 'syncFailed',
+            }),
+          }),
+        );
+        expect(mockYoutube.playlistItems.list).not.toHaveBeenCalled();
+        expect(result.status).toBe('failed');
+      });
+
+      it('syncUploads should log a non-Error failure without a stack and store syncFailed', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        jest
+          .spyOn(youtubeSyncService, 'syncVideosForUserWithStatus')
+          .mockRejectedValue('plain failure');
+
+        jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+          ...noopUploadStatusFields,
+          status: 'failed',
+          lastSyncError: 'syncFailed',
+        });
+
+        const result = await youtubeSyncService.syncUploads('user-1');
+
+        expect(mockLogger.error).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          `YouTube upload sync failed for user user-1: "plain failure"`,
+        );
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: 'user-1' },
+            data: expect.objectContaining({
+              lastSyncStatus: 'failed',
+              lastSyncError: 'syncFailed',
+            }),
+          }),
+        );
+        expect(result.status).toBe('failed');
+      });
+
+      it('syncUploads should log a non-serializable failure with its string form and store syncFailed', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        const circular = { reason: 'loop' } as {
+          reason: string;
+          self?: unknown;
+          toString: () => string;
+        };
+        circular.self = circular;
+        circular.toString = () => 'circular sync failure';
+
+        jest
+          .spyOn(youtubeSyncService, 'syncVideosForUserWithStatus')
+          .mockRejectedValue(circular);
+
+        jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+          ...noopUploadStatusFields,
+          status: 'failed',
+          lastSyncError: 'syncFailed',
+        });
+
+        const result = await youtubeSyncService.syncUploads('user-1');
+
+        expect(mockLogger.error).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          'YouTube upload sync failed for user user-1: circular sync failure',
+        );
         expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
           expect.objectContaining({
             where: { userId: 'user-1' },

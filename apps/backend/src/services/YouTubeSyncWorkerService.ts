@@ -1,4 +1,5 @@
 import winston from 'winston';
+import { logErrorWithStack } from '../helpers/describeError';
 import { PrismaClient, createPrismaClient } from '../prisma';
 import workerLeaseService, {
   WorkerLease,
@@ -131,7 +132,11 @@ export class YouTubeSyncWorkerService {
           if (synced > 0) result.usersSynced++;
         } catch (error) {
           result.failed++;
-          logger.error(`YouTube sync failed for user ${userId}: ${error}`);
+          logErrorWithStack(
+            logger,
+            `YouTube sync failed for user ${userId}`,
+            error,
+          );
 
           if (isRevokedTokenError(error)) {
             await this.prisma.youTubeIntegration.update({
