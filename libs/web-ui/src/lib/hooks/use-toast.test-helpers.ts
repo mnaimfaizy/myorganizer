@@ -6,9 +6,6 @@ export { TOAST_REMOVE_DELAY };
 export function clearToastState() {
   const { result, unmount } = renderHook(() => useToast());
   act(() => {
-    jest.runOnlyPendingTimers();
-  });
-  act(() => {
     result.current.dismiss();
   });
   act(() => {

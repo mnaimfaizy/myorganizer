@@ -157,12 +157,22 @@ function getSnapshot(): State {
   return memoryState;
 }
 
-let scheduledAdd: ReturnType<typeof setTimeout> | undefined;
+function clearRemoveTimeout(toastId: string) {
+  const timeout = toastTimeouts.get(toastId);
+  if (timeout) {
+    clearTimeout(timeout);
+    toastTimeouts.delete(toastId);
+  }
+}
 
 type Toast = Omit<ToasterToast, 'id'>;
 
 function toast({ ...props }: Toast) {
-  const id = genId();
+  // Reuse the limit-1 slot's id so Toast.Root stays mounted. Chromium drops a
+  // replaced Toast.Root portal (#810); REMOVE-then-ADD (even on a macrotask)
+  // still left Notifications empty in CI.
+  const existing = memoryState.toasts[0];
+  const id = existing?.id ?? genId();
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -171,35 +181,26 @@ function toast({ ...props }: Toast) {
     });
   const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
-  const add = () => {
-    dispatch({
-      type: 'ADD_TOAST',
-      toast: {
-        ...props,
-        id,
-        open: true,
-        onOpenChange: (open) => {
-          if (!open) dismiss();
-        },
-      },
-    });
+  const next: ToasterToast = {
+    ...props,
+    id,
+    open: true,
+    onOpenChange: (open) => {
+      if (!open) dismiss();
+    },
   };
 
-  // Chromium drops a Toast.Root portal when the only viewport child is replaced
-  // in the same turn (#810). Commit an empty list first, then add after a
-  // macrotask so the previous portal has detached.
-  if (memoryState.toasts.length > 0) {
-    if (scheduledAdd !== undefined) {
-      clearTimeout(scheduledAdd);
-      scheduledAdd = undefined;
-    }
-    dispatch({ type: 'REMOVE_TOAST' });
-    scheduledAdd = setTimeout(() => {
-      scheduledAdd = undefined;
-      add();
-    }, 0);
+  if (existing) {
+    clearRemoveTimeout(existing.id);
+    dispatch({
+      type: 'UPDATE_TOAST',
+      toast: next,
+    });
   } else {
-    add();
+    dispatch({
+      type: 'ADD_TOAST',
+      toast: next,
+    });
   }
 
   return {

@@ -40,10 +40,6 @@ describe('Toaster', () => {
       toast({ title: 'Import complete' });
     });
 
-    act(() => {
-      jest.advanceTimersByTime(0);
-    });
-
     expect(
       screen.getByRole('region', { name: /notifications/i }),
     ).toBeInTheDocument();

@@ -26,41 +26,70 @@ describe('useToast', () => {
   it('should update a toast', () => {
     const { result } = renderHook(() => useToast());
 
+    let firstId: string | undefined;
     act(() => {
-      result.current.toast({ title: 'Test Toast' });
+      firstId = result.current.toast({ title: 'Test Toast' }).id;
     });
 
     act(() => {
       result.current.toast({ title: 'Updated Toast' });
     });
 
-    act(() => {
-      jest.advanceTimersByTime(0);
-    });
-
     expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].id).toBe(firstId);
     expect(result.current.toasts[0].title).toBe('Updated Toast');
+    expect(result.current.toasts[0].open).toBe(true);
   });
 
-  it('clears the list before the replacement toast is added', () => {
+  it('reuses the same id when replacing a toast in the limit-1 slot', () => {
     const { result } = renderHook(() => useToast());
 
+    let firstId: string | undefined;
     act(() => {
-      result.current.toast({ title: 'Test Toast' });
+      firstId = result.current.toast({ title: 'Test Toast' }).id;
     });
 
     act(() => {
       result.current.toast({ title: 'Updated Toast' });
     });
 
-    expect(result.current.toasts).toHaveLength(0);
+    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].id).toBe(firstId);
+    expect(result.current.toasts[0].title).toBe('Updated Toast');
+    expect(result.current.toasts[0].open).toBe(true);
+  });
+
+  it('reopens and updates a dismissed toast without scheduling removal of the replacement', () => {
+    const { result } = renderHook(() => useToast());
+
+    let toastId: string | undefined;
+    act(() => {
+      toastId = result.current.toast({ title: 'Test Toast' }).id;
+    });
 
     act(() => {
-      jest.advanceTimersByTime(0);
+      result.current.dismiss(toastId);
+    });
+
+    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].open).toBe(false);
+
+    act(() => {
+      result.current.toast({ title: 'Updated Toast' });
+    });
+
+    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].id).toBe(toastId);
+    expect(result.current.toasts[0].title).toBe('Updated Toast');
+    expect(result.current.toasts[0].open).toBe(true);
+
+    act(() => {
+      jest.advanceTimersByTime(TOAST_REMOVE_DELAY);
     });
 
     expect(result.current.toasts).toHaveLength(1);
     expect(result.current.toasts[0].title).toBe('Updated Toast');
+    expect(result.current.toasts[0].open).toBe(true);
   });
 
   it('should dismiss a toast', () => {
@@ -127,10 +156,6 @@ describe('useToast', () => {
 
       act(() => {
         toaster.result.current.toast({ title: 'Import complete' });
-      });
-
-      act(() => {
-        jest.advanceTimersByTime(0);
       });
 
       expect(page.result.current.toasts).toHaveLength(1);
