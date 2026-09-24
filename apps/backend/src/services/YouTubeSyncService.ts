@@ -323,18 +323,21 @@ export {
 } from '../helpers/videoKind';
 export type { VideoKind } from '../helpers/videoKind';
 
-function isQuotaExceededError(error: unknown): boolean {
+function describeError(error: unknown): { message: string; stack?: string } {
   let message = String(error);
   if (error instanceof Error) {
-    message = error.message;
-  } else {
-    try {
-      message = JSON.stringify(error) ?? message;
-    } catch {
-      // Keep the string representation when a third-party error is not serializable.
-    }
+    return { message: error.message, stack: error.stack };
   }
-  return /quotaExceeded/i.test(message);
+  try {
+    message = JSON.stringify(error) ?? message;
+  } catch {
+    // Keep the string representation when a third-party error is not serializable.
+  }
+  return { message };
+}
+
+function isQuotaExceededError(error: unknown): boolean {
+  return /quotaExceeded/i.test(describeError(error).message);
 }
 
 function getSyncErrorCode(error: unknown): string {
@@ -342,32 +345,20 @@ function getSyncErrorCode(error: unknown): string {
 }
 
 /**
- * A Sync Run can fail before the per-channel loop. The stored code stays a
- * stable bucket (`syncFailed` / `quotaExceeded`); the message and stack are
- * logged here. The same error object is logged once when both the auth catch
- * and the manual-attempt handler see it.
+ * A Channel Sync or Upload Sync attempt can fail before its work finishes.
+ * The stored code stays a stable bucket (`syncFailed` / `quotaExceeded`); the
+ * message and stack are logged here. The same error object is logged once
+ * when both the auth catch and the manual-attempt handler see it.
  */
-const loggedSyncRunFailures = new WeakSet<object>();
+const loggedSyncAttemptFailures = new WeakSet<object>();
 
-function logSyncRunFailure(context: string, error: unknown): void {
+function logSyncAttemptFailure(context: string, error: unknown): void {
   if (typeof error === 'object' && error !== null) {
-    if (loggedSyncRunFailures.has(error)) return;
-    loggedSyncRunFailures.add(error);
+    if (loggedSyncAttemptFailures.has(error)) return;
+    loggedSyncAttemptFailures.add(error);
   }
 
-  let message = String(error);
-  let stack: string | undefined;
-  if (error instanceof Error) {
-    message = error.message;
-    stack = error.stack;
-  } else {
-    try {
-      message = JSON.stringify(error) ?? message;
-    } catch {
-      // Keep the string representation when a third-party error is not serializable.
-    }
-  }
-
+  const { message, stack } = describeError(error);
   if (stack === undefined) {
     logger.error(`${context}: ${message}`);
     return;
@@ -686,7 +677,7 @@ class YouTubeSyncService {
     try {
       youtube = await this.getAuthenticatedClient(userId);
     } catch (error) {
-      logSyncRunFailure(
+      logSyncAttemptFailure(
         `YouTube upload sync failed before the channel loop for user ${userId}`,
         error,
       );
@@ -825,7 +816,7 @@ class YouTubeSyncService {
         };
       },
       onError: async (now, error) => {
-        logSyncRunFailure(
+        logSyncAttemptFailure(
           `YouTube channel sync failed for user ${userId}`,
           error,
         );
@@ -886,7 +877,7 @@ class YouTubeSyncService {
       work: (now) =>
         this.syncVideosForUserWithStatus(userId, { claimedAt: now }),
       onError: async (now, error) => {
-        logSyncRunFailure(
+        logSyncAttemptFailure(
           `YouTube upload sync failed for user ${userId}`,
           error,
         );
