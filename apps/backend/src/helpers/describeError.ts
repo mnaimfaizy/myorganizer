@@ -20,3 +20,25 @@ export function describeError(error: unknown): {
   }
   return { message };
 }
+
+/**
+ * Logs one failure as `${context}: ${message}`, and `{ stack }` when the
+ * thrown value has one.
+ *
+ * The stored sync code stays a stable bucket (`syncFailed` / `quotaExceeded`).
+ * Call this from the handler that records the bucket and returns. A catch that
+ * records state and rethrows leaves the log to that caller, so one failure
+ * produces one line.
+ */
+export function logErrorWithStack(
+  log: { error: (message: string, meta?: { stack: string }) => unknown },
+  context: string,
+  error: unknown,
+): void {
+  const { message, stack } = describeError(error);
+  if (stack === undefined) {
+    log.error(`${context}: ${message}`);
+    return;
+  }
+  log.error(`${context}: ${message}`, { stack });
+}

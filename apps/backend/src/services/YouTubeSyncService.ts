@@ -1,6 +1,6 @@
 import { google, youtube_v3 } from 'googleapis';
 import winston from 'winston';
-import { describeError } from '../helpers/describeError';
+import { describeError, logErrorWithStack } from '../helpers/describeError';
 import {
   parseIso8601DurationSeconds,
   videoKindWhere,
@@ -330,22 +330,6 @@ function isQuotaExceededError(error: unknown): boolean {
 
 function getSyncErrorCode(error: unknown): string {
   return isQuotaExceededError(error) ? 'quotaExceeded' : 'syncFailed';
-}
-
-/**
- * A Channel Sync or Upload Sync attempt can fail before its work finishes.
- * The stored code stays a stable bucket (`syncFailed` / `quotaExceeded`); the
- * message and stack are logged here. Call this from the handler that records
- * the bucket and returns. A catch that records state and rethrows leaves the
- * log to that caller, so one failure produces one line.
- */
-function logSyncAttemptFailure(context: string, error: unknown): void {
-  const { message, stack } = describeError(error);
-  if (stack === undefined) {
-    logger.error(`${context}: ${message}`);
-    return;
-  }
-  logger.error(`${context}: ${message}`, { stack });
 }
 
 class YouTubeSyncService {
@@ -794,7 +778,8 @@ class YouTubeSyncService {
         };
       },
       onError: async (now, error) => {
-        logSyncAttemptFailure(
+        logErrorWithStack(
+          logger,
           `YouTube channel sync failed for user ${userId}`,
           error,
         );
@@ -855,7 +840,8 @@ class YouTubeSyncService {
       work: (now) =>
         this.syncVideosForUserWithStatus(userId, { claimedAt: now }),
       onError: async (now, error) => {
-        logSyncAttemptFailure(
+        logErrorWithStack(
+          logger,
           `YouTube upload sync failed for user ${userId}`,
           error,
         );
