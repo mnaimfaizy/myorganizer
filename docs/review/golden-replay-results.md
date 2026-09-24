@@ -46,14 +46,14 @@ Promotion to `guard` takes **three consecutive catches**; demotion to
 `frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
 promoted case is a detector that quietly stopped running.
 
-| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| -------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak; caught in 35076286069 and 35156450789                                                                                                                                                                                                                                                                                                      |
-| `export-envelope-drops-tasks`                | `frontier` | 2026-09-22 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time**; caught in 35076286069 and 35156450789; **missed in 35723129169 — demoted a second time**, a clean miss ending a five-run streak; missed again in 35800528309                     |
-| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486, 34673097908, 35076286069, 35156450789, 35723129169 and 35800528309 — **six consecutive, promotion earned and still not taken**: the no-empty-arm reason lapsed on 2026-09-22 when `export-envelope-drops-tasks` was demoted back to `frontier`, so the arm now holds another case and promotion is available; taking it is out of scope for #734 |
-| `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, six turns); caught in 35156450789                                                                                                                                                                                                                       |
-| `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                         |
-| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                                                                                    |
+| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------------------------- | ---------- | ---------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak; caught in 35076286069 and 35156450789; **missed in 35951455600**, the first run in the case tree, where ADR 0053 postdates the head — not a demotion (ADR 0102: a question about the apparatus first); void in 35962475744 (the answer sheet's strict site schema, fixed in the same branch); caught in 35964812094, the first run with the enum fan-out obligation (#895)                                                                                                          |
+| `export-envelope-drops-tasks`                | `frontier` | 2026-09-22 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time**; caught in 35076286069 and 35156450789; **missed in 35723129169 — demoted a second time**, a clean miss ending a five-run streak; missed again in 35800528309; missed in 35951455600, the first run in the case tree; **caught in 35964812094**, the first run with the enum fan-out obligation (#895), on the exact tuple |
+| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486, 34673097908, 35076286069, 35156450789, 35723129169 and 35800528309 — **six consecutive, promotion earned and still not taken**: the no-empty-arm reason lapsed on 2026-09-22 when `export-envelope-drops-tasks` was demoted back to `frontier`, so the arm now holds another case and promotion is available; taking it is out of scope for #734; void in 35833576958 under ADR 0101 (a citation from the wrong tree); caught in 35951455600 and 35964812094                              |
+| `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, six turns); caught in 35156450789; caught in 35951455600 and 35964812094                                                                                                                                                                                                                                                                                                                         |
+| `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789; caught in 35951455600 and 35964812094                                                                                                                                                                                                                                                                                                                           |
+| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789; void in 35951455600 (answer sheet: `wiredBy: none` on three openapi sites with no finding raised); caught in 35964812094                                                                                                                                                                                                                                                                                                   |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
@@ -192,6 +192,9 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-22 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | ADR 0098 — `coveringGate` leaves the answer   |
 | 2026-09-23 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | same, plus the review response on #879        |
 | 2026-09-23 | `claude-sonnet-5` | 2 (`frontier`) | **1 of 2**                  | none — #884 touches only the measurement      |
+| 2026-09-24 | `claude-sonnet-5` | 6 (all tiers)  | **3 of 5 scorable**, 1 void | ADR 0102 — the case tree, on #891             |
+| 2026-09-24 | `claude-sonnet-5` | 6 (all tiers)  | **cancelled**, 1 void       | enum fan-out obligation (#895), first try     |
+| 2026-09-24 | `claude-sonnet-5` | 6 (all tiers)  | **6 of 6**                  | enum fan-out obligation, site schema fixed    |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26
@@ -602,6 +605,51 @@ Read that way, this run's result on the case is a void. And a replay's working
 tree is now the case head, standards included, with only the reviewer's
 harness laid over it from the pull request
 ([ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)).
+
+### The enum fan-out lesson, carried in the harness
+
+ADR 0102 cost the two enum fan-out cases their document: both expected a
+finding whose only written source, ADR 0053, postdates both heads. Run
+[35951455600](https://github.com/mnaimfaizy/myorganizer/actions/runs/35951455600)
+(2026-09-24, #891's last head `48dfceb`) measured it — both missed, while
+`release-bump`, `signup` and `import-confirm` were caught. Its sixth case,
+`mail-test-setup-assigns-undefined-to-env`, was a void: the reviewer answered
+`wiredBy: none` on three `openapi:check` sites — correctly, since that gate
+reached CI after the case head — and raised no finding, so the answer-sheet
+check failed it (ADR 0101).
+
+#895 put the lesson in the harness as the obligation
+`enum-fanout-reaches-a-pinned-table`. Its first dispatch,
+[35962475744](https://github.com/mnaimfaizy/myorganizer/actions/runs/35962475744),
+voided `groceries-blob-type-without-fanouts` before scoring: the reviewer
+copied each site into its answer exactly as the worklist gave it, catalogue
+fields and all, and the sheet's site schema accepted only `file` and `line`,
+so the whole sheet was rejected as unreadable. The fix accepts a site's
+catalogue fields when they match the worklist and still refuses one naming a
+different gate (ADR 0098). The run was cancelled to spend no more on the
+fault.
+
+Run
+[35964812094](https://github.com/mnaimfaizy/myorganizer/actions/runs/35964812094)
+(head `ada0b84`) caught all six, every answer sheet sound:
+
+| Case                                         | Result | Match       | Sites | Citations |
+| -------------------------------------------- | ------ | ----------- | ----: | --------: |
+| `groceries-blob-type-without-fanouts`        | caught | prose       |   9/9 |       1/1 |
+| `export-envelope-drops-tasks`                | caught | exact tuple |   7/7 |       2/2 |
+| `release-bump-leaves-generated-client-stale` | caught | exact tuple |   1/1 |       0/0 |
+| `signup-password-wrapper-inside-formcontrol` | caught | exact tuple |   7/7 |       7/7 |
+| `import-confirm-is-bare-window-confirm`      | caught | exact tuple |   1/1 |       1/1 |
+| `mail-test-setup-assigns-undefined-to-env`   | caught | exact tuple | 14/14 |     11/11 |
+
+The export case is the one that says the design was right. At its head
+`VaultBlobType` had four members and `envelopeFromLocalVault` listed all
+four, so an obligation asking whether a consumer omits a member would have
+been answered "no" honestly. The obligation asks whether the consumer reaches
+a pinned table, and a hand-enumeration that happens to be complete today is
+not one. It is one catch after two misses, so the case stays `frontier`;
+`groceries` stays `guard`, its #891 miss read under ADR 0102 as the apparatus
+and not the reviewer.
 
 ## Reproduce
 
