@@ -59,27 +59,30 @@ describe('useToast', () => {
     expect(result.current.toasts[0].open).toBe(true);
   });
 
-  it('reopens and updates a dismissed toast without scheduling removal of the replacement', () => {
+  it('replaces a dismissed toast with a new id without scheduling removal of the replacement', () => {
     const { result } = renderHook(() => useToast());
 
-    let toastId: string | undefined;
+    let dismissedId: string | undefined;
     act(() => {
-      toastId = result.current.toast({ title: 'Test Toast' }).id;
+      dismissedId = result.current.toast({ title: 'Test Toast' }).id;
     });
 
     act(() => {
-      result.current.dismiss(toastId);
+      result.current.dismiss(dismissedId);
     });
 
     expect(result.current.toasts).toHaveLength(1);
     expect(result.current.toasts[0].open).toBe(false);
 
+    let replacementId: string | undefined;
     act(() => {
-      result.current.toast({ title: 'Updated Toast' });
+      replacementId = result.current.toast({ title: 'Updated Toast' }).id;
     });
 
     expect(result.current.toasts).toHaveLength(1);
-    expect(result.current.toasts[0].id).toBe(toastId);
+    expect(replacementId).toBeDefined();
+    expect(replacementId).not.toBe(dismissedId);
+    expect(result.current.toasts[0].id).toBe(replacementId);
     expect(result.current.toasts[0].title).toBe('Updated Toast');
     expect(result.current.toasts[0].open).toBe(true);
 
