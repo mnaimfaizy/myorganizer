@@ -34,6 +34,31 @@ describe('useToast', () => {
       result.current.toast({ title: 'Updated Toast' });
     });
 
+    act(() => {
+      jest.advanceTimersByTime(0);
+    });
+
+    expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].title).toBe('Updated Toast');
+  });
+
+  it('clears the list before the replacement toast is added', () => {
+    const { result } = renderHook(() => useToast());
+
+    act(() => {
+      result.current.toast({ title: 'Test Toast' });
+    });
+
+    act(() => {
+      result.current.toast({ title: 'Updated Toast' });
+    });
+
+    expect(result.current.toasts).toHaveLength(0);
+
+    act(() => {
+      jest.advanceTimersByTime(0);
+    });
+
     expect(result.current.toasts).toHaveLength(1);
     expect(result.current.toasts[0].title).toBe('Updated Toast');
   });
@@ -102,6 +127,10 @@ describe('useToast', () => {
 
       act(() => {
         toaster.result.current.toast({ title: 'Import complete' });
+      });
+
+      act(() => {
+        jest.advanceTimersByTime(0);
       });
 
       expect(page.result.current.toasts).toHaveLength(1);
