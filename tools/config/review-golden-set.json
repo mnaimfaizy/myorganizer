@@ -18,8 +18,8 @@
         {
           "id": "reconcile-omits-new-member",
           "axis": "standards",
-          "ruleId": "standard-enum-fanout-not-pinned",
-          "source": "AGENTS\\.md|0053|vaultMigration",
+          "ruleId": "obligation-enum-fanout-reaches-a-pinned-table",
+          "source": "AGENTS\\.md|0053|vaultMigration|REVIEW_CHECKLIST",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": [
             "libs/app-api-client/src/api.ts",
@@ -49,8 +49,8 @@
         {
           "id": "envelope-omits-tasks",
           "axis": "standards",
-          "ruleId": "standard-enum-fanout-not-pinned",
-          "source": "AGENTS\\.md|0053",
+          "ruleId": "obligation-enum-fanout-reaches-a-pinned-table",
+          "source": "AGENTS\\.md|0053|REVIEW_CHECKLIST",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": ["libs/web-vault/src/lib/vault/vaultExportImport.ts"],
           "minSeverity": "should-fix",

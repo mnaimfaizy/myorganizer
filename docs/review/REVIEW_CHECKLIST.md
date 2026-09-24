@@ -19,7 +19,7 @@ noticing is nobody's job.
 
 ## Status
 
-**Wired.** `tools/config/review-obligations.json` is the machine form of the four
+**Wired.** `tools/config/review-obligations.json` is the machine form of the five
 entries below, matched against the diff by
 `yarn review:obligations:select` before the reviewer runs, and answered into
 `tmp/code-review/obligations.answers.json`. Completeness is reported by
@@ -59,7 +59,11 @@ and which incident bought it.
 ```jsonc
 {
   "id": "kebab-case-id",
-  "trigger": { "paths": [{ "glob": "libs/**", "addedPattern": "…" }] },
+  "trigger": {
+    "paths": [{ "glob": "libs/**", "addedPattern": "…" }],
+    "onePerFile": false, // optional: fire once per file, at the first match
+    "excludePaths": ["**/*.test.ts"], // optional: never fire in these files
+  },
   "question": "What the reviewer must answer, in the imperative.",
   "answerFields": ["…"],
   "citedFields": [{ "field": "…", "uncitedWhen": "none" }],
@@ -281,11 +285,69 @@ while the code read as configuring none. Golden case
 
 ---
 
+## 5. A fan-out over a guarded enum reaches a pinned table
+
+**id** `enum-fanout-reaches-a-pinned-table`
+**Fires when** the diff adds a member line to `libs/app-api-client/src/api.ts`,
+where `VaultBlobType` is declared, or adds a line naming `VaultBlobType.<Member>`
+under `libs/web-vault/src/**` or `libs/vault-core/src/**` — the guarded enum's
+value roots. Once per file, at the first line that fired, because the question is
+about a scope rather than a line; test and spec files never fire it.
+
+**Given** `guardedEnum` and `coveringGate`, stated by the catalogue against the
+trigger as in entry 1. The guarded enums are the ones
+`tools/scripts/lib/guarded-enums.mjs` lists for the fan-out gate, and
+`yarn review:checklist:check` fails when this entry's trigger stops covering one
+of them — a declaration file or a value root with no trigger path, or a trigger
+path naming an enum the list does not guard.
+
+- `VaultBlobType` → `enum:fanout:check`
+
+**Answer**
+
+| Field         | What to write                                                                                                       |
+| ------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `consumers`   | Every scope at the head that fans out over the members, each marked pinned or hand-enumerated, with what it omits.  |
+| `enumeration` | The one consumer the rest of the answer is about — the fan-out containing the site, or one the new member falls by. |
+| `pinned`      | Whether that consumer reaches a table typed `satisfies Record<guardedEnum, …>`.                                     |
+| `omits`       | The members that consumer leaves out, or `none`.                                                                    |
+| `wiredBy`     | The hook, workflow job, or aggregate manifest entry that invokes `coveringGate`, or `none`.                         |
+
+**Cites** `enumeration`, `wiredBy` unless `none`
+
+Quote the first line of the consumer's enumeration. When the site adds a member,
+the consumer that matters is usually in a file the diff never touched, and a
+finding raised there clears the check: it counts in any file the answer cites,
+not only the site's.
+
+**Defect** — `pinned: false` with `wiredBy: none`. A hand-enumeration is not
+pinned even when it lists every member today: it compiles just as well when the
+next member is added, which is the whole defect. A non-empty `omits` makes it
+worse, not different. Where `coveringGate` is wired, the gate fails the scopes it
+covers and the finding is suppressed there
+([ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md));
+a consumer outside its scope is still raised the ordinary way.
+
+**Why this exists** — issue #512, and issue #537 behind it. Adding `Groceries`
+to `VaultBlobType` touched no consumer, and the keep-server reconcile in
+`vaultMigration.ts` hand-enumerated the other five, so it never uploaded or
+compared grocery ciphertext and destroyed it. The hardened export's
+`envelopeFromLocalVault` listed the blob types as property names and so dropped
+every member added after it was written. The rule that forbids both is
+[ADR 0053](../adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md),
+which postdates both incidents: a golden replay reviews the case tree, standards
+included, so the lesson has to reach the reviewer as a question rather than a
+document ([ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)).
+Golden case `groceries-blob-type-without-fanouts`, which was a guard until the
+tree swap; `export-envelope-drops-tasks` pins this entry's rule id as well.
+
+---
+
 ## Deferred candidates
 
 Real, incident-backed, and deliberately not in the first cohort. The first
 measurement needs a small list; a long one repeats the mistake this file exists
-to avoid. Promote them once the four above have been measured.
+to avoid. Promote them once the first four above have been measured.
 
 - **A destructive handler reachable from a confirmation.** Entry 2 fires on
   the three confirmation literals, which misses a handler named `delete…`,

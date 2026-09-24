@@ -212,6 +212,18 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
         fail(`${where}: trigger.addedPattern must be a string`);
       compile(t.addedPattern, where);
     }
+    if (t.onePerFile !== undefined && typeof t.onePerFile !== 'boolean')
+      fail(`${where}: trigger.onePerFile must be a boolean`);
+    if (t.excludePaths !== undefined) {
+      if (
+        !Array.isArray(t.excludePaths) ||
+        t.excludePaths.length === 0 ||
+        t.excludePaths.some((g) => typeof g !== 'string' || !g)
+      )
+        fail(
+          `${where}: trigger.excludePaths must name at least one glob, or be absent`,
+        );
+    }
   }
   return cat;
 }
@@ -303,8 +315,13 @@ export const selectObligations = ({
             facts: facts(p),
           },
     );
+    // Checked before the paths, so an exclusion wins over every glob that
+    // would otherwise match. A test's fixture enumerating an enum's members is
+    // the test describing the enum, not a consumer that can drop one.
+    const excluded = (o.trigger.excludePaths ?? []).map(globToRegExp);
     const sites = [];
     for (const [file, lines] of addedLines) {
+      if (excluded.some((g) => g.test(file))) continue;
       const rule = rules.find((r) => r.glob.test(file));
       if (!rule) continue;
       if (!rule.pattern) {
@@ -313,7 +330,14 @@ export const selectObligations = ({
         continue;
       }
       for (const { line, text } of lines) {
-        if (rule.pattern.test(text)) sites.push({ file, line, ...rule.facts });
+        if (!rule.pattern.test(text)) continue;
+        sites.push({ file, line, ...rule.facts });
+        // An entry whose question is about the file rather than the line — an
+        // enum fan-out is a scope, and eight matching lines in one function
+        // are one question — asks it once, at the first line that fired. Eight
+        // identical answers would spend the reviewer's turns and push the
+        // other files' sites past the cap.
+        if (o.trigger.onePerFile) break;
       }
     }
     if (sites.length === 0) continue;
@@ -478,13 +502,16 @@ export const obligationRuleId = (id) => `obligation-${id}`;
  * written answer is not a verified answer — one level up.
  *
  * A finding counts for a site when it carries the obligation's mirrored rule id
- * and is anchored in the site's file, or carries no location at all (the
- * contract allows a located-nowhere finding, and refusing to count one would
- * fail a reviewer for using the contract as written).
+ * and is anchored in the site's file, or in a file the answer itself cites, or
+ * carries no location at all (the contract allows a located-nowhere finding,
+ * and refusing to count one would fail a reviewer for using the contract as
+ * written). The cited file counts because the defect need not be where the
+ * diff is: a member added to an enum is the site, and the consumer that omits
+ * it — the line the answer quotes — is where the finding belongs (#512).
  *
  * @param {string} id the obligation id
  * @param {{file: string}} site
- * @param {{raisedFindingIds?: string[]}} answer
+ * @param {{raisedFindingIds?: string[], citations?: Record<string, {file: string}>}} answer
  * @param {{ruleId?: string, location?: {file?: string}}[]|undefined} findings
  * @returns {{raised: boolean, readFrom: 'report'|'declaration'}}
  */
@@ -495,10 +522,14 @@ export const raisedForSite = (id, site, answer, findings) => {
       readFrom: 'declaration',
     };
   const want = obligationRuleId(id);
+  const files = new Set([
+    site.file,
+    ...Object.values(answer.citations ?? {}).map((c) => c?.file),
+  ]);
   const raised = findings.some(
     (f) =>
       f?.ruleId === want &&
-      (f.location?.file === undefined || f.location.file === site.file),
+      (f.location?.file === undefined || files.has(f.location.file)),
   );
   return { raised, readFrom: 'report' };
 };

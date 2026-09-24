@@ -221,6 +221,11 @@ export const NOT_THE_REVIEWERS_TO_RUN = [
       'A coveringGate value in the same obligation, and an nx target that rebuilds libs/design-tokens/src/generated before asserting the tree is clean — mutating the checkout is not something a reviewer should do (ADR 0098).',
   },
   {
+    command: 'yarn enum:fanout:check',
+    reason:
+      'The coveringGate value in obligation enum-fanout-reaches-a-pinned-table, so it is a gate NAME the reviewer greps the hooks and workflows for to answer wiredBy, never a command it runs (ADR 0098). The same entry asks whether a consumer is pinned, which the reviewer answers by reading the fan-out, and at the case heads that obligation exists for the gate is not in the tree at all.',
+  },
+  {
     command: 'git branch --show-current',
     reason:
       'Step 2 reads the branch name to find the spec interactively. In CI the branch name is given in the prompt as a fact, along with the fixed point, the head, and the tier.',

@@ -184,6 +184,7 @@ Standards axis:
 - `obligation-destructive-confirmation-names-what-it-mutates` — a confirmation naming its mutations
 - `obligation-slot-injected-props-land-on-the-control` — injected props landing on the control
 - `obligation-env-assignment-runtime-value` — what an environment assignment actually stores
+- `obligation-enum-fanout-reaches-a-pinned-table` — a guarded enum's fan-out reaching its pinned table
 - `reach-through-member-added-to-a-set` — a set gained a member and a hand-enumeration did not
 - `reach-through-shared-value-removed` — a value went away and a consumer resolves to nothing
 - `standard-enum-fanout-not-pinned` — a fan-out over a domain enum misses its Pinned Table
@@ -352,9 +353,9 @@ Five rules, and they are the whole difference between this and an instruction:
   contract like any other, and severity is earned the same way. The answer sheet is not a second
   findings list, and nothing in it changes the verdict. When your answer meets the entry's
   `defectWhen`, the check looks in your report for a finding carrying that obligation's mirrored
-  `obligation-<id>` rule id in the site's file, and fails if there is none — raising the finding is
-  what clears it, and `raisedFindingIds` is bookkeeping you cannot fill with a real id anyway,
-  because the validator hashes ids after you write the sheet.
+  `obligation-<id>` rule id in the site's file or in a file your answer cites, and fails if there is
+  none — raising the finding is what clears it, and `raisedFindingIds` is bookkeeping you cannot
+  fill with a real id anyway, because the validator hashes ids after you write the sheet.
 - **A field an obligation marks optional is still answered.** `run-the-gate-that-covers-this-change`
   is the first such obligation: write `not run` in `command` and `exitCode` rather than leaving them
   blank when you didn't execute anything. Blank reads as a site you skipped, not a field you

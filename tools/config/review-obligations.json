@@ -103,6 +103,70 @@
         "field": "matchesIntent",
         "equals": false
       }
+    },
+    {
+      "id": "enum-fanout-reaches-a-pinned-table",
+      "title": "A fan-out over a guarded enum reaches a pinned table",
+      "question": "Each site names its guardedEnum — a domain enum where handling some members and not others loses data with no error — and its coveringGate. Read the enum's members at the head commit. The site is a line the diff added; on the enum's own file it may belong to a neighbouring enum, and the question is about guardedEnum all the same. Find the consumers at the head that fan out over the members: a scope that names two or more of them, as guardedEnum.Member references, as the member values used as property names or string literals, in an if-chain, or as the keys of an object literal. List them in consumers, each marked pinned or hand-enumerated, with the members a hand-enumeration leaves out. Then pick the one consumer the rest of the answer is about: when the site is in a consumer, the fan-out that contains the site; when the site adds a member to the enum, a hand-enumerating consumer that does not handle the new member — it is usually in a file the diff never touched — or, if every consumer is pinned, the pinned table. Cite enumeration: the file, the line number, and the exact text of the first line of that consumer's enumeration. pinned is true only if that consumer reaches one table typed `satisfies Record<guardedEnum, …>`, which fails to compile when a member is missing; a hand-enumeration is not pinned even when it happens to list every member today, because it compiles just as well when the next one is added. omits lists the members that consumer leaves out, or \"none\". Determine wiredBy for coveringGate by reading the .husky hooks, the .github/workflows jobs, and the yarn gates:run manifest at the head commit for the gate's script name, and write the line that invokes it, or \"none\" if nothing does or the gate does not exist at this head.",
+      "answerFields": [
+        "consumers",
+        "enumeration",
+        "pinned",
+        "omits",
+        "wiredBy"
+      ],
+      "siteFields": ["guardedEnum", "coveringGate"],
+      "citedFields": [
+        "enumeration",
+        {
+          "field": "wiredBy",
+          "uncitedWhen": "none"
+        }
+      ],
+      "defect": "pinned false with wiredBy \"none\" is a finding, located at that consumer: a hand-enumerated fan-out compiles while handling some members and not others, and nothing fails when the enum grows, so a member it does not list is silently skipped, dropped, or destroyed — #512 lost grocery ciphertext when Groceries was added under a five-member reconcile, and #537 found the hardened export dropping the Tasks blob it was never written to list. A non-empty omits makes it worse, not different. When coveringGate is wired, the gate fails the scopes it covers and the finding is suppressed there (ADR 0074); a consumer outside its scope is still a finding, raised the ordinary way.",
+      "trigger": {
+        "onePerFile": true,
+        "excludePaths": [
+          "**/*.test.ts",
+          "**/*.test.tsx",
+          "**/*.spec.ts",
+          "**/*.spec.tsx"
+        ],
+        "paths": [
+          {
+            "glob": "libs/app-api-client/src/api.ts",
+            "addedPattern": "^\\s*[A-Z][A-Za-z0-9]*:\\s*'[A-Za-z0-9]+',?\\s*$",
+            "guardedEnum": "VaultBlobType",
+            "coveringGate": "enum:fanout:check"
+          },
+          {
+            "glob": "libs/web-vault/src/**",
+            "addedPattern": "\\bVaultBlobType\\.[A-Z]",
+            "guardedEnum": "VaultBlobType",
+            "coveringGate": "enum:fanout:check"
+          },
+          {
+            "glob": "libs/vault-core/src/**",
+            "addedPattern": "\\bVaultBlobType\\.[A-Z]",
+            "guardedEnum": "VaultBlobType",
+            "coveringGate": "enum:fanout:check"
+          }
+        ]
+      },
+      "seededFrom": "#512",
+      "goldenCase": "groceries-blob-type-without-fanouts",
+      "defectWhen": {
+        "all": [
+          {
+            "field": "pinned",
+            "equals": false
+          },
+          {
+            "field": "wiredBy",
+            "equals": "none"
+          }
+        ]
+      }
     }
   ]
 }

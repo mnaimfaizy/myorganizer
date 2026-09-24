@@ -6,7 +6,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { citedFieldLabel, parseChecklist } from './check-review-checklist.mjs';
+import {
+  citedFieldLabel,
+  guardedEnumCoverage,
+  parseChecklist,
+} from './check-review-checklist.mjs';
+import { GUARDED_ENUMS } from './lib/guarded-enums.mjs';
+import { loadObligationCatalogue } from './review/obligations.mjs';
 
 const ENTRY = `## 1. Do the thing
 
@@ -103,4 +109,85 @@ test('an entry with no Cites line cites nothing, and says so', () => {
   // between two lists, and an absent line is an empty one.
   const md = ENTRY.replace('**Cites** `alpha`\n\n', '');
   assert.deepEqual(parseChecklist(md)[0].citedFields, []);
+});
+
+// --- The guarded-enum obligation is held to the fan-out gate's list ----------
+//
+// The list lives in tools/scripts/lib/guarded-enums.mjs and the obligation's
+// trigger restates it as globs, so the two drift the way any restatement does.
+// Each direction below is one the checker's header claims to catch.
+
+const GUARD = {
+  enum: 'Colour',
+  definedIn: 'libs/api/src/api.ts',
+  valueRoots: ['libs/paint/src/', 'libs/ink/src/'],
+};
+
+const enumCatalogue = (paths) => ({
+  obligations: [
+    { id: 'not-about-enums', trigger: { paths: ['libs/**'] } },
+    {
+      id: 'enum-entry',
+      siteFields: ['guardedEnum', 'coveringGate'],
+      trigger: { paths },
+    },
+  ],
+});
+
+const path = (glob, guardedEnum = 'Colour') => ({
+  glob,
+  guardedEnum,
+  coveringGate: 'enum:fanout:check',
+});
+
+const FULL = [
+  path('libs/api/src/api.ts'),
+  path('libs/paint/src/**'),
+  path('libs/ink/src/**'),
+];
+
+test('a trigger covering the declaration file and every value root agrees', () => {
+  assert.deepEqual(guardedEnumCoverage(enumCatalogue(FULL), [GUARD]), []);
+});
+
+test('a guarded enum whose declaration file no trigger path matches fails', () => {
+  const findings = guardedEnumCoverage(enumCatalogue(FULL.slice(1)), [GUARD]);
+  assert.equal(findings.length, 1);
+  assert.match(
+    findings[0],
+    /Colour: .*declaration file libs\/api\/src\/api\.ts/,
+  );
+});
+
+test('a value root no trigger path matches fails, even when a sibling is covered', () => {
+  const findings = guardedEnumCoverage(
+    enumCatalogue(FULL.filter((p) => !p.glob.startsWith('libs/ink'))),
+    [GUARD],
+  );
+  assert.equal(findings.length, 1);
+  assert.match(findings[0], /value root libs\/ink\/src\//);
+});
+
+test('a path covering the file under another enum name does not count for this one', () => {
+  const findings = guardedEnumCoverage(
+    enumCatalogue([path('libs/api/src/api.ts', 'Shade'), ...FULL.slice(1)]),
+    [GUARD],
+  );
+  // Twice over: Colour's declaration file is uncovered, and Shade is guarded
+  // by nothing.
+  assert.equal(findings.length, 2);
+  assert.ok(findings.some((f) => /Shade, which .* does not guard/.test(f)));
+});
+
+test('no obligation asking about guarded enums fails while any enum is guarded', () => {
+  const none = { obligations: [{ id: 'x', trigger: { paths: ['libs/**'] } }] };
+  assert.match(guardedEnumCoverage(none, [GUARD])[0], /never the reviewer/);
+  assert.deepEqual(guardedEnumCoverage(none, []), []);
+});
+
+test('the live catalogue covers the live guarded-enum list', () => {
+  assert.deepEqual(
+    guardedEnumCoverage(loadObligationCatalogue(), GUARDED_ENUMS),
+    [],
+  );
 });

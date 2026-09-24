@@ -441,6 +441,42 @@ test('a finding the contract allows to carry no location still counts', () => {
   assert.deepEqual(report.contradictions, []);
 });
 
+test('a finding in a file the answer cites counts, because the defect need not be at the site', () => {
+  // #512: the site is the member added to the enum, and the consumer that
+  // omits it — the line the answer quotes — is in a file the diff never
+  // touched. That is where the finding belongs, and where it is raised.
+  const tree = {
+    ...SOURCE,
+    'libs/consumer.ts': ['for (const t of [A, B]) {'].join('\n'),
+  };
+  const cited = {
+    head: 'abc',
+    answers: [
+      {
+        id: 'an-obligation',
+        site: { file: 'libs/a.ts', line: 1 },
+        answer: { a: false, b: 'y' },
+        citations: {
+          a: {
+            file: 'libs/consumer.ts',
+            line: 1,
+            text: 'for (const t of [A, B]) {',
+          },
+        },
+      },
+    ],
+  };
+  const at = (file) =>
+    checkAnswers(defectWorklist(), cited, {
+      readSource: (f) => tree[f] ?? null,
+      findings: [{ ruleId: 'obligation-an-obligation', location: { file } }],
+    });
+  assert.deepEqual(at('libs/consumer.ts').contradictions, []);
+  assert.equal(at('libs/consumer.ts').sound, true);
+  // Still not anywhere at all: a file neither the site nor the answer names.
+  assert.equal(at('libs/elsewhere.ts').contradictions.length, 1);
+});
+
 test('with no report supplied the declaration is all there is, and it says so', () => {
   const none = checkAnswers(defectWorklist(), defectSheet(), { readSource });
   assert.equal(none.contradictions.length, 1);

@@ -114,6 +114,13 @@
       "axes": ["standards"],
       "cites": "docs/review/REVIEW_CHECKLIST.md"
     },
+    {
+      "id": "obligation-enum-fanout-reaches-a-pinned-table",
+      "family": "obligation",
+      "title": "A fan-out over a guarded enum reaches a pinned table",
+      "axes": ["standards"],
+      "cites": "docs/review/REVIEW_CHECKLIST.md"
+    },
 
     {
       "id": "reach-through-member-added-to-a-set",

@@ -19,9 +19,20 @@
 // deliberately not asserted; they are writing, and a gate over writing is a
 // gate nobody can satisfy.
 //
+// One trigger is asserted as well, because it restates a list another gate
+// owns. The obligation that asks about guarded enums (its `siteFields` carry
+// `guardedEnum`) must be held to tools/scripts/lib/guarded-enums.mjs in both
+// directions: every guarded enum's declaration file and every one of its value
+// roots is matched by a trigger path naming that enum, and no trigger path
+// names an enum the list does not guard. Without it, an enum added to the
+// fan-out gate is one the reviewer is never asked about, and a trigger left
+// naming a removed one fires a question with no answer (issue #895).
+//
 // Exit 0 = sound. Exit 1 = findings. Exit 2 = could not run.
 import { readFileSync } from 'node:fs';
 
+import { globToRegExp } from './lib/glob.mjs';
+import { GUARDED_ENUMS } from './lib/guarded-enums.mjs';
 import { isMain } from './review/cli.mjs';
 import { loadGoldenSet } from './review/golden.mjs';
 import {
@@ -84,6 +95,56 @@ export function parseChecklist(md) {
 /** One comparable string per cited field, the same on both sides. */
 export const citedFieldLabel = (c) =>
   c.uncitedWhen === undefined ? c.field : `${c.field} unless ${c.uncitedWhen}`;
+
+/**
+ * Hold the guarded-enum obligation's trigger to the guarded-enum list.
+ *
+ * A value root is a directory prefix, so it is probed with a file under it: a
+ * trigger path covers the root when its glob matches that file.
+ *
+ * @param {{obligations: object[]}} catalogue
+ * @param {{enum: string, definedIn: string, valueRoots?: string[]}[]} guarded
+ * @returns {string[]} findings, empty when the two agree
+ */
+export function guardedEnumCoverage(catalogue, guarded) {
+  const entries = catalogue.obligations.filter((o) =>
+    (o.siteFields ?? []).includes('guardedEnum'),
+  );
+  if (entries.length === 0)
+    return guarded.length
+      ? [
+          `no obligation carries a guardedEnum site field, so ${guarded
+            .map((g) => g.enum)
+            .join(', ')} reach the fan-out gate and never the reviewer`,
+        ]
+      : [];
+  const findings = [];
+  const paths = entries.flatMap((o) =>
+    o.trigger.paths
+      .filter((p) => typeof p === 'object')
+      .map((p) => ({ id: o.id, glob: p.glob, enum: p.guardedEnum })),
+  );
+  const known = new Set(guarded.map((g) => g.enum));
+  for (const p of paths)
+    if (!known.has(p.enum))
+      findings.push(
+        `${p.id}: trigger path ${p.glob} names guardedEnum ${p.enum}, which tools/scripts/lib/guarded-enums.mjs does not guard`,
+      );
+  const covers = (name, file) =>
+    paths.some((p) => p.enum === name && globToRegExp(p.glob).test(file));
+  for (const g of guarded) {
+    if (!covers(g.enum, g.definedIn))
+      findings.push(
+        `${g.enum}: no trigger path naming it matches its declaration file ${g.definedIn}, so a member added there asks the reviewer nothing`,
+      );
+    for (const root of g.valueRoots ?? [])
+      if (!covers(g.enum, `${root}probe.ts`))
+        findings.push(
+          `${g.enum}: no trigger path naming it matches its value root ${root}, so a consumer written there asks the reviewer nothing`,
+        );
+  }
+  return findings;
+}
 
 const main = () => {
   let md;
@@ -170,6 +231,8 @@ const main = () => {
           `**Cites** line reads [${d}]`,
       );
   }
+
+  findings.push(...guardedEnumCoverage(catalogue, GUARDED_ENUMS));
 
   if (process.argv.includes('--print')) {
     console.log(`catalogue: ${wanted.join(', ')}`);

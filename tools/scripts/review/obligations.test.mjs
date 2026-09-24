@@ -599,7 +599,7 @@ test('the shipped catalogue is well-formed', () => {
   assert.ok(loadObligationCatalogue().obligations.length > 0);
 });
 
-// The point of the catalogue is that these four shapes stop depending on the
+// The point of the catalogue is that these shapes stop depending on the
 // reviewer noticing them. Each case below is the shape of the incident the
 // entry was bought from; if the selector stops firing on it, the entry is
 // dead and the golden case that scores it can only ever miss.
@@ -869,4 +869,137 @@ test('every covering gate in the live catalogue names a real script', () => {
             scripts.has(p[f]),
             `${o.id}: ${p.glob}: coveringGate ${p[f]} is not a package.json script`,
           );
+});
+
+// --- One question per file, and never in a test (issue #895) -----------------
+
+const perFile = (over = {}) =>
+  obligation({
+    trigger: {
+      paths: [{ glob: 'libs/**', addedPattern: 'Enum\\.[A-Z]' }],
+      ...over,
+    },
+  });
+
+const enumDiff = diff(
+  '--- a/libs/v/export.ts',
+  '+++ b/libs/v/export.ts',
+  '@@ -1,0 +10,3 @@',
+  '+  if (b.a) out.push(Enum.A);',
+  '+  if (b.b) out.push(Enum.B);',
+  '+  if (b.c) out.push(Enum.C);',
+  '--- a/libs/v/export.test.ts',
+  '+++ b/libs/v/export.test.ts',
+  '@@ -1,0 +1 @@',
+  '+  expect(types).toEqual([Enum.A, Enum.B]);',
+);
+
+const sitesOf = (o) =>
+  selectObligations({
+    catalogue: assertObligationCatalogue(catalogue([o])),
+    addedLines: parseAddedLines(enumDiff),
+    head: 'HEAD',
+  }).selected[0]?.sites ?? [];
+
+test('onePerFile asks once per file, at the first line that fired', () => {
+  assert.equal(sitesOf(perFile()).length, 4);
+  assert.deepEqual(
+    sitesOf(perFile({ onePerFile: true })).map((s) => `${s.file}:${s.line}`),
+    ['libs/v/export.ts:10', 'libs/v/export.test.ts:1'],
+  );
+});
+
+test('excludePaths wins over every glob that would otherwise match', () => {
+  assert.deepEqual(
+    sitesOf(perFile({ onePerFile: true, excludePaths: ['**/*.test.ts'] })).map(
+      (s) => s.file,
+    ),
+    ['libs/v/export.ts'],
+  );
+});
+
+test('onePerFile and excludePaths are validated like the rest of a trigger', () => {
+  const bad = [
+    [perFile({ onePerFile: 'yes' }), /onePerFile must be a boolean/],
+    [perFile({ excludePaths: [] }), /excludePaths/],
+    [perFile({ excludePaths: [''] }), /excludePaths/],
+    [perFile({ excludePaths: '**/*.test.ts' }), /excludePaths/],
+  ];
+  for (const [o, re] of bad)
+    assert.throws(() => assertObligationCatalogue(catalogue([o])), re);
+});
+
+// The two incidents ADR 0053 was written after, which a golden replay of the
+// case tree can no longer reach through the ADR (ADR 0102). Each diff is the
+// incident's own shape, cut down to the lines that must fire.
+const ENUM_ENTRY = 'enum-fanout-reaches-a-pinned-table';
+
+const enumSites = (diffText) =>
+  selectObligations({
+    catalogue: loadObligationCatalogue(),
+    addedLines: parseAddedLines(diffText),
+    head: 'HEAD',
+  }).selected.find((o) => o.id === ENUM_ENTRY)?.sites ?? [];
+
+test('#512: a member added to VaultBlobType fires the enum obligation, once', () => {
+  const sites = enumSites(
+    diff(
+      '--- a/libs/app-api-client/src/api.ts',
+      '+++ b/libs/app-api-client/src/api.ts',
+      '@@ -1518,0 +1525 @@ export const VaultBackupBlobType = {',
+      "+    Groceries: 'groceries',",
+      '@@ -1664,0 +1672 @@ export const VaultBlobType = {',
+      "+    Groceries: 'groceries',",
+    ),
+  );
+  assert.deepEqual(sites, [
+    {
+      file: 'libs/app-api-client/src/api.ts',
+      line: 1525,
+      guardedEnum: 'VaultBlobType',
+      coveringGate: 'enum:fanout:check',
+    },
+  ]);
+});
+
+test('#537: a new consumer naming VaultBlobType members fires it; its test does not', () => {
+  const sites = enumSites(
+    diff(
+      '--- a/libs/web-vault/src/lib/vault/vaultExportImport.ts',
+      '+++ b/libs/web-vault/src/lib/vault/vaultExportImport.ts',
+      '@@ -251,0 +296,2 @@',
+      '+  if (envelope.blobs.addresses) out.push(VaultBlobType.Addresses);',
+      '+  if (envelope.blobs.todos) out.push(VaultBlobType.Todos);',
+      '--- a/libs/web-vault/src/lib/vault/vaultExportImportHardened.test.ts',
+      '+++ b/libs/web-vault/src/lib/vault/vaultExportImportHardened.test.ts',
+      '@@ -0,0 +124 @@',
+      '+    expect(types).toContain(VaultBlobType.Todos);',
+    ),
+  );
+  assert.deepEqual(
+    sites.map((s) => `${s.file}:${s.line}`),
+    ['libs/web-vault/src/lib/vault/vaultExportImport.ts:296'],
+  );
+});
+
+test('#512: the enum obligation is a defect only when unpinned and ungated', () => {
+  const entry = loadObligationCatalogue().obligations.find(
+    (o) => o.id === ENUM_ENTRY,
+  );
+  const answer = (pinned, wiredBy) => ({
+    consumers: 'x',
+    enumeration: 'x',
+    pinned,
+    omits: 'none',
+    wiredBy,
+  });
+  // A hand-enumeration that lists every member today is still the defect: it
+  // compiles just as well when the next member is added.
+  assert.equal(defectHolds(entry.defectWhen, answer(false, 'none')), true);
+  assert.equal(defectHolds(entry.defectWhen, answer(true, 'none')), false);
+  // Where the gate runs, it fails what it covers (ADR 0074).
+  assert.equal(
+    defectHolds(entry.defectWhen, answer(false, '.husky/pre-commit:3')),
+    false,
+  );
 });
