@@ -1,20 +1,8 @@
 import '@testing-library/jest-dom';
-import { act, render, renderHook, screen } from '@testing-library/react';
-import { toast, useToast } from '../../hooks/use-toast';
+import { act, render, screen } from '@testing-library/react';
+import { toast } from '../../hooks/use-toast';
+import { clearToastState } from '../../hooks/use-toast.test-helpers';
 import { Toaster } from './Toaster';
-
-const TOAST_REMOVE_DELAY = 1000000;
-
-function clearToastState() {
-  const { result, unmount } = renderHook(() => useToast());
-  act(() => {
-    result.current.dismiss();
-  });
-  act(() => {
-    jest.advanceTimersByTime(TOAST_REMOVE_DELAY);
-  });
-  unmount();
-}
 
 describe('Toaster', () => {
   beforeEach(() => {
