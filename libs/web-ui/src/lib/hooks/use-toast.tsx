@@ -2,6 +2,7 @@
 
 // Inspired by react-hot-toast library
 import * as React from 'react';
+import { flushSync } from 'react-dom';
 
 import type {
   ToastActionElement,
@@ -169,10 +170,12 @@ function toast({ ...props }: Toast) {
     });
   const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
-  // Drop any toast already occupying the limit-1 slot so Radix unmounts it
-  // before the next Root mounts. Replacing an open toast in-place leaves the
-  // previous title in the viewport and the new one never appears (CI E2E).
-  dispatch({ type: 'REMOVE_TOAST' });
+  // Radix Toast.Root only remounts if Toaster commits an empty list before the
+  // next toast. React 19 batches these two dispatches, so without flushSync the
+  // REMOVE never paints and Chromium keeps the previous title (issue #810).
+  flushSync(() => {
+    dispatch({ type: 'REMOVE_TOAST' });
+  });
   dispatch({
     type: 'ADD_TOAST',
     toast: {
