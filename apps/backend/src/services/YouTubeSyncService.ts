@@ -347,17 +347,11 @@ function getSyncErrorCode(error: unknown): string {
 /**
  * A Channel Sync or Upload Sync attempt can fail before its work finishes.
  * The stored code stays a stable bucket (`syncFailed` / `quotaExceeded`); the
- * message and stack are logged here. The same error object is logged once
- * when both the auth catch and the manual-attempt handler see it.
+ * message and stack are logged here. Call this from the handler that records
+ * the bucket and returns. A catch that records state and rethrows leaves the
+ * log to that caller, so one failure produces one line.
  */
-const loggedSyncAttemptFailures = new WeakSet<object>();
-
 function logSyncAttemptFailure(context: string, error: unknown): void {
-  if (typeof error === 'object' && error !== null) {
-    if (loggedSyncAttemptFailures.has(error)) return;
-    loggedSyncAttemptFailures.add(error);
-  }
-
   const { message, stack } = describeError(error);
   if (stack === undefined) {
     logger.error(`${context}: ${message}`);
@@ -677,10 +671,6 @@ class YouTubeSyncService {
     try {
       youtube = await this.getAuthenticatedClient(userId);
     } catch (error) {
-      logSyncAttemptFailure(
-        `YouTube upload sync failed before the channel loop for user ${userId}`,
-        error,
-      );
       await this.recordSyncState(
         userId,
         attemptAt,
