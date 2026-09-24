@@ -33,6 +33,12 @@ on:
       - 'tools/config/review-golden-set.json'
       - 'tools/config/review-obligations.json'
       - 'tools/config/review-rules.json'
+      # The rest of the harness the replay lays over each case tree (ADR
+      # 0102): the permission rules and hooks the session loads, and the
+      # module those hooks import.
+      - '.claude/**'
+      - 'tools/scripts/copilot-hooks/**'
+      - '.agents/skills/upstream-brief/**'
   workflow_dispatch:
     inputs:
       tier:
@@ -215,8 +221,10 @@ jobs:
       # Required for Prisma v7 config loading if a reviewer runs backend tests.
       DATABASE_URL: postgresql://localhost:5432/myorganizer
     steps:
-      # The Pull Request head: today's skill and tooling review yesterday's
-      # range. Full history so both ends of the case exist.
+      # The Pull Request head, for the tooling: today's skill and scripts
+      # review yesterday's range. Full history so both ends of the case exist.
+      # This is not the tree the reviewer reads — see "Put the reviewer in the
+      # case tree" below.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -250,6 +258,57 @@ jobs:
           jq '{spec: .spec}' <<<"$CASE" > tmp/code-review/spec.json
           echo "replaying $(jq -r .incident <<<"$CASE"): $(jq -r .base <<<"$CASE" | cut -c1-7)...$(jq -r .head <<<"$CASE" | cut -c1-7)"
 
+      # The reviewer reads the case, not the pull request (ADR 0102). Run
+      # 35833576958 read `.github/workflows/ci.yml` from this checkout,
+      # answered that `openapi:check` was wired at a head where it was not,
+      # and suppressed the finding it was there to raise; it also listed an
+      # ADR written a month after the range as a standard the range was held
+      # to. Every file the reviewer reads without naming a commit — Read,
+      # Grep, Glob, a gate run for executed evidence — now comes from the case
+      # head, standards documents included: in production the standards and
+      # the code are one tree, and the replay has the same shape.
+      #
+      # Only the reviewer's harness is laid over it from the pull request,
+      # because that is what is being measured: the skill, `.claude` (the
+      # permission rules the session loads, ADR 0099, and the skills link),
+      # the hook scripts those settings run by cwd-relative path and the
+      # upstream-brief module they import, and this job's own composite
+      # action, which the next step `uses:` from the workspace. The scripts
+      # the harness runs — selector, validator, obligation-answer check,
+      # scorer — are extracted outside the workspace, where no Read or Grep
+      # of the reviewer's lands on them, and resolve their modules through
+      # the one node_modules installed above. Nothing is committed: this
+      # runner is discarded with the tree.
+      - name: Put the reviewer in the case tree
+        id: tree
+        env:
+          CASE_BASE: ${{ steps.case.outputs.base }}
+          CASE_HEAD: ${{ steps.case.outputs.head }}
+          TOOLING: ${{ runner.temp }}/review-tooling
+        run: |
+          set -euo pipefail
+          OVERLAY=(.agents/skills/code-review .agents/skills/upstream-brief .claude tools/scripts/copilot-hooks .github/actions/code-reviewer)
+          TOOLING_HEAD="$(git rev-parse HEAD)"
+          mkdir -p "$TOOLING"
+          git archive "$TOOLING_HEAD" tools/scripts/review tools/scripts/lib tools/scripts/check-review-obligation-answers.mjs tools/config | tar -x -C "$TOOLING"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$TOOLING/node_modules"
+          git checkout --quiet --detach "$CASE_HEAD"
+          rm -rf "${OVERLAY[@]}"
+          git checkout --quiet "$TOOLING_HEAD" -- "${OVERLAY[@]}"
+          echo "tooling=$TOOLING" >> "$GITHUB_OUTPUT"
+          # The reviewer's facts name these paths from this output, so the
+          # list the prompt states is the list that was laid over the tree.
+          echo "overlay=$(printf '`%s` ' "${OVERLAY[@]}")" >> "$GITHUB_OUTPUT"
+          echo "reviewer tree: case head $(git rev-parse --short "$CASE_HEAD"), overlaid from $(git rev-parse --short "$TOOLING_HEAD"): ${OVERLAY[*]}"
+          # A case whose own diff touches an overlaid path is reviewed with
+          # the pull request's copy of that path on disk. Say so where the
+          # result is read; the facts below tell the reviewer to read those
+          # paths at the head by commit.
+          TOUCHED="$(git diff --name-only "$CASE_BASE...$CASE_HEAD" -- "${OVERLAY[@]}")"
+          if [ -n "$TOUCHED" ]; then
+            echo "::warning::this case's diff touches paths overlaid from the pull request, so the disk copy of them is not the case's: $(tr '\n' ' ' <<<"$TOUCHED")"
+          fi
+
       # The reviewer, the transcript artifact, and the validation, with no
       # tier: a historical range has none. See .github/actions/code-reviewer.
       - name: Run the reviewer
@@ -260,8 +319,11 @@ jobs:
           head: ${{ steps.case.outputs.head }}
           head-ref: none (historical range)
           tier: 'null'
+          tooling-dir: ${{ steps.tree.outputs.tooling }}
           facts: |
-            - this is a replay of a historical range: the head is NOT the current checkout. Read the changed files with `git show <head>:<path>` and the diff with `git diff <base>...<head>`; for executed evidence use `git worktree add tmp/code-review/worktree <head>` and leave it in place — this runner is ephemeral and the worktree is discarded with it, while removing it is refused (ADR 0099). The standards sources are the current checkout's, as the skill says.
+            - this is a replay of a historical range, and the working tree IS its head (detached): read, grep, and run gates in it directly, and `git worktree add tmp/code-review/worktree HEAD` for a throwaway reproduction as the skill says, leaving it in place — this runner is ephemeral, while removing it is refused (ADR 0099). The standards sources are this tree's, as of the head: a document the head does not contain is not a standard this range could have broken, so do not go looking for later ones.
+            - these paths on disk are the reviewing pull request's, not the head's: ${{ steps.tree.outputs.overlay }}. They are your harness, not the subject. If the diff touches one, read it with `git show <head>:<path>`.
+            - run the validator as `node ${{ steps.tree.outputs.tooling }}/tools/scripts/review/validate-review-report.mjs tmp/code-review/report.json --out tmp/code-review/normalized.json` instead of `corepack yarn review:validate`: this head's package.json predates the `review:*` scripts. That directory is tooling, not the tree under review; do not read it for anything else.
             - tier is null: write `"tier": null` in the envelope
           model: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -313,7 +375,8 @@ jobs:
 
       # The obligation answers, checked as code-review.yml checks them
       # (ADR 0078), against the case head the selector recorded in the
-      # worklist — not the checkout, which is the pull request's head. A sheet
+      # worklist, read by commit — which is also the checkout now (ADR 0102),
+      # so a quotation read from disk matches unless it was made up. A sheet
       # that fails here is one production would have answered by failing
       # Agent Review Ran, so the run is a void, not a miss, and not a catch
       # either (ADR 0101): the score below does not run, and the case fails
@@ -324,7 +387,15 @@ jobs:
       #
       # No sheet and no worklist fail nothing, exactly as in production:
       # thoroughness is not a pipeline fact (ADR 0078, Consequences).
+      #
+      # review:obligations:check's script runs from the extracted tooling,
+      # like the selector and the scorer: the case head's package.json has no
+      # review:* scripts, and the catalogue it reads is cwd-relative.
+      # run-from-tooling gives it the tooling as its working directory and
+      # the workspace's repository as its git (ADR 0102).
       - name: Check the obligation answers
+        env:
+          TOOLING: ${{ steps.tree.outputs.tooling }}
         run: |
           if [ ! -f tmp/code-review/obligations.json ]; then
             echo 'no worklist: nothing to check'; exit 0
@@ -337,11 +408,12 @@ jobs:
           # report, so report.json is there, and it is what production reads
           # to decide whether a self-contradiction raised its finding.
           set +e
-          corepack yarn review:obligations:check \
-            tmp/code-review/obligations.json \
-            tmp/code-review/obligations.answers.json \
-            --report tmp/code-review/report.json \
-            --out tmp/code-review/obligations.report.json
+          CR="$PWD/tmp/code-review"
+          node "$TOOLING/tools/scripts/review/run-from-tooling.mjs" check-review-obligation-answers.mjs \
+            "$CR/obligations.json" \
+            "$CR/obligations.answers.json" \
+            --report "$CR/report.json" \
+            --out "$CR/obligations.report.json"
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
@@ -353,10 +425,16 @@ jobs:
       # this case, and the summary names what was missed and why it mattered.
       # Never `always()`: after a failed answer sheet this must not run, or a
       # void is written into the summary as a miss.
+      #
+      # From the extracted tooling (review:golden:score's script), whose
+      # golden set is the pull request's: the workspace is the case head now,
+      # and its package.json and set predate this one (ADR 0102).
       - name: Score the case
+        working-directory: ${{ steps.tree.outputs.tooling }}
         run: |
-          corepack yarn review:golden:score --case '${{ matrix.case }}' \
-            --normalized tmp/code-review/normalized.json --out tmp/code-review/score.json
+          node tools/scripts/review/score-golden-case.mjs --case '${{ matrix.case }}' \
+            --normalized "$GITHUB_WORKSPACE/tmp/code-review/normalized.json" \
+            --out "$GITHUB_WORKSPACE/tmp/code-review/score.json"
 
       # The obligation files ride along with the report. Run 45 asked whether a
       # miss on a case whose obligation fired was answered-and-wrong or never

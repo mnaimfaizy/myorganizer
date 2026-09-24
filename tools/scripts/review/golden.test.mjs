@@ -378,6 +378,58 @@ test('a replay that checks, with the report, before scoring is sound', () => {
   assert.deepEqual(replayObligationCheckFindings(replaySteps()), []);
 });
 
+test('a replay that runs both scripts by file, from extracted tooling, is sound', () => {
+  // ADR 0102: the case head's package.json has no review:* scripts, so the
+  // replay runs the files the scripts name. Matching only the package script
+  // would report this sound workflow as one that never checks.
+  assert.deepEqual(
+    replayObligationCheckFindings(
+      replaySteps({
+        check: [
+          '        run: |',
+          '          node tools/scripts/check-review-obligation-answers.mjs w a \\',
+          '            --report "$CR/report.json"',
+        ],
+        score: [
+          '        run: node tools/scripts/review/score-golden-case.mjs --case x',
+        ],
+      }),
+    ),
+    [],
+  );
+});
+
+test('a check run through run-from-tooling is a run', () => {
+  assert.deepEqual(
+    replayObligationCheckFindings(
+      replaySteps({
+        check: [
+          '        run: |',
+          '          node "$TOOLING/tools/scripts/review/run-from-tooling.mjs" check-review-obligation-answers.mjs \\',
+          '            w a --report "$CR/report.json"',
+        ],
+      }),
+    ),
+    [],
+  );
+});
+
+test('naming the scripts without running them is not running them', () => {
+  // The tooling-extraction step names the checker in `git archive`, and
+  // loading a case runs the scorer with --show; neither checks nor scores.
+  const [f] = replayObligationCheckFindings(
+    replaySteps({
+      check: [
+        '        run: git archive HEAD tools/scripts/check-review-obligation-answers.mjs',
+      ],
+      score: [
+        '        run: node tools/scripts/review/score-golden-case.mjs --show x',
+      ],
+    }),
+  );
+  assert.match(f, /no step runs review:obligations:check/);
+});
+
 test('a replay that never runs the check is the run 35833576958 shape', () => {
   const [f] = replayObligationCheckFindings(
     replaySteps({ check: ['        run: echo nothing'] }),

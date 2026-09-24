@@ -331,9 +331,26 @@ export const renderScore = (goldenCase, score) => {
  * up to the next line at the same or a shallower indent. That is enough for a
  * workflow this repository writes, and it avoids adding a YAML parser to a
  * checker whose only other input is JSON.
+ *
+ * A step runs a script either by its package script or by the file that
+ * script names. The replay uses the file: its working tree is the case head,
+ * whose package.json predates the review scripts, so it runs them from an
+ * extracted copy of the pull request's tooling (ADR 0102). Matching only the
+ * package script would report a check that runs as one that does not.
  */
 export const REPLAY_OBLIGATION_CHECK = 'review:obligations:check';
 export const REPLAY_SCORE = 'review:golden:score';
+// The file form must be an invocation, not a mention: the step that extracts
+// the tooling names the checker in its `git archive` line, and loading a case
+// runs the scorer with `--show`, which scores nothing. The checker may be run
+// directly or through run-from-tooling.mjs, which the replay uses so it reads
+// the workspace's repository from the tooling copy.
+const REPLAY_OBLIGATION_CHECK_RUN =
+  /\bnode\s+(?:\S*run-from-tooling\.mjs"?\s+)?\S*check-review-obligation-answers\.mjs\b/;
+const REPLAY_SCORE_RUN = /\bnode\s+\S*score-golden-case\.mjs\s+--case\b/;
+
+const runs = (body, script, invocation) =>
+  body.includes(script) || invocation.test(body);
 
 const workflowSteps = (text) => {
   const lines = text.split('\n');
@@ -356,9 +373,11 @@ const workflowSteps = (text) => {
 export const replayObligationCheckFindings = (workflowText) => {
   const steps = workflowSteps(workflowText);
   const check = steps.findIndex((s) =>
-    s.body.includes(REPLAY_OBLIGATION_CHECK),
+    runs(s.body, REPLAY_OBLIGATION_CHECK, REPLAY_OBLIGATION_CHECK_RUN),
   );
-  const score = steps.findIndex((s) => s.body.includes(REPLAY_SCORE));
+  const score = steps.findIndex((s) =>
+    runs(s.body, REPLAY_SCORE, REPLAY_SCORE_RUN),
+  );
   const findings = [];
   if (check === -1)
     return [

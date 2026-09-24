@@ -594,13 +594,14 @@ was refused, and after the refusal the reviewer wrote the answer from the
 checkout instead.
 
 No tier moves: the case was already `frontier`. The run left two gaps open in
-the apparatus. The first is now closed. The replay runs
+the apparatus, and both are now closed. The replay runs
 `review:obligations:check` before it scores, and a failed answer sheet is a
 void, not a miss
 ([ADR 0101](../adr/0101-a-replay-whose-answer-sheet-fails-its-check-measured-nothing.md)).
-Read that way, this run's result on the case is a void. The second is still
-open: a replay's working tree is the pull request's head rather than the
-case's.
+Read that way, this run's result on the case is a void. And a replay's working
+tree is now the case head, standards included, with only the reviewer's
+harness laid over it from the pull request
+([ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)).
 
 ## Reproduce
 

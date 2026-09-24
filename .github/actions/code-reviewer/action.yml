@@ -40,6 +40,15 @@ inputs:
   transcript-artifact:
     description: Artifact name for the reviewer transcript.
     required: true
+  tooling-dir:
+    description: >-
+      Where the review scripts this action runs (the obligation selector and
+      the validator) live. `.` for a pull request, whose checkout is both the
+      tree under review and the tooling. The golden replay passes a copy of
+      the pull request's scripts extracted outside the workspace, because its
+      workspace is the case head, which predates them (ADR 0102).
+    required: false
+    default: '.'
 
 outputs:
   reviewer-outcome:
@@ -91,13 +100,21 @@ runs:
     # than in code-review.yml because the golden replay calls the action
     # directly: an obligation the replay cannot see is an obligation nothing
     # can ever measure. An empty worklist is normal and costs nothing.
+    #
+    # The selector runs from the tooling directory, because the catalogue it
+    # reads is cwd-relative, and diffs through the workspace's git directory,
+    # because an extracted tooling copy is not a repository; run-from-tooling
+    # joins the two (ADR 0102).
     - name: Select the obligations
       shell: bash
+      env:
+        TOOLING: ${{ inputs.tooling-dir }}
       run: |
+        set -euo pipefail
         mkdir -p tmp/code-review
-        corepack yarn review:obligations:select \
+        node "$TOOLING/tools/scripts/review/run-from-tooling.mjs" review/select-obligations.mjs \
           --base "${{ inputs.base }}" --head "${{ inputs.head }}" \
-          --out tmp/code-review/obligations.json
+          --out "$PWD/tmp/code-review/obligations.json"
 
     # JSON only. The allowed tools are read, search, sub-agents, git reads,
     # existing Nx targets, the validator, and `node` for a reviewer-written
@@ -237,6 +254,8 @@ runs:
     - name: Validate the report
       id: validate
       shell: bash
+      env:
+        VALIDATOR: ${{ inputs.tooling-dir }}/tools/scripts/review/validate-review-report.mjs
       run: |
         set +e
         REJECTED="$RUNNER_TEMP/rejected.txt"
@@ -256,9 +275,9 @@ runs:
           exit 0
         fi
         if [ '${{ inputs.tier }}' = 'null' ]; then
-          corepack yarn review:validate tmp/code-review/report.json --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+          node "$VALIDATOR" tmp/code-review/report.json --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
         else
-          corepack yarn review:validate tmp/code-review/report.json --tier '${{ inputs.tier }}' --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+          node "$VALIDATOR" tmp/code-review/report.json --tier '${{ inputs.tier }}' --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
         fi
         if [ -f tmp/code-review/normalized.json ]; then
           echo 'validated=true' >> "$GITHUB_OUTPUT"
