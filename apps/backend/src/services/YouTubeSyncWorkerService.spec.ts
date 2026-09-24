@@ -46,10 +46,11 @@ jest.mock('../prisma', () => {
   };
 });
 
-const winston = require('winston');
+const workerWinston = require('winston');
 const { YouTubeSyncWorkerService } = require('./YouTubeSyncWorkerService');
-const mockLogger = jest.mocked(winston.createLogger).mock.results[0].value;
-const mockPrisma = require('../prisma').__mockPrisma;
+const workerMockLogger = jest.mocked(workerWinston.createLogger).mock.results[0]
+  .value;
+const workerMockPrisma = require('../prisma').__mockPrisma;
 const mockLeases = require('./WorkerLeaseService').__mockWorkerLeaseService;
 const mockSync = require('./YouTubeSyncService').default;
 
@@ -59,7 +60,7 @@ const mockSync = require('./YouTubeSyncService').default;
  * the way to maxUsers instead of exercising the batch under test.
  */
 function mockBatch(users: Array<{ userId: string }>): void {
-  (mockPrisma.youTubeIntegration.findMany as jest.Mock)
+  (workerMockPrisma.youTubeIntegration.findMany as jest.Mock)
     .mockResolvedValueOnce(users)
     .mockResolvedValue([]);
 }
@@ -69,9 +70,11 @@ describe('YouTubeSyncWorkerService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (mockPrisma.youTubeIntegration.findMany as jest.Mock).mockResolvedValue([]);
+    (
+      workerMockPrisma.youTubeIntegration.findMany as jest.Mock
+    ).mockResolvedValue([]);
     (mockSync.syncVideosForUser as jest.Mock).mockResolvedValue(0);
-    service = new YouTubeSyncWorkerService(mockPrisma, mockLeases);
+    service = new YouTubeSyncWorkerService(workerMockPrisma, mockLeases);
   });
 
   describe('runSyncWorker', () => {
@@ -85,7 +88,9 @@ describe('YouTubeSyncWorkerService', () => {
       // Nothing was acquired, so nothing may be released — releasing here
       // would expire the lease the other live pass is relying on.
       expect(mockLeases.release).not.toHaveBeenCalled();
-      expect(mockPrisma.youTubeIntegration.findMany).not.toHaveBeenCalled();
+      expect(
+        workerMockPrisma.youTubeIntegration.findMany,
+      ).not.toHaveBeenCalled();
     });
 
     it('should release lease in finally block when drain throws', async () => {
@@ -95,9 +100,9 @@ describe('YouTubeSyncWorkerService', () => {
         cursor: null,
       };
       (mockLeases.acquire as jest.Mock).mockResolvedValue(mockLease);
-      (mockPrisma.youTubeIntegration.findMany as jest.Mock).mockRejectedValue(
-        new Error('Database error'),
-      );
+      (
+        workerMockPrisma.youTubeIntegration.findMany as jest.Mock
+      ).mockRejectedValue(new Error('Database error'));
 
       await expect(service.runSyncWorker()).rejects.toThrow();
       expect(mockLeases.release).toHaveBeenCalledWith(mockLease);
@@ -110,9 +115,9 @@ describe('YouTubeSyncWorkerService', () => {
         cursor: null,
       };
       (mockLeases.acquire as jest.Mock).mockResolvedValue(mockLease);
-      (mockPrisma.youTubeIntegration.findMany as jest.Mock).mockResolvedValue(
-        [],
-      );
+      (
+        workerMockPrisma.youTubeIntegration.findMany as jest.Mock
+      ).mockResolvedValue([]);
 
       const result = await service.runSyncWorker();
 
@@ -192,8 +197,8 @@ describe('YouTubeSyncWorkerService', () => {
       expect(result.failed).toBe(1);
       expect(result.usersSynced).toBe(1);
       expect(mockSync.syncVideosForUser).toHaveBeenCalledTimes(2);
-      expect(mockLogger.error).toHaveBeenCalledTimes(1);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(workerMockLogger.error).toHaveBeenCalledTimes(1);
+      expect(workerMockLogger.error).toHaveBeenCalledWith(
         'YouTube sync failed for user user-1: Network error',
         { stack: networkError.stack },
       );
@@ -214,11 +219,11 @@ describe('YouTubeSyncWorkerService', () => {
       const result = await service.runSyncWorker();
 
       expect(result.failed).toBe(1);
-      expect(mockLogger.error).toHaveBeenCalledTimes(1);
-      expect(mockLogger.error).toHaveBeenCalledWith(
+      expect(workerMockLogger.error).toHaveBeenCalledTimes(1);
+      expect(workerMockLogger.error).toHaveBeenCalledWith(
         'YouTube sync failed for user user-1: "plain failure"',
       );
-      expect(mockPrisma.youTubeIntegration.update).not.toHaveBeenCalled();
+      expect(workerMockPrisma.youTubeIntegration.update).not.toHaveBeenCalled();
     });
 
     it('should mark integration revoked on invalid_grant error', async () => {
@@ -235,7 +240,7 @@ describe('YouTubeSyncWorkerService', () => {
 
       await service.runSyncWorker();
 
-      expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+      expect(workerMockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
         data: { status: 'revoked' },
       });
@@ -255,7 +260,7 @@ describe('YouTubeSyncWorkerService', () => {
 
       await service.runSyncWorker();
 
-      expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+      expect(workerMockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
         data: { status: 'revoked' },
       });
