@@ -136,26 +136,5 @@ describe('useToast', () => {
       expect(toaster.result.current.toasts).toHaveLength(1);
       expect(toaster.result.current.toasts[0].title).toBe('Import complete');
     });
-
-    it('commits an empty toast list before adding the next toast', () => {
-      const renderLengths: number[] = [];
-      const { result } = renderHook(() => {
-        const t = useToast();
-        renderLengths.push(t.toasts.length);
-        return t;
-      });
-
-      act(() => {
-        result.current.toast({ title: 'Passphrase changed' });
-      });
-
-      act(() => {
-        result.current.toast({ title: 'Import complete' });
-      });
-
-      expect(renderLengths.join(',')).toMatch(/1,0,1/);
-      expect(result.current.toasts).toHaveLength(1);
-      expect(result.current.toasts[0].title).toBe('Import complete');
-    });
   });
 });

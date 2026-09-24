@@ -1,6 +1,6 @@
-"use client"
+'use client';
 
-import { useToast } from "../../hooks/use-toast"
+import { useToast } from '../../hooks/use-toast';
 import {
   Toast,
   ToastClose,
@@ -8,13 +8,14 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "./../Toast/Toast"
+} from './../Toast/Toast';
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toasts } = useToast();
 
+  // Chromium drops a replaced Toast.Root portal unless ToastProvider remounts (#810).
   return (
-    <ToastProvider>
+    <ToastProvider key={toasts[0]?.id ?? 'empty'}>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
@@ -27,9 +28,9 @@ export function Toaster() {
             {action}
             <ToastClose />
           </Toast>
-        )
+        );
       })}
       <ToastViewport />
     </ToastProvider>
-  )
+  );
 }
