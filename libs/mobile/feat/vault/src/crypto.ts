@@ -1,4 +1,4 @@
-import type { VaultCrypto } from '@myorganizer/vault-core';
+import type { VaultCrypto } from '@myorganizer/vault-core/portable';
 import {
   pbkdf2Sync,
   randomBytes as cryptoRandomBytes,
@@ -35,7 +35,7 @@ function deriveKeyFromPassphraseSync(params: {
     Buffer.from(params.salt),
     params.iterations,
     32,
-    'sha256'
+    'sha256',
   );
   return new Uint8Array(derived);
 }
@@ -48,13 +48,15 @@ function aesGcmEncryptNative(params: {
   const cipher = createCipheriv(
     'aes-256-gcm',
     Buffer.from(params.key),
-    Buffer.from(params.iv)
+    Buffer.from(params.iv),
   );
   const encrypted = cipher.update(Buffer.from(params.plaintext));
   const final = cipher.final();
   const authTag = cipher.getAuthTag();
 
-  const result = new Uint8Array(encrypted.length + final.length + authTag.length);
+  const result = new Uint8Array(
+    encrypted.length + final.length + authTag.length,
+  );
   result.set(new Uint8Array(encrypted), 0);
   result.set(new Uint8Array(final), encrypted.length);
   result.set(new Uint8Array(authTag), encrypted.length + final.length);
@@ -74,7 +76,7 @@ function aesGcmDecryptNative(params: {
   const decipher = createDecipheriv(
     'aes-256-gcm',
     Buffer.from(params.key),
-    Buffer.from(params.iv)
+    Buffer.from(params.iv),
   );
   decipher.setAuthTag(Buffer.from(authTag));
   const decrypted = decipher.update(Buffer.from(encryptedData));

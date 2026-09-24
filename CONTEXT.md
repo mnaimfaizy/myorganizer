@@ -274,6 +274,10 @@ _Avoid_: shim, wrapper, provider
 A module selected by bundler filename resolution rather than by an interface — `crypto.web.ts` standing in for `crypto.ts` because one target cannot resolve the other's dependencies. It is the only place mobile code may hold a browser API, and it is not a fallback: the two paths are wire-compatible and change together. Distinct from a Platform Adapter, which a platform is chosen for by implementing an interface, not by being named a certain way.
 _Avoid_: shim, web fallback, .web file, platform adapter (for this sense)
 
+**Portable Entry Point**:
+A shared library's second import path, carrying only exports that hold on every runtime the Mobile App targets. The Mobile App's native code reaches a shared library through its Portable Entry Point, never through the library's main entry point, which may carry browser-only code. A Portable Entry Point is not a Platform Adapter — it selects what is exported, not how a platform behaves.
+_Avoid_: neutral barrel, mobile barrel, platform-agnostic export, secondary entry point
+
 ## Vault
 
 **Vault Unlock**:

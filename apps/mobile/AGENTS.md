@@ -13,7 +13,7 @@ Root-level React Native rules (package-root imports, edge-to-edge via `react-nat
 - Android: `yarn nx run-android mobile`.
 - Test: `yarn nx test mobile`.
 - Lint: `yarn nx lint mobile`.
-- Typecheck: `yarn nx run mobile:typecheck`.
+- Typecheck: `yarn nx run mobile:typecheck` — runs two programs: `tsconfig.app.json` (native, no `dom`, Platform Variants excluded) and `tsconfig.web.json` (react-native-web, `dom`, `.web` Platform Variants resolved first). See ADR 0103.
 
 The autonomous verification gate for mobile is lint + typecheck + format. Do not use `nx run mobile:bundle` (ADR 0005).
 

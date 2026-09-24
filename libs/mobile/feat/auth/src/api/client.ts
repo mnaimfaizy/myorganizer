@@ -2,7 +2,7 @@ import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
 import {
   buildRefreshTokenRequest,
   resolveRefreshTokenAfterRefresh,
-} from '@myorganizer/auth';
+} from '@myorganizer/auth/portable';
 import axios, {
   AxiosError,
   AxiosInstance,
