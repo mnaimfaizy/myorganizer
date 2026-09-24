@@ -1,6 +1,8 @@
 #!/usr/bin/env node
-// Asserts two mobile platform rules over apps/mobile and libs/mobile source:
-// no bare `react-native/` subpath imports, and no browser globals.
+// Asserts three mobile platform rules over apps/mobile and libs/mobile source:
+// no bare `react-native/` subpath imports, no browser globals, and no import
+// of a shared library's main entry point when that library has a Portable
+// Entry Point.
 //
 //   node tools/scripts/check-mobile-platform.mjs [--print]
 //
@@ -61,15 +63,41 @@
 // global by qualifying it, so those two roots are followed rather than
 // treated as just another object's property.
 //
-// Both rules run over the same corpus and share one exemption list
+// The Portable Entry Point rule (ADR 0103) is an import rule. A shared
+// library's main entry point may reach browser-only code — `@myorganizer/auth`
+// reaches the browser session storage adapter and `@myorganizer/core`'s
+// `window` helpers — so mobile source reaches such a library only through its
+// `@myorganizer/<lib>/portable` alias (CONTEXT.md, Portable Entry Point). The
+// mobile native typecheck program has no `dom` in `lib`, which catches a
+// main-entry import only while the barrel happens to reach a *browser* global;
+// it still carries `types: ["node"]`, so a barrel reaching only `crypto`,
+// `Buffer`, or `process` would pass it and fail on Hermes (#892). This rule
+// holds the import itself, whatever the barrel reaches.
+//
+// The libraries it covers are read from `tsconfig.base.json`'s
+// `compilerOptions.paths`, never written here: every alias ending in
+// `/portable` names a library whose main specifier is then banned, so adding a
+// Portable Entry Point opts its library in with no edit to this file, and a
+// library without one (`@myorganizer/design-tokens`) is not affected — it has
+// no browser code to route around. The match is exact on the main specifier;
+// `@myorganizer/auth-extras` and `@myorganizer/auth/portable` are not it. Every
+// specifier form counts, `import type` included: a type-only import still loads
+// the whole barrel into the typecheck program, and every other form loads it
+// into the Metro bundle, which does not tree-shake. A missing
+// `tsconfig.base.json`, or one carrying no `paths`, is exit 2 rather than a
+// pass — deriving no libraries would pass every import silently.
+//
+// All three rules run over the same corpus and share one exemption list
 // (tools/config/mobile-platform-exemptions.json), because a file that is
 // deliberately allowed a browser API is deliberately allowed to reference
-// `react-native-web` however it needs to, and there is exactly one boundary
-// worth naming per file, not one per rule.
+// `react-native-web` or a browser-reaching barrel however it needs to, and
+// there is exactly one boundary worth naming per file, not one per rule.
 //
-// Exit 0 = zero violations. Exit 1 = a subpath import or a browser global was
-// found. Exit 2 = the check could not run (missing/malformed exemption list,
-// an exemption naming a file that no longer exists, or a parse failure).
+// Exit 0 = zero violations. Exit 1 = a subpath import, a browser global, or a
+// main-entry import of a library with a Portable Entry Point was found. Exit 2
+// = the check could not run (missing/malformed exemption list, an exemption
+// naming a file that no longer exists, a missing or path-less
+// tsconfig.base.json, or a parse failure).
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -80,6 +108,8 @@ const cwd = process.cwd();
 const printOnly = process.argv.includes('--print');
 
 const EXEMPTIONS_PATH = 'tools/config/mobile-platform-exemptions.json';
+const BASE_TSCONFIG_PATH = 'tsconfig.base.json';
+const PORTABLE_SUFFIX = '/portable';
 const SCHEMA_VERSION = 1;
 const SOURCE_ROOTS = ['apps/mobile', 'libs/mobile'];
 const SOURCE_EXTENSIONS = /\.(ts|tsx|js|jsx|mjs|mts)$/;
@@ -158,6 +188,38 @@ function readExemptions({ cwd: root = cwd, path = EXEMPTIONS_PATH } = {}) {
     exemptions.set(entryPath, reason);
   });
   return exemptions;
+}
+
+/**
+ * Main specifier → Portable Entry Point specifier, for every
+ * `@myorganizer/<lib>/portable` alias in tsconfig.base.json. Never returns on
+ * error — it exits.
+ */
+function readPortableEntryPoints({ cwd: root = cwd } = {}) {
+  const absolute = join(root, BASE_TSCONFIG_PATH);
+  if (!existsSync(absolute)) {
+    fail(
+      `${BASE_TSCONFIG_PATH} not found — the Portable Entry Point rule derives its libraries from its paths`,
+    );
+  }
+  const { config, error } = ts.readConfigFile(absolute, ts.sys.readFile);
+  if (error) {
+    fail(
+      `${BASE_TSCONFIG_PATH} could not be read: ${ts.flattenDiagnosticMessageText(error.messageText, '\n')}`,
+    );
+  }
+  const paths = config?.compilerOptions?.paths;
+  if (!paths || typeof paths !== 'object') {
+    fail(
+      `${BASE_TSCONFIG_PATH}: expected compilerOptions.paths — without it no library can be derived and every import would pass`,
+    );
+  }
+  const portable = new Map();
+  for (const alias of Object.keys(paths)) {
+    if (!alias.endsWith(PORTABLE_SUFFIX)) continue;
+    portable.set(alias.slice(0, -PORTABLE_SUFFIX.length), alias);
+  }
+  return portable;
 }
 
 /** Every tracked TypeScript/JavaScript file under the mobile app and libraries. */
@@ -408,17 +470,28 @@ function declaredBannedNames(sourceFile) {
 }
 
 /**
- * Both rules in one pass: module specifiers for the subpath rule, every
- * identifier and property access for the browser-globals rule.
+ * All three rules in one pass: module specifiers for the subpath and Portable
+ * Entry Point rules, every identifier and property access for the
+ * browser-globals rule.
  */
-function inspect(path, sourceFile) {
+function inspect(path, sourceFile, portable) {
   const findings = [];
   const shadowed = declaredBannedNames(sourceFile);
 
   const visit = (node) => {
     for (const { verb, remedy, specifierOf } of SPECIFIER_FORMS) {
       const specifier = specifierOf(node);
-      if (!specifier || !isBannedSubpath(specifier.text)) continue;
+      if (!specifier) continue;
+      const portableAlias = portable.get(specifier.text);
+      if (portableAlias) {
+        findings.push(
+          `${path}:${lineOf(sourceFile, node)}: ${verb} '${specifier.text}' — its main entry point. ` +
+            `Import '${portableAlias}' instead: the main entry point may reach browser-only code, and ` +
+            'mobile source reaches a library with a Portable Entry Point only through it (ADR 0103).',
+        );
+        continue;
+      }
+      if (!isBannedSubpath(specifier.text)) continue;
       findings.push(
         `${path}:${lineOf(sourceFile, node)}: ${verb} '${specifier.text}' — ` +
           'a bare react-native/ subpath. Deep imports are deprecated at 0.80 with ' +
@@ -455,10 +528,14 @@ function inspect(path, sourceFile) {
 }
 
 const exemptions = readExemptions();
+const portable = readPortableEntryPoints();
 const files = sourceFiles();
 
 if (printOnly) {
   console.log(`mobile-platform: ${files.length} file(s) scanned`);
+  for (const [main, alias] of portable) {
+    console.log(`  portable: ${main} → ${alias}`);
+  }
   for (const [path, reason] of exemptions) {
     console.log(`  exempt: ${path}`);
     console.log(`    ${reason}`);
@@ -475,12 +552,12 @@ for (const path of files) {
   } catch (error) {
     fail(`could not parse ${path}: ${error.message}`);
   }
-  findings.push(...inspect(path, sourceFile));
+  findings.push(...inspect(path, sourceFile, portable));
 }
 
 if (findings.length > 0) {
   console.error(
-    'mobile-platform: react-native subpath import or browser global found\n',
+    'mobile-platform: react-native subpath import, browser global, or main-entry import of a library with a Portable Entry Point found\n',
   );
   for (const finding of findings) console.error(`  - ${finding}`);
   process.exit(1);

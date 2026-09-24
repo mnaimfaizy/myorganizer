@@ -98,3 +98,41 @@ test('exits 1 and names the config when a project has a type error', (t) => {
   assert.match(result.stderr, /error TS/);
   assert.match(result.stderr, /1 error\(s\)/);
 });
+
+test('checks a tsconfig.web.json, the react-native-web program', (t) => {
+  // apps/mobile type-checks two programs (ADR 0103): tsconfig.app.json is the
+  // native one, and tsconfig.web.json is the only config that compiles the
+  // `.web` Platform Variants. A checker that skipped it would leave
+  // crypto.web.ts gated by nothing, which is what it was before ADR 0103.
+  const dir = mkdtempSync(join(REPO_ROOT, '.tmp-typecheck-fixture-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  writeFileSync(
+    join(dir, 'tsconfig.web.json'),
+    JSON.stringify({
+      compilerOptions: { strict: true, noEmit: true, skipLibCheck: true },
+      include: ['broken.web.ts'],
+    }),
+  );
+  writeFileSync(
+    join(dir, 'broken.web.ts'),
+    'export const n: number = "string";\n',
+  );
+
+  const graph = writeGraph(
+    t,
+    {
+      web: {
+        name: 'web',
+        data: { root: dir.slice(REPO_ROOT.length + 1), targets: {} },
+      },
+    },
+    dir,
+  );
+
+  const result = runChecker(graph, REPO_ROOT);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /tsconfig\.web\.json/);
+  assert.match(result.stderr, /broken\.web\.ts/);
+});

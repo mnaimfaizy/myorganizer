@@ -13,7 +13,7 @@
 // aesGcmEncryptNative assembles by hand, so a blob written on one platform
 // decrypts on the other. libs/vault-core/src/lib/cryptoCompatibility.test.ts pins
 // that shared format.
-import type { VaultCrypto } from '@myorganizer/vault-core';
+import type { VaultCrypto } from '@myorganizer/vault-core/portable';
 
 type AesGcmKey = CryptoKey;
 

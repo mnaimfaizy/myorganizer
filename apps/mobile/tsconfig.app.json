@@ -6,6 +6,9 @@
   },
   "files": ["../../node_modules/@nx/react-native/typings/svg.d.ts"],
   "exclude": [
+    "src/main-web.tsx",
+    "src/**/*.web.ts",
+    "src/**/*.web.tsx",
     "src/**/*.test.ts",
     "src/**/*.spec.ts",
     "src/**/*.test.tsx",

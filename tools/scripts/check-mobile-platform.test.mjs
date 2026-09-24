@@ -46,10 +46,29 @@ const run = (workspace, ...args) =>
     encoding: 'utf8',
   });
 
-/** A workspace carrying an empty exemption list plus `files`. */
-function scaffold(t, files = {}, exemptions = []) {
+function writeBaseTsconfig(workspace, paths = {}) {
+  write(
+    workspace,
+    'tsconfig.base.json',
+    JSON.stringify({ compilerOptions: { paths } }, null, 2),
+  );
+}
+
+/** Aliases shaped like the real repo's: one library with a Portable Entry Point, one without. */
+const PORTABLE_PATHS = {
+  '@myorganizer/auth': ['libs/auth/src/index.ts'],
+  '@myorganizer/auth/portable': ['libs/auth/src/portable.ts'],
+  '@myorganizer/design-tokens': ['libs/design-tokens/src/index.ts'],
+};
+
+/**
+ * A workspace carrying an empty exemption list, a `tsconfig.base.json` with
+ * `paths`, plus `files`.
+ */
+function scaffold(t, files = {}, exemptions = [], paths = {}) {
   const workspace = createRepo(t);
   writeExemptions(workspace, exemptions);
+  writeBaseTsconfig(workspace, paths);
   for (const [path, contents] of Object.entries(files)) {
     write(workspace, path, contents);
   }
@@ -507,7 +526,7 @@ test('fails a bare react-native subpath reached through dynamic import()', (t) =
   );
 });
 
-test('exempts a file by path, skipping both rules for it', (t) => {
+test('exempts a file by path, skipping every rule for it', (t) => {
   const workspace = scaffold(
     t,
     {
@@ -592,4 +611,183 @@ test('--print reports scanned count and exemptions with reasons', (t) => {
   assert.match(result.stdout, /1 file\(s\) scanned/);
   assert.match(result.stdout, /exempt: apps\/mobile\/src\/main-web\.tsx/);
   assert.match(result.stdout, /The web entry point\./);
+});
+
+test('fails a main-entry import of a library that has a Portable Entry Point', (t) => {
+  const workspace = scaffold(
+    t,
+    {
+      'libs/mobile/feat/auth/src/api/client.ts': `import { buildRefreshTokenRequest } from '@myorganizer/auth';
+export { buildRefreshTokenRequest };
+`,
+    },
+    [],
+    PORTABLE_PATHS,
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /client\.ts:1: imports '@myorganizer\/auth' — its main entry point\. Import '@myorganizer\/auth\/portable' instead/,
+  );
+});
+
+// A type-only import still loads the whole barrel into the native typecheck
+// program, and a re-export or a require still loads it into the Metro bundle,
+// so no form of naming the main entry is safer than another.
+test('fails a main-entry reach through import type, export from, require, and import()', (t) => {
+  const workspace = scaffold(
+    t,
+    {
+      'libs/mobile/feat/vault/src/a.ts': `import type { AuthClientType } from '@myorganizer/auth';
+export type { AuthClientType };
+`,
+      'libs/mobile/feat/vault/src/b.ts': `export * from '@myorganizer/auth';
+`,
+      'apps/mobile/src/c.js': `module.exports = require('@myorganizer/auth');
+`,
+      'apps/mobile/src/d.ts': `export const load = () => import('@myorganizer/auth');
+`,
+    },
+    [],
+    PORTABLE_PATHS,
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /a\.ts:1: imports '@myorganizer\/auth'/);
+  assert.match(result.stderr, /b\.ts:1: imports '@myorganizer\/auth'/);
+  assert.match(result.stderr, /c\.js:1: requires '@myorganizer\/auth'/);
+  assert.match(
+    result.stderr,
+    /d\.ts:1: dynamically imports '@myorganizer\/auth'/,
+  );
+});
+
+test('passes an import through the Portable Entry Point', (t) => {
+  const workspace = scaffold(
+    t,
+    {
+      'libs/mobile/feat/auth/src/api/client.ts': `import { buildRefreshTokenRequest } from '@myorganizer/auth/portable';
+export { buildRefreshTokenRequest };
+`,
+    },
+    [],
+    PORTABLE_PATHS,
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// The library list is read from tsconfig.base.json, never written down in the
+// checker: a library without a Portable Entry Point has nothing to route
+// around, so importing it whole is not a finding.
+test('passes a main-entry import of a library with no Portable Entry Point', (t) => {
+  const workspace = scaffold(
+    t,
+    {
+      'libs/mobile/ui/src/theme.ts': `import { tokens } from '@myorganizer/design-tokens';
+export const theme = tokens;
+`,
+    },
+    [],
+    PORTABLE_PATHS,
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('opts a library in as soon as its Portable Entry Point appears in tsconfig.base.json', (t) => {
+  const files = {
+    'libs/mobile/ui/src/theme.ts': `import { tokens } from '@myorganizer/design-tokens';
+export const theme = tokens;
+`,
+  };
+  const before = scaffold(t, files, [], PORTABLE_PATHS);
+  assert.equal(run(before).status, 0);
+
+  const after = scaffold(t, files, [], {
+    ...PORTABLE_PATHS,
+    '@myorganizer/design-tokens/portable': [
+      'libs/design-tokens/src/portable.ts',
+    ],
+  });
+  const result = run(after);
+  assert.equal(result.status, 1);
+  assert.match(
+    result.stderr,
+    /imports '@myorganizer\/design-tokens' — its main entry point/,
+  );
+});
+
+test('does not treat a lookalike specifier as the main entry', (t) => {
+  const workspace = scaffold(
+    t,
+    {
+      'libs/mobile/utils/src/index.ts': `import { a } from '@myorganizer/auth-extras';
+import { b } from '@myorganizer/auth/portable';
+export { a, b };
+`,
+    },
+    [],
+    PORTABLE_PATHS,
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+test('an exempted Platform Variant may import a main entry point', (t) => {
+  const workspace = scaffold(
+    t,
+    {
+      'libs/mobile/feat/vault/src/crypto.web.ts': `import type { AuthClientType } from '@myorganizer/auth';
+export type { AuthClientType };
+`,
+    },
+    [
+      {
+        path: 'libs/mobile/feat/vault/src/crypto.web.ts',
+        reason: 'The vault crypto Platform Variant.',
+      },
+    ],
+    PORTABLE_PATHS,
+  );
+  const result = run(workspace);
+  assert.equal(result.status, 0, result.stderr);
+});
+
+// Reading no aliases would mean deriving no libraries and passing every import:
+// a silent pass is the failure a gate must never have.
+test('cannot run when tsconfig.base.json is missing', (t) => {
+  const workspace = createRepo(t);
+  writeExemptions(workspace);
+  write(workspace, 'apps/mobile/src/App.tsx', 'export {};\n');
+  commitAll(workspace);
+  const result = run(workspace);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /tsconfig\.base\.json/);
+});
+
+test('cannot run when tsconfig.base.json carries no paths', (t) => {
+  const workspace = createRepo(t);
+  writeExemptions(workspace);
+  write(
+    workspace,
+    'tsconfig.base.json',
+    JSON.stringify({ compilerOptions: {} }),
+  );
+  commitAll(workspace);
+  const result = run(workspace);
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /compilerOptions\.paths/);
+});
+
+test('--print lists the Portable Entry Points it derived', (t) => {
+  const workspace = scaffold(t, {}, [], PORTABLE_PATHS);
+  const result = run(workspace, '--print');
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(
+    result.stdout,
+    /portable: @myorganizer\/auth → @myorganizer\/auth\/portable/,
+  );
+  assert.doesNotMatch(result.stdout, /portable: @myorganizer\/design-tokens/);
 });

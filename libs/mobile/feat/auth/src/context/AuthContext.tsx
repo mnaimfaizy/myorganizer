@@ -13,7 +13,7 @@ import {
   buildRefreshTokenRequest,
   extractRefreshTokenFromLoginResponse,
   resolveRefreshTokenAfterRefresh,
-} from '@myorganizer/auth';
+} from '@myorganizer/auth/portable';
 import {
   saveRefreshToken,
   getRefreshToken,

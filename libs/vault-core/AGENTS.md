@@ -50,5 +50,10 @@ Two edges hold the old rule where it still applies:
   `cryptoCompatibility.test.ts` beside `vaultCrypto.ts` is what holds the two
   byte-for-byte ([ADR 0039](../../docs/adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md)).
 
+Mobile imports that interface through the Portable Entry Point `src/portable.ts`
+(`@myorganizer/vault-core/portable`), never the main barrel, which carries
+`vaultCrypto.ts` and the Escape Copy reader. Keep `portable.ts` free of Web Crypto
+and browser globals ([ADR 0103](../../docs/adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md)).
+
 A second crypto implementation in this library is not an extension of this
 exception. It is the thing the exception exists to avoid.
