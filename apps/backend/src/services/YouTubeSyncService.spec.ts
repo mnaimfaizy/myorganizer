@@ -1678,6 +1678,56 @@ describe('YouTubeSyncService', () => {
         );
         expect(result.status).toBe('failed');
       });
+
+      it('syncUploads should log a non-serializable failure with its string form and store syncFailed', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        const circular = { reason: 'loop' } as {
+          reason: string;
+          self?: unknown;
+          toString: () => string;
+        };
+        circular.self = circular;
+        circular.toString = () => 'circular sync failure';
+
+        jest
+          .spyOn(youtubeSyncService, 'syncVideosForUserWithStatus')
+          .mockRejectedValue(circular);
+
+        jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+          ...noopUploadStatusFields,
+          status: 'failed',
+          lastSyncError: 'syncFailed',
+        });
+
+        const result = await youtubeSyncService.syncUploads('user-1');
+
+        expect(mockLogger.error).toHaveBeenCalledTimes(1);
+        expect(mockLogger.error).toHaveBeenCalledWith(
+          'YouTube upload sync failed for user user-1: circular sync failure',
+        );
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: 'user-1' },
+            data: expect.objectContaining({
+              lastSyncStatus: 'failed',
+              lastSyncError: 'syncFailed',
+            }),
+          }),
+        );
+        expect(result.status).toBe('failed');
+      });
     });
 
     it('should stop processing channels on quotaExceeded and report quota_exceeded', async () => {
