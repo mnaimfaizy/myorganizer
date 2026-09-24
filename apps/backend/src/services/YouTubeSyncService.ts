@@ -1,5 +1,6 @@
 import { google, youtube_v3 } from 'googleapis';
 import winston from 'winston';
+import { describeError } from '../helpers/describeError';
 import {
   parseIso8601DurationSeconds,
   videoKindWhere,
@@ -322,19 +323,6 @@ export {
   videoKindWhere,
 } from '../helpers/videoKind';
 export type { VideoKind } from '../helpers/videoKind';
-
-function describeError(error: unknown): { message: string; stack?: string } {
-  let message = String(error);
-  if (error instanceof Error) {
-    return { message: error.message, stack: error.stack };
-  }
-  try {
-    message = JSON.stringify(error) ?? message;
-  } catch {
-    // Keep the string representation when a third-party error is not serializable.
-  }
-  return { message };
-}
 
 function isQuotaExceededError(error: unknown): boolean {
   return /quotaExceeded/i.test(describeError(error).message);
