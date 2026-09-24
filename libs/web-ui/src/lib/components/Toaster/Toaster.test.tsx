@@ -27,7 +27,7 @@ describe('Toaster', () => {
     expect(screen.getByText('Passphrase changed')).toBeInTheDocument();
   });
 
-  it('replaces the first toast with the second title on sequential toast calls', () => {
+  it('shows both toast titles on sequential toast calls', () => {
     render(<Toaster />);
 
     act(() => {
@@ -44,6 +44,6 @@ describe('Toaster', () => {
       screen.getByRole('region', { name: /notifications/i }),
     ).toBeInTheDocument();
     expect(screen.getByText('Import complete')).toBeInTheDocument();
-    expect(screen.queryByText('Passphrase changed')).not.toBeInTheDocument();
+    expect(screen.getByText('Passphrase changed')).toBeInTheDocument();
   });
 });

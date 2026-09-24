@@ -8,7 +8,9 @@ import type {
   ToastProps,
 } from './../components/Toast/Toast';
 
-const TOAST_LIMIT = 1;
+// Two slots so a sequential toast ADDs a sibling Root instead of replacing the
+// sole portal child (Chromium drops that replace; issue #810).
+const TOAST_LIMIT = 2;
 export const TOAST_REMOVE_DELAY = 1000000;
 
 type ToasterToast = ToastProps & {
@@ -157,54 +159,29 @@ function getSnapshot(): State {
   return memoryState;
 }
 
-function clearRemoveTimeout(toastId: string) {
-  const timeout = toastTimeouts.get(toastId);
-  if (timeout) {
-    clearTimeout(timeout);
-    toastTimeouts.delete(toastId);
-  }
-}
-
 type Toast = Omit<ToasterToast, 'id'>;
 
 function toast({ ...props }: Toast) {
-  const existing = memoryState.toasts[0];
-  // An open Root keeps its portal; Chromium drops a replaced Root (#810).
-  // A closed Root already ran Presence's exit — do not UPDATE it open again.
-  const id = existing?.open ? existing.id : genId();
+  const id = genId();
 
-  const update = (props: ToasterToast) =>
+  const update = (props: Partial<ToasterToast>) =>
     dispatch({
       type: 'UPDATE_TOAST',
       toast: { ...props, id },
     });
   const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
-  const next: ToasterToast = {
-    ...props,
-    id,
-    open: true,
-    onOpenChange: (open) => {
-      if (!open) dismiss();
+  dispatch({
+    type: 'ADD_TOAST',
+    toast: {
+      ...props,
+      id,
+      open: true,
+      onOpenChange: (open) => {
+        if (!open) dismiss();
+      },
     },
-  };
-
-  if (existing?.open) {
-    clearRemoveTimeout(existing.id);
-    dispatch({
-      type: 'UPDATE_TOAST',
-      toast: next,
-    });
-  } else {
-    if (existing) {
-      clearRemoveTimeout(existing.id);
-      dispatch({ type: 'REMOVE_TOAST' });
-    }
-    dispatch({
-      type: 'ADD_TOAST',
-      toast: next,
-    });
-  }
+  });
 
   return {
     id: id,

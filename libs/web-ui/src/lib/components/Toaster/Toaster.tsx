@@ -14,8 +14,8 @@ export function Toaster() {
   const { toasts } = useToast();
 
   return (
-    // Radix's 5s default closes the slot before wrapping-reverts import; Chromium cannot UPDATE a closed Toast.Root (#810).
-    <ToastProvider duration={Infinity}>
+    // Finite Radix duration so a success toast cannot block later pointer targets (#810).
+    <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
           <Toast key={id} {...props}>
