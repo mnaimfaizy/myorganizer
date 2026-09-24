@@ -1575,7 +1575,7 @@ describe('YouTubeSyncService', () => {
         expect(result.status).toBe('failed');
       });
 
-      it('syncUploads should log an auth failure once before the channel loop and store syncFailed', async () => {
+      it('syncUploads should log an auth failure once from the returning handler and store syncFailed', async () => {
         (
           mockPrisma.youTubeIntegration.findUnique as jest.Mock
         ).mockResolvedValue({
@@ -1621,7 +1621,7 @@ describe('YouTubeSyncService', () => {
 
         expect(mockLogger.error).toHaveBeenCalledTimes(1);
         expect(mockLogger.error).toHaveBeenCalledWith(
-          `YouTube upload sync failed before the channel loop for user user-1: token decrypt failed`,
+          `YouTube upload sync failed for user user-1: token decrypt failed`,
           { stack: authError.stack },
         );
         expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
