@@ -936,10 +936,13 @@ test.describe('Vault export/import (E2E)', () => {
     // Step 6: Confirm the import replace dialog with wrapping-reverts-passphrase outcome
     await confirmImportReplaceDialog(page, 'wrapping-reverts-passphrase');
 
-    // Step 7: Assert the import landed. Chromium E2E still does not find the sequential
-    // success toast after an earlier toast on this page (issue 810; CI shard 3/3 failed the
-    // same locator on three retries after the useToast follow-up), so this spec keeps the
-    // on-page note as the success signal.
+    // Step 7: Assert the import landed. Toast title is scoped to the notifications
+    // region; the on-page note stays scoped to main so the two do not collide.
+    await expect(
+      page
+        .getByRole('region', { name: /notifications/i })
+        .getByText('Import complete', { exact: true }),
+    ).toBeVisible({ timeout: 60000 });
     await expect(
       page
         .getByRole('main')
