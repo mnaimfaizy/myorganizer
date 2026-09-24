@@ -10,7 +10,7 @@
 // what a fixture was built to say.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -505,4 +505,65 @@ test('the checker reads --report and names the rule id it looked for', () => {
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Golden Replay run 35833576958 (pull request #884): the miss that quoted the
+// wrong tree (docs/review/golden-replay-results.md, ADR 0101). The worklist is
+// the selector's own output over the case range; the answer sheet is rebuilt
+// from the checker line the results record quotes, because the run's artifact
+// could not be fetched here — the citation is verbatim, the `wiredBy` value
+// and the "not run" fields are what the record says the reviewer answered.
+
+const FIXTURES_0923 = join(
+  'tools',
+  'scripts',
+  'review',
+  'fixtures',
+  '2026-09-23',
+);
+
+test('run 35833576958: a wiredBy quoted from the checkout fails at the case head', () => {
+  const out = spawnSync(
+    process.execPath,
+    [
+      CHECKER,
+      join(FIXTURES_0923, 'release-bump.worklist.json'),
+      join(FIXTURES_0923, 'release-bump.answers.json'),
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.equal(out.status, 1, out.stderr);
+  assert.match(
+    out.stderr,
+    /field wiredBy quotes " {8}run: corepack yarn openapi:check" at \.github\/workflows\/ci\.yml:527, where head has "timeout-minutes: 30"/,
+  );
+});
+
+test('run 35833576958: the same quotation holds at the pull request head it was read from', () => {
+  // Which is why it looked like an answer. The check is only as good as the
+  // head it reads, and the worklist records the case head, not the checkout.
+  const worklist = JSON.parse(
+    readFileSync(join(FIXTURES_0923, 'release-bump.worklist.json'), 'utf8'),
+  );
+  const sheet = JSON.parse(
+    readFileSync(join(FIXTURES_0923, 'release-bump.answers.json'), 'utf8'),
+  );
+  const at = (head) => (file) => {
+    const r = spawnSync('git', ['show', `${head}:${file}`], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+    });
+    return r.status === 0 ? r.stdout : null;
+  };
+  assert.equal(
+    checkAnswers(worklist, sheet, {
+      readSource: at('0b9046ec117323c1a5f1be865b280536ba651c8e'),
+    }).sound,
+    true,
+  );
+  assert.equal(
+    checkAnswers(worklist, sheet, { readSource: at(worklist.head) }).sound,
+    false,
+  );
 });

@@ -1,0 +1,25 @@
+{
+  "head": "8175cb64bf07888610756a52a5dcae7f09f06e7b",
+  "answers": [
+    {
+      "id": "run-the-gate-that-covers-this-change",
+      "site": {
+        "file": "package.json",
+        "line": 3
+      },
+      "answer": {
+        "command": "not run",
+        "exitCode": "not run",
+        "wiredBy": ".github/workflows/ci.yml"
+      },
+      "citations": {
+        "wiredBy": {
+          "file": ".github/workflows/ci.yml",
+          "line": 527,
+          "text": "        run: corepack yarn openapi:check"
+        }
+      },
+      "raisedFindingIds": []
+    }
+  ]
+}
