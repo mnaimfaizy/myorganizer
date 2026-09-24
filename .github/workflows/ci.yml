@@ -817,8 +817,11 @@ jobs:
         run: corepack yarn tailwind:classes:check
 
       # A bare `react-native/…` subpath import is deprecated at 0.80 with
-      # removal planned, and a browser global typechecks on mobile because the
-      # base config puts `dom` in `lib`. Nothing else in CI sees either.
+      # removal planned, and a browser global still typechecks in each
+      # `libs/mobile/*` tsconfig because the base config puts `dom` in `lib` —
+      # only the app's native program drops it (ADR 0103). This also holds
+      # mobile source to a shared library's Portable Entry Point, which the
+      # native program alone cannot while it carries `types: ["node"]` (#892).
       # ADR 0064: the Escape Copy must be openable by a tool that needs nothing
       # of ours, and a gate must assert the tool still opens a freshly produced
       # envelope. This builds the reader and runs it against an envelope the
