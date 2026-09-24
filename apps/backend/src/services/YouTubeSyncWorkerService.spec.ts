@@ -1,4 +1,12 @@
-import { YouTubeSyncWorkerService } from './YouTubeSyncWorkerService';
+jest.mock('winston', () => ({
+  createLogger: jest.fn(() => ({
+    error: jest.fn(),
+    warn: jest.fn(),
+    info: jest.fn(),
+  })),
+  format: { json: jest.fn(() => ({})) },
+  transports: { Console: jest.fn() },
+}));
 
 jest.mock('./WorkerLeaseService', () => {
   const __mockWorkerLeaseService = {
@@ -38,6 +46,9 @@ jest.mock('../prisma', () => {
   };
 });
 
+const winston = require('winston');
+const { YouTubeSyncWorkerService } = require('./YouTubeSyncWorkerService');
+const mockLogger = jest.mocked(winston.createLogger).mock.results[0].value;
 const mockPrisma = require('../prisma').__mockPrisma;
 const mockLeases = require('./WorkerLeaseService').__mockWorkerLeaseService;
 const mockSync = require('./YouTubeSyncService').default;
@@ -54,7 +65,7 @@ function mockBatch(users: Array<{ userId: string }>): void {
 }
 
 describe('YouTubeSyncWorkerService', () => {
-  let service: YouTubeSyncWorkerService;
+  let service: InstanceType<typeof YouTubeSyncWorkerService>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -166,10 +177,11 @@ describe('YouTubeSyncWorkerService', () => {
       };
       (mockLeases.acquire as jest.Mock).mockResolvedValue(mockLease);
       mockBatch([{ userId: 'user-1' }, { userId: 'user-2' }]);
+      const networkError = new Error('Network error');
       (mockSync.syncVideosForUser as jest.Mock).mockImplementation(
         async (userId: string) => {
           if (userId === 'user-1') {
-            throw new Error('Network error');
+            throw networkError;
           }
           return 5;
         },
@@ -180,6 +192,33 @@ describe('YouTubeSyncWorkerService', () => {
       expect(result.failed).toBe(1);
       expect(result.usersSynced).toBe(1);
       expect(mockSync.syncVideosForUser).toHaveBeenCalledTimes(2);
+      expect(mockLogger.error).toHaveBeenCalledTimes(1);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'YouTube sync failed for user user-1: Network error',
+        { stack: networkError.stack },
+      );
+    });
+
+    it('should log a non-Error rejection once with a quoted message and no stack', async () => {
+      const mockLease = {
+        name: 'youtube-sync',
+        owner: 'owner-1',
+        cursor: null,
+      };
+      (mockLeases.acquire as jest.Mock).mockResolvedValue(mockLease);
+      mockBatch([{ userId: 'user-1' }]);
+      (mockSync.syncVideosForUser as jest.Mock).mockRejectedValue(
+        'plain failure',
+      );
+
+      const result = await service.runSyncWorker();
+
+      expect(result.failed).toBe(1);
+      expect(mockLogger.error).toHaveBeenCalledTimes(1);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'YouTube sync failed for user user-1: "plain failure"',
+      );
+      expect(mockPrisma.youTubeIntegration.update).not.toHaveBeenCalled();
     });
 
     it('should mark integration revoked on invalid_grant error', async () => {
