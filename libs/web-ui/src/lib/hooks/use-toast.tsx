@@ -168,11 +168,10 @@ function clearRemoveTimeout(toastId: string) {
 type Toast = Omit<ToasterToast, 'id'>;
 
 function toast({ ...props }: Toast) {
-  // Reuse the limit-1 slot's id so Toast.Root stays mounted. Chromium drops a
-  // replaced Toast.Root portal (#810); REMOVE-then-ADD (even on a macrotask)
-  // still left Notifications empty in CI.
   const existing = memoryState.toasts[0];
-  const id = existing?.id ?? genId();
+  // An open Root keeps its portal; Chromium drops a replaced Root (#810).
+  // A closed Root already ran Presence's exit — do not UPDATE it open again.
+  const id = existing?.open ? existing.id : genId();
 
   const update = (props: ToasterToast) =>
     dispatch({
@@ -190,13 +189,17 @@ function toast({ ...props }: Toast) {
     },
   };
 
-  if (existing) {
+  if (existing?.open) {
     clearRemoveTimeout(existing.id);
     dispatch({
       type: 'UPDATE_TOAST',
       toast: next,
     });
   } else {
+    if (existing) {
+      clearRemoveTimeout(existing.id);
+      dispatch({ type: 'REMOVE_TOAST' });
+    }
     dispatch({
       type: 'ADD_TOAST',
       toast: next,

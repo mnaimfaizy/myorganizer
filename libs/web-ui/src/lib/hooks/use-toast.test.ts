@@ -109,6 +109,7 @@ describe('useToast', () => {
     });
 
     expect(result.current.toasts).toHaveLength(1);
+    expect(result.current.toasts[0].open).toBe(false);
   });
 
   it('should remove a toast', () => {
