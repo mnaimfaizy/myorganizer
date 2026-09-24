@@ -9,7 +9,7 @@ import type {
 } from './../components/Toast/Toast';
 
 const TOAST_LIMIT = 1;
-const TOAST_REMOVE_DELAY = 1000000;
+export const TOAST_REMOVE_DELAY = 1000000;
 
 type ToasterToast = ToastProps & {
   id: string;
@@ -157,6 +157,8 @@ function getSnapshot(): State {
   return memoryState;
 }
 
+let scheduledAdd: ReturnType<typeof setTimeout> | undefined;
+
 type Toast = Omit<ToasterToast, 'id'>;
 
 function toast({ ...props }: Toast) {
@@ -169,17 +171,36 @@ function toast({ ...props }: Toast) {
     });
   const dismiss = () => dispatch({ type: 'DISMISS_TOAST', toastId: id });
 
-  dispatch({
-    type: 'ADD_TOAST',
-    toast: {
-      ...props,
-      id,
-      open: true,
-      onOpenChange: (open) => {
-        if (!open) dismiss();
+  const add = () => {
+    dispatch({
+      type: 'ADD_TOAST',
+      toast: {
+        ...props,
+        id,
+        open: true,
+        onOpenChange: (open) => {
+          if (!open) dismiss();
+        },
       },
-    },
-  });
+    });
+  };
+
+  // Chromium drops a Toast.Root portal when the only viewport child is replaced
+  // in the same turn (#810). Commit an empty list first, then add after a
+  // macrotask so the previous portal has detached.
+  if (memoryState.toasts.length > 0) {
+    if (scheduledAdd !== undefined) {
+      clearTimeout(scheduledAdd);
+      scheduledAdd = undefined;
+    }
+    dispatch({ type: 'REMOVE_TOAST' });
+    scheduledAdd = setTimeout(() => {
+      scheduledAdd = undefined;
+      add();
+    }, 0);
+  } else {
+    add();
+  }
 
   return {
     id: id,
