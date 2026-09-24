@@ -413,7 +413,15 @@ export const CitationSchema = z.strictObject({
 
 export const AnswerSchema = z.strictObject({
   id: z.string().regex(ID),
-  site: z.strictObject({ file: z.string().min(1), line: z.number().int() }),
+  // A site may carry the catalogue's own site fields back (`coveringGate`,
+  // `guardedEnum`): a reviewer that copies the site it was handed, whole, has
+  // done nothing wrong, and rejecting the sheet for it voided Golden Replay
+  // run 35962475744 on an honest answer. They are strings, and checkAnswers
+  // holds each one to the worklist's value, because a site naming a different
+  // gate is the run-47 answer (ADR 0098) and must not count.
+  site: z
+    .object({ file: z.string().min(1), line: z.number().int() })
+    .catchall(z.string()),
   answer: z.record(z.string(), z.unknown()),
   // One citation per cited answer field, keyed by the field it backs. Optional
   // in the schema and required by the check: a sheet that carries none is
@@ -600,7 +608,10 @@ export const checkAnswers = (
   for (const a of sheet.answers) {
     const key = siteKey(a.id, a.site);
     const want = expected.get(key);
-    if (!want) {
+    const restated = Object.entries(a.site).filter(
+      ([k]) => k !== 'file' && k !== 'line',
+    );
+    if (!want || restated.some(([k, v]) => want.site[k] !== v)) {
       unexpected.push(key);
       continue;
     }

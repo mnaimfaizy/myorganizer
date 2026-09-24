@@ -16,6 +16,7 @@ import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  AnswerSheetSchema,
   ObligationError,
   assertObligationCatalogue,
   checkAnswers,
@@ -602,4 +603,52 @@ test('run 35833576958: the same quotation holds at the pull request head it was 
     checkAnswers(worklist, sheet, { readSource: at(worklist.head) }).sound,
     false,
   );
+});
+
+// ---------------------------------------------------------------------------
+// A site copied back whole, catalogue facts and all (Golden Replay run
+// 35962475744 wrote `site: { file, line, guardedEnum, coveringGate }` and the
+// sheet was rejected as unreadable, voiding an honest run).
+
+const gatedWorklist = () =>
+  worklist({
+    siteFields: ['coveringGate'],
+    sites: [{ file: 'libs/a.ts', line: 1, coveringGate: 'openapi:check' }],
+  });
+
+const restating = (coveringGate) => ({
+  head: 'abc',
+  answers: [
+    {
+      id: 'an-obligation',
+      site: { file: 'libs/a.ts', line: 1, coveringGate },
+      answer: { a: 'x', b: 'y' },
+      citations: { a: { file: 'libs/a.ts', line: 1, text: 'const x = 1;' } },
+    },
+  ],
+});
+
+test('a site that restates the catalogue facts it was handed is the same site', () => {
+  const sheet = AnswerSheetSchema.parse(restating('openapi:check'));
+  const report = checkAnswers(gatedWorklist(), sheet, { readSource });
+  assert.equal(report.answered, 1);
+  assert.deepEqual(report.unexpected, []);
+  assert.equal(report.complete, true);
+  assert.equal(report.sound, true);
+});
+
+test('a site restating a different gate is not the site it was handed (ADR 0098)', () => {
+  // Run 47's answer, spelled on the site rather than in the answer: it must
+  // not count as answering the site whose gate is openapi:check.
+  const sheet = AnswerSheetSchema.parse(restating('deploy:pages:check'));
+  const report = checkAnswers(gatedWorklist(), sheet, { readSource });
+  assert.equal(report.answered, 0);
+  assert.equal(report.unexpected.length, 1);
+  assert.equal(report.unanswered.length, 1);
+});
+
+test('a restated site field must still be a string', () => {
+  const bad = restating('openapi:check');
+  bad.answers[0].site.coveringGate = 7;
+  assert.equal(AnswerSheetSchema.safeParse(bad).success, false);
 });
