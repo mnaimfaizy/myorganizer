@@ -7,6 +7,7 @@ export {
   waitForSignupFormInteractive,
 } from './auth';
 export { GroceriesPage } from './GroceriesPage';
+export { readDownloadText } from './download';
 export { gotoStable } from './navigation';
 export {
   createOwnedVault,
