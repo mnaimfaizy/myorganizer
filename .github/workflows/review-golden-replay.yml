@@ -258,7 +258,7 @@ jobs:
           jq '{spec: .spec}' <<<"$CASE" > tmp/code-review/spec.json
           echo "replaying $(jq -r .incident <<<"$CASE"): $(jq -r .base <<<"$CASE" | cut -c1-7)...$(jq -r .head <<<"$CASE" | cut -c1-7)"
 
-      # The reviewer reads the case, not the pull request (ADR 0101). Run
+      # The reviewer reads the case, not the pull request (ADR 0102). Run
       # 35833576958 read `.github/workflows/ci.yml` from this checkout,
       # answered that `openapi:check` was wired at a head where it was not,
       # and suppressed the finding it was there to raise; it also listed an
@@ -273,7 +273,8 @@ jobs:
       # permission rules the session loads, ADR 0099, and the skills link),
       # the hook scripts those settings run by cwd-relative path and the
       # upstream-brief module they import, and this job's own composite
-      # action, which the next step `uses:` from the workspace. The scripts the harness runs — selector, validator,
+      # action, which the next step `uses:` from the workspace. The scripts
+      # the harness runs — selector, validator, obligation-answer check,
       # scorer — are extracted outside the workspace, where no Read or Grep
       # of the reviewer's lands on them, and resolve their modules through
       # the one node_modules installed above. Nothing is committed: this
@@ -289,7 +290,7 @@ jobs:
           OVERLAY=(.agents/skills/code-review .agents/skills/upstream-brief .claude tools/scripts/copilot-hooks .github/actions/code-reviewer)
           TOOLING_HEAD="$(git rev-parse HEAD)"
           mkdir -p "$TOOLING"
-          git archive "$TOOLING_HEAD" tools/scripts/review tools/scripts/lib tools/config | tar -x -C "$TOOLING"
+          git archive "$TOOLING_HEAD" tools/scripts/review tools/scripts/lib tools/scripts/check-review-obligation-answers.mjs tools/config | tar -x -C "$TOOLING"
           ln -s "$GITHUB_WORKSPACE/node_modules" "$TOOLING/node_modules"
           git checkout --quiet --detach "$CASE_HEAD"
           rm -rf "${OVERLAY[@]}"
@@ -372,11 +373,62 @@ jobs:
           cat '${{ steps.reviewer.outputs.rejected-file }}' 2>/dev/null || true
           exit 1
 
+      # The obligation answers, checked as code-review.yml checks them
+      # (ADR 0078), against the case head the selector recorded in the
+      # worklist, read by commit — which is also the checkout now (ADR 0102),
+      # so a quotation read from disk matches unless it was made up. A sheet
+      # that fails here is one production would have answered by failing
+      # Agent Review Ran, so the run is a void, not a miss, and not a catch
+      # either (ADR 0101): the score below does not run, and the case fails
+      # with a message that says why. Run 35833576958 is the case that bought
+      # this — its miss on release-bump-leaves-generated-client-stale rested
+      # on a wiredBy citation read from the checkout, and the replay scored it
+      # because nothing here compared the quotation to anything.
+      #
+      # No sheet and no worklist fail nothing, exactly as in production:
+      # thoroughness is not a pipeline fact (ADR 0078, Consequences).
+      #
+      # review:obligations:check's script runs from the extracted tooling,
+      # like the selector and the scorer: the case head's package.json has no
+      # review:* scripts, and the catalogue it reads is cwd-relative. It reads
+      # the head through the workspace's git directory (ADR 0102).
+      - name: Check the obligation answers
+        env:
+          TOOLING: ${{ steps.tree.outputs.tooling }}
+        run: |
+          if [ ! -f tmp/code-review/obligations.json ]; then
+            echo 'no worklist: nothing to check'; exit 0
+          fi
+          if [ ! -f tmp/code-review/obligations.answers.json ]; then
+            echo 'review-obligations-check: the reviewer wrote no answer sheet'
+            exit 0
+          fi
+          # --report always: the step above already required a validated
+          # report, so report.json is there, and it is what production reads
+          # to decide whether a self-contradiction raised its finding.
+          set +e
+          CR="$PWD/tmp/code-review"
+          GIT_DIR="$(git rev-parse --absolute-git-dir)"
+          (cd "$TOOLING" && GIT_DIR="$GIT_DIR" node tools/scripts/check-review-obligation-answers.mjs \
+            "$CR/obligations.json" \
+            "$CR/obligations.answers.json" \
+            --report "$CR/report.json" \
+            --out "$CR/obligations.report.json")
+          status=$?
+          set -e
+          if [ "$status" -ne 0 ]; then
+            echo "::error::case ${{ matrix.case }}: the obligation answer sheet does not hold up against the case head (review-obligations-check exit $status). Production fails Agent Review Ran on this (ADR 0078), so the run measured nothing: it is a void, not a miss, and was not scored (ADR 0101)"
+            exit 1
+          fi
+
       # Recall against the case's expected findings; below the minimum fails
       # this case, and the summary names what was missed and why it mattered.
-      # From the extracted tooling, whose golden set is the pull request's:
-      # the workspace is the case head now, and its package.json and set
-      # predate this one.
+      # Never `always()`: after a failed answer sheet this must not run, or a
+      # void is written into the summary as a miss.
+      #
+      # From the extracted tooling (review:golden:score's script), whose
+      # golden set is the pull request's: the workspace is the case head now,
+      # and its package.json and set predate this one (ADR 0102).
       - name: Score the case
         working-directory: ${{ steps.tree.outputs.tooling }}
         run: |
@@ -401,6 +453,7 @@ jobs:
             tmp/code-review/score.json
             tmp/code-review/obligations.json
             tmp/code-review/obligations.answers.json
+            tmp/code-review/obligations.report.json
           if-no-files-found: ignore
           retention-days: 30
 
@@ -429,6 +482,6 @@ jobs:
             exit 0
           fi
           if [ '${{ needs.replay.result }}' != 'success' ]; then
-            echo '::error::at least one golden case fell below its minimum recall; see the Replay jobs'
+            echo '::error::at least one golden case fell below its minimum recall or measured nothing (a void: rate limit, turn ceiling, prevented, or an answer sheet that failed its check); see the Replay jobs'
             exit 1
           fi

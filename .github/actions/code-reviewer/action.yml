@@ -46,7 +46,7 @@ inputs:
       the validator) live. `.` for a pull request, whose checkout is both the
       tree under review and the tooling. The golden replay passes a copy of
       the pull request's scripts extracted outside the workspace, because its
-      workspace is the case head, which predates them (ADR 0101).
+      workspace is the case head, which predates them (ADR 0102).
     required: false
     default: '.'
 
@@ -103,7 +103,7 @@ runs:
     #
     # The selector runs from the tooling directory, because the catalogue it
     # reads is cwd-relative, and diffs through the workspace's git directory,
-    # because an extracted tooling copy is not a repository (ADR 0101).
+    # because an extracted tooling copy is not a repository (ADR 0102).
     - name: Select the obligations
       shell: bash
       env:

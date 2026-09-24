@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 import {
@@ -6,6 +7,7 @@ import {
   assertGoldenSet,
   loadGoldenSet,
   renderScore,
+  replayObligationCheckFindings,
   scoreCase,
 } from './golden.mjs';
 import { findingId } from './schema.mjs';
@@ -330,4 +332,138 @@ test('the rendered score names misses with their why', () => {
   assert.match(md, /FAIL/);
   assert.match(md, /Recall 0\/1/);
   assert.match(md, /five of six blob types/);
+});
+
+// ---------------------------------------------------------------------------
+// ADR 0101: the replay checks the answer sheet before it scores. Each case
+// below is one way a failed sheet comes back as a miss.
+
+const replaySteps = ({
+  check = [
+    '        run: |',
+    '          corepack yarn review:obligations:check w.json a.json \\',
+    '            --report tmp/code-review/report.json',
+  ],
+  score = ['        run: corepack yarn review:golden:score --case x'],
+  checkFirst = true,
+} = {}) => {
+  const checkStep = ['      - name: Check the obligation answers', ...check];
+  const scoreStep = ['      - name: Score the case', ...score];
+  return [
+    'jobs:',
+    '  replay:',
+    '    steps:',
+    '      - name: Require a validated report',
+    '        run: exit 0',
+    ...(checkFirst
+      ? [...checkStep, ...scoreStep]
+      : [...scoreStep, ...checkStep]),
+    '      - name: Keep the report',
+    '        if: always()',
+    '        run: exit 0',
+  ].join('\n');
+};
+
+test('the real replay workflow checks the answer sheet before it scores', () => {
+  const workflow = readFileSync(
+    '.github/workflows/review-golden-replay.yml',
+    'utf8',
+  );
+  assert.deepEqual(replayObligationCheckFindings(workflow), []);
+});
+
+test('a replay that checks, with the report, before scoring is sound', () => {
+  // The `if: always()` on the step after the score is not the score's: a
+  // step's block ends at the next `- name:` line.
+  assert.deepEqual(replayObligationCheckFindings(replaySteps()), []);
+});
+
+test('a replay that runs both scripts by file, from extracted tooling, is sound', () => {
+  // ADR 0102: the case head's package.json has no review:* scripts, so the
+  // replay runs the files the scripts name. Matching only the package script
+  // would report this sound workflow as one that never checks.
+  assert.deepEqual(
+    replayObligationCheckFindings(
+      replaySteps({
+        check: [
+          '        run: |',
+          '          node tools/scripts/check-review-obligation-answers.mjs w a \\',
+          '            --report "$CR/report.json"',
+        ],
+        score: [
+          '        run: node tools/scripts/review/score-golden-case.mjs --case x',
+        ],
+      }),
+    ),
+    [],
+  );
+});
+
+test('naming the scripts without running them is not running them', () => {
+  // The tooling-extraction step names the checker in `git archive`, and
+  // loading a case runs the scorer with --show; neither checks nor scores.
+  const [f] = replayObligationCheckFindings(
+    replaySteps({
+      check: [
+        '        run: git archive HEAD tools/scripts/check-review-obligation-answers.mjs',
+      ],
+      score: [
+        '        run: node tools/scripts/review/score-golden-case.mjs --show x',
+      ],
+    }),
+  );
+  assert.match(f, /no step runs review:obligations:check/);
+});
+
+test('a replay that never runs the check is the run 35833576958 shape', () => {
+  const [f] = replayObligationCheckFindings(
+    replaySteps({ check: ['        run: echo nothing'] }),
+  );
+  assert.match(f, /no step runs review:obligations:check/);
+});
+
+test('a check after the score scores the void first', () => {
+  assert.match(
+    replayObligationCheckFindings(replaySteps({ checkFirst: false })).join(),
+    /runs after "Score the case"/,
+  );
+});
+
+test('a check without --report trusts the sheet about its own findings', () => {
+  assert.match(
+    replayObligationCheckFindings(
+      replaySteps({
+        check: ['        run: corepack yarn review:obligations:check w a'],
+      }),
+    ).join(),
+    /does not pass --report/,
+  );
+});
+
+test('a check that continues on error does not stop the score', () => {
+  assert.match(
+    replayObligationCheckFindings(
+      replaySteps({
+        check: [
+          '        continue-on-error: true',
+          '        run: corepack yarn review:obligations:check w a --report r',
+        ],
+      }),
+    ).join(),
+    /continues on error/,
+  );
+});
+
+test('a score with an if: can run after a failed sheet', () => {
+  assert.match(
+    replayObligationCheckFindings(
+      replaySteps({
+        score: [
+          '        if: always()',
+          '        run: corepack yarn review:golden:score --case x',
+        ],
+      }),
+    ).join(),
+    /carries an if:/,
+  );
 });

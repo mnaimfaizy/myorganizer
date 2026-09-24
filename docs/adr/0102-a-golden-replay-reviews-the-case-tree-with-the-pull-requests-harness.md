@@ -114,7 +114,10 @@ rather than the case's, which was already true of the worktree the old arrangeme
 worktree inside the workspace resolves the same `node_modules`. A gate or test that needs the case's
 own lockfile installed will fail there, and the reviewer records what it ran either way.
 
-**The replay still does not run `review:obligations:check`.** Run 35833576958's citation fails that
-check; the `Code Review` workflow would have rejected the report where the replay scored it as a
-miss. That is a separate gap, left open here: with the tree fixed, a quotation read from disk now
-matches the head, so the check would catch a fabricated citation rather than the wrong tree.
+**The answer-sheet check runs from the tooling copy too.** [ADR 0101](0101-a-replay-whose-answer-sheet-fails-its-check-measured-nothing.md)
+closed the other gap run 35833576958 left: the replay runs `review:obligations:check` before it
+scores, and a sheet that fails it is a void. That check reads the head by commit, so it never
+depended on the checkout; under this decision it runs from the extracted tooling like the other
+review scripts, and the replay's own checker recognises a script run by its file as well as by its
+package name. With the tree fixed, a quotation read from disk matches the head, so a failure there
+now means a citation that was made up rather than one read from the wrong tree.

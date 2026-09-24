@@ -311,3 +311,94 @@ export const renderScore = (goldenCase, score) => {
   }
   return `${lines.join('\n')}\n`;
 };
+
+/**
+ * The replay's own classification of a failed answer sheet (ADR 0101), read
+ * off the workflow text rather than trusted to it.
+ *
+ * Production fails `Agent Review Ran` on an answer sheet whose quotations do
+ * not hold up against the tree at head (ADR 0078). A replay that does not run
+ * that check scores the same run as a miss — run 35833576958 did, on a
+ * citation read from the pull request's checkout instead of the case head —
+ * so the step running it is load-bearing, and deleting it would pass every
+ * other check here. Four things are asserted, each one a way the void comes
+ * back as a miss: the check runs; it runs before the score, so a failed sheet
+ * stops the score from running at all; it reads the report, as production
+ * does; and neither step opts out of that ordering — the check by continuing
+ * on error, the score by an `if:` that runs it after a failure.
+ *
+ * Steps are found by their `- name:` lines, and a step's block is everything
+ * up to the next line at the same or a shallower indent. That is enough for a
+ * workflow this repository writes, and it avoids adding a YAML parser to a
+ * checker whose only other input is JSON.
+ *
+ * A step runs a script either by its package script or by the file that
+ * script names. The replay uses the file: its working tree is the case head,
+ * whose package.json predates the review scripts, so it runs them from an
+ * extracted copy of the pull request's tooling (ADR 0102). Matching only the
+ * package script would report a check that runs as one that does not.
+ */
+export const REPLAY_OBLIGATION_CHECK = 'review:obligations:check';
+export const REPLAY_SCORE = 'review:golden:score';
+// The file form must be an invocation, not a mention: the step that extracts
+// the tooling names the checker in its `git archive` line, and loading a case
+// runs the scorer with `--show`, which scores nothing.
+const REPLAY_OBLIGATION_CHECK_RUN =
+  /\bnode\s+\S*check-review-obligation-answers\.mjs\b/;
+const REPLAY_SCORE_RUN = /\bnode\s+\S*score-golden-case\.mjs\s+--case\b/;
+
+const runs = (body, script, invocation) =>
+  body.includes(script) || invocation.test(body);
+
+const workflowSteps = (text) => {
+  const lines = text.split('\n');
+  const steps = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^(\s*)- name: (.+)$/.exec(lines[i]);
+    if (!m) continue;
+    const indent = m[1].length;
+    let end = i + 1;
+    while (end < lines.length) {
+      const line = lines[end];
+      if (line.trim() !== '' && line.search(/\S/) <= indent) break;
+      end++;
+    }
+    steps.push({ name: m[2].trim(), body: lines.slice(i, end).join('\n') });
+  }
+  return steps;
+};
+
+export const replayObligationCheckFindings = (workflowText) => {
+  const steps = workflowSteps(workflowText);
+  const check = steps.findIndex((s) =>
+    runs(s.body, REPLAY_OBLIGATION_CHECK, REPLAY_OBLIGATION_CHECK_RUN),
+  );
+  const score = steps.findIndex((s) =>
+    runs(s.body, REPLAY_SCORE, REPLAY_SCORE_RUN),
+  );
+  const findings = [];
+  if (check === -1)
+    return [
+      `no step runs ${REPLAY_OBLIGATION_CHECK}, so an answer sheet production would fail is scored as a result (ADR 0101)`,
+    ];
+  if (score === -1) return [`no step runs ${REPLAY_SCORE}`];
+  const c = steps[check];
+  const s = steps[score];
+  if (check > score)
+    findings.push(
+      `"${c.name}" runs after "${s.name}", so a void is scored before it is recognised (ADR 0101)`,
+    );
+  if (!/--report\s/.test(c.body))
+    findings.push(
+      `"${c.name}" does not pass --report, so a self-contradiction is read from the sheet's own declaration, not the report (ADR 0078 item 4)`,
+    );
+  if (/^\s*continue-on-error:\s*true\b/m.test(c.body))
+    findings.push(
+      `"${c.name}" continues on error, so a failed answer sheet does not stop the score (ADR 0101)`,
+    );
+  if (/^\s*if:/m.test(s.body))
+    findings.push(
+      `"${s.name}" carries an if:, which can run it after a failed answer sheet and score a void as a miss (ADR 0101)`,
+    );
+  return findings;
+};
