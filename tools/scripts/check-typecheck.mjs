@@ -41,9 +41,18 @@ import { GraphUnavailableError, loadProjectGraph } from './lib/nx-graph.mjs';
 
 // Checked in this order; every one that exists is checked, because a project's
 // production code and its specs compile under different options.
+//
+// `tsconfig.web.json` is a second production program, not an alias for the
+// app one. apps/mobile targets React Native and react-native-web, and ADR 0103
+// splits its typecheck in two: `tsconfig.app.json` is the native program, with
+// no `dom` and the `.web` Platform Variants excluded, and `tsconfig.web.json`
+// is the only config that compiles those variants (`crypto.web.ts`,
+// `main-web.tsx`) under `moduleSuffixes`. Without it here, the web half would be
+// type-checked only when someone ran `mobile:typecheck` by hand.
 const CONFIG_NAMES = [
   'tsconfig.lib.json',
   'tsconfig.app.json',
+  'tsconfig.web.json',
   'tsconfig.spec.json',
 ];
 
