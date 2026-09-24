@@ -399,6 +399,21 @@ test('a replay that runs both scripts by file, from extracted tooling, is sound'
   );
 });
 
+test('a check run through run-from-tooling is a run', () => {
+  assert.deepEqual(
+    replayObligationCheckFindings(
+      replaySteps({
+        check: [
+          '        run: |',
+          '          node "$TOOLING/tools/scripts/review/run-from-tooling.mjs" check-review-obligation-answers.mjs \\',
+          '            w a --report "$CR/report.json"',
+        ],
+      }),
+    ),
+    [],
+  );
+});
+
 test('naming the scripts without running them is not running them', () => {
   // The tooling-extraction step names the checker in `git archive`, and
   // loading a case runs the scorer with --show; neither checks nor scores.

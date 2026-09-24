@@ -34,7 +34,7 @@ on:
       - 'tools/config/review-obligations.json'
       - 'tools/config/review-rules.json'
       # The rest of the harness the replay lays over each case tree (ADR
-      # 0101): the permission rules and hooks the session loads, and the
+      # 0102): the permission rules and hooks the session loads, and the
       # module those hooks import.
       - '.claude/**'
       - 'tools/scripts/copilot-hooks/**'
@@ -390,8 +390,9 @@ jobs:
       #
       # review:obligations:check's script runs from the extracted tooling,
       # like the selector and the scorer: the case head's package.json has no
-      # review:* scripts, and the catalogue it reads is cwd-relative. It reads
-      # the head through the workspace's git directory (ADR 0102).
+      # review:* scripts, and the catalogue it reads is cwd-relative.
+      # run-from-tooling gives it the tooling as its working directory and
+      # the workspace's repository as its git (ADR 0102).
       - name: Check the obligation answers
         env:
           TOOLING: ${{ steps.tree.outputs.tooling }}
@@ -408,12 +409,11 @@ jobs:
           # to decide whether a self-contradiction raised its finding.
           set +e
           CR="$PWD/tmp/code-review"
-          GIT_DIR="$(git rev-parse --absolute-git-dir)"
-          (cd "$TOOLING" && GIT_DIR="$GIT_DIR" node tools/scripts/check-review-obligation-answers.mjs \
+          node "$TOOLING/tools/scripts/review/run-from-tooling.mjs" check-review-obligation-answers.mjs \
             "$CR/obligations.json" \
             "$CR/obligations.answers.json" \
             --report "$CR/report.json" \
-            --out "$CR/obligations.report.json")
+            --out "$CR/obligations.report.json"
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then

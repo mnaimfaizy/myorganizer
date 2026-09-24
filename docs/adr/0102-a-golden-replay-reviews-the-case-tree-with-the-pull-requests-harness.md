@@ -78,14 +78,17 @@ The prompt names them as harness, not subject. A case whose own diff touches one
 reviewed with the pull request's copy on disk; the job warns on that case's run and the prompt tells
 the reviewer to read such a path with `git show <head>:<path>`. No case in the set does today.
 
-**4. The review scripts run from outside the workspace.** The obligation selector, the validator
-and the scorer — with `tools/scripts/lib` and `tools/config`, which they read — are extracted from
+**4. The review scripts run from outside the workspace.** The obligation selector, the validator,
+the obligation-answer check, and the scorer — with `tools/scripts/lib` and `tools/config`, which
+they read — are extracted from
 the pull request with `git archive` into the runner's temp directory. They are not in the reviewer's
 tree, so no Read or Grep of its lands on them, and not a worktree, so `git worktree list` does not
 offer them. They resolve modules through a link to the one `node_modules` the job installed. The
 shared action takes a `tooling-dir` input for the two scripts it runs itself; it defaults to `.`,
-which leaves `code-review.yml` running exactly what it ran before. The selector diffs through the
-workspace's git directory, since an extracted copy is not a repository. The reviewer is given the
+which leaves `code-review.yml` running exactly what it ran before. The scripts that read git — the
+selector and the answer check — run through `tools/scripts/review/run-from-tooling.mjs`, which gives
+them the tooling copy as their working directory and the workspace's repository as their git, since
+an extracted copy is not a repository. The reviewer is given the
 validator's path, because the case's `package.json` predates the `review:*` scripts and
 `corepack yarn review:validate` does not resolve there.
 

@@ -103,7 +103,8 @@ runs:
     #
     # The selector runs from the tooling directory, because the catalogue it
     # reads is cwd-relative, and diffs through the workspace's git directory,
-    # because an extracted tooling copy is not a repository (ADR 0102).
+    # because an extracted tooling copy is not a repository; run-from-tooling
+    # joins the two (ADR 0102).
     - name: Select the obligations
       shell: bash
       env:
@@ -111,12 +112,9 @@ runs:
       run: |
         set -euo pipefail
         mkdir -p tmp/code-review
-        OUT="$PWD/tmp/code-review/obligations.json"
-        GIT_DIR="$(git rev-parse --absolute-git-dir)"
-        cd "$TOOLING"
-        GIT_DIR="$GIT_DIR" node tools/scripts/review/select-obligations.mjs \
+        node "$TOOLING/tools/scripts/review/run-from-tooling.mjs" review/select-obligations.mjs \
           --base "${{ inputs.base }}" --head "${{ inputs.head }}" \
-          --out "$OUT"
+          --out "$PWD/tmp/code-review/obligations.json"
 
     # JSON only. The allowed tools are read, search, sub-agents, git reads,
     # existing Nx targets, the validator, and `node` for a reviewer-written
