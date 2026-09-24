@@ -341,6 +341,40 @@ function getSyncErrorCode(error: unknown): string {
   return isQuotaExceededError(error) ? 'quotaExceeded' : 'syncFailed';
 }
 
+/**
+ * A Sync Run can fail before the per-channel loop. The stored code stays a
+ * stable bucket (`syncFailed` / `quotaExceeded`); the message and stack are
+ * logged here. The same error object is logged once when both the auth catch
+ * and the manual-attempt handler see it.
+ */
+const loggedSyncRunFailures = new WeakSet<object>();
+
+function logSyncRunFailure(context: string, error: unknown): void {
+  if (typeof error === 'object' && error !== null) {
+    if (loggedSyncRunFailures.has(error)) return;
+    loggedSyncRunFailures.add(error);
+  }
+
+  let message = String(error);
+  let stack: string | undefined;
+  if (error instanceof Error) {
+    message = error.message;
+    stack = error.stack;
+  } else {
+    try {
+      message = JSON.stringify(error) ?? message;
+    } catch {
+      // Keep the string representation when a third-party error is not serializable.
+    }
+  }
+
+  if (stack === undefined) {
+    logger.error(`${context}: ${message}`);
+    return;
+  }
+  logger.error(`${context}: ${message}`, { stack });
+}
+
 class YouTubeSyncService {
   constructor(private prisma: PrismaClient) {}
 
@@ -652,6 +686,10 @@ class YouTubeSyncService {
     try {
       youtube = await this.getAuthenticatedClient(userId);
     } catch (error) {
+      logSyncRunFailure(
+        `YouTube upload sync failed before the channel loop for user ${userId}`,
+        error,
+      );
       await this.recordSyncState(
         userId,
         attemptAt,
@@ -787,6 +825,10 @@ class YouTubeSyncService {
         };
       },
       onError: async (now, error) => {
+        logSyncRunFailure(
+          `YouTube channel sync failed for user ${userId}`,
+          error,
+        );
         const status: YouTubeChannelSyncStatus = isQuotaExceededError(error)
           ? 'quota_exceeded'
           : 'failed';
@@ -844,6 +886,10 @@ class YouTubeSyncService {
       work: (now) =>
         this.syncVideosForUserWithStatus(userId, { claimedAt: now }),
       onError: async (now, error) => {
+        logSyncRunFailure(
+          `YouTube upload sync failed for user ${userId}`,
+          error,
+        );
         const status: YouTubeSyncStatus = isQuotaExceededError(error)
           ? 'quota_exceeded'
           : 'failed';
