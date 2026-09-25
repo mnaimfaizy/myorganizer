@@ -1,4 +1,4 @@
-import type { Task } from '@myorganizer/core';
+import type { Task } from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
 import { normalizeTasks } from '@myorganizer/web-vault';
 

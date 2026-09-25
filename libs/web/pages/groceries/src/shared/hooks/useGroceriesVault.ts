@@ -6,7 +6,7 @@ import type {
   GroceryList,
   GroceriesVaultPayload,
   ListLine,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
 import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
 import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';

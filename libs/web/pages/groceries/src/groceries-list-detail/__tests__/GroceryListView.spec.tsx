@@ -263,7 +263,11 @@ jest.mock('../components/ListLineEditDialog', () => ({
       </div>
     ) : null,
 }));
-import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
+import type {
+  CatalogItem,
+  GroceryList,
+  ListLine,
+} from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { GroceryListView } from '../components/GroceryListView';

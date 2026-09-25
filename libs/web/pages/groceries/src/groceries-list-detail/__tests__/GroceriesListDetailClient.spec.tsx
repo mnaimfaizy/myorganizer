@@ -57,7 +57,7 @@ jest.mock('lucide-react', () => ({
 
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import type { GroceryList } from '@myorganizer/core';
+import type { GroceryList } from '@myorganizer/vault-core';
 import type { VaultHandle } from '@myorganizer/web-vault';
 import { useGroceriesVault } from '../../shared/hooks';
 import { GroceriesListDetailClient } from '../GroceriesListDetailClient';

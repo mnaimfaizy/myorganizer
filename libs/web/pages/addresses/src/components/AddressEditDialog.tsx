@@ -1,6 +1,6 @@
 'use client';
 
-import { AddressRecord } from '@myorganizer/core';
+import { AddressRecord } from '@myorganizer/vault-core';
 import {
   Button,
   Dialog,

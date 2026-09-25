@@ -182,7 +182,7 @@ import '@testing-library/jest-dom';
 import type {
   MobileNumberRecord,
   UsageLocationRecord,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import type { VaultHandle } from '@myorganizer/web-vault';
 import { useToast } from '@myorganizer/web-ui';
 import { MobileNumberDetailPageClient } from './MobileNumberDetailPageClient';

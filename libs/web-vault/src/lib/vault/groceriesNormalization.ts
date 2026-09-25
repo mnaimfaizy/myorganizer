@@ -1,5 +1,5 @@
+import { randomId } from '@myorganizer/core';
 import {
-  randomId,
   readVaultBlobRecords,
   type GroceriesVaultPayload,
   type CatalogItem,
@@ -7,7 +7,7 @@ import {
   type GroceryList,
   type GroceryItem,
   type GroceryCategoryType,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { z } from 'zod';
 
 const VALID_CATEGORIES = [

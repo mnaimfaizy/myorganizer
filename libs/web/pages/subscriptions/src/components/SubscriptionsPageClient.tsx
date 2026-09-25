@@ -1,15 +1,17 @@
 'use client';
 
 import {
-  SubscriptionStatusEnum,
   convertAmount,
   getAccountSettings,
   getFxRates,
   randomId,
   subscribeAccountSettings,
+} from '@myorganizer/core';
+import {
+  SubscriptionStatusEnum,
   type CurrencyCode,
   type SubscriptionRecord,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   normalizeSubscriptions,

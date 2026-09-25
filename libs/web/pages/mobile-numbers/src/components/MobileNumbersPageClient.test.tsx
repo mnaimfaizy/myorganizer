@@ -162,7 +162,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { MobileNumberRecord } from '@myorganizer/core';
+import type { MobileNumberRecord } from '@myorganizer/vault-core';
 import { useToast } from '@myorganizer/web-ui';
 import { MobileNumbersPageClient } from './MobileNumbersPageClient';
 /* eslint-enable import/first */

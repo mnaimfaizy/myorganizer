@@ -1,6 +1,6 @@
 'use client';
 
-import { GroceryCategoryType } from '@myorganizer/core';
+import { GroceryCategoryType } from '@myorganizer/vault-core';
 import {
   Select,
   SelectContent,

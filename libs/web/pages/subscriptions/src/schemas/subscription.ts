@@ -5,7 +5,7 @@ import {
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
   type CurrencyCode,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { z } from 'zod';
 
 export const subscriptionFormSchema = z.object({

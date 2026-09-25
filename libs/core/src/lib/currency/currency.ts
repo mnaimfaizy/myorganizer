@@ -1,13 +1,4 @@
-export const SUPPORTED_CURRENCY_CODES = {
-  AUD: 'AUD',
-  USD: 'USD',
-  EUR: 'EUR',
-  GBP: 'GBP',
-  NZD: 'NZD',
-} as const;
-
-export type CurrencyCode =
-  (typeof SUPPORTED_CURRENCY_CODES)[keyof typeof SUPPORTED_CURRENCY_CODES];
+import type { CurrencyCode } from '@myorganizer/vault-core/portable';
 
 export const SUPPORTED_CURRENCIES: Array<{ code: CurrencyCode; name: string }> =
   [
@@ -17,13 +8,6 @@ export const SUPPORTED_CURRENCIES: Array<{ code: CurrencyCode; name: string }> =
     { code: 'GBP', name: 'British Pound' },
     { code: 'NZD', name: 'New Zealand Dollar' },
   ];
-
-export function isSupportedCurrencyCode(value: unknown): value is CurrencyCode {
-  return (
-    typeof value === 'string' &&
-    (Object.values(SUPPORTED_CURRENCY_CODES) as string[]).includes(value)
-  );
-}
 
 export function formatMoney(options: {
   amount: number;

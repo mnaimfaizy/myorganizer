@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogItem, GroceryList } from '@myorganizer/core';
+import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
 import {
   Button,
   Dialog,

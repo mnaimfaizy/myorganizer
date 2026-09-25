@@ -269,7 +269,11 @@ jest.mock(
   }),
 );
 
-import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
+import type {
+  CatalogItem,
+  GroceryList,
+  ListLine,
+} from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import {
   fireEvent,

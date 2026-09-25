@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { GroceryItem } from '@myorganizer/core';
+import type { GroceryItem } from '@myorganizer/vault-core';
 import { Button, Dialog, DialogContent, Form } from '@myorganizer/web-ui';
 import { Info, Lock } from 'lucide-react';
 import { useCallback, useEffect } from 'react';

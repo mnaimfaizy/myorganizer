@@ -9,8 +9,8 @@ import {
   setAccountSettings,
   subscribeAccountSettings,
   SUPPORTED_CURRENCIES,
-  type CurrencyCode,
 } from '@myorganizer/core';
+import type { CurrencyCode } from '@myorganizer/vault-core';
 import {
   Button,
   Card,

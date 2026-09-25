@@ -1,4 +1,4 @@
-import type { Task } from '@myorganizer/core';
+import type { Task } from '@myorganizer/vault-core';
 import type { VaultHandle } from '@myorganizer/web-vault';
 
 export interface TasksVaultAdapter {

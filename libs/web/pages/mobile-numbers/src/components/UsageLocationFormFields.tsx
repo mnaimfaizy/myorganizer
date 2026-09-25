@@ -1,4 +1,4 @@
-import { PriorityEnum } from '@myorganizer/core';
+import { PriorityEnum } from '@myorganizer/vault-core';
 import {
   Checkbox,
   Combobox,

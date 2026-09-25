@@ -1,4 +1,5 @@
-import { randomId, readVaultBlobRecords, type Task } from '@myorganizer/core';
+import { randomId } from '@myorganizer/core';
+import { readVaultBlobRecords, type Task } from '@myorganizer/vault-core';
 
 type NormalizeResult<T> = {
   value: T;

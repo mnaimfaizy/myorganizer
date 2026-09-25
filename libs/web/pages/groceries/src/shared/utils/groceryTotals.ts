@@ -6,7 +6,7 @@
  * silently treated as $0.
  */
 
-import type { CatalogItem, ListLine } from '@myorganizer/core';
+import type { CatalogItem, ListLine } from '@myorganizer/vault-core';
 
 export interface ListSpendSummary {
   /** Sum of prices for lines whose Catalog Item has a known price. */

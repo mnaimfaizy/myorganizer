@@ -6,7 +6,7 @@ import {
   PriorityEnum,
   UpdateMethodEnum,
   UsageLocationRecord,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';

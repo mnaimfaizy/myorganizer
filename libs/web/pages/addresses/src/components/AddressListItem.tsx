@@ -1,4 +1,4 @@
-import { AddressRecord } from '@myorganizer/core';
+import { AddressRecord } from '@myorganizer/vault-core';
 import { Badge, Button } from '@myorganizer/web-ui';
 import { ArrowRight, MapPin, Trash2 } from 'lucide-react';
 import Link from 'next/link';

@@ -11,4 +11,5 @@
 // fails a mobile import of `@myorganizer/vault-core` while this entry exists
 // (ADR 0103). Anything re-exported here must not reach a browser global.
 export * from './lib/interfaces';
+export * from './lib/records';
 export * from './lib/types';

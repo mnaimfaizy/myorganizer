@@ -1,6 +1,6 @@
 'use client';
 
-import type { GroceryItem } from '@myorganizer/core';
+import type { GroceryItem } from '@myorganizer/vault-core';
 import { Edit2, Trash2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
 import { getCategoryEmoji } from '../../shared/constants/categories';

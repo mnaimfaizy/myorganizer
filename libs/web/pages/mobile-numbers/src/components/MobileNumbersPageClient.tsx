@@ -1,6 +1,6 @@
 'use client';
 
-import { MobileNumberRecord } from '@myorganizer/core';
+import { MobileNumberRecord } from '@myorganizer/vault-core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   normalizeMobileNumbers,

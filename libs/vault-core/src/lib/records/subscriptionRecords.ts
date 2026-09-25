@@ -1,4 +1,4 @@
-import type { CurrencyCode } from '../currency/currency';
+import type { CurrencyCode } from './currencyCode';
 import type { IsoDateTimeString } from './contactRecords';
 
 export const SubscriptionStatusEnum = {

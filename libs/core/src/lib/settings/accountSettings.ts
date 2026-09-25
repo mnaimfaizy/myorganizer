@@ -2,7 +2,7 @@ import {
   isSupportedCurrencyCode,
   SUPPORTED_CURRENCY_CODES,
   type CurrencyCode,
-} from '../currency/currency';
+} from '@myorganizer/vault-core/portable';
 
 export type AccountSettings = {
   countryCode: string;
@@ -49,7 +49,7 @@ export function setAccountSettings(next: AccountSettings): void {
   if (!isBrowser()) return;
   window.localStorage.setItem(
     ACCOUNT_SETTINGS_STORAGE_KEY,
-    JSON.stringify(next)
+    JSON.stringify(next),
   );
 }
 

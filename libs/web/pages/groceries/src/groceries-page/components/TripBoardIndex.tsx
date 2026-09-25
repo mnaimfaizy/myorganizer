@@ -4,7 +4,7 @@ import type {
   CatalogItem,
   GroceryCategoryType,
   GroceryList,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { Input, Label, useToast } from '@myorganizer/web-ui';
 import { useCallback, useMemo, useState } from 'react';
 import type { ChangeEvent } from 'react';

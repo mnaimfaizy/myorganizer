@@ -4,7 +4,7 @@ import {
   SubscriptionRenewalTypeEnum,
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { format, isValid, parseISO } from 'date-fns';
 
 function titleCase(input: string) {

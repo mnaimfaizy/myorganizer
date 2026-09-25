@@ -23,7 +23,7 @@ jest.mock('@myorganizer/core', () => ({
 }));
 
 import { renderHook, act, waitFor } from '@testing-library/react';
-import type { Task } from '@myorganizer/core';
+import type { Task } from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
 import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 

@@ -81,7 +81,7 @@ jest.mock('lucide-react', () => ({
   Search: () => <div data-testid="search-icon" />,
 }));
 
-import type { CatalogItem, GroceryList } from '@myorganizer/core';
+import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AddExistingItemDialog } from '../components/AddExistingItemDialog';

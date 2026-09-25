@@ -16,20 +16,6 @@ jest.mock('@myorganizer/core', () => {
   let counter = 0;
   return {
     randomId: jest.fn(() => `id-${++counter}`),
-    GROCERY_PREDEFINED_CATEGORIES: [
-      'produce',
-      'dairy',
-      'meat',
-      'seafood',
-      'bakery',
-      'frozen',
-      'beverages',
-      'snacks',
-      'condiments',
-      'household',
-      'personal-care',
-      'other',
-    ],
   };
 });
 
@@ -38,7 +24,7 @@ import type {
   GroceriesVaultPayload,
   GroceryList,
   ListLine,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useGroceriesVault } from '../useGroceriesVault';

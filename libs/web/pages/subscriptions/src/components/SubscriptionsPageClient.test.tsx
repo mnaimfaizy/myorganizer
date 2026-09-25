@@ -158,14 +158,14 @@ jest.mock('@myorganizer/core', () => {
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { SubscriptionRecord } from '@myorganizer/core';
 import {
+  type SubscriptionRecord,
   SubscriptionStatusEnum,
   SubscriptionBillingCycleEnum,
   SubscriptionPaymentMethodEnum,
   SubscriptionRenewalTypeEnum,
   SubscriptionTierEnum,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import { useToast } from '@myorganizer/web-ui';
 import {
   normalizeSubscriptions,

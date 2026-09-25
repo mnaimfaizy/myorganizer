@@ -1,8 +1,11 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { CatalogItem, GroceryCategoryType } from '@myorganizer/core';
-import { GROCERY_PREDEFINED_CATEGORIES } from '@myorganizer/core';
+import {
+  type CatalogItem,
+  type GroceryCategoryType,
+  GROCERY_PREDEFINED_CATEGORIES,
+} from '@myorganizer/vault-core';
 import {
   Button,
   Dialog,

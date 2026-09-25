@@ -1,6 +1,6 @@
 'use client';
 
-import { AddressRecord } from '@myorganizer/core';
+import { AddressRecord } from '@myorganizer/vault-core';
 import { Badge, Button, Form, SheetFooter } from '@myorganizer/web-ui';
 import { Plus } from 'lucide-react';
 import { UseFormReturn } from 'react-hook-form';

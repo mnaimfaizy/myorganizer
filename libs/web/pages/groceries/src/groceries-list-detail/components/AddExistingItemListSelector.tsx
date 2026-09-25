@@ -1,6 +1,6 @@
 'use client';
 
-import type { GroceryList } from '@myorganizer/core';
+import type { GroceryList } from '@myorganizer/vault-core';
 import { Checkbox, Label } from '@myorganizer/web-ui';
 
 interface AddExistingItemListSelectorProps {

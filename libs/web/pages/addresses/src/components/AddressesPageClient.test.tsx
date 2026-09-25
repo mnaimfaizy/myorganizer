@@ -171,7 +171,7 @@ jest.mock('@myorganizer/core', () => {
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { AddressRecord } from '@myorganizer/core';
+import type { AddressRecord } from '@myorganizer/vault-core';
 import { useToast } from '@myorganizer/web-ui';
 import { AddressesPageClient } from './AddressesPageClient';
 /* eslint-enable import/first */
