@@ -175,6 +175,15 @@ The Claude launcher in `.claude/settings.json` passes `--defer`, which makes
 unchanged. Copilot and Cursor launch without it and keep the explicit allow.
 A new Claude PreToolUse entry must pass `--defer` too.
 
+`cloud-permission-request.mjs` relies on two facts from the Claude Code docs
+([hooks](https://code.claude.com/docs/en/hooks#permissionrequest),
+[env vars](https://code.claude.com/docs/en/env-vars)), not on anything this
+repository runs: that Claude Code dispatches a `PermissionRequest` event before
+it prompts, including prompts forced by an `ask` rule, and that it sets
+`CLAUDE_CODE_REMOTE=true` in cloud sessions. The tests drive the script with a
+synthetic payload; nothing here exercises the real dispatch. If cloud sessions
+still prompt for a feature-branch `git push`, check those two facts first.
+
 ## More Detail
 
 - Harness field matrices and output schemas: [reference.md](reference.md)

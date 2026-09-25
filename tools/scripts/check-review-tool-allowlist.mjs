@@ -58,6 +58,14 @@
 // instruction leaves as a placeholder (`<project>`, `$BRANCH`) matches
 // anything, because the document did not fix it.
 //
+// A trailing ` *` is the same prefix rule as `:*` and also matches the bare
+// command, and a `*` anywhere else matches any text, spaces included — Claude
+// Code's documented rule syntax, which `.claude/settings.json` is written in.
+// Reading ` *` as a literal last token, as this checker once did, made every
+// rule in that form catch only commands of exactly its own length: the
+// interception direction under-reported, the failure this gate exists to rule
+// out, and it still printed OK.
+//
 // The permission side is two files, not one, and that is the whole of what
 // golden replay run 46 cost a fifth of its turn budget to learn. `--allowedTools`
 // adds *allow* rules; the repository's own `.claude/settings.json` is loaded as
@@ -264,25 +272,59 @@ export function splitToolList(list) {
 }
 
 /**
- * One `--allowedTools` entry.
+ * Stands in for an unfixed command token inside a joined command string. No
+ * literal character in a rule matches it, while a rule's `*` absorbs it — so a
+ * placeholder can sit under a wildcard but can never be what a rule catches.
+ */
+const UNFIXED = '\u0000';
+
+/**
+ * A whole rule pattern as Claude Code reads it: `*` matches any text,
+ * spaces included, and a trailing ` *` also matches the bare command.
+ */
+const rulePatternToRegExp = (pattern) => {
+  const body = pattern.replace(/:\*$/, ' *');
+  const trailing = /\s\*$/.test(body);
+  const core = trailing ? body.replace(/\s\*$/, '') : body;
+  const escaped = core
+    .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
+    .replace(/\*/g, '.*');
+  return new RegExp(`^${escaped}${trailing ? '(?: .*)?' : ''}$`, 's');
+};
+
+/**
+ * One `--allowedTools` entry, or one `ask`/`deny` rule.
  *
- * `Bash(x:*)` is a prefix rule: a command whose leading tokens are `x`'s
- * tokens. `Bash(x)` is exact — the whole command, token for token. Anything
- * else (`Read`, `Agent`) grants a tool that is not the shell, and permits no
- * command at all.
+ * `Bash(x:*)` and `Bash(x *)` are prefix rules: a command whose leading tokens
+ * are `x`'s tokens, the bare command included. `Bash(x)` is exact — the whole
+ * command, token for token. A `*` left anywhere else makes the rule a `glob`,
+ * matched against the whole command because that `*` may span tokens
+ * (`git push *--force*` catches `git push origin main --force`). Anything else
+ * (`Read`, `Agent`) grants a tool that is not the shell, and permits no command
+ * at all.
  */
 export function parseToolEntry(raw) {
   const trimmed = raw.trim();
   const bash = trimmed.match(/^Bash\((.*)\)$/s);
   if (!bash) return { raw: trimmed, kind: 'tool', tokens: [] };
   const inner = bash[1].trim();
-  const isPrefix = inner.endsWith(':*');
-  const pattern = isPrefix ? inner.slice(0, -2).trim() : inner;
+  const isPrefix = inner.endsWith(':*') || /\s\*$/.test(inner);
+  const pattern = isPrefix ? inner.replace(/(?::|\s)\*$/, '').trim() : inner;
+  const tokens = tokenize(pattern);
+  if (pattern.includes('*'))
+    return {
+      raw: trimmed,
+      kind: 'glob',
+      anchor: isPrefix ? 'prefix' : 'exact',
+      pattern,
+      tokens,
+      regex: rulePatternToRegExp(inner),
+    };
   return {
     raw: trimmed,
     kind: isPrefix ? 'prefix' : 'exact',
     pattern,
-    tokens: tokenize(pattern),
+    tokens,
   };
 }
 
@@ -367,6 +409,19 @@ export function matchesEntry(
 ) {
   if (entry.kind === 'tool') return false;
   if (entry.tokens.length === 0) return false;
+  if (entry.kind === 'glob') {
+    const joined = commandTokens
+      .map((token) => (isUnfixedToken(token) ? UNFIXED : token))
+      .join(' ');
+    if (entry.regex.test(joined)) return true;
+    // The generous reading still lets a placeholder stand for a literal the
+    // rule names, which the joined form cannot express: fall back to reading
+    // each `*` as confined to its own token.
+    if (!unfixedMatches || !commandTokens.some(isUnfixedToken)) return false;
+    return matchesEntry({ ...entry, kind: entry.anchor }, commandTokens, {
+      unfixedMatches,
+    });
+  }
   if (entry.kind === 'exact' && commandTokens.length !== entry.tokens.length)
     return false;
   if (commandTokens.length < entry.tokens.length) return false;
