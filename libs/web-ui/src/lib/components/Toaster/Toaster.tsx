@@ -1,6 +1,6 @@
-"use client"
+'use client';
 
-import { useToast } from "../../hooks/use-toast"
+import { useToast } from '../../hooks/use-toast';
 import {
   Toast,
   ToastClose,
@@ -8,12 +8,13 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "./../Toast/Toast"
+} from './../Toast/Toast';
 
 export function Toaster() {
-  const { toasts } = useToast()
+  const { toasts } = useToast();
 
   return (
+    // Finite Radix duration so a success toast cannot block later pointer targets (#810).
     <ToastProvider>
       {toasts.map(function ({ id, title, description, action, ...props }) {
         return (
@@ -27,9 +28,9 @@ export function Toaster() {
             {action}
             <ToastClose />
           </Toast>
-        )
+        );
       })}
       <ToastViewport />
     </ToastProvider>
-  )
+  );
 }
