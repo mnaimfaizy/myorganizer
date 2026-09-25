@@ -4,7 +4,7 @@ The January 2026 vault planning drafts (`docs/internal/e2ee-vault-plan.md`, `doc
 
 ## Decision
 
-Both platforms derive the vault key with **PBKDF2-SHA256 at 310,000 iterations** to a **32-byte key**, and encrypt with **AES-GCM-256** using a **16-byte salt** and a **12-byte IV**. Web uses WebCrypto (`libs/web-vault/src/lib/vault/crypto.ts`); mobile uses `react-native-quick-crypto` with the same parameters (`libs/mobile/feat/vault/src/constants.ts`). The parameters are not per-platform tunables: `libs/vault-core/src/lib/cryptoCompatibility.test.ts` asserts each one and is the gate that keeps a vault written on one platform readable on the other.
+Both platforms derive the vault key with **PBKDF2-SHA256 at 310,000 iterations** to a **32-byte key**, and encrypt with **AES-GCM-256** using a **16-byte salt** and a **12-byte IV**. Web uses WebCrypto (`libs/web/vault/src/lib/vault/crypto.ts`); mobile uses `react-native-quick-crypto` with the same parameters (`libs/mobile/feat/vault/src/constants.ts`). The parameters are not per-platform tunables: `libs/vault-core/src/lib/cryptoCompatibility.test.ts` asserts each one and is the gate that keeps a vault written on one platform readable on the other.
 
 Changing a KDF or AEAD parameter is a wire-format change, not an implementation detail. It requires a versioned migration path for vaults already in the field and a superseding ADR — the server stores ciphertext only and cannot re-encrypt on the user's behalf.
 

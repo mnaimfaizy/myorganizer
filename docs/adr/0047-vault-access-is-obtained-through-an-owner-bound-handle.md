@@ -6,7 +6,7 @@ accepted
 
 ## Context
 
-[ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md) settled that a Vault is owned by a User on every surface it appears on. It says nothing about how code obtains one, and the code answered that question badly: `libs/web-vault` exposed plain module functions — `loadVault()`, `saveVault()`, `loadDecryptedData()`, `saveEncryptedData()` — that read a single device-wide `myorganizer_vault_v1` storage slot. None of them took an owner, and none of them could, because nothing in the vault libraries knew who the signed-in User was.
+[ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md) settled that a Vault is owned by a User on every surface it appears on. It says nothing about how code obtains one, and the code answered that question badly: `libs/web/vault` exposed plain module functions — `loadVault()`, `saveVault()`, `loadDecryptedData()`, `saveEncryptedData()` — that read a single device-wide `myorganizer_vault_v1` storage slot. None of them took an owner, and none of them could, because nothing in the vault libraries knew who the signed-in User was.
 
 That is not a detail of the bug in #318; it is the bug. A function that resolves a Vault without being told whose it is will resolve someone else's, and every caller is one refactor away from doing so. Making ownership a convention that reviewers enforce is what produced a cross-account write path in the first place.
 

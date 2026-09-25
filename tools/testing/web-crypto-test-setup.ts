@@ -13,7 +13,7 @@
  *   - `libs/vault-core` — `vaultCrypto.ts` and the Escape Copy reader core.
  *   - `apps/escape-copy-reader` — the reader page, against the real
  *     `openEscapeCopy`.
- *   - `libs/web-vault` — the vault handle and its sync collaborators.
+ *   - `libs/web/vault` — the vault handle and its sync collaborators.
  *   - `libs/web-vault-ui` — the gate suites that drive a real handle.
  *   - `libs/web/pages/vault` — the page suites that drive a real handle.
  *

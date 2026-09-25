@@ -114,6 +114,6 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 
 - Use Jest for all unit and integration tests. Consult `docs/testing/projects/<project>.md` for per-project tooling, environments, and mock patterns.
 - For React hook/component tests, use React Testing Library — assert on rendered output and user interactions, not on internal state.
-- For vault-backed features, never test with plaintext — stub the vault at the seam (`libs/web-vault`) and test behavior through the public hook/service interface.
+- For vault-backed features, never test with plaintext — stub the vault at the seam (`libs/web/vault`) and test behavior through the public hook/service interface.
 - For backend services, prefer a test database (Docker) over mocking Prisma. Mock only true externals (Stripe, YouTube, etc.) — see [mocking.md](mocking.md).
 - Implementation via delegation: use the `TestScaffold` → `TestReviewer` → `TestRunner` pipeline from the `unit-test-delegation-workflow` skill when writing or updating Jest tests.

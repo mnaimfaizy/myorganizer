@@ -69,7 +69,7 @@ NO_BRANCH_COMMITS: No commits found between <base> and HEAD. Nothing to describe
 
 7. Draft from the **diff**, not by restating commit subjects. Group changes by Nx project / library / domain.
 8. Flag domain-sensitive paths prominently in Surfaces or Changes:
-   - **Vault / E2EE** — `libs/web-vault*`, `libs/vault-core`
+   - **Vault / E2EE** — `libs/web/vault*`, `libs/vault-core`
    - **Auth / Sessions** — `libs/auth`, session middleware
    - **API contract** — `feat`/`fix` touching `apps/backend/src/controllers` or `libs/app-api-client`
 9. Skip generated noise in Surfaces (`libs/app-api-client` unless the contract itself changed; `libs/design-tokens/src/generated/`).

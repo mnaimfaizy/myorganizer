@@ -66,7 +66,7 @@ const GUARDED = [
   {
     enum: 'VaultBlobType',
     definedIn: 'libs/app-api-client/src/api.ts',
-    pin: 'libs/web-vault/src/lib/vault/vaultBlobFields.ts',
+    pin: 'libs/web/vault/src/lib/vault/vaultBlobFields.ts',
     reach: ['VAULT_BLOB_FIELDS', 'VAULT_BLOB_TYPES', 'isVaultBlobType'],
     // Inside these roots the member *values* are the blob types wherever they
     // appear as property names or string literals, so a fan-out written as
@@ -75,7 +75,7 @@ const GUARDED = [
     // `envelopeFromLocalVault`, which dropped Tasks without naming the enum
     // once (#537). Scoped to the vault libraries because `.tasks` and `.groceries`
     // mean something else elsewhere in the repo.
-    valueRoots: ['libs/web-vault/src/', 'libs/vault-core/src/'],
+    valueRoots: ['libs/web/vault/src/', 'libs/vault-core/src/'],
     // The modules that *declare* the member names, as against the ones that
     // consume them. A declaration may enumerate — it is the list — but only
     // because the pinned table's `satisfies` clause ties it back: the table is
@@ -85,7 +85,7 @@ const GUARDED = [
     // reason it is safe; an entry without one is not an exemption, it is a hole.
     declarationSites: [
       {
-        path: 'libs/web-vault/src/lib/vault/localVaultStorage.ts',
+        path: 'libs/web/vault/src/lib/vault/localVaultStorage.ts',
         reason:
           'Declares `VaultRecordType` and the `VaultStorageV1.data` shape — the Local Vault field names the pinned table maps onto. The pin satisfies `Record<VaultBlobType, VaultRecordType>`, so a seventh blob type with no field here fails to compile there.',
       },

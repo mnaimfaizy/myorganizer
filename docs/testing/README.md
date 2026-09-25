@@ -29,7 +29,7 @@ below plus **only the file for the project you are testing**.
 | `libs/core`                    | Jest unit                           | `ts-jest` or `babel-jest`            | `yarn nx test core`           | [core.md](./projects/core.md)                 |
 | `libs/email-shell`             | Jest unit                           | `ts-jest` + `node` env               | `yarn nx test email-shell`    | [email-shell.md](./projects/email-shell.md)   |
 | `libs/vault-core`              | Jest unit/integration               | `babel-jest` + `jsdom` env           | `yarn nx test vault-core`     | [vault-core.md](./projects/vault-core.md)     |
-| `libs/web-vault`               | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-vault`      | [web-vault.md](./projects/web-vault.md)       |
+| `libs/web/vault`               | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-vault`      | [web-vault.md](./projects/web-vault.md)       |
 | `libs/web-vault-ui`            | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-vault-ui`   | [web-vault-ui.md](./projects/web-vault-ui.md) |
 | `libs/web/pages/*`             | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test <lib-name>`     | [web-pages.md](./projects/web-pages.md)       |
 | `apps/myorganizer-e2e`         | Playwright E2E                      | `@playwright/test`                   | `yarn nx e2e myorganizer-e2e` | [e2e.md](./projects/e2e.md)                   |

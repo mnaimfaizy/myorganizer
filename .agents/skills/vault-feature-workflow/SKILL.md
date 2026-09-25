@@ -21,9 +21,9 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
 ## Workflow
 
 1. Confirm whether the change touches an existing blob type or introduces a new one.
-2. Keep route wrappers thin. Put page logic in `libs/web/pages/<route>` and vault logic in `libs/web-vault` or `libs/vault-core`.
+2. Keep route wrappers thin. Put page logic in `libs/web/pages/<route>` and vault logic in `libs/web/vault` or `libs/vault-core`.
 3. If a blob type or blob shape changes, update all dependent surfaces together:
-   - `libs/web-vault`
+   - `libs/web/vault`
    - `libs/vault-core`
    - backend vault allowlists, controllers, and validation
    - vault export/import
@@ -36,7 +36,7 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
 
 - If any request body now contains plaintext vault data, stop and redesign.
 - If you changed a blob type without touching export/import or reconcile code, the change is incomplete.
-- If you added vault-backed UI logic outside `libs/web/pages/*` or `libs/web-vault`, move it to the owning library.
+- If you added vault-backed UI logic outside `libs/web/pages/*` or `libs/web/vault`, move it to the owning library.
 
 ## Validation
 
@@ -52,7 +52,7 @@ description: 'Use when working on vault-backed features, encrypted blob types, v
 
 - `README.md`
 - `.github/copilot-instructions.md`
-- `libs/web-vault/AGENTS.md`
+- `libs/web/vault/AGENTS.md`
 - `libs/web/pages/AGENTS.md`
 - `docs/vault/README.md`
 - `docs/adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md`

@@ -37,5 +37,5 @@ Change one and you must change the other.
   WebCrypto in `crypto.web.ts` is a platform variant of this lib's own module, not a reach into the
   web vault, and it is the only place in this lib where WebCrypto is allowed.
 - Do not add local vault persistence without a recorded decision. The web vault's owner-bound
-  handle lives in `libs/web-vault` on purpose; do not revive a cross-platform storage interface to
+  handle lives in `libs/web/vault` on purpose; do not revive a cross-platform storage interface to
   reach it.

@@ -48,7 +48,7 @@ about their _data_.
 without the User saying so.**
 
 1. **Two convergences, not one.** `convergeVaultMeta`
-   (`libs/web-vault/src/lib/vault/vaultMetaConverge.ts`) decides the wrapping.
+   (`libs/web/vault/src/lib/vault/vaultMetaConverge.ts`) decides the wrapping.
    `convergeVaultBlob` decides the Ciphertext. Neither is an input to the other. A Vault Meta that
    diverges — or a meta check that fails outright — leaves every Vault Blob exactly as mergeable
    as it was.

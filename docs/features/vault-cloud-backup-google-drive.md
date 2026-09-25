@@ -396,7 +396,7 @@ deploy. ADR 0043 rejects that kind of gate.
 ## Frontend integration points
 
 ```
-libs/web-vault/src/lib/cloud/
+libs/web/vault/src/lib/cloud/
 ├── coordinator.ts          # CloudBackupCoordinator — orchestrates upload+audit
 ├── googleDriveProvider.ts  # GoogleDriveCloudBackupProvider — GIS + Drive calls
 ├── googleIdentity.types.ts # GIS / window.google typings
@@ -405,7 +405,7 @@ libs/web-vault/src/lib/cloud/
 ├── scheduler.ts            # Escape Copy Age Limit check (poll + visibility/online)
 └── types.ts                # Public CloudBackupProvider interface
 
-libs/web-vault/src/lib/vault/auditReporter.ts
+libs/web/vault/src/lib/vault/auditReporter.ts
                             # POST /vault/backups (used by coordinator)
 
 libs/web/pages/vault/src/
@@ -527,7 +527,7 @@ token and on Unlink. A Drive `401` on a held token drops that token, so the next
 attempt asks Google, whose answer decides.
 
 > **Implementation:**
-> [libs/web-vault/src/lib/cloud/googleDriveProvider.ts](../../libs/web-vault/src/lib/cloud/googleDriveProvider.ts)
+> [libs/web/vault/src/lib/cloud/googleDriveProvider.ts](../../libs/web/vault/src/lib/cloud/googleDriveProvider.ts)
 > — see `getConnectionState`, `connect`, `disconnect`, `acquireToken`, and
 > `canRunWithoutPrompt`.
 
@@ -557,7 +557,7 @@ are read as the matching limit) is a limit on staleness, not a clock:
   shows an **Overdue** notice next to _Back up now_. That notice is what the
   limit is for.
 - While the page is open and the provider is Linked,
-  [scheduler.ts](../../libs/web-vault/src/lib/cloud/scheduler.ts) checks every
+  [scheduler.ts](../../libs/web/vault/src/lib/cloud/scheduler.ts) checks every
   15 minutes and on `visibilitychange` / `online`. It backs up **only** when
   the copy is overdue **and** this tab already holds an unexpired token
   (`canRunWithoutPrompt()`). It never requests a token, so it never opens a

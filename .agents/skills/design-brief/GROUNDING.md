@@ -54,7 +54,7 @@ rg -n "CONSTANT_NAME" --glob '!node_modules'
 Then, for each name, write down every distinct value found and the scope it applies to.
 
 This step exists because it has already failed once. `VAULT_EXPORT_MAX_BYTES` was defined three
-times — `10 * 1024 * 1024` in `libs/vault-core`, and `1024 * 1024` in both `libs/web-vault` and the
+times — `10 * 1024 * 1024` in `libs/vault-core`, and `1024 * 1024` in both `libs/web/vault` and the
 backend vault service — with a fourth, separate 10 MB cap on the audit endpoint. A brief written
 from the first definition alone stated "10 MB hard limit" as a flat fact, and the Designer
 faithfully rendered it onto a page presented as a security reference.

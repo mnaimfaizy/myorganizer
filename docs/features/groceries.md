@@ -155,7 +155,7 @@ in `catalog` — a `ListLine` itself never carries a copy of that data.
 
 - **Page library**: `@myorganizer/web-pages/groceries` ([libs/web/pages/groceries/](../../libs/web/pages/groceries/))
 - **Shared types**: `@myorganizer/vault-core` ([libs/vault-core/src/lib/records/grocery.ts](../../libs/vault-core/src/lib/records/grocery.ts)) → `GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`
-- **Vault normalization**: `@myorganizer/web-vault` → `normalizeGroceries` ([libs/web-vault/src/lib/vault/groceriesNormalization.ts](../../libs/web-vault/src/lib/vault/groceriesNormalization.ts))
+- **Vault normalization**: `@myorganizer/web-vault` → `normalizeGroceries` ([libs/web/vault/src/lib/vault/groceriesNormalization.ts](../../libs/web/vault/src/lib/vault/groceriesNormalization.ts))
 - **Vault blob type**: `'groceries'` (registered in `VaultRecordType`, `VaultBlobType`)
 - **Routes**: `/dashboard/groceries` ([apps/myorganizer/src/app/dashboard/groceries/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/page.tsx)) and `/dashboard/groceries/[listId]` ([apps/myorganizer/src/app/dashboard/groceries/[listId]/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/%5BlistId%5D/page.tsx))
 
@@ -184,8 +184,8 @@ The `normalizeGroceries()` function:
 
 The `'groceries'` blob type is registered in:
 
-- `libs/web-vault/src/lib/vault/vaultBlobFields.ts` → `VaultBlobType` pin
-- `libs/web-vault/src/lib/vault/vaultShapes.ts` → blob handling in `serverEncryptedBlobToLocal()`
+- `libs/web/vault/src/lib/vault/vaultBlobFields.ts` → `VaultBlobType` pin
+- `libs/web/vault/src/lib/vault/vaultShapes.ts` → blob handling in `serverEncryptedBlobToLocal()`
 
 ---
 
@@ -380,7 +380,7 @@ always cascades to every referencing List Line.
 When the `CatalogItem`, `GroceryList`, or `ListLine` shape needs to change:
 
 1. Update the types in `libs/vault-core/src/lib/records/grocery.ts` (`GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`)
-2. Update `GroceryListSchema` in `libs/web-vault/src/lib/vault/groceriesNormalization.ts`
+2. Update `GroceryListSchema` in `libs/web/vault/src/lib/vault/groceriesNormalization.ts`
 3. Add a migration step inside `normalizeGroceries()` for the shape change
 4. Existing vault blobs auto-migrate on next load — `normalizeGroceries()` returns `changed: true` and the hook re-persists the updated blob
 

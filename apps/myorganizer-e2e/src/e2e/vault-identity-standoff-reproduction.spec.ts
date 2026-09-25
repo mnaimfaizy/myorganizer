@@ -36,7 +36,7 @@ async function login(page: import('@playwright/test').Page) {
 
 /**
  * Mirrors `syncBookmarkStorageKey` in
- * `libs/web-vault/src/lib/vault/syncBookmarkStorage.ts` — not exported from
+ * `libs/web/vault/src/lib/vault/syncBookmarkStorage.ts` — not exported from
  * `@myorganizer/web-vault`'s public entry point, so this keeps the format in
  * step by name instead of a bare literal at the call site.
  */

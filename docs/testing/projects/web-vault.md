@@ -1,4 +1,4 @@
-# Testing `libs/web-vault`
+# Testing `libs/web/vault`
 
 Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test web-vault`
 

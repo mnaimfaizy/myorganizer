@@ -82,7 +82,7 @@ When exploring this codebase, be aware of the following architectural landmarks:
 | `apps/backend/src/controllers/` | Thin controllers that may be doing service-level work               |
 | `apps/backend/src/services/`    | Services that cross domain boundaries (e.g. auth + vault)           |
 | `libs/vault-core/`              | Vault crypto primitives — seams between encryption and sync         |
-| `libs/web-vault/`               | Client-side vault state — seams between sync, storage, and UI       |
+| `libs/web/vault/`               | Client-side vault state — seams between sync, storage, and UI       |
 | `libs/web/pages/*/`             | Feature page modules — shallow orchestrators vs. deep feature logic |
 | `libs/web-ui/`                  | UI primitives — check for logic leaking into presentational modules |
 | `libs/auth/`                    | Auth utilities — shared between backend and frontend                |

@@ -427,7 +427,7 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 - Page implementation: `libs/web/pages/<route>/src/**`
   - Actual React components, data fetching (via generated client), form logic, and page-specific helpers.
 - Shared UI primitives: `libs/web-ui/`
-- Encrypted vault logic: `libs/web-vault/` and `libs/web-vault-ui/`
+- Encrypted vault logic: `libs/web/vault/` and `libs/web-vault-ui/`
 
 ### Adding a new frontend page
 
