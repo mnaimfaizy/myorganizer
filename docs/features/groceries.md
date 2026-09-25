@@ -154,7 +154,7 @@ in `catalog` — a `ListLine` itself never carries a copy of that data.
 ## Architecture
 
 - **Page library**: `@myorganizer/web-pages/groceries` ([libs/web/pages/groceries/](../../libs/web/pages/groceries/))
-- **Shared types**: `@myorganizer/core` → `GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`
+- **Shared types**: `@myorganizer/vault-core` ([libs/vault-core/src/lib/records/grocery.ts](../../libs/vault-core/src/lib/records/grocery.ts)) → `GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`
 - **Vault normalization**: `@myorganizer/web-vault` → `normalizeGroceries` ([libs/web-vault/src/lib/vault/groceriesNormalization.ts](../../libs/web-vault/src/lib/vault/groceriesNormalization.ts))
 - **Vault blob type**: `'groceries'` (registered in `VaultRecordType`, `VaultBlobType`)
 - **Routes**: `/dashboard/groceries` ([apps/myorganizer/src/app/dashboard/groceries/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/page.tsx)) and `/dashboard/groceries/[listId]` ([apps/myorganizer/src/app/dashboard/groceries/[listId]/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/%5BlistId%5D/page.tsx))
