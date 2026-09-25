@@ -4,7 +4,7 @@ Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test web
 
 ## Config summary
 
-Same transform as [`libs/web-ui`](./web-ui.md) — babel-jest + `@nx/react/babel` + jsdom.
+Same transform as [`libs/web/ui`](./web-ui.md) — babel-jest + `@nx/react/babel` + jsdom.
 Read `libs/web/vault-ui/jest.config.ts` before writing.
 
 This library owns the vault gate, the session provider, and the reconcile / meta-converge /

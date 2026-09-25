@@ -49,7 +49,7 @@ source_globs:
   - apps/myorganizer/src/**/*.{ts,tsx}
   - apps/backend/src/**/*.{ts,js}
   - apps/mobile/src/**/*.{ts,tsx}
-  - libs/web-ui/src/**/*.{ts,tsx}
+  - libs/web/ui/src/**/*.{ts,tsx}
   - libs/web/pages/**/src/**/*.{ts,tsx}
   - libs/mobile/**/*.{ts,tsx}
 

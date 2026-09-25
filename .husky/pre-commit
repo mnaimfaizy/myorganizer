@@ -41,7 +41,7 @@ corepack yarn skills:map:check
 fi
 corepack yarn test:hygiene --staged
 if ! git diff --cached --quiet --diff-filter=ACMRT -- \
- libs/web-ui/src/lib/components \
+ libs/web/ui/src/lib/components \
  libs/web/pages
 then
 corepack yarn component:hygiene --staged --max-warnings=0

@@ -53,7 +53,7 @@
       "@myorganizer/web-pages/tasks": ["libs/web/pages/tasks/src/index.ts"],
       "@myorganizer/web-pages/vault": ["libs/web/pages/vault/src/index.ts"],
       "@myorganizer/web-pages/youtube": ["libs/web/pages/youtube/src/index.ts"],
-      "@myorganizer/web-ui": ["libs/web-ui/src/index.ts"],
+      "@myorganizer/web-ui": ["libs/web/ui/src/index.ts"],
       "@myorganizer/web-vault": ["libs/web/vault/src/index.ts"],
       "@myorganizer/web-vault-ui": ["libs/web/vault-ui/src/index.ts"],
       "@myorganizer/web-youtube": ["./libs/web/youtube/src/index.ts"]

@@ -13,14 +13,14 @@ A colocated story is required for every UI Primitive and every Vault UI Componen
 
 | Library             | Story location                                                        | Picked up by                                  |
 | ------------------- | --------------------------------------------------------------------- | --------------------------------------------- |
-| `libs/web-ui`       | Next to the component: `src/lib/components/<Name>/<Name>.stories.tsx` | `../src/lib/**/*.stories.@(js\|jsx\|ts\|tsx)` |
+| `libs/web/ui`       | Next to the component: `src/lib/components/<Name>/<Name>.stories.tsx` | `../src/lib/**/*.stories.@(js\|jsx\|ts\|tsx)` |
 | `libs/web/vault-ui` | Next to the component under `src/lib/`                                | Also globbed by the `web-ui` Storybook config |
 
-Both libraries are served by the **same** Storybook instance (`libs/web-ui/.storybook/main.ts`). A story placed outside `src/lib/` is silently never loaded — no error, it just does not appear.
+Both libraries are served by the **same** Storybook instance (`libs/web/ui/.storybook/main.ts`). A story placed outside `src/lib/` is silently never loaded — no error, it just does not appear.
 
 **Standing rule.** If the glob is meant to show the component, the component ships with a story:
 
-- UI Primitives in `libs/web-ui` — required (GUIDELINES §1).
+- UI Primitives in `libs/web/ui` — required (GUIDELINES §1).
 - Vault UI Components in `libs/web/vault-ui` (`CloudBackupCard`, `LastBackupCard`) — required. They know vault domain, so they are not primitives; they still must be mock-props-expressible.
 - Non-UI modules in `web-vault-ui` (`session`, `vaultGate`, `reconcileRunner`, error-message helpers) — no story.
 
@@ -263,14 +263,14 @@ export const OpensOnClick: Story = {
 
 Neither parameter is decoration, and neither one covers the other:
 
-- **`viewport`** is read by the `preVisit` hook in `libs/web-ui/.storybook/test-runner.ts`, which resizes the Playwright page **before** the story renders. Without it the runner loads every story at its own page size, nothing reads `defaultViewport`, and a width-sensitive hook such as `useIsMobile` stays false while a `play` function waits for a mobile-only element. The hook also resets to a desktop size for every story that names no viewport, so a mobile story cannot leak its width into the next one on the same page.
+- **`viewport`** is read by the `preVisit` hook in `libs/web/ui/.storybook/test-runner.ts`, which resizes the Playwright page **before** the story renders. Without it the runner loads every story at its own page size, nothing reads `defaultViewport`, and a width-sensitive hook such as `useIsMobile` stays false while a `play` function waits for a mobile-only element. The hook also resets to a desktop size for every story that names no viewport, so a mobile story cannot leak its width into the next one on the same page.
 - **`chromatic.viewports`** is read by Chromatic, which builds the Storybook from `main.ts` and `preview.ts` and never loads `test-runner.ts`. A `play` function that needs a narrow width fails in Chromatic without it. Give it one width, not a list — each extra width is another snapshot against the plan cap (ADR 0027).
 
 Consequences for authors:
 
 - Named viewports must be one of `mobile1`, `mobile2`, `tablet`, or declared inline under `parameters.viewport.viewports` with `px` dimensions. Anything else fails the story loudly rather than silently rendering at desktop width.
 - Do not assert on width in a `play` function without declaring both parameters — the runner default is 1280×720 and the Chromatic default is wider still.
-- The resolver behind the hook is unit tested in `libs/web-ui/.storybook/viewport-page-size.test.ts`.
+- The resolver behind the hook is unit tested in `libs/web/ui/.storybook/viewport-page-size.test.ts`.
 
 Running the play tests locally: see [`docs/storybook/README.md`](../storybook/README.md).
 

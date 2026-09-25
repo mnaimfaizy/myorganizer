@@ -769,7 +769,7 @@ test('mixed run exits on the merits of the file it did check', (t) => {
   );
   const checkedFile = writeFixture(
     workspace,
-    'libs/web-ui/src/lib/components/broken/broken.tsx',
+    'libs/web/ui/src/lib/components/broken/broken.tsx',
     [
       "import * as React from 'react';",
       '',
@@ -925,12 +925,12 @@ test('primitive compound file passes when the basename matches the root export',
   const workspace = createWorkspace(t);
   writeFixture(
     workspace,
-    'libs/web-ui/src/index.ts',
+    'libs/web/ui/src/index.ts',
     "export * from './lib/components/Card/Card';\n",
   );
   const file = writeFixture(
     workspace,
-    'libs/web-ui/src/lib/components/Card/Card.tsx',
+    'libs/web/ui/src/lib/components/Card/Card.tsx',
     [
       'const Card = () => <div />;',
       'const CardHeader = () => <div />;',
@@ -947,12 +947,12 @@ test('primitive file with no basename-matching root is an error', (t) => {
   const workspace = createWorkspace(t);
   writeFixture(
     workspace,
-    'libs/web-ui/src/index.ts',
+    'libs/web/ui/src/index.ts',
     "export * from './lib/components/Card/Card';\n",
   );
   const file = writeFixture(
     workspace,
-    'libs/web-ui/src/lib/components/Card/Card.tsx',
+    'libs/web/ui/src/lib/components/Card/Card.tsx',
     'export function CardHeader() { return <div />; }\n',
   );
 

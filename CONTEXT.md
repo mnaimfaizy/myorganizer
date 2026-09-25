@@ -221,7 +221,7 @@ _Avoid_: Soft lock, cooldown, Shorts ban, timeout
 ## Frontend Architecture
 
 **UI Primitive**:
-A reusable React component in `libs/web-ui/` with no knowledge of domain state, vault data, or route context. It must be fully expressible with mock props — that expressibility is required, not optional. Stateful interaction (checked, open, a mount point that fires a toast) does not disqualify it; domain knowledge does.
+A reusable React component in `libs/web/ui/` with no knowledge of domain state, vault data, or route context. It must be fully expressible with mock props — that expressibility is required, not optional. Stateful interaction (checked, open, a mount point that fires a toast) does not disqualify it; domain knowledge does.
 _Avoid_: Shared component, base component, core component, common component, stateless component (as the definition)
 
 **Feature Component**:

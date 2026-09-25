@@ -61,7 +61,7 @@
 | -------------------------- | ------- | ---------------------------------------------------------------------- |
 | `tailwindcss`              | 4.1.18  | Utility-first CSS framework                                            |
 | `@tailwindcss/postcss`     | 4.1.18  | PostCSS integration for Tailwind 4                                     |
-| `class-variance-authority` | 0.7.1   | Component variant system (CVA) — used in all `libs/web-ui/` components |
+| `class-variance-authority` | 0.7.1   | Component variant system (CVA) — used in all `libs/web/ui/` components |
 | `tailwind-merge`           | 3.4.0   | Merges conflicting Tailwind classes at runtime                         |
 | `tailwindcss-animate`      | 1.0.7   | Animation utilities for Tailwind                                       |
 | `postcss`                  | 8.5.6   | CSS transformation pipeline                                            |

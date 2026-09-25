@@ -24,7 +24,7 @@ below plus **only the file for the project you are testing**.
 | ------------------------------ | ----------------------------------- | ------------------------------------ | ----------------------------- | --------------------------------------------- |
 | `apps/backend`                 | Jest unit/integration               | `ts-jest` + `node` env               | `yarn nx test backend`        | [backend.md](./projects/backend.md)           |
 | `apps/myorganizer`             | Jest unit/integration               | `babel-jest` + `jsdom` env           | `yarn nx test myorganizer`    | [myorganizer.md](./projects/myorganizer.md)   |
-| `libs/web-ui`                  | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-ui`         | [web-ui.md](./projects/web-ui.md)             |
+| `libs/web/ui`                  | Jest unit/integration               | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-ui`         | [web-ui.md](./projects/web-ui.md)             |
 | `libs/auth`                    | Jest unit/integration               | `ts-jest` + `jsdom` env              | `yarn nx test auth`           | [auth.md](./projects/auth.md)                 |
 | `libs/core`                    | Jest unit                           | `ts-jest` or `babel-jest`            | `yarn nx test core`           | [core.md](./projects/core.md)                 |
 | `libs/email-shell`             | Jest unit                           | `ts-jest` + `node` env               | `yarn nx test email-shell`    | [email-shell.md](./projects/email-shell.md)   |

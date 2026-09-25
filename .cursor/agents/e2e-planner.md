@@ -29,7 +29,7 @@ reproduce them.
   `E2E_NEEDS_HUMAN_REVIEW: true` in your output so the main agent applies the
   `needs-e2e-review` label instead.
 - DO NOT invent selectors. Read the actual components under `libs/web/**` and
-  `libs/web-ui/**` first.
+  `libs/web/ui/**` first.
 - DO NOT plan assertions for retry, recovery, timeout, or concurrency unless the
   UI flow implements them.
 - DO NOT assume plain HTML semantics — account for Radix, Tailwind visibility

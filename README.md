@@ -121,7 +121,7 @@ myorganizer/
 │   ├── email-shell/      # Shared HTML/text email frame (logo, colours, footer)
 │   ├── vault-core/       # Vault envelope format, crypto suite, Escape Copy reader core
 │   ├── web/pages/        # One library per route — all page logic lives here
-│   ├── web-ui/           # Radix component library
+│   ├── web/ui/           # Radix component library
 │   ├── web/vault/        # Browser vault state, crypto, cloud backup
 │   ├── web/vault-ui/     # Vault-specific UI
 │   ├── web/youtube/      # Browser YouTube API access shared by page libraries

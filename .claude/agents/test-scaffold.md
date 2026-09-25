@@ -29,7 +29,7 @@ Determine the owning Nx project and test type first, then read exactly two refer
 | ---------------------- | --------------------- | --------------------------------------- | ----------------------------- |
 | `apps/backend`         | Jest unit/integration | `docs/testing/projects/backend.md`      | `yarn nx test backend`        |
 | `apps/myorganizer`     | Jest unit/integration | `docs/testing/projects/myorganizer.md`  | `yarn nx test myorganizer`    |
-| `libs/web-ui`          | Jest unit/integration | `docs/testing/projects/web-ui.md`       | `yarn nx test web-ui`         |
+| `libs/web/ui`          | Jest unit/integration | `docs/testing/projects/web-ui.md`       | `yarn nx test web-ui`         |
 | `libs/auth`            | Jest unit/integration | `docs/testing/projects/auth.md`         | `yarn nx test auth`           |
 | `libs/core`            | Jest unit             | `docs/testing/projects/core.md`         | `yarn nx test core`           |
 | `libs/vault-core`      | Jest unit/integration | `docs/testing/projects/vault-core.md`   | `yarn nx test vault-core`     |

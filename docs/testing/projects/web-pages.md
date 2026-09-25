@@ -4,7 +4,7 @@ Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test <li
 
 ## Config summary
 
-Same transform as [`libs/web-ui`](./web-ui.md) — babel-jest + `@nx/react/babel` + jsdom.
+Same transform as [`libs/web/ui`](./web-ui.md) — babel-jest + `@nx/react/babel` + jsdom.
 Each page library has its own `jest.config.ts` with a path-corrected preset depth
 (`../../../../jest.preset.js` for nested pages). Read the owning library's config before writing.
 

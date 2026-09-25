@@ -1,13 +1,13 @@
 ---
 name: component-builder
-description: 'Use when creating or editing a React component in libs/web-ui/ or libs/web/pages/. Classify gate tier, build a Structured Spec, and delegate to ComponentBuilder then ComponentReviewer.'
+description: 'Use when creating or editing a React component in libs/web/ui/ or libs/web/pages/. Classify gate tier, build a Structured Spec, and delegate to ComponentBuilder then ComponentReviewer.'
 ---
 
 # Component Builder Workflow
 
 Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-quality-gates.md) — classify `gate:*` before delegating.
 
-Use this when creating or editing any React component in `libs/web-ui/` (UI Primitives) or `libs/web/pages/<route>/` (Feature Components).
+Use this when creating or editing any React component in `libs/web/ui/` (UI Primitives) or `libs/web/pages/<route>/` (Feature Components).
 
 ## Gate tier routing
 

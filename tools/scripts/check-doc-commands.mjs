@@ -23,7 +23,7 @@
 //     holes for the reader to fill. A checker that failed them would make every usage example
 //     unwritable.
 //   - Build outputs. A path git ignores is generated, so its absence in a clean tree is correct
-//     rather than drift — `libs/web-ui/storybook-static` is documented and must stay documented.
+//     rather than drift — `libs/web/ui/storybook-static` is documented and must stay documented.
 //     Deferring to `.gitignore` keeps that judgement in one place instead of in an opt-out list
 //     someone has to remember to prune.
 //
