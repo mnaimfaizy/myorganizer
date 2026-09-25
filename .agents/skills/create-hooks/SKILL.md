@@ -156,13 +156,24 @@ Cursor (including this agent).
 
 ## Existing Shared Scripts
 
-| Script                  | Role                                               |
-| ----------------------- | -------------------------------------------------- |
-| `pre-tool-use.mjs`      | Block edits to generated/protected paths           |
-| `secret-scan.mjs`       | Block secret-looking tool input                    |
-| `post-tool-use.mjs`     | Remind after OpenAPI/Prisma contract edits         |
-| `dep-sync-reminder.mjs` | Remind `/dep-sync` after package manager mutations |
-| `lib.mjs`               | Shared stdin parsing + dual-format output          |
+| Script                         | Role                                                                                                                                   |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `pre-tool-use.mjs`             | Block edits to generated/protected paths                                                                                               |
+| `secret-scan.mjs`              | Block secret-looking tool input                                                                                                        |
+| `post-tool-use.mjs`            | Remind after OpenAPI/Prisma contract edits                                                                                             |
+| `dep-sync-reminder.mjs`        | Remind `/dep-sync` after package manager mutations                                                                                     |
+| `cloud-permission-request.mjs` | Claude-only `PermissionRequest`: in cloud sessions (`CLAUDE_CODE_REMOTE=true`), approve a feature-branch `git push` and `ai:create-pr` |
+| `lib.mjs`                      | Shared stdin parsing + dual-format output                                                                                              |
+
+## Claude launches guards with `--defer`
+
+Claude Code reads a PreToolUse `allow` as "skip the prompt", so an explicit
+allow from a guard script approves every command the guard has no objection
+to — the permission rules' allow list and auto mode's classifier never see it.
+The Claude launcher in `.claude/settings.json` passes `--defer`, which makes
+`allowTool()` exit 0 with no output (no decision) while `denyTool()` is
+unchanged. Copilot and Cursor launch without it and keep the explicit allow.
+A new Claude PreToolUse entry must pass `--defer` too.
 
 ## More Detail
 

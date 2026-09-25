@@ -346,10 +346,27 @@ export function isMutatingTool(toolName) {
 }
 
 /**
+ * Set by the `--defer` flag the Claude Code launcher in `.claude/settings.json`
+ * passes. Claude Code reads a PreToolUse `allow` as "skip the prompt", which
+ * turned these guard scripts into a blanket approval: every shell command that
+ * touched no protected path ran without the permission rules' allow list or
+ * auto mode's classifier ever seeing it. A guard only has something to deny;
+ * under `--defer` it stays silent instead, and Claude Code's own permission
+ * flow decides. Copilot and Cursor launch without the flag and keep the
+ * explicit allow their fail-closed modes need.
+ */
+const DEFER_ALLOW = process.argv.includes('--defer');
+
+/**
  * Explicit allow for preToolUse. Required if Cursor `failClosed: true` is set —
- * empty stdout is treated as hook failure and blocks the tool.
+ * empty stdout is treated as hook failure and blocks the tool. Under `--defer`
+ * it exits 0 with no output: no decision, so the normal permission flow applies.
  */
 export function allowTool() {
+  if (DEFER_ALLOW) {
+    process.exit(0);
+  }
+
   process.stdout.write(
     JSON.stringify({
       permissionDecision: 'allow',
