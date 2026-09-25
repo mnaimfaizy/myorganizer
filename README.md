@@ -133,6 +133,8 @@ myorganizer/
 The web app enforces a strict thin-wrapper rule: `apps/myorganizer/src/app/**` holds routing,
 metadata, and layout composition only, and every page's logic lives in `libs/web/pages/<route>/`.
 Shared code belongs in `libs/**`, never in `apps/myorganizer/src/lib/**`.
+A web library's folder under `libs/web/` records its scope; its import alias (`@myorganizer/web-ui`,
+`@myorganizer/web-vault`, …) is stable and does not follow the folder.
 
 ---
 

@@ -15,7 +15,7 @@
     {
       "file": "docs/adr/0038-component-builder-scoped-bash-for-prototypes.md",
       "claim": "docs/features/youtube-prototype-references.md",
-      "reason": "Records the git-show pattern that issue #354 needed; that reference map lived on a local-only prototype branch and was never committed to main. Merged ADRs are not rewritten (ADR 0042)."
+      "reason": "Records the git-show pattern that issue #354 needed; that reference map lived on a local-only prototype branch and was never committed to main. The path records history, not a pointer to moved code, so it stays exempted rather than corrected (ADR 0104)."
     },
     {
       "file": "docs/adr/0039-web-and-mobile-vaults-share-one-crypto-suite.md",
