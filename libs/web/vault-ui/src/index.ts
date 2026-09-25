@@ -18,7 +18,7 @@ export * from './lib/UnacknowledgedRecoveryKeyBanner';
 export * from './lib/useLocalVaultRevision';
 export * from './lib/useServerReachability';
 // The two evidence hooks are deliberately not exported. They are called from
-// `VaultSessionProvider` and nowhere else (libs/web-vault-ui/AGENTS.md); a
+// `VaultSessionProvider` and nowhere else (libs/web/vault-ui/AGENTS.md); a
 // reader wants the state on the session context, and a gate rendered without
 // one wants the no-owner answers below.
 export {

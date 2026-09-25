@@ -5,7 +5,7 @@
 //
 // A file-ref is a high-confidence claim that a path or directory-scoped module exists
 // in this repository (ADR 0093). PR #743 copied `migrationRunner` from issue #290 into
-// an ADR addendum; the file is libs/web-vault-ui/src/lib/reconcileRunner.tsx.
+// an ADR addendum; the file is libs/web/vault-ui/src/lib/reconcileRunner.tsx.
 // `docs:commands:check` only reads fenced shell blocks, so the wrong name reached code
 // review. This gate reads inline backticks.
 //

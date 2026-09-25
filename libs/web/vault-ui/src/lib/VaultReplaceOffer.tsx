@@ -21,7 +21,9 @@ export type VaultReplaceOfferProps = {
  * (so the User has a copy before deciding), an acknowledgement checkbox that
  * gates the confirm button, and the decline action.
  */
-export function VaultReplaceOffer(props: VaultReplaceOfferProps): React.ReactNode {
+export function VaultReplaceOffer(
+  props: VaultReplaceOfferProps,
+): React.ReactNode {
   const [isExporting, setIsExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportDone, setExportDone] = useState(false);
@@ -37,9 +39,7 @@ export function VaultReplaceOffer(props: VaultReplaceOfferProps): React.ReactNod
       await props.onExport();
       setExportDone(true);
     } catch (e: unknown) {
-      setExportError(
-        e instanceof Error ? e.message : 'Failed to export vault',
-      );
+      setExportError(e instanceof Error ? e.message : 'Failed to export vault');
     } finally {
       setIsExporting(false);
     }
@@ -85,9 +85,7 @@ export function VaultReplaceOffer(props: VaultReplaceOfferProps): React.ReactNod
             {exportError}
           </p>
         )}
-        {exportDone && (
-          <p className="mt-2 text-sm text-green-600">Exported</p>
-        )}
+        {exportDone && <p className="mt-2 text-sm text-green-600">Exported</p>}
       </div>
 
       <div className="flex items-start gap-2">
@@ -100,7 +98,8 @@ export function VaultReplaceOffer(props: VaultReplaceOfferProps): React.ReactNod
           htmlFor="replace-acknowledge"
           className="cursor-pointer text-sm font-normal leading-relaxed"
         >
-          I understand this replaces the vault I&apos;m using on this device now.
+          I understand this replaces the vault I&apos;m using on this device
+          now.
         </Label>
       </div>
 
@@ -118,11 +117,7 @@ export function VaultReplaceOffer(props: VaultReplaceOfferProps): React.ReactNod
         >
           {isConfirming ? 'Replacing…' : 'Confirm'}
         </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={handleDecline}
-        >
+        <Button type="button" variant="secondary" onClick={handleDecline}>
           Decline
         </Button>
       </div>

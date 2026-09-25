@@ -123,7 +123,7 @@ myorganizer/
 │   ├── web/pages/        # One library per route — all page logic lives here
 │   ├── web-ui/           # Radix component library
 │   ├── web/vault/        # Browser vault state, crypto, cloud backup
-│   ├── web-vault-ui/     # Vault-specific UI
+│   ├── web/vault-ui/     # Vault-specific UI
 │   ├── web/youtube/      # Browser YouTube API access shared by page libraries
 │   └── mobile/           # Mobile screens, features, hooks, and UI
 ├── docs/                 # Architecture, features, ADRs, agent workflows

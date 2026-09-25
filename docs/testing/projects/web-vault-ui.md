@@ -1,11 +1,11 @@
-# Testing `libs/web-vault-ui`
+# Testing `libs/web/vault-ui`
 
 Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test web-vault-ui`
 
 ## Config summary
 
 Same transform as [`libs/web-ui`](./web-ui.md) — babel-jest + `@nx/react/babel` + jsdom.
-Read `libs/web-vault-ui/jest.config.ts` before writing.
+Read `libs/web/vault-ui/jest.config.ts` before writing.
 
 This library owns the vault gate, the session provider, and the reconcile / meta-converge /
 pull runners. Crypto lives in `@myorganizer/vault-core` via `@myorganizer/web-vault`; this

@@ -229,7 +229,7 @@ A React component in `libs/web/pages/<route>/src/components/` that composes UI P
 _Avoid_: Page component, route component, smart component
 
 **Vault UI Component**:
-A presentational component in `libs/web-vault-ui` that shows vault-adjacent state from mockable props. It knows the vault domain, so it is not a UI Primitive; it is reused across routes, so it is not a Feature Component.
+A presentational component in `libs/web/vault-ui` that shows vault-adjacent state from mockable props. It knows the vault domain, so it is not a UI Primitive; it is reused across routes, so it is not a Feature Component.
 _Avoid_: UI Primitive (wrong scope), Feature Component, vault widget, vault card (as the scope name)
 
 **Brand Primitive**:

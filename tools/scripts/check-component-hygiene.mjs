@@ -75,7 +75,7 @@ not a pass.
 
 Runs the mechanical (non-judgment) ComponentReviewer checklist items against
 React components in libs/web-ui/ (UI Primitives), libs/web/pages/ (Feature
-Components), and libs/web-vault-ui/ (Vault UI Components). Stories and test
+Components), and libs/web/vault-ui/ (Vault UI Components). Stories and test
 files are skipped. Judgment items — composition pattern, concern mixing,
 abstraction quality — stay with ComponentReviewer.
 `;
@@ -91,8 +91,8 @@ const SCOPE_BARRELS = {
     re: /libs\/web-ui\/src\/(lib\/components\/[^/]+\/[^/]+)\.tsx$/,
   },
   'vault-ui': {
-    barrel: 'libs/web-vault-ui/src/index.ts',
-    re: /libs\/web-vault-ui\/src\/(lib\/[^/]+)\.tsx$/,
+    barrel: 'libs/web/vault-ui/src/index.ts',
+    re: /libs\/web\/vault-ui\/src\/(lib\/[^/]+)\.tsx$/,
   },
 };
 
@@ -139,7 +139,7 @@ function scopeOf(file) {
   // `.tsx` only: this library keeps hooks and copy modules beside its
   // components in one flat directory, and a `.ts` hook reporting PASS as a
   // component is the same kind of false clean this scope was added to remove.
-  if (/libs\/web-vault-ui\/src\/lib\/[^/]+\.tsx$/.test(p)) return 'vault-ui';
+  if (/libs\/web\/vault-ui\/src\/lib\/[^/]+\.tsx$/.test(p)) return 'vault-ui';
   if (/libs\/web\/pages\/[^/]+\/src\//.test(p)) return 'feature';
   return null;
 }
@@ -753,7 +753,7 @@ async function inspect(file, scope, barrels) {
 async function collectAll() {
   const roots = [
     'libs/web-ui/src/lib/components',
-    'libs/web-vault-ui/src/lib',
+    'libs/web/vault-ui/src/lib',
     'libs/web/pages',
   ];
   const out = [];
@@ -953,7 +953,7 @@ async function main() {
       `Component hygiene: nothing was checked — all ${skipped} file(s) were out of scope. ` +
         'This is not a pass. Point the checker at a UI Primitive ' +
         '(libs/web-ui/src/lib/components/), a Vault UI Component ' +
-        '(libs/web-vault-ui/src/lib/), or a Feature Component ' +
+        '(libs/web/vault-ui/src/lib/), or a Feature Component ' +
         '(libs/web/pages/<route>/src/) — see docs/ui/GUIDELINES.md §1.\n',
     );
     process.exitCode = 1;

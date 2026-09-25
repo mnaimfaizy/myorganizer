@@ -428,7 +428,7 @@ libs/web/pages/account/src/hooks/useLatestBackup.ts
                             # last-backup summary card on the account page,
                             # not the vault page
 
-libs/web-vault-ui/src/lib/CloudBackupCard.tsx
+libs/web/vault-ui/src/lib/CloudBackupCard.tsx
                             # The visible card with all the buttons
 ```
 

@@ -1048,7 +1048,7 @@ describe('E2E specs stay pinned to the whole-Vault standoff testid (issue #574)'
     '%s asserts the standoff testid',
     (relativePath) => {
       const contents = readFileSync(
-        join(__dirname, '../../../..', relativePath),
+        join(__dirname, '../../../../..', relativePath),
         'utf8',
       );
 

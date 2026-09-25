@@ -14,14 +14,14 @@ A colocated story is required for every UI Primitive and every Vault UI Componen
 | Library             | Story location                                                        | Picked up by                                  |
 | ------------------- | --------------------------------------------------------------------- | --------------------------------------------- |
 | `libs/web-ui`       | Next to the component: `src/lib/components/<Name>/<Name>.stories.tsx` | `../src/lib/**/*.stories.@(js\|jsx\|ts\|tsx)` |
-| `libs/web-vault-ui` | Next to the component under `src/lib/`                                | Also globbed by the `web-ui` Storybook config |
+| `libs/web/vault-ui` | Next to the component under `src/lib/`                                | Also globbed by the `web-ui` Storybook config |
 
 Both libraries are served by the **same** Storybook instance (`libs/web-ui/.storybook/main.ts`). A story placed outside `src/lib/` is silently never loaded — no error, it just does not appear.
 
 **Standing rule.** If the glob is meant to show the component, the component ships with a story:
 
 - UI Primitives in `libs/web-ui` — required (GUIDELINES §1).
-- Vault UI Components in `libs/web-vault-ui` (`CloudBackupCard`, `LastBackupCard`) — required. They know vault domain, so they are not primitives; they still must be mock-props-expressible.
+- Vault UI Components in `libs/web/vault-ui` (`CloudBackupCard`, `LastBackupCard`) — required. They know vault domain, so they are not primitives; they still must be mock-props-expressible.
 - Non-UI modules in `web-vault-ui` (`session`, `vaultGate`, `reconcileRunner`, error-message helpers) — no story.
 
 Feature Components in `libs/web/pages/` are **not** in any story glob. They depend on domain state, so they belong in tests, not Storybook. If a feature component seems worth a story, that is a signal it should have been a UI Primitive or a Vault UI Component — raise it rather than adding a glob.

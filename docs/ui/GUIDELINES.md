@@ -2,7 +2,7 @@
 
 > For current package versions see [TECH_STACK.md](../../TECH_STACK.md).
 > For domain language see [CONTEXT.md](../../CONTEXT.md).
-> These guidelines apply to UI Primitives (`libs/web-ui/`), Feature Components (`libs/web/pages/<route>/`), and Vault UI Components (`libs/web-vault-ui`).
+> These guidelines apply to UI Primitives (`libs/web-ui/`), Feature Components (`libs/web/pages/<route>/`), and Vault UI Components (`libs/web/vault-ui`).
 > ComponentBuilder and ComponentReviewer agents enforce these rules on every component they touch.
 
 ---
@@ -48,7 +48,7 @@ import { Button } from '../../../libs/web-ui/src/lib/components/Button/Button';
 
 Feature Components are **not** in any Storybook glob. They belong in tests. If a feature component seems worth a story, that is a signal it should have been a UI Primitive or a Vault UI Component — raise it rather than adding a glob.
 
-### Vault UI Component — `libs/web-vault-ui/src/lib/`
+### Vault UI Component — `libs/web/vault-ui/src/lib/`
 
 A component belongs here if:
 
@@ -58,7 +58,7 @@ A component belongs here if:
 
 Every Vault UI Component must:
 
-- Live under `libs/web-vault-ui/src/lib/` next to the component file
+- Live under `libs/web/vault-ui/src/lib/` next to the component file
 - Be fully expressible with mock props — no live Vault, no decryption
 - Ship with a colocated `*.stories.tsx` (same Storybook instance as `web-ui`; see [`STORYBOOK-PATTERNS.md`](./STORYBOOK-PATTERNS.md) §1)
 
@@ -74,7 +74,7 @@ libs/web-ui/src/lib/components/
     ├── <Name>.tsx            ← component + all sub-components in one file
     └── <Name>.stories.tsx    ← required; proof of GUIDELINES §1
 
-libs/web-vault-ui/src/lib/
+libs/web/vault-ui/src/lib/
 ├── <Name>.tsx                ← Vault UI Component (presentational)
 └── <Name>.stories.tsx        ← required for Vault UI Components only
 
@@ -414,7 +414,7 @@ Before finishing a component, grep the file for every prop passed to a child (`<
 ### Exports
 
 - UI Primitives: named exports only — `export { Card, CardHeader, CardContent }`. The file basename matches the compound root.
-- Vault UI Components: named exports from `libs/web-vault-ui`. The file basename matches the component.
+- Vault UI Components: named exports from `libs/web/vault-ui`. The file basename matches the component.
 - Feature components: named export preferred — `export function TodoForm(...)`; default export acceptable for leaf components. The file under `components/` exports that one component and no other React component.
 
 ---

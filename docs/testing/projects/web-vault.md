@@ -6,7 +6,7 @@ Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test web
 
 Same transform as [`libs/web-ui`](./web-ui.md) — babel-jest + `@nx/react/babel` + jsdom.
 
-`libs/web-vault-ui` has its own guide: [`web-vault-ui.md`](./web-vault-ui.md). It picks its
+`libs/web/vault-ui` has its own guide: [`web-vault-ui.md`](./web-vault-ui.md). It picks its
 crypto seam from the subject of the test, not from the table below.
 
 ## Rules

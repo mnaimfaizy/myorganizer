@@ -7,7 +7,7 @@ import { mergeConfig } from 'vite';
 const config: StorybookConfig = {
   stories: [
     '../src/lib/**/*.@(mdx|stories.@(js|jsx|ts|tsx))',
-    '../../web-vault-ui/src/lib/**/*.@(mdx|stories.@(js|jsx|ts|tsx))',
+    '../../web/vault-ui/src/lib/**/*.@(mdx|stories.@(js|jsx|ts|tsx))',
     // Page-library components. Added for the groceries selection states, whose
     // affordance is carried by colour — the one failure mode Jest cannot see.
     '../../web/pages/*/src/**/*.@(mdx|stories.@(js|jsx|ts|tsx))',

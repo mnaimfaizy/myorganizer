@@ -2,7 +2,7 @@
 
 PR [#743](https://github.com/mnaimfaizy/myorganizer/pull/743) copied the name `migrationRunner`
 from issue #290 into an addendum on [ADR 0014](0014-component-pipeline-guardrails.md). No such
-module exists; the file is `libs/web-vault-ui/src/lib/reconcileRunner.tsx`.
+module exists; the file is `libs/web/vault-ui/src/lib/reconcileRunner.tsx`.
 `yarn docs:commands:check` does not read inline backticks, so nothing failed until code review
 ([#744](https://github.com/mnaimfaizy/myorganizer/issues/744)).
 
@@ -44,7 +44,7 @@ only these:
    (`apps/`, `libs/`, `docs/`, `tools/`, `.github/`, and the other roots `docs:commands:check`
    already uses), has no spaces or ellipsis, and is not a negative existence claim ("this app
    has no `proxy.ts`", "do not introduce `package-lock.json`"). A trailing `:line` citation is
-   stripped and the file is checked. `libs/web-vault-ui/src/lib/reconcileRunner.tsx` is a
+   stripped and the file is checked. `libs/web/vault-ui/src/lib/reconcileRunner.tsx` is a
    file-ref; `src/index.ts` in an example is not.
 2. **Directory-scoped module identifiers.** A camelCase or PascalCase identifier in the same
    sentence as a backticked directory that ends with a slash under `libs/` or `apps/` is a
