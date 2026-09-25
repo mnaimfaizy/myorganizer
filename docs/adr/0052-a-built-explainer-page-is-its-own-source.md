@@ -87,7 +87,7 @@ reads it.
 - `yarn docs:commands:check` joins the aggregate (`yarn gates:run`, now 14 checkers) and CI. It
   asserts 39 documented paths across 448 Markdown files today, so it is not a gate that only ever
   guards one line.
-- A path git ignores is skipped as a build output. `libs/web-ui/storybook-static` is documented and
+- A path git ignores is skipped as a build output. `libs/web/ui/storybook-static` is documented and
   legitimately absent from a clean tree; deferring to `.gitignore` keeps that judgement in one
   place rather than in an opt-out list someone must remember to prune.
 - `run-assertion-gates.test.mjs` stops hand-listing the checkers and their count, reading both from

@@ -260,7 +260,7 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `*.spec.ts` (Playwright E2E)                              | `.agents/skills/playwright-e2e-workflow/SKILL.md`                                                               |
 | `*.test.ts` (Jest)                                        | `.agents/skills/unit-test-delegation-workflow/SKILL.md`                                                         |
 | `*.stories.tsx`                                           | `.agents/skills/storybook-delegation-workflow/SKILL.md`                                                         |
-| Components in `libs/web-ui/` / `libs/web/pages/`          | `.agents/skills/component-builder/SKILL.md`                                                                     |
+| Components in `libs/web/ui/` / `libs/web/pages/`          | `.agents/skills/component-builder/SKILL.md`                                                                     |
 | API Contract (controllers, DTOs, Prisma for HTTP)         | `.agents/skills/backend-api-contract-change/SKILL.md`                                                           |
 | House Explainer Page (`docs/**/*.html`)                   | `.agents/skills/design-brief/SKILL.md` → `Designer`                                                             |
 | Mobile app / library (`apps/mobile/**`, `libs/mobile/**`) | No specialist hop — direct edit; gate is lint + typecheck + format (ADR 0005) plus `yarn mobile-platform:check` |

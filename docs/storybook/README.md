@@ -28,7 +28,7 @@ To build a static version of Storybook:
 yarn build-storybook
 ```
 
-The static files will be generated in `libs/web-ui/storybook-static/`.
+The static files will be generated in `libs/web/ui/storybook-static/`.
 
 ### Running story play tests
 
@@ -39,7 +39,7 @@ yarn build-storybook
 ```
 
 ```bash
-corepack yarn dlx http-server libs/web-ui/storybook-static -p 6199 --silent
+corepack yarn dlx http-server libs/web/ui/storybook-static -p 6199 --silent
 ```
 
 ```bash
@@ -48,15 +48,15 @@ yarn test-storybook --url http://127.0.0.1:6199
 
 Append a pattern to narrow the run, e.g. `yarn test-storybook --url http://127.0.0.1:6199 Sidebar`.
 
-The runner reads `libs/web-ui/.storybook/test-runner.ts`, whose `preVisit` hook applies each story's `viewport` parameter to the Playwright page. Chromatic does **not** load that file — see [`docs/ui/STORYBOOK-PATTERNS.md`](../ui/STORYBOOK-PATTERNS.md) §11 for what a width-dependent story has to declare.
+The runner reads `libs/web/ui/.storybook/test-runner.ts`, whose `preVisit` hook applies each story's `viewport` parameter to the Playwright page. Chromatic does **not** load that file — see [`docs/ui/STORYBOOK-PATTERNS.md`](../ui/STORYBOOK-PATTERNS.md) §11 for what a width-dependent story has to declare.
 
-Note that `nx lint web-ui` lints the generated `libs/web-ui/storybook-static/` directory if it is left on disk; remove the build output when you are done.
+Note that `nx lint web-ui` lints the generated `libs/web/ui/storybook-static/` directory if it is left on disk; remove the build output when you are done.
 
 ## Writing Stories
 
 > **Authoring patterns live in [`docs/ui/STORYBOOK-PATTERNS.md`](../ui/STORYBOOK-PATTERNS.md)** — compound-component wrappers, controlled primitives, Radix portals, `play` functions, required coverage, accessibility, and the anti-pattern table. This file covers setup and commands only.
 
-Stories are located alongside components in the `libs/web-ui/src/lib/components/` directory.
+Stories are located alongside components in the `libs/web/ui/src/lib/components/` directory.
 
 ### AI Delegation Workflow
 
@@ -93,13 +93,13 @@ export const Default: Story = {
 };
 ```
 
-See `libs/web-ui/src/lib/components/Button/Button.stories.tsx` for a complete example of a single component with variants, and `Dialog/Dialog.stories.tsx` for a compound component. Note that the shape above only works for single components — a compound component needs the wrapper pattern (`STORYBOOK-PATTERNS.md` §4).
+See `libs/web/ui/src/lib/components/Button/Button.stories.tsx` for a complete example of a single component with variants, and `Dialog/Dialog.stories.tsx` for a compound component. Note that the shape above only works for single components — a compound component needs the wrapper pattern (`STORYBOOK-PATTERNS.md` §4).
 
 ## Chromatic Integration
 
 Chromatic **publishes** Storybook from CI; visual review is Chromatic’s GitHub status **UI Tests** (pending until Accept/Deny). It is not a local visual-test runner: the CLI always uploads Storybook to Chromatic cloud. Policy: [ADR 0027](../adr/0027-chromatic-ci-visual-tests.md). Quota math and GitHub sign-in: [docs/research/2026-08-18-chromatic-free-tier-ci.md](../research/2026-08-18-chromatic-free-tier-ci.md).
 
-CI calls `yarn chromatic` with repository secret `CHROMATIC_PROJECT_TOKEN`. Config lives in `chromatic.config.json` (TurboSnap `onlyChanged`, Storybook at `libs/web-ui/.storybook`, Tailwind listed as `externals`). `yarn build-storybook` passes `--skip-nx-cache` because Chromatic builds into `os.tmpdir()` and Nx refuses to cache outputs outside the workspace. Do **not** run `yarn chromatic` on a laptop unless you are debugging an upload.
+CI calls `yarn chromatic` with repository secret `CHROMATIC_PROJECT_TOKEN`. Config lives in `chromatic.config.json` (TurboSnap `onlyChanged`, Storybook at `libs/web/ui/.storybook`, Tailwind listed as `externals`). `yarn build-storybook` passes `--skip-nx-cache` because Chromatic builds into `os.tmpdir()` and Nx refuses to cache outputs outside the workspace. Do **not** run `yarn chromatic` on a laptop unless you are debugging an upload.
 
 ### HITL: first Chromatic project
 
@@ -143,7 +143,7 @@ This still **uploads** a cloud build. It does not replace the CI check and burns
 ## Project Structure
 
 ```
-libs/web-ui/
+libs/web/ui/
 ├── .storybook/
 │   ├── main.ts              # Storybook configuration
 │   ├── preview.ts           # Global decorators and parameters
@@ -194,8 +194,8 @@ The following addons are pre-configured:
 
 Make sure Tailwind CSS is configured properly:
 
-- Check `libs/web-ui/tailwind.config.js` includes Storybook paths
-- Verify `libs/web-ui/.storybook/preview-styles.css` is imported in `preview.ts`
+- Check `libs/web/ui/tailwind.config.js` includes Storybook paths
+- Verify `libs/web/ui/.storybook/preview-styles.css` is imported in `preview.ts`
 
 ### Chromatic CI fails with “Cache output is outside the workspace”
 
@@ -207,9 +207,9 @@ Do **not** re-run **Publish to Chromatic**. Chromatic’s **UI Tests** check is 
 
 ### Component not rendering
 
-- Ensure the component is exported from `libs/web-ui/src/index.ts`
+- Ensure the component is exported from `libs/web/ui/src/index.ts`
 - Check that the story file follows the `*.stories.tsx` naming convention
-- Verify the story file is in the `libs/web-ui/src/lib/` directory
+- Verify the story file is in the `libs/web/ui/src/lib/` directory
 
 ## Resources
 

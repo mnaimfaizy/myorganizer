@@ -99,7 +99,7 @@ HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to 
      - **Blocked by**: which other slices (if any) must complete first
      - **Delegation pipelines** — detect which pipelines apply **under the chosen gate**:
        - `gate:mechanical` → prefer `direct edit` (fixture/type retarget, rename, delete, selector-only)
-       - New or edited component behavior in `libs/web-ui/` or `libs/web/pages/` → `ComponentBuilder → ComponentReviewer` (`standard`/`full`)
+       - New or edited component behavior in `libs/web/ui/` or `libs/web/pages/` → `ComponentBuilder → ComponentReviewer` (`standard`/`full`)
        - New/behavioral test file → `TestScaffold → TestReviewer → TestRunner` (`standard`/`full`)
        - New or updated Storybook story → `StorybookCurator` (`standard`/`full`)
        - File moves, import path updates, config, docs → `direct edit`

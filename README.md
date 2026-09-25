@@ -121,10 +121,10 @@ myorganizer/
 │   ├── email-shell/      # Shared HTML/text email frame (logo, colours, footer)
 │   ├── vault-core/       # Vault envelope format, crypto suite, Escape Copy reader core
 │   ├── web/pages/        # One library per route — all page logic lives here
-│   ├── web-ui/           # Radix component library
-│   ├── web-vault/        # Browser vault state, crypto, cloud backup
-│   ├── web-vault-ui/     # Vault-specific UI
-│   ├── web-youtube/      # Browser YouTube API access shared by page libraries
+│   ├── web/ui/           # Radix component library
+│   ├── web/vault/        # Browser vault state, crypto, cloud backup
+│   ├── web/vault-ui/     # Vault-specific UI
+│   ├── web/youtube/      # Browser YouTube API access shared by page libraries
 │   └── mobile/           # Mobile screens, features, hooks, and UI
 ├── docs/                 # Architecture, features, ADRs, agent workflows
 └── tools/                # Build, release, and repo-guard scripts
@@ -133,6 +133,8 @@ myorganizer/
 The web app enforces a strict thin-wrapper rule: `apps/myorganizer/src/app/**` holds routing,
 metadata, and layout composition only, and every page's logic lives in `libs/web/pages/<route>/`.
 Shared code belongs in `libs/**`, never in `apps/myorganizer/src/lib/**`.
+A web library's folder under `libs/web/` records its scope; its import alias (`@myorganizer/web-ui`,
+`@myorganizer/web-vault`, …) is stable and does not follow the folder.
 
 ---
 

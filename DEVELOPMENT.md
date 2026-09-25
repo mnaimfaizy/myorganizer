@@ -369,11 +369,12 @@ myorganizer/
 │   ├── app-api-client/     # Generated API client
 │   ├── auth/               # Authentication utilities
 │   ├── core/               # Core utilities
-│   ├── web/                # Web-specific libraries
-│   │   └── pages/          # Route/page implementations (one library per route)
-│   └── web-ui/             # Shared UI components
-│   ├── web-vault/           # Encrypted vault logic (crypto, storage, sync, reconcile)
-│   └── web-vault-ui/        # Vault-related UX flows (gate/setup/unlock)
+│   └── web/                # Web-specific libraries
+│       ├── pages/          # Route/page implementations (one library per route)
+│       ├── ui/             # Shared UI components
+│       ├── vault/          # Encrypted vault logic (crypto, storage, sync, reconcile)
+│       ├── vault-ui/       # Vault-related UX flows (gate/setup/unlock)
+│       └── youtube/        # Browser YouTube API access shared by page libraries
 ├── docs/                    # Documentation
 │   ├── authentication/     # Auth strategy docs
 │   ├── backend/            # Backend docs
@@ -426,8 +427,8 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
   - Keep minimal: route segment wiring, metadata, and importing the page component from the library.
 - Page implementation: `libs/web/pages/<route>/src/**`
   - Actual React components, data fetching (via generated client), form logic, and page-specific helpers.
-- Shared UI primitives: `libs/web-ui/`
-- Encrypted vault logic: `libs/web-vault/` and `libs/web-vault-ui/`
+- Shared UI primitives: `libs/web/ui/`
+- Encrypted vault logic: `libs/web/vault/` and `libs/web/vault-ui/`
 
 ### Adding a new frontend page
 
@@ -971,7 +972,7 @@ describe('UserService', () => {
 **Example (Frontend)**:
 
 ```typescript
-// libs/web-ui/src/components/Button.spec.tsx
+// libs/web/ui/src/components/Button.spec.tsx
 import { render, screen } from '@testing-library/react';
 import { Button } from './Button';
 

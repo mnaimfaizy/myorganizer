@@ -100,28 +100,46 @@ function main() {
     process.exit(2);
   }
 
+  // Rename-aware: a manifest that only moved is compared against its old path.
+  // Read path-by-path, a moved manifest looks absent at base and present at
+  // head, so moving a library directory audited a pull request that changed no
+  // dependency at all.
   const changed = git([
     'diff',
-    '--name-only',
+    '--name-status',
+    '-M',
     '--diff-filter=ACDMRT',
     baseSha,
     headSha,
   ])
     .split('\n')
     .map((line) => line.trim())
-    .filter(Boolean);
+    .filter(Boolean)
+    .map((line) => {
+      const [status, first, second] = line.split('\t');
+      return status.startsWith('R')
+        ? { before: first, after: second }
+        : { before: first, after: first };
+    });
 
   const reasons = [];
 
-  for (const file of changed) {
-    if (ALWAYS_AUDIT.has(file)) reasons.push(`${file} changed`);
+  for (const { before, after } of changed) {
+    for (const file of new Set([before, after])) {
+      if (ALWAYS_AUDIT.has(file)) reasons.push(`${file} changed`);
+    }
   }
 
   if (!reasons.length) {
-    for (const file of changed.filter((f) => MANIFEST_RE.test(f))) {
-      const before = canonical(dependencySlice(manifestAt(baseSha, file)));
-      const after = canonical(dependencySlice(manifestAt(headSha, file)));
-      if (before !== after) reasons.push(`${file} dependency fields changed`);
+    for (const { before, after } of changed) {
+      if (!MANIFEST_RE.test(before) && !MANIFEST_RE.test(after)) continue;
+      const was = MANIFEST_RE.test(before)
+        ? canonical(dependencySlice(manifestAt(baseSha, before)))
+        : canonical(null);
+      const now = MANIFEST_RE.test(after)
+        ? canonical(dependencySlice(manifestAt(headSha, after)))
+        : canonical(null);
+      if (was !== now) reasons.push(`${after} dependency fields changed`);
     }
   }
 

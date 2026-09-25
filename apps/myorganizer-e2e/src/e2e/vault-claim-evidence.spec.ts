@@ -179,7 +179,7 @@ test.describe('Vault Claim Evidence (E2E)', () => {
     // Derive server Vault Meta from the stored vault record
     // ownedRecord is JSON stringified { version: 2, owner, vault }
     // We need to extract vault (which is VaultStorageV1) and convert it to server meta.
-    // The shape is defined in libs/web-vault/src/lib/vault/vaultShapes.ts (VaultMetaV1)
+    // The shape is defined in libs/web/vault/src/lib/vault/vaultShapes.ts (VaultMetaV1)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const storedOwned = JSON.parse(ownedRecord || '{}') as unknown as {
       vault: any;

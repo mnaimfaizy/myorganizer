@@ -57,7 +57,7 @@ create | edit
 
 ### Scope
 UI Primitive | Feature Component
-(if omitted, infer from Target Path: libs/web-ui/ → UI Primitive, libs/web/pages/ → Feature Component)
+(if omitted, infer from Target Path: libs/web/ui/ → UI Primitive, libs/web/pages/ → Feature Component)
 
 ### Props Interface
 <TypeScript interface or description of props>
@@ -83,7 +83,7 @@ Missing `Component Name`, `Target Path`, or `Action` → stop and ask. Do not gu
 ## Step 1 — Parse and Validate
 
 1. Extract the fields.
-2. Infer `Scope` from `Target Path` when absent (`libs/web-ui/` → UI Primitive,
+2. Infer `Scope` from `Target Path` when absent (`libs/web/ui/` → UI Primitive,
    `libs/web/pages/` → Feature Component).
 3. If `Action` is `edit`, confirm the file exists first.
 
@@ -92,10 +92,10 @@ Missing `Component Name`, `Target Path`, or `Action` → stop and ask. Do not gu
 The guidelines tell you the rules; the neighbours tell you the house style. Read
 sparingly — one or two files, not a survey.
 
-**UI Primitive:** list `libs/web-ui/src/lib/components/` to avoid a name
+**UI Primitive:** list `libs/web/ui/src/lib/components/` to avoid a name
 collision, then read the closest structural analogue — `Card/Card.tsx` for a
 compound component, `Button/Button.tsx` for a single component with CVA. Read
-`libs/web-ui/src/index.ts` for the barrel pattern.
+`libs/web/ui/src/index.ts` for the barrel pattern.
 
 **Feature Component:** list the route's `components/` folder, read the page
 client that will mount this component, and read the referenced schema in
@@ -138,7 +138,7 @@ Two rules are worth restating because they are the ones most often missed:
 
 ## Step 5 — Barrel Export (UI Primitives, `create` only)
 
-Add to `libs/web-ui/src/index.ts`, in alphabetical order:
+Add to `libs/web/ui/src/index.ts`, in alphabetical order:
 
 ```typescript
 export * from './lib/components/<Name>/<Name>';

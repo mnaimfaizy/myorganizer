@@ -45,7 +45,7 @@ members.**
 The pin is `as const satisfies Record<EnumType, …>`. Its `satisfies` clause is the guard: a new
 member fails to compile until it is given a home there, and every branch that iterates the table
 gets the new member without being edited. For `VaultBlobType` that table is
-`VAULT_BLOB_FIELDS` in `libs/web-vault/src/lib/vault/vaultBlobFields.ts`, and the reconcile,
+`VAULT_BLOB_FIELDS` in `libs/web/vault/src/lib/vault/vaultBlobFields.ts`, and the reconcile,
 the legacy bundle path, the hardened envelope path, and the Local Vault write-back all iterate it.
 
 Where two hand-maintained lists describe the same domain set — `VaultBlobType` from the API
@@ -71,7 +71,7 @@ decided the design:
 
 The bare-value path exists because a fan-out can cover every member without ever naming the enum:
 `envelopeFromLocalVault` did exactly that, in property names, and dropped Tasks. Inside declared
-value roots (`libs/web-vault/src/`, `libs/vault-core/src/`) the member values therefore count as
+value roots (`libs/web/vault/src/`, `libs/vault-core/src/`) the member values therefore count as
 references. Its threshold is three rather than two because `.tasks` and `.subscriptions` are also
 ordinary English property names and a pair can co-occur innocently — no coverage is lost, since a
 real fan-out covers the whole set.

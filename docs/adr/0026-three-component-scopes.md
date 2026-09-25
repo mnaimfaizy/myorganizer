@@ -1,6 +1,6 @@
 # Three component scopes: UI Primitive, Feature Component, Vault UI Component
 
-GUIDELINES §1 said a React component lives in exactly two places: `libs/web-ui/` (UI Primitive) or `libs/web/pages/<route>/` (Feature Component). `CloudBackupCard` and `LastBackupCard` in `libs/web-vault-ui` are neither: they know the vault domain, so they are not primitives, and they are reused across routes, so they are not Feature Components.
+GUIDELINES §1 said a React component lives in exactly two places: `libs/web/ui/` (UI Primitive) or `libs/web/pages/<route>/` (Feature Component). `CloudBackupCard` and `LastBackupCard` in `libs/web/vault-ui` are neither: they know the vault domain, so they are not primitives, and they are reused across routes, so they are not Feature Components.
 
 We name a third scope, **Vault UI Component**: presentational, vault-domain-aware, mock-props-expressible. UI Primitives and Vault UI Components ship with colocated Storybook stories; Feature Components stay out of the glob.
 

@@ -605,6 +605,9 @@ jobs:
       - name: Release script contracts
         run: corepack yarn release:test
 
+      - name: Dependency-audit detector contracts
+        run: corepack yarn dependency-manifest:test
+
       - name: GitHub CLI helper contracts
         run: corepack yarn gh:lib:test
 

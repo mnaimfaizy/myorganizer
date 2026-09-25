@@ -985,7 +985,7 @@ test.describe('Vault export/import (E2E)', () => {
 
     // Close context A before opening context B to avoid VaultMetaConvergeRunner
     // focus events triggering different-vault dialogs over the test assertions
-    // (issue #691, libs/web-vault-ui/src/lib/metaConvergeRunner.tsx).
+    // (issue #691, libs/web/vault-ui/src/lib/metaConvergeRunner.tsx).
     await ctxA.close();
 
     // Step 2: Context B — fresh backend, different Vault with its own identity

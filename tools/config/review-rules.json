@@ -156,7 +156,7 @@
       "family": "standard",
       "title": "Vault plaintext reaches the server or a plaintext API",
       "axes": ["standards"],
-      "cites": "libs/web-vault/AGENTS.md"
+      "cites": "libs/web/vault/AGENTS.md"
     },
     {
       "id": "standard-nextjs-async-api-not-awaited",

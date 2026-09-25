@@ -2,7 +2,7 @@
 
 > For current package versions see [TECH_STACK.md](../../TECH_STACK.md).
 > For domain language see [CONTEXT.md](../../CONTEXT.md).
-> These guidelines apply to UI Primitives (`libs/web-ui/`), Feature Components (`libs/web/pages/<route>/`), and Vault UI Components (`libs/web-vault-ui`).
+> These guidelines apply to UI Primitives (`libs/web/ui/`), Feature Components (`libs/web/pages/<route>/`), and Vault UI Components (`libs/web/vault-ui`).
 > ComponentBuilder and ComponentReviewer agents enforce these rules on every component they touch.
 
 ---
@@ -11,7 +11,7 @@
 
 There are three places a React component may live. Choosing the wrong one is the most common structural mistake in this codebase. See [ADR 0026](../adr/0026-three-component-scopes.md).
 
-### UI Primitive — `libs/web-ui/src/lib/components/<Name>/`
+### UI Primitive — `libs/web/ui/src/lib/components/<Name>/`
 
 A component belongs here if:
 
@@ -23,8 +23,8 @@ Stateful interaction (checked, open, a mount point that fires a toast) does not 
 
 Every UI Primitive must:
 
-- Live in its own folder: `libs/web-ui/src/lib/components/<Name>/<Name>.tsx`
-- Be exported from `libs/web-ui/src/index.ts` via `export *`
+- Live in its own folder: `libs/web/ui/src/lib/components/<Name>/<Name>.tsx`
+- Be exported from `libs/web/ui/src/index.ts` via `export *`
 - Use the compound/composition pattern when it has named slots or sections (see §3)
 - Ship with a colocated `<Name>.stories.tsx` that meets the required-coverage table in [`STORYBOOK-PATTERNS.md`](./STORYBOOK-PATTERNS.md) §8. That story is the proof it has no domain knowledge. A primitive without a story is incomplete.
 
@@ -36,19 +36,19 @@ A component belongs here if:
 - It **composes UI Primitives** from `@myorganizer/web-ui` with domain logic
 - It knows about React Hook Form, Zod schemas, API calls, or vault data
 
-Feature components must **never** import directly from `libs/web-ui/src/...`. Always use the public path:
+Feature components must **never** import directly from `libs/web/ui/src/...`. Always use the public path:
 
 ```typescript
 // ✅ correct
 import { Button, Form, FormField } from '@myorganizer/web-ui';
 
 // ❌ wrong — bypasses the barrel and breaks Nx module boundaries
-import { Button } from '../../../libs/web-ui/src/lib/components/Button/Button';
+import { Button } from '../../../libs/web/ui/src/lib/components/Button/Button';
 ```
 
 Feature Components are **not** in any Storybook glob. They belong in tests. If a feature component seems worth a story, that is a signal it should have been a UI Primitive or a Vault UI Component — raise it rather than adding a glob.
 
-### Vault UI Component — `libs/web-vault-ui/src/lib/`
+### Vault UI Component — `libs/web/vault-ui/src/lib/`
 
 A component belongs here if:
 
@@ -58,7 +58,7 @@ A component belongs here if:
 
 Every Vault UI Component must:
 
-- Live under `libs/web-vault-ui/src/lib/` next to the component file
+- Live under `libs/web/vault-ui/src/lib/` next to the component file
 - Be fully expressible with mock props — no live Vault, no decryption
 - Ship with a colocated `*.stories.tsx` (same Storybook instance as `web-ui`; see [`STORYBOOK-PATTERNS.md`](./STORYBOOK-PATTERNS.md) §1)
 
@@ -69,12 +69,12 @@ Every Vault UI Component must:
 ## 2. File Placement Rules
 
 ```
-libs/web-ui/src/lib/components/
+libs/web/ui/src/lib/components/
 └── <Name>/
     ├── <Name>.tsx            ← component + all sub-components in one file
     └── <Name>.stories.tsx    ← required; proof of GUIDELINES §1
 
-libs/web-vault-ui/src/lib/
+libs/web/vault-ui/src/lib/
 ├── <Name>.tsx                ← Vault UI Component (presentational)
 └── <Name>.stories.tsx        ← required for Vault UI Components only
 
@@ -169,7 +169,7 @@ const FormItem = React.forwardRef<...>(({ className, ...props }, ref) => {
 
 ## 4. UI Primitive Implementation Rules
 
-Every component in `libs/web-ui/` must follow all of these:
+Every component in `libs/web/ui/` must follow all of these:
 
 ### 4.1 Always use `React.forwardRef`
 
@@ -261,7 +261,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 
 ### 4.6 Barrel export every new primitive
 
-After creating a new component, add it to `libs/web-ui/src/index.ts`:
+After creating a new component, add it to `libs/web/ui/src/index.ts`:
 
 ```typescript
 export * from './lib/components/<Name>/<Name>';
@@ -393,15 +393,15 @@ Before finishing a component, grep the file for every prop passed to a child (`<
 
 ### Files and folders
 
-| Context             | Pattern                                    | Example                                               |
-| ------------------- | ------------------------------------------ | ----------------------------------------------------- |
-| UI Primitive folder | `PascalCase/`                              | `Card/`, `DropdownMenu/`                              |
-| UI Primitive file   | `<Name>.tsx` (matches folder)              | `Card.tsx`, `DropdownMenu.tsx`                        |
-| Vault UI Component  | `<Name>.tsx` under `web-vault-ui/src/lib/` | `CloudBackupCard.tsx`, `LastBackupCard.tsx`           |
-| Feature component   | `<Purpose><Type>.tsx`                      | `CreateListDialog.tsx`, `SubscriptionsTotalsCard.tsx` |
-| Feature page client | `<Route>PageClient.tsx`                    | `SubscriptionsPageClient.tsx`                         |
-| Feature hook        | `use-<feature>.ts`                         | `use-grocery-lists.ts`                                |
-| Zod schema file     | `<feature>.ts`                             | `subscription.ts`                                     |
+| Context             | Pattern                                         | Example                                               |
+| ------------------- | ----------------------------------------------- | ----------------------------------------------------- |
+| UI Primitive folder | `PascalCase/`                                   | `Card/`, `DropdownMenu/`                              |
+| UI Primitive file   | `<Name>.tsx` (matches folder)                   | `Card.tsx`, `DropdownMenu.tsx`                        |
+| Vault UI Component  | `<Name>.tsx` under `libs/web/vault-ui/src/lib/` | `CloudBackupCard.tsx`, `LastBackupCard.tsx`           |
+| Feature component   | `<Purpose><Type>.tsx`                           | `CreateListDialog.tsx`, `SubscriptionsTotalsCard.tsx` |
+| Feature page client | `<Route>PageClient.tsx`                         | `SubscriptionsPageClient.tsx`                         |
+| Feature hook        | `use-<feature>.ts`                              | `use-grocery-lists.ts`                                |
+| Zod schema file     | `<feature>.ts`                                  | `subscription.ts`                                     |
 
 ### Components and sub-components
 
@@ -414,7 +414,7 @@ Before finishing a component, grep the file for every prop passed to a child (`<
 ### Exports
 
 - UI Primitives: named exports only — `export { Card, CardHeader, CardContent }`. The file basename matches the compound root.
-- Vault UI Components: named exports from `libs/web-vault-ui`. The file basename matches the component.
+- Vault UI Components: named exports from `libs/web/vault-ui`. The file basename matches the component.
 - Feature components: named export preferred — `export function TodoForm(...)`; default export acceptable for leaf components. The file under `components/` exports that one component and no other React component.
 
 ---
@@ -448,7 +448,7 @@ Enforcement is split three ways by what each layer can actually decide:
 Run the shape rules yourself at any time:
 
 ```bash
-yarn component:hygiene libs/web-ui/src/lib/components/Card/Card.tsx
+yarn component:hygiene libs/web/ui/src/lib/components/Card/Card.tsx
 ```
 
 Targeted scans are diagnostic: errors fail, while warnings remain visible without failing the command. Enforcement scans use an explicit zero-warning budget:

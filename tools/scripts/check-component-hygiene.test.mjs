@@ -370,7 +370,7 @@ test('vault UI component is inspected rather than skipped', (t) => {
   const workspace = createWorkspace(t);
   const file = writeFixture(
     workspace,
-    'libs/web-vault-ui/src/lib/ExampleNotice.tsx',
+    'libs/web/vault-ui/src/lib/ExampleNotice.tsx',
     [
       "import * as React from 'react';",
       '',
@@ -394,7 +394,7 @@ test('vault UI component is checked against primitive rules too, not only featur
   const workspace = createWorkspace(t);
   const file = writeFixture(
     workspace,
-    'libs/web-vault-ui/src/lib/TemplateClassNotice.tsx',
+    'libs/web/vault-ui/src/lib/TemplateClassNotice.tsx',
     [
       "import * as React from 'react';",
       '',
@@ -421,12 +421,12 @@ test('vault UI component missing from its own barrel is reported', (t) => {
   const workspace = createWorkspace(t);
   writeFixture(
     workspace,
-    'libs/web-vault-ui/src/index.ts',
+    'libs/web/vault-ui/src/index.ts',
     "export * from './lib/SomethingElse';\n",
   );
   const file = writeFixture(
     workspace,
-    'libs/web-vault-ui/src/lib/UnexportedNotice.tsx',
+    'libs/web/vault-ui/src/lib/UnexportedNotice.tsx',
     [
       "import * as React from 'react';",
       '',
@@ -441,14 +441,14 @@ test('vault UI component missing from its own barrel is reported', (t) => {
 
   assert.equal(result.status, 1);
   assert.match(result.stdout, /missing-barrel-export/);
-  assert.match(result.stdout, /libs\/web-vault-ui\/src\/index\.ts/);
+  assert.match(result.stdout, /libs\/web\/vault-ui\/src\/index\.ts/);
 });
 
 test('a hook beside the components is not inspected as a component', (t) => {
   const workspace = createWorkspace(t);
   const file = writeFixture(
     workspace,
-    'libs/web-vault-ui/src/lib/useSomething.ts',
+    'libs/web/vault-ui/src/lib/useSomething.ts',
     ['export function useSomething() {', '  return 1;', '}', ''].join('\n'),
   );
 
@@ -769,7 +769,7 @@ test('mixed run exits on the merits of the file it did check', (t) => {
   );
   const checkedFile = writeFixture(
     workspace,
-    'libs/web-ui/src/lib/components/broken/broken.tsx',
+    'libs/web/ui/src/lib/components/broken/broken.tsx',
     [
       "import * as React from 'react';",
       '',
@@ -925,12 +925,12 @@ test('primitive compound file passes when the basename matches the root export',
   const workspace = createWorkspace(t);
   writeFixture(
     workspace,
-    'libs/web-ui/src/index.ts',
+    'libs/web/ui/src/index.ts',
     "export * from './lib/components/Card/Card';\n",
   );
   const file = writeFixture(
     workspace,
-    'libs/web-ui/src/lib/components/Card/Card.tsx',
+    'libs/web/ui/src/lib/components/Card/Card.tsx',
     [
       'const Card = () => <div />;',
       'const CardHeader = () => <div />;',
@@ -947,12 +947,12 @@ test('primitive file with no basename-matching root is an error', (t) => {
   const workspace = createWorkspace(t);
   writeFixture(
     workspace,
-    'libs/web-ui/src/index.ts',
+    'libs/web/ui/src/index.ts',
     "export * from './lib/components/Card/Card';\n",
   );
   const file = writeFixture(
     workspace,
-    'libs/web-ui/src/lib/components/Card/Card.tsx',
+    'libs/web/ui/src/lib/components/Card/Card.tsx',
     'export function CardHeader() { return <div />; }\n',
   );
 
@@ -966,12 +966,12 @@ test('vault-ui camelCase module is not treated as a Vault UI Component basename'
   const workspace = createWorkspace(t);
   writeFixture(
     workspace,
-    'libs/web-vault-ui/src/index.ts',
+    'libs/web/vault-ui/src/index.ts',
     "export * from './lib/session';\n",
   );
   const file = writeFixture(
     workspace,
-    'libs/web-vault-ui/src/lib/session.tsx',
+    'libs/web/vault-ui/src/lib/session.tsx',
     'export function VaultSessionProvider() { return <div />; }\n',
   );
 

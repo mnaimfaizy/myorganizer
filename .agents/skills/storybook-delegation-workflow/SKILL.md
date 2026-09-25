@@ -64,5 +64,5 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../docs/adr/0012-tiered-qua
 - `.github/agents/storybook-curator.agent.md`
 - `docs/ui/STORYBOOK-PATTERNS.md` — authoring patterns (single home; link, do not copy)
 - `docs/storybook/README.md` — setup, Chromatic, commands
-- `libs/web-ui/AGENTS.md`
+- `libs/web/ui/AGENTS.md`
 - `AGENTS.md`

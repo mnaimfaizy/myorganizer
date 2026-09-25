@@ -53,7 +53,7 @@ rather than editing it from memory, and drop any plugin that leaves `package.jso
 
 1. Decide where the new artifact belongs:
    - Page-level UI logic → `libs/web/pages/<route>/` (React library, Jest enabled)
-   - Shared UI components → `libs/web-ui/`
+   - Shared UI components → `libs/web/ui/`
    - Shared logic (non-UI) → `libs/<domain>/`
    - New Next.js app → `apps/<name>/`
    - New Express/Node app → `apps/<name>/`

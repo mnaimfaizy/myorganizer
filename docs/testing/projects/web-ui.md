@@ -1,4 +1,4 @@
-# Testing `libs/web-ui`
+# Testing `libs/web/ui`
 
 Jest unit/integration · `babel-jest` + `jsdom` env (React) · `yarn nx test web-ui`
 
@@ -13,16 +13,16 @@ moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx']
 ## File naming
 
 ```
-libs/web-ui/src/lib/<Component>.spec.tsx
+libs/web/ui/src/lib/<Component>.spec.tsx
 ```
 
-Storybook configuration under `libs/web-ui/.storybook/` is covered by colocated `*.test.ts` files:
+Storybook configuration under `libs/web/ui/.storybook/` is covered by colocated `*.test.ts` files:
 
 ```
-libs/web-ui/.storybook/<module>.test.ts
+libs/web/ui/.storybook/<module>.test.ts
 ```
 
-These are plain Node-environment unit tests for the pure helpers the Storybook config depends on — they must not import React, a story, or `@storybook/test-runner` itself. They are picked up by the Nx preset `testMatch` and declared in `libs/web-ui/tsconfig.spec.json`.
+These are plain Node-environment unit tests for the pure helpers the Storybook config depends on — they must not import React, a story, or `@storybook/test-runner` itself. They are picked up by the Nx preset `testMatch` and declared in `libs/web/ui/tsconfig.spec.json`.
 
 ## Patterns
 

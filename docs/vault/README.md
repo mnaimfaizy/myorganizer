@@ -14,7 +14,7 @@ which is the reference you come back to.
 ## Why they exist
 
 The security properties are documented correctly in prose, but they are spread across
-`libs/vault-core`, `libs/web-vault`, `libs/mobile/feat/vault`, a Prisma schema, and a feature
+`libs/vault-core`, `libs/web/vault`, `libs/mobile/feat/vault`, a Prisma schema, and a feature
 doc. Nobody holds them all at once. The failure these pages prevent is concrete: someone adds a
 convenient endpoint, or logs an object while debugging, and moves plaintext or a key across a
 line they could not see.

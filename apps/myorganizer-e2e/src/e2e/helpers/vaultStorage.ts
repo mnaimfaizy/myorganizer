@@ -3,7 +3,7 @@ import { Page } from '@playwright/test';
 /**
  * The unsuffixed slot. Holds an Unclaimed Local Vault — one written before
  * Local Vaults were owner-bound, or by a signed-out browser. Mirrors
- * `VAULT_STORAGE_KEY` in `libs/web-vault/src/lib/vault/localVaultStorage.ts`.
+ * `VAULT_STORAGE_KEY` in `libs/web/vault/src/lib/vault/localVaultStorage.ts`.
  */
 export const UNCLAIMED_VAULT_KEY = 'myorganizer_vault_v1';
 
@@ -16,7 +16,7 @@ export const E2E_USER_ID = '1';
 
 /**
  * The key one User's Local Vault lives under, per [ADR 0047]. Mirrors
- * `localVaultStorageKey` in `libs/web-vault/src/lib/vault/localVaultStorage.ts`
+ * `localVaultStorageKey` in `libs/web/vault/src/lib/vault/localVaultStorage.ts`
  * — keep the two in step.
  *
  * [ADR 0047]: docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md

@@ -21,7 +21,7 @@ else's ciphertext ([#511](https://github.com/mnaimfaizy/myorganizer/issues/511))
 `yarn vault:pages:check` passed the entire time. It asserted `page.storageKey ===
 VAULT_STORAGE_KEY`, and `VAULT_STORAGE_KEY` is still `'myorganizer_vault_v1'` — because that
 constant became the _prefix_ per-User keys are composed from
-(`libs/web-vault/src/lib/vault/localVaultStorage.ts:61`). The string was byte-identical before and
+(`libs/web/vault/src/lib/vault/localVaultStorage.ts:61`). The string was byte-identical before and
 after. Only its meaning changed, and no equality check can see that.
 
 This is a general property of value-pinning gates, not a defect in this one.

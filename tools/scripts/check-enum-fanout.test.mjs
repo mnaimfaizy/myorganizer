@@ -68,7 +68,7 @@ export function isVaultBlobType(key: string): key is VaultBlobType {
  * rule and must be present, so every fixture carries them as empty modules.
  */
 const DECLARATION_SITES = [
-  'libs/web-vault/src/lib/vault/localVaultStorage.ts',
+  'libs/web/vault/src/lib/vault/localVaultStorage.ts',
   'libs/vault-core/src/lib/types.ts',
   'libs/vault-core/src/lib/vaultExportEnvelope.ts',
 ];
@@ -79,7 +79,7 @@ function scaffold(t, extra = {}) {
   write(workspace, 'libs/app-api-client/src/api.ts', ENUM_SOURCE);
   write(
     workspace,
-    'libs/web-vault/src/lib/vault/vaultBlobFields.ts',
+    'libs/web/vault/src/lib/vault/vaultBlobFields.ts',
     PIN_SOURCE,
   );
   for (const path of DECLARATION_SITES) write(workspace, path, 'export {};\n');
@@ -92,7 +92,7 @@ function scaffold(t, extra = {}) {
 
 test('passes when every fan-out reaches the pinned table', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/reconcile.ts': `import { VAULT_BLOB_TYPES } from './vaultBlobFields';
+    'libs/web/vault/src/lib/vault/reconcile.ts': `import { VAULT_BLOB_TYPES } from './vaultBlobFields';
 for (const type of VAULT_BLOB_TYPES) upload(type);
 `,
   });
@@ -102,7 +102,7 @@ for (const type of VAULT_BLOB_TYPES) upload(type);
 
 test('fails a hand-enumerated fan-out that never reaches the table', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/export.ts': `const blobs = {
+    'libs/web/vault/src/lib/vault/export.ts': `const blobs = {
   [VaultBlobType.Addresses]: a,
   [VaultBlobType.Groceries]: g,
   [VaultBlobType.MobileNumbers]: m,
@@ -131,7 +131,7 @@ test('leaves a single-member point use alone', (t) => {
 
 test('accepts a call site that pins itself with its own satisfies clause', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/labels.ts': `const LABELS = {
+    'libs/web/vault/src/lib/vault/labels.ts': `const LABELS = {
   [VaultBlobType.Addresses]: 'Addresses',
   [VaultBlobType.Groceries]: 'Groceries',
   [VaultBlobType.MobileNumbers]: 'Mobile numbers',
@@ -147,7 +147,7 @@ test('accepts a call site that pins itself with its own satisfies clause', (t) =
 
 test('ignores test files, which enumerate members as fixtures', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/export.test.ts': `expect(VaultBlobType.Tasks).toBe('tasks');
+    'libs/web/vault/src/lib/vault/export.test.ts': `expect(VaultBlobType.Tasks).toBe('tasks');
 expect(VaultBlobType.Notes).toBe('notes');
 `,
   });
@@ -169,7 +169,7 @@ test('ignores the generated API client, which declares the enum itself', (t) => 
 // A rule keyed only on the enum identifier would not have seen it (#537).
 test('fails a fan-out written in property names that never says the enum', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/envelope.ts': `const blobs = {};
+    'libs/web/vault/src/lib/vault/envelope.ts': `const blobs = {};
 if (localVault.data.addresses) blobs.addresses = wrap(localVault.data.addresses);
 if (localVault.data.groceries) blobs.groceries = wrap(localVault.data.groceries);
 if (localVault.data.mobileNumbers) blobs.mobileNumbers = wrap(localVault.data.mobileNumbers);
@@ -200,7 +200,7 @@ test('does not read member values as a fan-out outside the value roots', (t) => 
 // the file the Tasks omission lived in, imports the table at the top.
 test('a comment naming the table does not exempt a fan-out', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/shapes.ts': `export function toLocal(blobs) {
+    'libs/web/vault/src/lib/vault/shapes.ts': `export function toLocal(blobs) {
   // NOTE: this used to iterate VAULT_BLOB_TYPES.
   if (blobs.addresses) next.data.addresses = x(blobs.addresses);
   if (blobs.groceries) next.data.groceries = x(blobs.groceries);
@@ -217,7 +217,7 @@ test('a comment naming the table does not exempt a fan-out', (t) => {
 
 test('judges each function separately, not the file as a whole', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/mixed.ts': `import { VAULT_BLOB_TYPES } from './vaultBlobFields';
+    'libs/web/vault/src/lib/vault/mixed.ts': `import { VAULT_BLOB_TYPES } from './vaultBlobFields';
 
 export function good(v) {
   for (const type of VAULT_BLOB_TYPES) send(type);
@@ -240,7 +240,7 @@ export function bad(v) {
 
 test('fails a hand-written union of the member values', (t) => {
   const workspace = scaffold(t, {
-    'libs/web-vault/src/lib/vault/audit.ts': `export type Reported =
+    'libs/web/vault/src/lib/vault/audit.ts': `export type Reported =
   | 'addresses'
   | 'groceries'
   | 'mobileNumbers'
@@ -258,12 +258,12 @@ test('exempts a declaration site, which is the list rather than a use of it', (t
   write(workspace, 'libs/app-api-client/src/api.ts', ENUM_SOURCE);
   write(
     workspace,
-    'libs/web-vault/src/lib/vault/vaultBlobFields.ts',
+    'libs/web/vault/src/lib/vault/vaultBlobFields.ts',
     PIN_SOURCE,
   );
   write(
     workspace,
-    'libs/web-vault/src/lib/vault/localVaultStorage.ts',
+    'libs/web/vault/src/lib/vault/localVaultStorage.ts',
     `export type VaultRecordType =
   | 'addresses'
   | 'groceries'
@@ -289,7 +289,7 @@ test('cannot run when a declaration-site exemption names a file that is gone', (
   write(workspace, 'libs/app-api-client/src/api.ts', ENUM_SOURCE);
   write(
     workspace,
-    'libs/web-vault/src/lib/vault/vaultBlobFields.ts',
+    'libs/web/vault/src/lib/vault/vaultBlobFields.ts',
     PIN_SOURCE,
   );
   write(workspace, 'libs/vault-core/src/lib/types.ts', 'export {};\n');
@@ -309,7 +309,7 @@ test('fails when the pinned table loses its satisfies clause', (t) => {
   write(workspace, 'libs/app-api-client/src/api.ts', ENUM_SOURCE);
   write(
     workspace,
-    'libs/web-vault/src/lib/vault/vaultBlobFields.ts',
+    'libs/web/vault/src/lib/vault/vaultBlobFields.ts',
     PIN_SOURCE.replace(
       '} as const satisfies Record<VaultBlobType, VaultRecordType>;',
       '} as const;',
@@ -334,7 +334,7 @@ test('cannot run when the guarded enum has moved out of its declared home', (t) 
   );
   write(
     workspace,
-    'libs/web-vault/src/lib/vault/vaultBlobFields.ts',
+    'libs/web/vault/src/lib/vault/vaultBlobFields.ts',
     PIN_SOURCE,
   );
   for (const path of DECLARATION_SITES) write(workspace, path, 'export {};\n');
@@ -349,5 +349,5 @@ test('--print reports the members and the pin it resolved', (t) => {
   const result = run(workspace, '--print');
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /VaultBlobType: 6 members/);
-  assert.match(result.stdout, /pinned by libs\/web-vault/);
+  assert.match(result.stdout, /pinned by libs\/web\/vault/);
 });

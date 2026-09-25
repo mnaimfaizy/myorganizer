@@ -120,7 +120,7 @@ without evidence is not actionable by ComponentBuilder.
   sub-components exported by name; if they share state, is there a private
   context? If it has no slots, is a single component with CVA variants used
   instead of a compound shell with nothing to compose?
-- **Scope placement is right** (§1): does a component in `libs/web-ui/` reference
+- **Scope placement is right** (§1): does a component in `libs/web/ui/` reference
   domain state (Vault, Todo, Subscription, User)? Could it be fully developed in
   Storybook with mock props? A primitive that knows the domain is in the wrong place.
 - **Concerns are not over-mixed** (§2): is the component doing data fetching _and_

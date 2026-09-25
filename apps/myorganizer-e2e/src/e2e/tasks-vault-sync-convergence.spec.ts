@@ -380,7 +380,7 @@ test.describe('Tasks Vault Sync Convergence (E2E)', () => {
     // Required because useTasksWorkflow's load effect is keyed on memoised
     // adapter tied to handle identity (libs/web/pages/tasks/src/workflow/useTasksWorkflow.ts:58),
     // and convergeVaultBlob writes without changing that identity
-    // (libs/web-vault/src/lib/vault/vaultConverge.ts:305,367).
+    // (libs/web/vault/src/lib/vault/vaultConverge.ts:305,367).
     await gotoStable(page2, '/dashboard/tasks');
     await unlockWithPassphrase(page2, passphrase);
 
