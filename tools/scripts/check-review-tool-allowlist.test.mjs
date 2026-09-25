@@ -571,6 +571,62 @@ test('a placeholder cannot invent an interception', () => {
   assert.equal(result.ok, true);
 });
 
+const interceptedBy = (rule, command) =>
+  assertToolAllowlist({
+    entries: ['Bash(git:*)', 'Bash(gh:*)'].map(entry),
+    interposed: asked(rule),
+    exemptions: [],
+    sites: [
+      {
+        file: 'skill.md',
+        line: 1,
+        sectionId: null,
+        command,
+        alternatives: [tokenize(command)],
+      },
+    ],
+  }).intercepted.length === 1;
+
+test('a trailing ` *` is the same prefix rule as `:*`', () => {
+  // `.claude/settings.json` moved to Claude Code's space form. Read as a
+  // literal last token, `Bash(git worktree remove *)` caught only three-word
+  // commands, and the gate printed OK over the exact refusal ADR 0099 records.
+  assert.equal(entry('Bash(git worktree remove *)').kind, 'prefix');
+  assert.equal(
+    interceptedBy(
+      'Bash(git worktree remove *)',
+      'git worktree remove --force tmp/code-review/worktree',
+    ),
+    true,
+  );
+  assert.equal(
+    interceptedBy('Bash(git worktree remove *)', 'git worktree remove'),
+    true,
+    'a trailing ` *` also matches the bare command',
+  );
+});
+
+test('a `*` inside a rule spans tokens, as Claude Code reads it', () => {
+  const rule = 'Bash(git push *--force*)';
+  assert.equal(entry(rule).kind, 'glob');
+  assert.equal(interceptedBy(rule, 'git push origin main --force'), true);
+  assert.equal(
+    interceptedBy(rule, 'git push --force-with-lease origin feat/x'),
+    true,
+  );
+  assert.equal(interceptedBy(rule, 'git push origin feat/x'), false);
+});
+
+test('a placeholder under a glob still cannot invent an interception', () => {
+  // The `*` may absorb `<endpoint>`, but only a literal the document wrote
+  // can be what the rule catches.
+  assert.equal(interceptedBy('Bash(gh api *-X*)', 'gh api <endpoint>'), false);
+  assert.equal(
+    interceptedBy('Bash(gh api *-X*)', 'gh api <endpoint> -X POST'),
+    true,
+  );
+});
+
 test('an alternative spelling no rule catches is a way through', () => {
   // A script name has two documented spellings. If one is intercepted and the
   // other is granted, the reviewer is not refused, and reporting it would send
