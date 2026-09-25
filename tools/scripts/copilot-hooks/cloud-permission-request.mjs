@@ -22,6 +22,11 @@ import { extractCommand, getToolInput, readPayloadOrExit } from './lib.mjs';
  *
  * Claude Code sets `CLAUDE_CODE_REMOTE=true` in cloud sessions only; a local
  * terminal, the desktop app's local sessions, and the CI reviewer never see it.
+ *
+ * Launch with `--defer`: this script never reads argv, but `readPayloadOrExit`
+ * in lib.mjs does — on an empty or unparsable payload it calls `allowTool()`,
+ * which without the flag prints a PreToolUse-shaped allow into a
+ * PermissionRequest response.
  */
 const IS_CLOUD_SESSION = process.env.CLAUDE_CODE_REMOTE === 'true';
 

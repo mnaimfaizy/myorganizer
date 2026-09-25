@@ -39,32 +39,7 @@ export function runHook(
   payload: unknown,
   options?: HookRunOptions,
 ): HookOutcome {
-  // The hooks read the sandbox marker from the environment, so the two modes
-  // have to be driven through the child process rather than a module flag.
-  const childEnv = { ...process.env };
-  if (options?.sandbox) {
-    childEnv.MYORGANIZER_SANDBOX = '1';
-  } else {
-    delete childEnv.MYORGANIZER_SANDBOX;
-  }
-
-  // Apply any custom environment overrides
-  if (options?.env) {
-    for (const [key, value] of Object.entries(options.env)) {
-      if (value === undefined) {
-        delete childEnv[key];
-      } else {
-        childEnv[key] = value;
-      }
-    }
-  }
-
-  const args = [hookPath, ...(options?.args ?? [])];
-  const result = spawnSync(process.execPath, args, {
-    input: JSON.stringify(payload),
-    encoding: 'utf8',
-    env: childEnv,
-  });
+  const result = runHookRaw(hookPath, payload, options);
 
   let decision = '';
   let reason = '';
@@ -81,7 +56,8 @@ export function runHook(
 }
 
 /**
- * Run a hook and capture raw stdout for hooks that emit different output formats.
+ * Run a hook and return its raw stdout — for hooks whose output is not a
+ * PreToolUse decision, and for asserting that a hook stayed silent.
  */
 export function runHookRaw(
   hookPath: string,
