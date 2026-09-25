@@ -1,6 +1,7 @@
 'use client';
 
-import { type SubscriptionRecord, formatMoney } from '@myorganizer/core';
+import { formatMoney } from '@myorganizer/core';
+import type { SubscriptionRecord } from '@myorganizer/vault-core';
 import { Button } from '@myorganizer/web-ui';
 import { useCallback } from 'react';
 import { TableCell, TableRow } from '@myorganizer/web-ui';

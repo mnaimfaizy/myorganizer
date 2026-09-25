@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogItem } from '@myorganizer/core';
+import type { CatalogItem } from '@myorganizer/vault-core';
 import { Input, Label, cn } from '@myorganizer/web-ui';
 import { Search } from 'lucide-react';
 import { useCallback, useMemo } from 'react';

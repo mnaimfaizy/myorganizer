@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { useState } from 'react';
-import type { GroceryCategoryType, GroceryItem } from '@myorganizer/core';
+import type { GroceryCategoryType, GroceryItem } from '@myorganizer/vault-core';
 import { CategoryFilterBar } from './CategoryFilterBar';
 
 const meta: Meta<typeof CategoryFilterBar> = {

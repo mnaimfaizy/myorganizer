@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@myorganizer/web-ui';
-import { TaskPriority, TaskStatus, TaskContext } from '@myorganizer/core';
+import { TaskPriority, TaskStatus, TaskContext } from '@myorganizer/vault-core';
 
 interface TaskFormProps {
   onSubmit: (values: {

@@ -183,7 +183,10 @@ import {
   within,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { AddressRecord, UsageLocationRecord } from '@myorganizer/core';
+import type {
+  AddressRecord,
+  UsageLocationRecord,
+} from '@myorganizer/vault-core';
 import type { VaultHandle } from '@myorganizer/web-vault';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@myorganizer/web-ui';

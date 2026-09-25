@@ -1,4 +1,4 @@
-import { AddressRecord } from '@myorganizer/core';
+import { AddressRecord } from '@myorganizer/vault-core';
 
 /**
  * Check if an address record uses the new structured format
@@ -28,13 +28,13 @@ export function getGoogleMapsUrl(item: AddressRecord): string {
 
     const address = parts.join(', ');
     return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-      address
+      address,
     )}`;
   }
 
   const address = item.address || '';
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-    address
+    address,
   )}`;
 }
 

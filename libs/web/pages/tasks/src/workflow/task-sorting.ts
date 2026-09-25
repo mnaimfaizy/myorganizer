@@ -1,4 +1,4 @@
-import type { Task, TaskPriority } from '@myorganizer/core';
+import type { Task, TaskPriority } from '@myorganizer/vault-core';
 
 const PRIORITY_ORDER: Record<TaskPriority, number> = {
   high: 0,

@@ -1,3 +1,4 @@
+import { randomId } from '@myorganizer/core';
 import {
   SUPPORTED_CURRENCY_CODES,
   SubscriptionBillingCycleEnum,
@@ -7,7 +8,6 @@ import {
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
   isSupportedCurrencyCode,
-  randomId,
   readVaultBlobRecords,
   type CurrencyCode,
   type SubscriptionBillingCycle,
@@ -15,7 +15,7 @@ import {
   type SubscriptionRenewalType,
   type SubscriptionStatus,
   type SubscriptionTier,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 
 type NormalizeResult<T> = {
   value: T;

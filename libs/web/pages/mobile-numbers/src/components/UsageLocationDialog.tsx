@@ -4,7 +4,7 @@ import {
   OrganisationTypeEnum,
   UpdateMethodEnum,
   UsageLocationRecord,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import {
   Button,
   Dialog,

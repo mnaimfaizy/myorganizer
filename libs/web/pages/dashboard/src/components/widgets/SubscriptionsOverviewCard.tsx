@@ -1,10 +1,10 @@
 'use client';
 
+import { formatMoney } from '@myorganizer/core';
 import {
   SubscriptionStatusEnum,
-  formatMoney,
   type CurrencyCode,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import {
   normalizeSubscriptions,
   type VaultHandle,

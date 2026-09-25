@@ -1,6 +1,6 @@
 'use client';
 
-import type { Task } from '@myorganizer/core';
+import type { Task } from '@myorganizer/vault-core';
 import { useToast } from '@myorganizer/web-ui';
 import type { VaultHandle } from '@myorganizer/web-vault';
 import { VaultGate } from '@myorganizer/web-vault-ui';

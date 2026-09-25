@@ -4,7 +4,7 @@ import {
   SubscriptionPaymentMethodEnum,
   SubscriptionRenewalTypeEnum,
   SubscriptionTierEnum,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import {
   Label,
   Select,

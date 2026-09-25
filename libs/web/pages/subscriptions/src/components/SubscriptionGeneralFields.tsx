@@ -3,7 +3,7 @@
 import {
   SubscriptionBillingCycleEnum,
   SubscriptionStatusEnum,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import {
   Input,
   Label,

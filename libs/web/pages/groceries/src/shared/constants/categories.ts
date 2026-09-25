@@ -1,4 +1,4 @@
-import type { GroceryCategoryType } from '@myorganizer/core';
+import type { GroceryCategoryType } from '@myorganizer/vault-core';
 
 export const CATEGORY_EMOJIS: Record<GroceryCategoryType, string> = {
   produce: '🥬',

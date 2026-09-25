@@ -22,7 +22,7 @@ import {
 import {
   type VaultBlobEnvelope,
   readVaultBlobRecords,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 
 import {
   claimUnclaimedLocalVaultOnEvidence,

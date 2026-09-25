@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogItem, ListLine } from '@myorganizer/core';
+import type { CatalogItem, ListLine } from '@myorganizer/vault-core';
 import {
   Checkbox,
   DropdownMenu,

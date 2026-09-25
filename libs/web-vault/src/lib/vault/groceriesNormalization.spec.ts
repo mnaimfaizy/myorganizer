@@ -1,5 +1,5 @@
 import { normalizeGroceries } from './groceriesNormalization';
-import type { GroceriesVaultPayload } from '@myorganizer/core';
+import type { GroceriesVaultPayload } from '@myorganizer/vault-core';
 
 describe('normalizeGroceries', () => {
   beforeEach(() => {

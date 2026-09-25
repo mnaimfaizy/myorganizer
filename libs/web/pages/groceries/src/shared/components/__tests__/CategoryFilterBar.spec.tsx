@@ -3,7 +3,7 @@ jest.mock('@myorganizer/web-ui', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }));
 
-import type { GroceryCategoryType, GroceryItem } from '@myorganizer/core';
+import type { GroceryCategoryType, GroceryItem } from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 

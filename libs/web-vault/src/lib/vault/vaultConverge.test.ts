@@ -18,7 +18,7 @@ import {
   type VaultBlobEnvelope,
   readDeletionLog,
   readVaultBlobRecords,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 
 import { mintRecoveryKey } from './recoveryKeyMint';
 import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';

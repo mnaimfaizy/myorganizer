@@ -1,4 +1,4 @@
-import { type SubscriptionRecord } from '@myorganizer/core';
+import type { SubscriptionRecord } from '@myorganizer/vault-core';
 import {
   Card,
   CardContent,

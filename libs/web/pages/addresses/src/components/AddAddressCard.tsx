@@ -1,5 +1,5 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AddressRecord } from '@myorganizer/core';
+import { AddressRecord } from '@myorganizer/vault-core';
 import {
   Sheet,
   SheetContent,

@@ -5,10 +5,8 @@ import {
   mergeSubscriptions,
   mergeTasks,
   type VaultBlobEnvelope,
-} from '@myorganizer/core';
-import type {
-  VaultExportBlobType,
-  VaultRecordType as CoreVaultRecordType,
+  type VaultExportBlobType,
+  type VaultRecordType as CoreVaultRecordType,
 } from '@myorganizer/vault-core';
 
 import { VaultRecordType } from './localVaultStorage';

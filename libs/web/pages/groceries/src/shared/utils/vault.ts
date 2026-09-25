@@ -3,7 +3,10 @@
  * Provides consistent error handling and common patterns.
  */
 
-import type { GroceryList, GroceriesVaultPayload } from '@myorganizer/core';
+import type {
+  GroceryList,
+  GroceriesVaultPayload,
+} from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
 
 /**

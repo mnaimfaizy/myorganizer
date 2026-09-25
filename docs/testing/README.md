@@ -66,7 +66,7 @@ any other issue in this repo:
 
 ```typescript
 // ❌ WRONG — linting flags the static import as a boundary violation
-import type { GroceryList } from '@myorganizer/core';
+import { randomId } from '@myorganizer/core';
 jest.mock('@myorganizer/core');
 
 // ✅ CORRECT — mocks first, then imports
@@ -76,7 +76,7 @@ jest.mock('@myorganizer/core', () => ({
 }));
 jest.mock('@myorganizer/web-vault');
 
-import type { GroceryList } from '@myorganizer/core';
+import { randomId } from '@myorganizer/core';
 import { loadDecryptedData } from '@myorganizer/web-vault';
 import { useMyHook } from './useMyHook';
 ```

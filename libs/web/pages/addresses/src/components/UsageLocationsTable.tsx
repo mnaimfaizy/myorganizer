@@ -1,6 +1,6 @@
 'use client';
 
-import { UsageLocationRecord } from '@myorganizer/core';
+import { UsageLocationRecord } from '@myorganizer/vault-core';
 import {
   Button,
   Card,

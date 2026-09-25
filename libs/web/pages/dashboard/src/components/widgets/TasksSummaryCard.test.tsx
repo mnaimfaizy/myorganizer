@@ -3,7 +3,7 @@ jest.mock('@myorganizer/web-vault');
 
 import { render, screen, waitFor } from '@testing-library/react';
 
-import type { Task } from '@myorganizer/core';
+import type { Task } from '@myorganizer/vault-core';
 import { normalizeTasks, type VaultHandle } from '@myorganizer/web-vault';
 import { TasksSummaryCard } from './TasksSummaryCard';
 

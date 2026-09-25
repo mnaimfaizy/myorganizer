@@ -5,7 +5,9 @@ Jest unit · `ts-jest` or `babel-jest` · `yarn nx test core`
 ## Config summary
 
 Read `libs/core/jest.config.ts` for the active transformer. `libs/core` holds framework-free
-domain types and utilities, so tests are plain unit tests with no DOM and no module mocking.
+utilities (currency formatting, geo, time, account settings, ids), so tests are plain unit tests
+with no module mocking. It has no specs today — the Vault record shapes and merges it used to
+carry moved to `libs/vault-core` with their specs (#164), so the config sets `passWithNoTests`.
 
 ## Patterns
 

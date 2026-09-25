@@ -1,4 +1,4 @@
-import { AddressRecord } from '@myorganizer/core';
+import { AddressRecord } from '@myorganizer/vault-core';
 import { AlertTriangle } from 'lucide-react';
 
 import { formatAddress } from '../utils/formatAddress';

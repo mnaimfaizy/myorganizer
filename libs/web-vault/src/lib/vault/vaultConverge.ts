@@ -43,7 +43,7 @@ import {
   readDeletionLog,
   readVaultBlobRecords,
   type VaultBlobEnvelope,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

@@ -1,6 +1,6 @@
 import { mergeTasks } from './taskMerge';
 import type { Task } from './task';
-import type { VaultBlobEnvelope } from '../vault/vaultBlobEnvelope';
+import type { VaultBlobEnvelope } from './vaultBlobEnvelope';
 
 describe('mergeTasks', () => {
   describe('union by id', () => {

@@ -1,6 +1,10 @@
 'use client';
 
-import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
+import type {
+  CatalogItem,
+  GroceryList,
+  ListLine,
+} from '@myorganizer/vault-core';
 import { ToastAction, useToast } from '@myorganizer/web-ui';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';

@@ -10,7 +10,7 @@ import {
   SubscriptionRenewalTypeEnum,
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
-} from '@myorganizer/core';
+} from '@myorganizer/vault-core';
 import {
   subscriptionFormSchema,
   type SubscriptionFormValues,

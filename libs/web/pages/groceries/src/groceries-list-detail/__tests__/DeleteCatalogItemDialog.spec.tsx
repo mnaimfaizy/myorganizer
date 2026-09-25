@@ -75,7 +75,7 @@ jest.mock('lucide-react', () => ({
   AlertTriangle: () => <div data-testid="alert-icon" />,
 }));
 
-import type { CatalogItem } from '@myorganizer/core';
+import type { CatalogItem } from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DeleteCatalogItemDialog } from '../components/DeleteCatalogItemDialog';

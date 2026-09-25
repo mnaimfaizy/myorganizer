@@ -1,4 +1,4 @@
-import { AddressRecord } from '@myorganizer/core';
+import { AddressRecord } from '@myorganizer/vault-core';
 
 /**
  * Format a structured address into a single-line string

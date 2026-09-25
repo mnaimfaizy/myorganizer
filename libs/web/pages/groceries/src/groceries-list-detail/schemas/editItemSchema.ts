@@ -1,6 +1,6 @@
 'use client';
 
-import { GROCERY_PREDEFINED_CATEGORIES } from '@myorganizer/core';
+import { GROCERY_PREDEFINED_CATEGORIES } from '@myorganizer/vault-core';
 import { z } from 'zod';
 
 /**

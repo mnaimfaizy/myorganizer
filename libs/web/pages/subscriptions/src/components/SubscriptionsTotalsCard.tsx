@@ -1,8 +1,5 @@
-import {
-  formatMoney,
-  type CurrencyCode,
-  type SubscriptionRecord,
-} from '@myorganizer/core';
+import { formatMoney } from '@myorganizer/core';
+import type { CurrencyCode, SubscriptionRecord } from '@myorganizer/vault-core';
 import {
   Button,
   Card,

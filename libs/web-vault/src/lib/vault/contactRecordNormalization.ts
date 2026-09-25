@@ -1,20 +1,17 @@
+import { randomId } from '@myorganizer/core';
 import {
   AddressRecord,
   AddressStatusEnum,
   OrganisationTypeEnum,
   PriorityEnum,
-  randomId,
   readVaultBlobRecords,
   UpdateMethodEnum,
   UsageLocationRecord,
-} from '@myorganizer/core';
-
-import type {
-  MobileNumberRecord as _MobileNumberRecord,
-  OrganisationType,
-  Priority,
-  UpdateMethod,
-} from '@myorganizer/core';
+  type MobileNumberRecord as _MobileNumberRecord,
+  type OrganisationType,
+  type Priority,
+  type UpdateMethod,
+} from '@myorganizer/vault-core';
 
 type NormalizeResult<T> = {
   value: T;

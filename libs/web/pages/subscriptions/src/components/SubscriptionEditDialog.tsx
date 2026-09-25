@@ -1,6 +1,6 @@
 'use client';
 
-import type { SubscriptionRecord } from '@myorganizer/core';
+import type { SubscriptionRecord } from '@myorganizer/vault-core';
 import {
   Dialog,
   DialogContent,

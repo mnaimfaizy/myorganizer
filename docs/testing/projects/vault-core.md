@@ -14,6 +14,8 @@ transform: { '^.+\\.[tj]sx?$': ['babel-jest', { presets: ['@nx/react/babel'] }] 
 - Use `Buffer.alloc(n).toString('base64')` for stub IV/ciphertext values.
 - Never test with real encryption keys — use a deterministic test key.
 - Use the `makeEnvelope()` builder pattern (see `vaultExportEnvelope.spec.ts`) for envelope tests.
+- Specs under `src/lib/records/` cover the plaintext record shapes and per-record merges. They
+  are pure: no crypto, no keys, no mocks — assert the merged envelope exactly.
 
 ## Security checks (in scope for this library)
 

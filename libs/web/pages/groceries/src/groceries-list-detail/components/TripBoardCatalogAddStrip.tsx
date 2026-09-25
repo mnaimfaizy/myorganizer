@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogItem, GroceryList } from '@myorganizer/core';
+import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
 import { Input, cn } from '@myorganizer/web-ui';
 import { useCallback, useMemo, useState, type ChangeEvent } from 'react';
 import { getCategoryEmoji } from '../../shared/constants/categories';

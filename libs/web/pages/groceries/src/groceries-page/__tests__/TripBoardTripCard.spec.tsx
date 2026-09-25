@@ -87,7 +87,11 @@ jest.mock('lucide-react', () => ({
   Trash2: () => <span data-testid="trash-icon" />,
 }));
 
-import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
+import type {
+  CatalogItem,
+  GroceryList,
+  ListLine,
+} from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { TripBoardTripCard } from '../components/TripBoardTripCard';

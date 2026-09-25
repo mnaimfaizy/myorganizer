@@ -15,8 +15,10 @@
 
 import type { AxiosResponse } from 'axios';
 import { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/core';
-import { readVaultBlobRecords } from '@myorganizer/core';
+import {
+  type VaultBlobEnvelope,
+  readVaultBlobRecords,
+} from '@myorganizer/vault-core';
 
 import { checkVaultBlobsForUpdates } from './vaultPullCheck';
 import { createVaultHandle, type VaultHandle } from './vaultHandle';

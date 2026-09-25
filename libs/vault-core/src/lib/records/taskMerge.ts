@@ -1,5 +1,5 @@
-import { mergeRecordsById } from '../vault/mergeVaultRecords';
-import type { VaultBlobEnvelope } from '../vault/vaultBlobEnvelope';
+import { mergeRecordsById } from './mergeVaultRecords';
+import type { VaultBlobEnvelope } from './vaultBlobEnvelope';
 
 import type { Task } from './task';
 

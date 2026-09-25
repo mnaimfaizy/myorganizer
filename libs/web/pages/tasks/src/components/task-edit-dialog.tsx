@@ -1,6 +1,6 @@
 'use client';
 
-import type { Task } from '@myorganizer/core';
+import type { Task } from '@myorganizer/vault-core';
 import {
   Dialog,
   DialogContent,

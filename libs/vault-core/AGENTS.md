@@ -2,9 +2,21 @@
 
 ## Scope
 
-Platform-agnostic vault types and interfaces for encrypted user data, plus the
-one Web Crypto suite the web app and the standalone Escape Copy reader both
-run.
+The Vault on both sides of encryption, platform-agnostic:
+
+- **Ciphertext side** — Vault Blob types and interfaces, the export envelope,
+  migration, and the one Web Crypto suite the web app and the standalone Escape
+  Copy reader both run.
+- **Plaintext side** (`src/lib/records/`) — the record shapes a Vault Blob holds
+  once decrypted (Tasks, groceries, contacts, subscriptions, and the currency
+  codes a record may carry), the Vault Blob Envelope with its Tombstones, and
+  the per-record merge a Vault Pull converges with. It is pure: no crypto, no
+  storage, no clock, no browser global, so it is exported from the Portable
+  Entry Point as well as the main one. It only ever runs on a client holding
+  the Master Key.
+
+It moved here from `libs/core` (#164) so the merge is reachable from mobile and
+is reviewed with the rest of the Vault.
 
 ## Commands
 
@@ -20,6 +32,12 @@ run.
 
 - Do not add platform-specific storage implementations here.
 - Do not weaken ciphertext-only assumptions.
+- Do not call the per-record merge or read record shapes from server code. The
+  backend imports this library for Vault Blob types and handles every Vault Blob
+  as opaque Ciphertext; it holds no Master Key, so a plaintext record never
+  exists there. The records reach the backend's dependency graph only because
+  they share this library — that is documented, not gated, because a type
+  import cannot be told apart statically from passing an opaque blob.
 
 ## The one crypto exception, and its edges
 

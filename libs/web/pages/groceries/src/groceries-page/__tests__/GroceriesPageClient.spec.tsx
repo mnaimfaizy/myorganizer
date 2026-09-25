@@ -195,7 +195,7 @@ jest.mock('../components', () => {
   };
 });
 
-import type { CatalogItem, GroceryList } from '@myorganizer/core';
+import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { GroceriesPageClient as GroceriesPage } from '../GroceriesPageClient';

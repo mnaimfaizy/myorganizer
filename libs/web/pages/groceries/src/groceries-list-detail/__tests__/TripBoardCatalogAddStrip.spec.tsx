@@ -6,7 +6,11 @@ jest.mock('@myorganizer/web-ui', () => ({
   cn: (...args: unknown[]) => args.filter(Boolean).join(' '),
 }));
 
-import type { CatalogItem, GroceryList, ListLine } from '@myorganizer/core';
+import type {
+  CatalogItem,
+  GroceryList,
+  ListLine,
+} from '@myorganizer/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TripBoardCatalogAddStrip } from '../components/TripBoardCatalogAddStrip';

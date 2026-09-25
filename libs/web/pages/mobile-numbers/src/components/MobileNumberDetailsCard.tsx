@@ -1,4 +1,4 @@
-import { MobileNumberRecord } from '@myorganizer/core';
+import { MobileNumberRecord } from '@myorganizer/vault-core';
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { Pencil } from 'lucide-react';
 import { formatMobileNumber } from '../utils/formatMobileNumber';

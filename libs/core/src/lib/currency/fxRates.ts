@@ -1,4 +1,7 @@
-import { isSupportedCurrencyCode, type CurrencyCode } from './currency';
+import {
+  isSupportedCurrencyCode,
+  type CurrencyCode,
+} from '@myorganizer/vault-core/portable';
 
 const FX_CACHE_KEY = 'myorganizer_fx_rates_v1';
 const DEFAULT_TTL_MS = 1000 * 60 * 60 * 24; // 24h
@@ -60,7 +63,7 @@ async function sleep(ms: number): Promise<void> {
 
 async function fetchJsonWithTimeout(
   url: string,
-  timeoutMs: number
+  timeoutMs: number,
 ): Promise<unknown> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);

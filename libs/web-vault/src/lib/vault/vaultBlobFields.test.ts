@@ -11,7 +11,7 @@
  */
 
 import { VaultBlobType } from '@myorganizer/app-api-client';
-import { type VaultBlobEnvelope } from '@myorganizer/core';
+import type { VaultBlobEnvelope } from '@myorganizer/vault-core';
 
 import {
   VAULT_BLOB_CONVERGE_STRATEGIES,

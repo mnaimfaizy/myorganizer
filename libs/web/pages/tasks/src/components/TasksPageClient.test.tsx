@@ -205,7 +205,7 @@ jest.mock('./task-delete-dialog', () => ({
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { Task } from '@myorganizer/core';
+import type { Task } from '@myorganizer/vault-core';
 import { useToast } from '@myorganizer/web-ui';
 import { TasksPageClient } from './TasksPageClient';
 import { useTasksWorkflow } from '../workflow';

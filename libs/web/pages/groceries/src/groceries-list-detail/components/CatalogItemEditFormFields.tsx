@@ -1,6 +1,6 @@
 'use client';
 
-import type { GroceryCategoryType } from '@myorganizer/core';
+import type { GroceryCategoryType } from '@myorganizer/vault-core';
 import {
   FormControl,
   FormField,

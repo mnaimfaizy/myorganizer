@@ -6,7 +6,7 @@ jest.mock('@myorganizer/core', () => ({
   randomId: jest.fn(),
 }));
 
-import type { Task, TaskPriority } from '@myorganizer/core';
+import type { Task, TaskPriority } from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
 
 import {
