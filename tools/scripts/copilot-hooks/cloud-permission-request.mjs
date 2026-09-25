@@ -20,6 +20,8 @@ import { extractCommand, getToolInput, readPayloadOrExit } from './lib.mjs';
  * on upstream config, any unlisted flag — gets no decision and the user is
  * asked as before. Deny rules are evaluated regardless of what this returns.
  *
+ * Decision record: docs/adr/0105-a-cloud-session-answers-its-own-feature-branch-push-prompt.md.
+ *
  * Claude Code sets `CLAUDE_CODE_REMOTE=true` in cloud sessions only; a local
  * terminal, the desktop app's local sessions, and the CI reviewer never see it.
  *
