@@ -565,10 +565,11 @@ describe('useYouTubeSyncPoll', () => {
     });
   });
 
-  describe('user-initiated run (beginUserRun)', () => {
-    it('completeRun with no live status ever observed fires onRunComplete exactly once', () => {
+  describe('user-initiated run (runUserSync)', () => {
+    it('trigger resolves true with no live status → onRunComplete once', async () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
       const onRunComplete = jest.fn();
+      const trigger = jest.fn().mockResolvedValue(true);
 
       const { result } = renderHook(() =>
         useYouTubeSyncPoll(statusOf({ status: 'success' }), {
@@ -577,22 +578,20 @@ describe('useYouTubeSyncPoll', () => {
         }),
       );
 
-      // Start a user-initiated run
-      const completeRun = result.current.beginUserRun();
-
-      // Status never goes live, so poll path does not fire onRunComplete
-      // Call completeRun manually (simulates request completing synchronously)
-      act(() => {
-        completeRun();
+      // Call runUserSync with trigger
+      await act(async () => {
+        await result.current.runUserSync(trigger);
       });
 
-      // onRunComplete should be called exactly once from completeRun
+      // onRunComplete should be called exactly once
       expect(onRunComplete).toHaveBeenCalledTimes(1);
+      expect(trigger).toHaveBeenCalledTimes(1);
     });
 
-    it('live → terminal observed after beginUserRun then completeRun calls onRunComplete once total', () => {
+    it('live → terminal fires first then trigger resolves true → once total', async () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'running' }));
       const onRunComplete = jest.fn();
+      const trigger = jest.fn().mockResolvedValue(true);
 
       const { result, rerender } = renderHook(
         ({ status }: { status: YouTubeSyncStatus | null }) =>
@@ -602,8 +601,11 @@ describe('useYouTubeSyncPoll', () => {
         },
       );
 
-      // Start a user-initiated run
-      const completeRun = result.current.beginUserRun();
+      // Start runUserSync (but don't await yet)
+      let syncPromise: Promise<void> | null = null;
+      act(() => {
+        syncPromise = result.current.runUserSync(trigger);
+      });
 
       // Rerender with live status (poll path now running, triggers initial poll)
       act(() => {
@@ -618,16 +620,14 @@ describe('useYouTubeSyncPoll', () => {
       });
       expect(onRunComplete).toHaveBeenCalledTimes(1);
 
-      // Now call completeRun (should be inert because poll path already fired)
-      act(() => {
-        completeRun();
-      });
+      // Wait for the sync to complete
+      await syncPromise;
 
-      // Still exactly once
+      // Still exactly once (runUserSync's call is inert because poll path already fired)
       expect(onRunComplete).toHaveBeenCalledTimes(1);
     });
 
-    it('completeRun called twice fires onRunComplete once', () => {
+    it('stale: first runUserSync trigger (deferred) resolves after second runUserSync started → inert, second fires', async () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
       const onRunComplete = jest.fn();
 
@@ -638,51 +638,42 @@ describe('useYouTubeSyncPoll', () => {
         }),
       );
 
-      const completeRun = result.current.beginUserRun();
-
-      // Call completeRun twice
-      act(() => {
-        completeRun();
-      });
-      act(() => {
-        completeRun();
-      });
-
-      // onRunComplete fired exactly once (second call is inert)
-      expect(onRunComplete).toHaveBeenCalledTimes(1);
-    });
-
-    it('stale completeRun from earlier beginUserRun is inert after new beginUserRun', () => {
-      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
-      const onRunComplete = jest.fn();
-
-      const { result } = renderHook(() =>
-        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
-          poll,
-          onRunComplete,
-        }),
+      // First user-initiated run with deferred trigger
+      let resolveFirst: ((value: boolean) => void) | null = null;
+      const triggerFirst = jest.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve;
+          }),
       );
 
-      // First user-initiated run
-      const completeRun1 = result.current.beginUserRun();
-
-      // Second user-initiated run (resets guard)
-      const completeRun2 = result.current.beginUserRun();
-
-      // Call the first (stale) completeRun — should be inert
+      // Start first sync (but don't await yet)
+      let firstSyncPromise: Promise<void> | null = null;
       act(() => {
-        completeRun1();
+        firstSyncPromise = result.current.runUserSync(triggerFirst);
       });
-      expect(onRunComplete).not.toHaveBeenCalled();
 
-      // Call the second (current) completeRun — should fire
-      act(() => {
-        completeRun2();
+      // Second user-initiated run (bumps run ID)
+      const triggerSecond = jest.fn().mockResolvedValue(true);
+      await act(async () => {
+        await result.current.runUserSync(triggerSecond);
       });
+
+      // onRunComplete fired once from second sync
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+
+      // Now resolve the first trigger — should be inert
+      await act(async () => {
+        resolveFirst?.(true);
+        // Wait for the first sync to settle
+        await firstSyncPromise;
+      });
+
+      // Still exactly once (first trigger was stale)
       expect(onRunComplete).toHaveBeenCalledTimes(1);
     });
 
-    it('two sequential user runs each completing via completeRun fire onRunComplete twice', () => {
+    it('two sequential runUserSync calls with trigger resolving true fire onRunComplete twice', async () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
       const onRunComplete = jest.fn();
 
@@ -694,21 +685,21 @@ describe('useYouTubeSyncPoll', () => {
       );
 
       // First run
-      const completeRun1 = result.current.beginUserRun();
-      act(() => {
-        completeRun1();
+      const trigger1 = jest.fn().mockResolvedValue(true);
+      await act(async () => {
+        await result.current.runUserSync(trigger1);
       });
       expect(onRunComplete).toHaveBeenCalledTimes(1);
 
-      // Second run (guard resets on beginUserRun)
-      const completeRun2 = result.current.beginUserRun();
-      act(() => {
-        completeRun2();
+      // Second run (guard resets on new runUserSync)
+      const trigger2 = jest.fn().mockResolvedValue(true);
+      await act(async () => {
+        await result.current.runUserSync(trigger2);
       });
       expect(onRunComplete).toHaveBeenCalledTimes(2);
     });
 
-    it('uses latest onRunComplete when option changes between beginUserRun and completeRun', () => {
+    it('uses latest onRunComplete when option changes before trigger resolves', async () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
       const oldCallback = jest.fn();
       const newCallback = jest.fn();
@@ -724,21 +715,80 @@ describe('useYouTubeSyncPoll', () => {
         },
       );
 
-      // Start a user-initiated run with old callback
-      const completeRun = result.current.beginUserRun();
+      let resolveTrigger: ((value: boolean) => void) | null = null;
+      const trigger = jest.fn().mockImplementation(
+        () =>
+          new Promise((resolve) => {
+            resolveTrigger = resolve;
+          }),
+      );
 
-      // Change callback before calling completeRun
+      // Start runUserSync with old callback (but don't await yet)
+      let syncPromise: Promise<void> | null = null;
+      act(() => {
+        syncPromise = result.current.runUserSync(trigger);
+      });
+
+      // Change callback before trigger resolves
       act(() => {
         rerender({ onRunComplete: newCallback });
       });
 
-      // Call completeRun — should use new callback
-      act(() => {
-        completeRun();
+      // Resolve the trigger and wait for sync to complete
+      await act(async () => {
+        resolveTrigger?.(true);
+        await syncPromise;
       });
 
       expect(oldCallback).not.toHaveBeenCalled();
       expect(newCallback).toHaveBeenCalledTimes(1);
+    });
+
+    it('trigger resolves false → no call to onRunComplete', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+      const trigger = jest.fn().mockResolvedValue(false);
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.runUserSync(trigger);
+      });
+
+      expect(onRunComplete).not.toHaveBeenCalled();
+      expect(trigger).toHaveBeenCalledTimes(1);
+    });
+
+    it('trigger rejects → runUserSync rejects and no call to onRunComplete', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+      const error = new Error('request failed');
+      const trigger = jest.fn().mockRejectedValue(error);
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      let caughtError: Error | null = null;
+      await act(async () => {
+        try {
+          await result.current.runUserSync(trigger);
+        } catch (err) {
+          caughtError = err as Error;
+        }
+      });
+
+      expect(caughtError).toBe(error);
+      expect(onRunComplete).not.toHaveBeenCalled();
+      expect(trigger).toHaveBeenCalledTimes(1);
     });
   });
 });

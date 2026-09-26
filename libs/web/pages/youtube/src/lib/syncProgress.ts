@@ -80,6 +80,13 @@ const RAN_STATUS = {
  * answers with the stored status of an earlier run. Every run that does work
  * moves its attempt stamp, and a refusal leaves it where it was, so the stamp
  * read before the request is compared with the one in the response.
+ *
+ * Two cases read as a run without being this request's work, and both are
+ * accepted: a sign-in failure records `failed` and moves the stamp before
+ * any channel is read, and a lost mutex can echo the stamp of a concurrent
+ * run that finished before the response was read. Telling either apart needs
+ * the server to say so, which #753 leaves out of scope; each costs one extra
+ * refresh, never a missed one.
  */
 export function didSyncRequestRun(
   status: YouTubeSyncStatus['status'],

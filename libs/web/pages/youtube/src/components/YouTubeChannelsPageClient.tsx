@@ -115,7 +115,7 @@ function ConnectedChannelsDashboard({
     await subs.refresh();
   }, [subs]);
 
-  const { beginUserRun } = useYouTubeSyncPoll(syncStatus.status, {
+  const { runUserSync } = useYouTubeSyncPoll(syncStatus.status, {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });
@@ -162,24 +162,15 @@ function ConnectedChannelsDashboard({
   const handleChannelSync = useCallback(() => {
     if (isChannelCooldownActive || syncBusy) return;
 
-    const completeRun = beginUserRun();
-
-    void triggerChannelSync()
-      .then((ran) => {
-        setWaitingForClaim(false);
-        // The response to the User's own request is the completion signal for
-        // a run they started, so a run that finishes before the first poll still
-        // refreshes the lists (#753).
-        if (ran) {
-          completeRun();
-        }
-      })
-      .catch(() => {
-        // Swallow errors; the live-poll path covers long runs whose request fails.
-      });
+    // A resolved request ends the claim wait (#753); a rejected one leaves a
+    // long run to the live-poll path.
+    void runUserSync(triggerChannelSync).then(
+      () => setWaitingForClaim(false),
+      () => undefined,
+    );
 
     setWaitingForClaim(true);
-  }, [isChannelCooldownActive, syncBusy, triggerChannelSync, beginUserRun]);
+  }, [isChannelCooldownActive, syncBusy, triggerChannelSync, runUserSync]);
 
   const handleRequestDisconnect = useCallback(() => {
     setDisconnectError(null);

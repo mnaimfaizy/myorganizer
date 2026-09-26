@@ -90,7 +90,7 @@ function ConnectedDashboard() {
     }
   }, [subs, carouselData]);
 
-  const { beginUserRun } = useYouTubeSyncPoll(syncStatus.status, {
+  const { runUserSync } = useYouTubeSyncPoll(syncStatus.status, {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });
@@ -183,21 +183,12 @@ function ConnectedDashboard() {
       }
     }
 
-    const completeRun = beginUserRun();
-
-    void triggerUploadSync()
-      .then((ran) => {
-        setWaitingForClaim(false);
-        // The response to the User's own request is the completion signal for
-        // a run they started, so a run that finishes before the first poll still
-        // refreshes the lists (#753).
-        if (ran) {
-          completeRun();
-        }
-      })
-      .catch(() => {
-        // Swallow errors; the live-poll path covers long runs whose request fails.
-      });
+    // A resolved request ends the claim wait (#753); a rejected one leaves a
+    // long run to the live-poll path.
+    void runUserSync(triggerUploadSync).then(
+      () => setWaitingForClaim(false),
+      () => undefined,
+    );
 
     setWaitingForClaim(true);
   }, [
@@ -205,7 +196,7 @@ function ConnectedDashboard() {
     syncBusy,
     triggerUploadSync,
     syncStatusValue,
-    beginUserRun,
+    runUserSync,
   ]);
 
   const handleDirectoryRetry = useCallback(() => {

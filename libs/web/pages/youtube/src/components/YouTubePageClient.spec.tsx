@@ -826,7 +826,7 @@ describe('YouTubePageClient', () => {
   });
 
   describe('request-path completion (#753)', () => {
-    it('request that ran (success) → refreshes once', async () => {
+    const setupRequestTest = (triggerResult: boolean | Error) => {
       jest.useFakeTimers();
 
       mockUseYouTubeStatus.mockReturnValue({
@@ -838,7 +838,6 @@ describe('YouTubePageClient', () => {
       const refreshSync = jest
         .fn()
         .mockResolvedValue(statusOf({ status: 'never' }));
-      const triggerUploadSync = jest.fn().mockResolvedValue(true);
 
       const subs = {
         ...defaultSubs,
@@ -851,6 +850,11 @@ describe('YouTubePageClient', () => {
         refresh: jest.fn(),
       };
       mockUseYouTubeCarousel.mockReturnValue(carousel);
+
+      const triggerUploadSync =
+        triggerResult instanceof Error
+          ? jest.fn().mockRejectedValue(triggerResult)
+          : jest.fn().mockResolvedValue(triggerResult);
 
       mockUseYouTubeSyncStatus.mockReturnValue({
         status: statusOf({ status: 'never' }),
@@ -860,174 +864,59 @@ describe('YouTubePageClient', () => {
         refresh: refreshSync,
       });
 
-      render(<YouTubePageClient />);
+      return { subs, carousel };
+    };
 
-      // Click sync
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
-      });
+    it.each([
+      {
+        label: 'request that ran (success)',
+        triggerResult: true,
+        expectedRefreshCalls: 1,
+      },
+      {
+        label: 'request that did not run (cooldown)',
+        triggerResult: false,
+        expectedRefreshCalls: 0,
+      },
+      {
+        label: 'request that ran (failed)',
+        triggerResult: true,
+        expectedRefreshCalls: 1,
+      },
+      {
+        label: 'request that ran (partial)',
+        triggerResult: true,
+        expectedRefreshCalls: 1,
+      },
+    ])(
+      '$label → refreshes $expectedRefreshCalls time(s)',
+      async ({ triggerResult, expectedRefreshCalls }) => {
+        const { subs, carousel } = setupRequestTest(triggerResult);
 
-      // Let the request settle
-      await act(async () => {
-        jest.advanceTimersByTime(0);
-      });
+        render(<YouTubePageClient />);
 
-      // Verify refreshes called once each
-      expect(subs.refresh).toHaveBeenCalledTimes(1);
-      expect(carousel.refresh).toHaveBeenCalledTimes(1);
+        // Click sync
+        await act(async () => {
+          fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
+        });
 
-      jest.useRealTimers();
-    });
+        // Let the request settle
+        await act(async () => {
+          jest.advanceTimersByTime(0);
+        });
 
-    it('request that did not run (cooldown) → no refresh', async () => {
-      jest.useFakeTimers();
+        // Verify refreshes called as expected
+        if (expectedRefreshCalls > 0) {
+          expect(subs.refresh).toHaveBeenCalledTimes(expectedRefreshCalls);
+          expect(carousel.refresh).toHaveBeenCalledTimes(expectedRefreshCalls);
+        } else {
+          expect(subs.refresh).not.toHaveBeenCalled();
+          expect(carousel.refresh).not.toHaveBeenCalled();
+        }
 
-      mockUseYouTubeStatus.mockReturnValue({
-        connected: true,
-        status: 'connected',
-        refresh: jest.fn(),
-      });
-
-      const refreshSync = jest
-        .fn()
-        .mockResolvedValue(statusOf({ status: 'never' }));
-
-      const subs = {
-        ...defaultSubs,
-        refresh: jest.fn(),
-      };
-      mockUseYouTubeSubscriptions.mockReturnValue(subs);
-
-      const carousel = {
-        ...defaultCarousel,
-        refresh: jest.fn(),
-      };
-      mockUseYouTubeCarousel.mockReturnValue(carousel);
-
-      mockUseYouTubeSyncStatus.mockReturnValue({
-        status: statusOf({ status: 'never' }),
-        loading: false,
-        triggerUploadSync: jest.fn().mockResolvedValue(false),
-        isCooldownActive: false,
-        refresh: refreshSync,
-      });
-
-      render(<YouTubePageClient />);
-
-      // Click sync
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
-      });
-
-      // Let the request settle
-      await act(async () => {
-        jest.advanceTimersByTime(0);
-      });
-
-      // Verify no refreshes (run did not happen)
-      expect(subs.refresh).not.toHaveBeenCalled();
-      expect(carousel.refresh).not.toHaveBeenCalled();
-
-      jest.useRealTimers();
-    });
-
-    it('request that ran (failed) → refreshes once', async () => {
-      jest.useFakeTimers();
-
-      mockUseYouTubeStatus.mockReturnValue({
-        connected: true,
-        status: 'connected',
-        refresh: jest.fn(),
-      });
-
-      const refreshSync = jest
-        .fn()
-        .mockResolvedValue(statusOf({ status: 'never' }));
-
-      const subs = {
-        ...defaultSubs,
-        refresh: jest.fn(),
-      };
-      mockUseYouTubeSubscriptions.mockReturnValue(subs);
-
-      const carousel = {
-        ...defaultCarousel,
-        refresh: jest.fn(),
-      };
-      mockUseYouTubeCarousel.mockReturnValue(carousel);
-
-      mockUseYouTubeSyncStatus.mockReturnValue({
-        status: statusOf({ status: 'never' }),
-        loading: false,
-        triggerUploadSync: jest.fn().mockResolvedValue(true),
-        isCooldownActive: false,
-        refresh: refreshSync,
-      });
-
-      render(<YouTubePageClient />);
-
-      // Click sync
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
-      });
-
-      // Let the request settle
-      await act(async () => {
-        jest.advanceTimersByTime(0);
-      });
-
-      // Verify refreshes called once each
-      expect(subs.refresh).toHaveBeenCalledTimes(1);
-      expect(carousel.refresh).toHaveBeenCalledTimes(1);
-
-      jest.useRealTimers();
-    });
-
-    it('request that ran (partial) → refreshes once', async () => {
-      jest.useFakeTimers();
-
-      mockUseYouTubeStatus.mockReturnValue({
-        connected: true,
-        status: 'connected',
-        refresh: jest.fn(),
-      });
-
-      const refreshSync = jest
-        .fn()
-        .mockResolvedValue(statusOf({ status: 'never' }));
-
-      const subs = {
-        ...defaultSubs,
-        refresh: jest.fn(),
-      };
-      mockUseYouTubeSubscriptions.mockReturnValue(subs);
-
-      const carousel = {
-        ...defaultCarousel,
-        refresh: jest.fn(),
-      };
-      mockUseYouTubeCarousel.mockReturnValue(carousel);
-
-      mockUseYouTubeSyncStatus.mockReturnValue({
-        status: statusOf({ status: 'never' }),
-        loading: false,
-        triggerUploadSync: jest.fn().mockResolvedValue(true),
-        isCooldownActive: false,
-        refresh: refreshSync,
-      });
-
-      render(<YouTubePageClient />);
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'Sync uploads' }));
-        jest.advanceTimersByTime(0);
-      });
-
-      expect(subs.refresh).toHaveBeenCalledTimes(1);
-      expect(carousel.refresh).toHaveBeenCalledTimes(1);
-
-      jest.useRealTimers();
-    });
+        jest.useRealTimers();
+      },
+    );
 
     it('request that ran → claim-wait loop stops (no further refreshSync calls)', async () => {
       jest.useFakeTimers();

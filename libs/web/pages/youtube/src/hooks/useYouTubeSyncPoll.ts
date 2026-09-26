@@ -30,13 +30,15 @@ interface UseYouTubeSyncPollOptions {
 
 export interface YouTubeSyncPollControls {
   /**
-   * Call when the User starts a sync. Returns the completion callback for
-   * that run: call it when the User's own sync request resolves with a run
-   * that did work (issue #753). It fires `onRunComplete` unless the
-   * live → terminal transition already fired it for this run, so a run seen
-   * both ways refreshes once. A callback from an earlier click is inert.
+   * Runs a sync the User started. `trigger` sends the User's own sync request
+   * and resolves whether the run did work. The response is the completion
+   * signal for that run (issue #753): when it did work, `onRunComplete` fires
+   * unless the live → terminal transition already fired it for this run, so a
+   * run seen both ways refreshes once. A response to an earlier click is
+   * inert. Resolves once the request has resolved; rejects when it rejects,
+   * leaving a long run to the live-poll path.
    */
-  beginUserRun: () => () => void;
+  runUserSync: (trigger: () => Promise<boolean>) => Promise<void>;
 }
 
 /**
@@ -49,7 +51,7 @@ export interface YouTubeSyncPollControls {
  * - Stops when the run becomes terminal
  * - Calls onRunComplete on the terminal transition
  * - Calls onRunComplete when the User's own sync request reports a run that
- *   finished before any poll saw it live (via beginUserRun), at most once per run
+ *   finished before any poll saw it live (via runUserSync), at most once per run
  * - Cleans up timers and listeners on unmount
  *
  * The elapsed label advances smoothly because SyncProgressPanel renders
@@ -163,15 +165,16 @@ export function useYouTubeSyncPoll(
     };
   }, []);
 
-  const beginUserRun = useCallback(() => {
+  const runUserSync = useCallback(async (trigger: () => Promise<boolean>) => {
     const runId = ++userRunIdRef.current;
     hasCompletedRef.current = false;
-    return () => {
-      if (runId !== userRunIdRef.current || hasCompletedRef.current) return;
-      hasCompletedRef.current = true;
-      onRunCompleteRef.current?.();
-    };
+    const ran = await trigger();
+    if (!ran || runId !== userRunIdRef.current || hasCompletedRef.current) {
+      return;
+    }
+    hasCompletedRef.current = true;
+    onRunCompleteRef.current?.();
   }, []);
 
-  return { beginUserRun };
+  return { runUserSync };
 }
