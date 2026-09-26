@@ -7,4 +7,6 @@ export * from './subscriptionRecordMerge';
 export * from './subscriptionRecords';
 export * from './task';
 export * from './taskMerge';
+export * from './vaultBlobConverge';
+export * from './vaultBlobEdit';
 export * from './vaultBlobEnvelope';

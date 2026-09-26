@@ -1,100 +1,162 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
+  Alert,
   FlatList,
+  Pressable,
   StyleSheet,
   View,
   type ListRenderItemInfo,
 } from 'react-native';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import {
+  isNetworkError,
+  newRecordId,
+  useVaultBlob,
   useVaultSession,
-  pullDecryptedBlob,
+  type VaultBlobWriteErrorKind,
 } from '@myorganizer/mobile/feat-vault';
 import { VaultBlobType } from '@myorganizer/app-api-client';
+import {
+  deleteVaultRecord,
+  putVaultRecord,
+  type Task,
+} from '@myorganizer/vault-core/portable';
 import {
   ScreenContainer,
   ThemedText,
   ThemedButton,
+  ThemedInput,
   useTheme,
 } from '@myorganizer/mobile/ui';
 
-/** Minimal view model for a decrypted task — only the fields this screen renders. */
-interface DecryptedTask {
-  id?: string;
-  title?: string;
-  status?: string;
-  priority?: string;
-  dueDate?: string;
-  archived?: boolean;
-}
+/**
+ * A decrypted task as this screen reads it. The payload is decrypted JSON, so
+ * every field but `id` is a claim; the whole entry is kept and spread back on
+ * edit so fields this screen does not know survive the round trip.
+ */
+type DecryptedTask = Partial<Task> & { id: string };
 
-function describeTasksError(err: unknown): string {
-  const e = err as {
-    response?: { status?: number };
-    isAxiosError?: boolean;
-    code?: string;
-  };
-  if (e?.response) return 'Could not load your tasks. Please try again.';
-  if (e?.isAxiosError || e?.code === 'ERR_NETWORK') {
+function describeLoadError(err: unknown): string {
+  if (isNetworkError(err)) {
     return 'Network error — check your connection and try again.';
+  }
+  if ((err as { response?: unknown })?.response) {
+    return 'Could not load your tasks. Please try again.';
   }
   return 'Could not decrypt your tasks.';
 }
 
-/** Normalizes the decrypted payload (a Task[] or { tasks: [...] }) to an array. */
-function toTaskArray(raw: unknown): DecryptedTask[] {
-  const list = Array.isArray(raw)
-    ? raw
-    : Array.isArray((raw as { tasks?: unknown })?.tasks)
-      ? (raw as { tasks: unknown[] }).tasks
-      : [];
-  return (list as DecryptedTask[]).filter((task) => !task?.archived);
+const WRITE_ERROR_MESSAGES = {
+  conflict:
+    'These tasks changed on another device. Reload to see the latest, then make your change again.',
+  network: 'Your change was not saved — check your connection and try again.',
+  failed: 'Your change was not saved. Please try again.',
+} as const satisfies Record<VaultBlobWriteErrorKind, string>;
+
+/** The entries of a decrypted Tasks payload this screen can show and edit. */
+function toVisibleTasks(records: unknown): DecryptedTask[] {
+  if (!Array.isArray(records)) return [];
+  return records.filter(
+    (entry): entry is DecryptedTask =>
+      typeof entry === 'object' &&
+      entry !== null &&
+      typeof (entry as { id?: unknown }).id === 'string' &&
+      !(entry as { archived?: unknown }).archived,
+  );
 }
 
 /**
- * Read-only Tasks list: once the Vault is unlocked, pull the Tasks blob, decrypt
- * it on-device with the Master Key, and render it. One-way pull only — no write,
- * edit, or push from mobile this phase.
+ * The Tasks list: once the Vault is unlocked, pull the Tasks blob and decrypt
+ * it on-device with the Master Key. Tap a task to toggle it done, long-press
+ * to delete it, or add one by title; pull down to re-read edits made on
+ * another device. Each edit is pushed to the server as Ciphertext straight
+ * away; a failed push puts the list back and offers a retry (ADR 0107).
  */
 export function TasksScreen(): React.JSX.Element {
   const { logout } = useAuth();
-  const { masterKey, vaultApi, lock } = useVaultSession();
+  const { lock } = useVaultSession();
   const theme = useTheme();
+  const {
+    snapshot,
+    loading,
+    refreshing,
+    loadError,
+    writing,
+    writeError,
+    reload,
+    apply,
+    retry,
+  } = useVaultBlob(VaultBlobType.Tasks);
 
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [tasks, setTasks] = useState<DecryptedTask[]>([]);
+  const [newTitle, setNewTitle] = useState('');
 
-  const load = useCallback(async (): Promise<void> => {
-    if (!masterKey) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const raw = await pullDecryptedBlob({
-        vaultApi,
-        masterKey,
-        type: VaultBlobType.Tasks,
-      });
-      setTasks(raw == null ? [] : toTaskArray(raw));
-    } catch (err) {
-      setError(describeTasksError(err));
-    } finally {
-      setLoading(false);
+  const tasks = useMemo(
+    () => toVisibleTasks(snapshot?.envelope.records),
+    [snapshot],
+  );
+
+  const toggleTask = useCallback(
+    (task: DecryptedTask): void => {
+      const now = new Date().toISOString();
+      void apply((envelope) =>
+        putVaultRecord(envelope, {
+          ...task,
+          status: task.status === 'done' ? 'pending' : 'done',
+          updatedAt: now,
+        }),
+      );
+    },
+    [apply],
+  );
+
+  const confirmDelete = useCallback(
+    (task: DecryptedTask): void => {
+      Alert.alert('Delete task?', task.title ?? 'Untitled task', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            const now = new Date().toISOString();
+            void apply((envelope) => deleteVaultRecord(envelope, task.id, now));
+          },
+        },
+      ]);
+    },
+    [apply],
+  );
+
+  const addTask = useCallback(async (): Promise<void> => {
+    const title = newTitle.trim();
+    if (!title) return;
+    const task: Task = {
+      id: newRecordId(),
+      title,
+      status: 'pending',
+      priority: 'medium',
+      archived: false,
+      createdAt: new Date().toISOString(),
+    };
+    // The title stays in the field until the task is on the server, so a
+    // failed push never loses what was typed.
+    if (await apply((envelope) => putVaultRecord(envelope, task))) {
+      setNewTitle('');
     }
-  }, [masterKey, vaultApi]);
-
-  useEffect(() => {
-    void load();
-  }, [load]);
+  }, [apply, newTitle]);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<DecryptedTask>): React.JSX.Element => {
-      const meta = [item.status, item.priority]
-        .filter((part): part is string => Boolean(part))
-        .join(' · ');
+      const done = item.status === 'done';
+      const meta = [item.status, item.priority].filter(Boolean).join(' · ');
       return (
-        <View
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ checked: done, disabled: writing }}
+          accessibilityHint="Toggles done. Long-press to delete."
+          disabled={writing}
+          onPress={() => toggleTask(item)}
+          onLongPress={() => confirmDelete(item)}
           style={[
             styles.card,
             {
@@ -106,14 +168,17 @@ export function TasksScreen(): React.JSX.Element {
             },
           ]}
         >
-          <ThemedText variant="label">
+          <ThemedText
+            variant="label"
+            style={done ? styles.doneTitle : undefined}
+          >
             {item.title ?? 'Untitled task'}
           </ThemedText>
           {meta.length > 0 && <ThemedText variant="caption">{meta}</ThemedText>}
-        </View>
+        </Pressable>
       );
     },
-    [theme],
+    [theme, writing, toggleTask, confirmDelete],
   );
 
   return (
@@ -140,35 +205,92 @@ export function TasksScreen(): React.JSX.Element {
         <View style={styles.centered}>
           <ActivityIndicator color={theme.colors.primary} />
         </View>
-      ) : error != null ? (
+      ) : loadError != null ? (
         <View style={[styles.centered, { gap: theme.spacing.md }]}>
           <ThemedText variant="body" color="destructive">
-            {error}
+            {describeLoadError(loadError)}
           </ThemedText>
           <ThemedButton
             label="Try again"
             variant="outline"
-            onPress={() => void load()}
+            onPress={() => void reload()}
           />
         </View>
-      ) : tasks.length === 0 ? (
-        <View style={styles.centered}>
-          <ThemedText variant="body">No tasks yet.</ThemedText>
-          <ThemedText variant="caption" style={{ marginTop: theme.spacing.xs }}>
-            Tasks you add on the web will appear here.
-          </ThemedText>
-        </View>
       ) : (
-        <FlatList
-          data={tasks}
-          keyExtractor={(item, index) => item.id ?? String(index)}
-          renderItem={renderItem}
-          contentContainerStyle={{
-            gap: theme.spacing.sm,
-            paddingBottom: theme.spacing.xl,
-          }}
-          showsVerticalScrollIndicator={false}
-        />
+        <>
+          <View
+            style={[
+              styles.addRow,
+              { gap: theme.spacing.sm, marginBottom: theme.spacing.md },
+            ]}
+          >
+            <ThemedInput
+              placeholder="Add a task"
+              value={newTitle}
+              onChangeText={setNewTitle}
+              onSubmitEditing={() => void addTask()}
+              returnKeyType="done"
+              editable={!writing}
+              containerStyle={styles.addInput}
+            />
+            <ThemedButton
+              label="Add"
+              onPress={() => void addTask()}
+              disabled={writing || newTitle.trim().length === 0}
+            />
+          </View>
+
+          {writeError != null && (
+            <View
+              accessibilityRole="alert"
+              style={[
+                styles.writeError,
+                {
+                  borderColor: theme.colors.destructive,
+                  borderRadius: theme.radii.md,
+                  padding: theme.spacing.md,
+                  gap: theme.spacing.sm,
+                  marginBottom: theme.spacing.md,
+                },
+              ]}
+            >
+              <ThemedText variant="body" color="destructive">
+                {WRITE_ERROR_MESSAGES[writeError]}
+              </ThemedText>
+              <ThemedButton
+                label={writeError === 'conflict' ? 'Reload' : 'Try again'}
+                variant="outline"
+                onPress={() =>
+                  void (writeError === 'conflict' ? reload() : retry())
+                }
+              />
+            </View>
+          )}
+
+          <FlatList
+            data={tasks}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            refreshing={refreshing}
+            onRefresh={() => void reload()}
+            ListEmptyComponent={
+              <View style={styles.centered}>
+                <ThemedText variant="body">No tasks yet.</ThemedText>
+                <ThemedText
+                  variant="caption"
+                  style={{ marginTop: theme.spacing.xs }}
+                >
+                  Add one above, or on the web.
+                </ThemedText>
+              </View>
+            }
+            contentContainerStyle={[
+              styles.listContent,
+              { gap: theme.spacing.sm, paddingBottom: theme.spacing.xl },
+            ]}
+            showsVerticalScrollIndicator={false}
+          />
+        </>
       )}
     </ScreenContainer>
   );
@@ -189,8 +311,24 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
     minHeight: 0,
   },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addInput: {
+    flex: 1,
+  },
+  writeError: {
+    borderWidth: 1,
+  },
   card: {
     borderWidth: 1,
+  },
+  listContent: {
+    flexGrow: 1,
+  },
+  doneTitle: {
+    textDecorationLine: 'line-through',
   },
   centered: {
     flex: 1,

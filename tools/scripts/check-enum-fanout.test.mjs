@@ -71,6 +71,7 @@ const DECLARATION_SITES = [
   'libs/web/vault/src/lib/vault/localVaultStorage.ts',
   'libs/vault-core/src/lib/types.ts',
   'libs/vault-core/src/lib/vaultExportEnvelope.ts',
+  'libs/vault-core/src/lib/records/vaultBlobConverge.ts',
 ];
 
 /** A workspace carrying the guarded enum and its pinned table, plus `extra` files. */
@@ -277,6 +278,11 @@ test('exempts a declaration site, which is the list rather than a use of it', (t
   write(
     workspace,
     'libs/vault-core/src/lib/vaultExportEnvelope.ts',
+    'export {};\n',
+  );
+  write(
+    workspace,
+    'libs/vault-core/src/lib/records/vaultBlobConverge.ts',
     'export {};\n',
   );
   commitAll(workspace);

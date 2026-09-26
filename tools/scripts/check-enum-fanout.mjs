@@ -99,6 +99,11 @@ const GUARDED = [
         reason:
           'Declares `VAULT_EXPORT_BLOB_TYPES` and the envelope `BlobsSchema` — the export contract itself. The pin satisfies `Record<VaultExportBlobType, VaultRecordType>`, so a seventh blob type missing from this schema fails to compile there.',
       },
+      {
+        path: 'libs/vault-core/src/lib/records/vaultBlobConverge.ts',
+        reason:
+          'Declares `VAULT_BLOB_CONVERGE_STRATEGIES`, the one convergence pin web and mobile share (ADR 0107). It cannot import `VaultBlobType` (wrong dependency direction), so it satisfies `Record<CoreVaultRecordType, …>` itself, and the pin re-asserts the same table against `Record<VaultBlobType, VaultBlobConvergeStrategy>` — a seventh blob type with no strategy here fails to compile at both.',
+      },
     ],
     why: 'an omitted Vault Blob Type destroys User-owned ciphertext (ADR 0033, issues #512 and #537)',
   },

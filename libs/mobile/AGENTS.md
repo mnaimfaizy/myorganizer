@@ -8,7 +8,7 @@ Root-level React Native rules (package-root imports, edge-to-edge via `react-nat
 
 ## Commands
 
-- Test: `yarn nx test <project-name>` (e.g. `mobile-ui`, `mobile-feat-vault`).
+- Test: none yet — no mobile library has a Jest target, and the mobile test toolchain is unresolved (see the Mobile Test Toolchain Note in `TECH_STACK.md`). Test pure logic in a shared library such as `vault-core` instead.
 - Lint: `yarn nx lint <project-name>`.
 
 ## Do
