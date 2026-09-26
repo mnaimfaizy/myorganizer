@@ -820,9 +820,8 @@ jobs:
         run: corepack yarn tailwind:classes:check
 
       # A bare `react-native/…` subpath import is deprecated at 0.80 with
-      # removal planned; browser globals are scanned in every mobile source file,
-      # not only those a tsc program includes; and mobile must
-      # reach shared libraries through their Portable Entry Points (ADR 0103).
+      # removal planned; browser globals are scanned in all mobile source, and
+      # mobile must reach shared libraries through Portable Entry Points (ADR 0103).
       # ADR 0064: the Escape Copy must be openable by a tool that needs nothing
       # of ours, and a gate must assert the tool still opens a freshly produced
       # envelope. This builds the reader and runs it against an envelope the
