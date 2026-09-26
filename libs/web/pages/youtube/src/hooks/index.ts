@@ -3,6 +3,7 @@
 import { clearAuthSession, getAccessToken, refresh } from '@myorganizer/auth';
 import { getApiBaseUrl } from '@myorganizer/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { didSyncRequestRun } from '../lib/syncProgress';
 import type {
   ChannelCarousel,
   NotificationSettings,
@@ -530,7 +531,8 @@ export function useYouTubeSyncStatus() {
   const triggerUploadSync = useCallback(async () => {
     setLoading(true);
     try {
-      // Fetch the authoritative sync-status for the cooldown guard only.
+      // Fetch the authoritative sync-status for the cooldown guard and for the
+      // attempt stamp the response is compared against (#753) only.
       // This read happens before the PUT is sent, so it is always stale — do not publish
       // it as the component's current status. Publishing a stale observation can
       // overwrite a live status if another fetch happens to resolve afterward, which
@@ -544,12 +546,20 @@ export function useYouTubeSyncStatus() {
         );
       }
 
-      await apiFetch<import('../types').YouTubeSyncResult>('/uploads/sync', {
-        method: 'PUT',
-      });
+      // The request resolves once the run has finished (ADR 0080), so its
+      // result is the completion signal for a run the User started (#753).
+      const result = await apiFetch<import('../types').YouTubeSyncResult>(
+        '/uploads/sync',
+        { method: 'PUT' },
+      );
 
-      const finalStatus = await fetch_();
-      return finalStatus;
+      // A failed re-read must not hide a run that did work.
+      await fetch_().catch(() => undefined);
+      return didSyncRequestRun(
+        result.status,
+        latest.lastSyncAttemptAt,
+        result.lastSyncAttemptAt,
+      );
     } finally {
       setLoading(false);
     }
@@ -566,15 +576,18 @@ export function useYouTubeSyncStatus() {
         );
       }
 
-      await apiFetch<import('../types').YouTubeChannelSyncResult>(
-        '/subscriptions/sync',
-        {
-          method: 'PUT',
-        },
-      );
+      const result = await apiFetch<
+        import('../types').YouTubeChannelSyncResult
+      >('/subscriptions/sync', {
+        method: 'PUT',
+      });
 
-      const finalStatus = await fetch_();
-      return finalStatus;
+      await fetch_().catch(() => undefined);
+      return didSyncRequestRun(
+        result.status,
+        latest.channelLastAttemptAt,
+        result.lastAttemptAt,
+      );
     } finally {
       setLoading(false);
     }

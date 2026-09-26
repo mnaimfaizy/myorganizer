@@ -28,6 +28,17 @@ interface UseYouTubeSyncPollOptions {
   poll: () => Promise<YouTubeSyncStatus>;
 }
 
+export interface YouTubeSyncPollControls {
+  /**
+   * Call when the User starts a sync. Returns the completion callback for
+   * that run: call it when the User's own sync request resolves with a run
+   * that did work (issue #753). It fires `onRunComplete` unless the
+   * live → terminal transition already fired it for this run, so a run seen
+   * both ways refreshes once. A callback from an earlier click is inert.
+   */
+  beginUserRun: () => () => void;
+}
+
 /**
  * Polls /sync-status while a Channel Sync or an Upload Sync is live.
  *
@@ -37,6 +48,8 @@ interface UseYouTubeSyncPollOptions {
  * - Pauses when the tab is hidden, resumes with an immediate poll on visible
  * - Stops when the run becomes terminal
  * - Calls onRunComplete on the terminal transition
+ * - Calls onRunComplete when the User's own sync request reports a run that
+ *   finished before any poll saw it live (via beginUserRun), at most once per run
  * - Cleans up timers and listeners on unmount
  *
  * The elapsed label advances smoothly because SyncProgressPanel renders
@@ -46,15 +59,22 @@ interface UseYouTubeSyncPollOptions {
  * @param currentStatus the current polled status (from useYouTubeSyncStatus)
  * @param options.onRunComplete callback on terminal transition
  * @param options.poll the function to call to fetch sync status
+ * @returns controls for a run the User starts from this page
  */
 export function useYouTubeSyncPoll(
   currentStatus: YouTubeSyncStatus | null | undefined,
   options: UseYouTubeSyncPollOptions,
-): void {
+): YouTubeSyncPollControls {
   const { onRunComplete, poll } = options;
   const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const wasLiveRef = useRef(false);
   const hasCompletedRef = useRef(false);
+  const userRunIdRef = useRef(0);
+  const onRunCompleteRef = useRef(onRunComplete);
+
+  useEffect(() => {
+    onRunCompleteRef.current = onRunComplete;
+  }, [onRunComplete]);
 
   // Schedule the next poll (recursive via ref to avoid linting issues).
   const scheduleNextPollRef = useRef<((delayMs?: number) => void) | undefined>(
@@ -142,4 +162,16 @@ export function useYouTubeSyncPoll(
       }
     };
   }, []);
+
+  const beginUserRun = useCallback(() => {
+    const runId = ++userRunIdRef.current;
+    hasCompletedRef.current = false;
+    return () => {
+      if (runId !== userRunIdRef.current || hasCompletedRef.current) return;
+      hasCompletedRef.current = true;
+      onRunCompleteRef.current?.();
+    };
+  }, []);
+
+  return { beginUserRun };
 }

@@ -90,7 +90,7 @@ function ConnectedDashboard() {
     }
   }, [subs, carouselData]);
 
-  useYouTubeSyncPoll(syncStatus.status, {
+  const { beginUserRun } = useYouTubeSyncPoll(syncStatus.status, {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });
@@ -183,12 +183,30 @@ function ConnectedDashboard() {
       }
     }
 
-    void triggerUploadSync().catch(() => {
-      // Swallow errors; the polled status is authoritative.
-    });
+    const completeRun = beginUserRun();
+
+    void triggerUploadSync()
+      .then((ran) => {
+        setWaitingForClaim(false);
+        // The response to the User's own request is the completion signal for
+        // a run they started, so a run that finishes before the first poll still
+        // refreshes the lists (#753).
+        if (ran) {
+          completeRun();
+        }
+      })
+      .catch(() => {
+        // Swallow errors; the live-poll path covers long runs whose request fails.
+      });
 
     setWaitingForClaim(true);
-  }, [isCooldownActive, syncBusy, triggerUploadSync, syncStatusValue]);
+  }, [
+    isCooldownActive,
+    syncBusy,
+    triggerUploadSync,
+    syncStatusValue,
+    beginUserRun,
+  ]);
 
   const handleDirectoryRetry = useCallback(() => {
     carouselData.refresh();

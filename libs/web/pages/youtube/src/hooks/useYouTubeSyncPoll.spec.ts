@@ -564,4 +564,181 @@ describe('useYouTubeSyncPoll', () => {
       expect(poll).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('user-initiated run (beginUserRun)', () => {
+    it('completeRun with no live status ever observed fires onRunComplete exactly once', () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      // Start a user-initiated run
+      const completeRun = result.current.beginUserRun();
+
+      // Status never goes live, so poll path does not fire onRunComplete
+      // Call completeRun manually (simulates request completing synchronously)
+      act(() => {
+        completeRun();
+      });
+
+      // onRunComplete should be called exactly once from completeRun
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('live → terminal observed after beginUserRun then completeRun calls onRunComplete once total', () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'running' }));
+      const onRunComplete = jest.fn();
+
+      const { result, rerender } = renderHook(
+        ({ status }: { status: YouTubeSyncStatus | null }) =>
+          useYouTubeSyncPoll(status, { poll, onRunComplete }),
+        {
+          initialProps: { status: statusOf({ status: 'success' }) },
+        },
+      );
+
+      // Start a user-initiated run
+      const completeRun = result.current.beginUserRun();
+
+      // Rerender with live status (poll path now running, triggers initial poll)
+      act(() => {
+        rerender({ status: statusOf({ status: 'running' }) });
+      });
+      expect(poll).toHaveBeenCalledTimes(1);
+      expect(onRunComplete).not.toHaveBeenCalled();
+
+      // Rerender to terminal (poll path fires onRunComplete)
+      act(() => {
+        rerender({ status: statusOf({ status: 'success' }) });
+      });
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+
+      // Now call completeRun (should be inert because poll path already fired)
+      act(() => {
+        completeRun();
+      });
+
+      // Still exactly once
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('completeRun called twice fires onRunComplete once', () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      const completeRun = result.current.beginUserRun();
+
+      // Call completeRun twice
+      act(() => {
+        completeRun();
+      });
+      act(() => {
+        completeRun();
+      });
+
+      // onRunComplete fired exactly once (second call is inert)
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('stale completeRun from earlier beginUserRun is inert after new beginUserRun', () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      // First user-initiated run
+      const completeRun1 = result.current.beginUserRun();
+
+      // Second user-initiated run (resets guard)
+      const completeRun2 = result.current.beginUserRun();
+
+      // Call the first (stale) completeRun — should be inert
+      act(() => {
+        completeRun1();
+      });
+      expect(onRunComplete).not.toHaveBeenCalled();
+
+      // Call the second (current) completeRun — should fire
+      act(() => {
+        completeRun2();
+      });
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+    });
+
+    it('two sequential user runs each completing via completeRun fire onRunComplete twice', () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      // First run
+      const completeRun1 = result.current.beginUserRun();
+      act(() => {
+        completeRun1();
+      });
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+
+      // Second run (guard resets on beginUserRun)
+      const completeRun2 = result.current.beginUserRun();
+      act(() => {
+        completeRun2();
+      });
+      expect(onRunComplete).toHaveBeenCalledTimes(2);
+    });
+
+    it('uses latest onRunComplete when option changes between beginUserRun and completeRun', () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const oldCallback = jest.fn();
+      const newCallback = jest.fn();
+
+      const { result, rerender } = renderHook(
+        ({ onRunComplete }: { onRunComplete?: () => void }) =>
+          useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+            poll,
+            onRunComplete,
+          }),
+        {
+          initialProps: { onRunComplete: oldCallback },
+        },
+      );
+
+      // Start a user-initiated run with old callback
+      const completeRun = result.current.beginUserRun();
+
+      // Change callback before calling completeRun
+      act(() => {
+        rerender({ onRunComplete: newCallback });
+      });
+
+      // Call completeRun — should use new callback
+      act(() => {
+        completeRun();
+      });
+
+      expect(oldCallback).not.toHaveBeenCalled();
+      expect(newCallback).toHaveBeenCalledTimes(1);
+    });
+  });
 });
