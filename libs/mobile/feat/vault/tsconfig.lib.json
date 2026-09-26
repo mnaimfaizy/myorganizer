@@ -5,5 +5,11 @@
     "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.tsx"],
-  "exclude": ["**/*.spec.ts", "**/*.test.ts", "**/*.spec.tsx"]
+  "exclude": [
+    "**/*.web.ts",
+    "**/*.web.tsx",
+    "**/*.spec.ts",
+    "**/*.test.ts",
+    "**/*.spec.tsx"
+  ]
 }

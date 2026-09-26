@@ -1,11 +1,5 @@
 {
-  "extends": "../../../tsconfig.base.json",
-  "compilerOptions": {
-    "jsx": "react-jsx",
-    "strict": true,
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
-  },
+  "extends": "../tsconfig.mobile.json",
   "files": [],
   "include": [],
   "references": [

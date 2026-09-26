@@ -12,10 +12,11 @@
 // planned, but `@react-native/eslint-config` — the package whose rule would
 // catch this — is not installed here, so the upstream warning never fires.
 // `localStorage`, `sessionStorage`, `window`, `document`, and `crypto.subtle`
-// all typecheck inside libs/mobile today, because the base TypeScript config
-// puts `dom` in `lib`; CONTEXT.md's Platform Variant entry says a browser API
-// belongs only in a file selected by bundler filename resolution for a web
-// target, and until now nothing has held mobile source to that.
+// typechecked inside libs/mobile until #740 dropped `dom` from every mobile
+// tsconfig's `lib`. The compiler now rejects them, but only in files a
+// program includes; this scan covers every mobile source file. CONTEXT.md's
+// Platform Variant entry says a browser API belongs only in a file selected
+// by bundler filename resolution for a web target.
 //
 // The subpath-import rule is not a text search for the substring
 // `react-native/`. That match has a 3:1 false-positive rate in this exact
