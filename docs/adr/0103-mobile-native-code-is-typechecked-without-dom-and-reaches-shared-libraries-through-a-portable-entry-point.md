@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted
+accepted. Amended 2026-09-26 (issue #740): the `libs/mobile/*` tsconfigs no longer inherit `dom` — see the last Consequence.
 
 ## Context
 
@@ -42,4 +42,4 @@ The grilling session for #882 found four facts that changed the question:
 - Native no longer loads `libs/auth/src/lib/auth.ts` at runtime, so the browser storage adapter is not constructed on Hermes.
 - `@myorganizer/<lib>/portable` is the first slash alias in `tsconfig.base.json` that does not name its own Nx project. The `/portable` suffix marks an entry point into an existing library, not a new project.
 - **`types: ["node"]` still over-admits.** The native program still accepts Node's global `crypto`, `Buffer`, and `process`, which Hermes does not provide. The Portable Entry Point rule in `mobile-platform:check` is what keeps a Node-only barrel out of native code until #892 declares the globals the native runtime actually has.
-- The `libs/mobile/*` tsconfigs still inherit `dom` from `tsconfig.base.json` and have no typecheck target of their own. They are checked through the app's two programs, and the browser-globals rule of `mobile-platform:check` still scans their source.
+- The `libs/mobile/*` tsconfigs have no typecheck target of their own. They are checked through the app's two programs, and the browser-globals rule of `mobile-platform:check` still scans their source. Since issue #740 each sets `lib: ["esnext"]`, so they no longer inherit `dom` from `tsconfig.base.json`, and a `.web` Platform Variant inside one is excluded from its native program and checked by the app's web program.
