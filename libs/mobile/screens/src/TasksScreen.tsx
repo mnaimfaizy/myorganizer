@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -90,6 +90,11 @@ export function TasksScreen(): React.JSX.Element {
   } = useVaultBlob(VaultBlobType.Tasks);
 
   const [newTitle, setNewTitle] = useState('');
+  // The title of an add whose push failed, so that a successful retry of it
+  // clears the field exactly as a successful Add does — otherwise the title
+  // left behind invites the same task being added twice. Any other edit
+  // replaces the failed one `retry` would resend, so it clears this too.
+  const failedAddTitleRef = useRef<string | null>(null);
 
   const tasks = useMemo(
     () => toVisibleTasks(snapshot?.envelope.records),
@@ -99,6 +104,7 @@ export function TasksScreen(): React.JSX.Element {
   const toggleTask = useCallback(
     (task: DecryptedTask): void => {
       const now = new Date().toISOString();
+      failedAddTitleRef.current = null;
       void apply((envelope) =>
         putVaultRecord(envelope, {
           ...task,
@@ -119,6 +125,7 @@ export function TasksScreen(): React.JSX.Element {
           style: 'destructive',
           onPress: () => {
             const now = new Date().toISOString();
+            failedAddTitleRef.current = null;
             void apply((envelope) => deleteVaultRecord(envelope, task.id, now));
           },
         },
@@ -141,9 +148,21 @@ export function TasksScreen(): React.JSX.Element {
     // The title stays in the field until the task is on the server, so a
     // failed push never loses what was typed.
     if (await apply((envelope) => putVaultRecord(envelope, task))) {
+      failedAddTitleRef.current = null;
       setNewTitle('');
+    } else {
+      failedAddTitleRef.current = title;
     }
   }, [apply, newTitle]);
+
+  const retryFailedEdit = useCallback(async (): Promise<void> => {
+    const addedTitle = failedAddTitleRef.current;
+    if (!(await retry())) return;
+    failedAddTitleRef.current = null;
+    if (addedTitle !== null) {
+      setNewTitle((current) => (current.trim() === addedTitle ? '' : current));
+    }
+  }, [retry]);
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<DecryptedTask>): React.JSX.Element => {
@@ -261,7 +280,9 @@ export function TasksScreen(): React.JSX.Element {
                 label={writeError === 'conflict' ? 'Reload' : 'Try again'}
                 variant="outline"
                 onPress={() =>
-                  void (writeError === 'conflict' ? reload() : retry())
+                  void (writeError === 'conflict'
+                    ? reload()
+                    : retryFailedEdit())
                 }
               />
             </View>
