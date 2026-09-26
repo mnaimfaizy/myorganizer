@@ -4,7 +4,11 @@
     "jsx": "react-jsx",
     "strict": true,
     "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "isolatedModules": true,
+    "lib": ["esnext"],
+    "moduleResolution": "bundler",
+    "customConditions": ["react-native"]
   },
   "files": [],
   "include": [],
