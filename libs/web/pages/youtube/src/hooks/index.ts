@@ -10,6 +10,9 @@ import type {
   SortOption,
   YouTubeSubscription,
   YouTubeVideo,
+  YouTubeChannelSyncResult,
+  YouTubeSyncResult,
+  YouTubeSyncStatus,
 } from '../types';
 
 // Helper: centralize cooldown derivation & formatting so UI components
@@ -509,6 +512,35 @@ export function useChannelUploads(): ChannelUploadExpansion {
   };
 }
 
+/**
+ * What differs between the User's Upload Sync and Channel Sync requests: the
+ * endpoint, which cooldown guards it, and where each side carries the attempt
+ * stamp `didSyncRequestRun` compares (#753).
+ */
+interface SyncRequest<R> {
+  path: string;
+  disabledLabel: string;
+  retryAt: (status: YouTubeSyncStatus) => string | null;
+  attemptAtBefore: (status: YouTubeSyncStatus) => string | null;
+  attemptAtAfter: (result: R) => string | null;
+}
+
+const UPLOAD_SYNC_REQUEST: SyncRequest<YouTubeSyncResult> = {
+  path: '/uploads/sync',
+  disabledLabel: 'Sync disabled',
+  retryAt: (status) => status.retryAt,
+  attemptAtBefore: (status) => status.lastSyncAttemptAt,
+  attemptAtAfter: (result) => result.lastSyncAttemptAt,
+};
+
+const CHANNEL_SYNC_REQUEST: SyncRequest<YouTubeChannelSyncResult> = {
+  path: '/subscriptions/sync',
+  disabledLabel: 'Refresh channels disabled',
+  retryAt: (status) => status.channelRetryAt,
+  attemptAtBefore: (status) => status.channelLastAttemptAt,
+  attemptAtAfter: (result) => result.lastAttemptAt,
+};
+
 export function useYouTubeSyncStatus() {
   const [status, setStatus] = useState<
     import('../types').YouTubeSyncStatus | null
@@ -528,70 +560,54 @@ export function useYouTubeSyncStatus() {
     }
   }, []);
 
-  const triggerUploadSync = useCallback(async () => {
-    setLoading(true);
-    try {
-      // Fetch the authoritative sync-status for the cooldown guard and for the
-      // attempt stamp the response is compared against (#753) only.
-      // This read happens before the PUT is sent, so it is always stale — do not publish
-      // it as the component's current status. Publishing a stale observation can
-      // overwrite a live status if another fetch happens to resolve afterward, which
-      // would kill the poll loop. The component will poll for the actual live status
-      // after the PUT is sent.
-      const latest =
-        await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
-      if (isRetryCooldownActive(latest.retryAt)) {
-        throw new Error(
-          `Sync disabled until ${formatRetryAt(latest.retryAt) ?? latest.retryAt}`,
+  const sendSyncRequest = useCallback(
+    async <R extends { status: YouTubeSyncStatus['status'] }>(
+      request: SyncRequest<R>,
+    ) => {
+      setLoading(true);
+      try {
+        // Fetch the authoritative sync-status for the cooldown guard and for
+        // the attempt stamp the response is compared against (#753) only.
+        // This read happens before the PUT is sent, so it is always stale — do
+        // not publish it as the component's current status. Publishing a stale
+        // observation can overwrite a live status if another fetch happens to
+        // resolve afterward, which would kill the poll loop. The component
+        // will poll for the actual live status after the PUT is sent.
+        const latest = await apiFetch<YouTubeSyncStatus>('/sync-status');
+        const retryAt = request.retryAt(latest);
+        if (isRetryCooldownActive(retryAt)) {
+          throw new Error(
+            `${request.disabledLabel} until ${formatRetryAt(retryAt) ?? retryAt}`,
+          );
+        }
+
+        // The request resolves once the run has finished (ADR 0080), so its
+        // result is the completion signal for a run the User started (#753).
+        const result = await apiFetch<R>(request.path, { method: 'PUT' });
+
+        // A failed re-read must not hide a run that did work.
+        await fetch_().catch(() => undefined);
+        return didSyncRequestRun(
+          result.status,
+          request.attemptAtBefore(latest),
+          request.attemptAtAfter(result),
         );
+      } finally {
+        setLoading(false);
       }
+    },
+    [fetch_],
+  );
 
-      // The request resolves once the run has finished (ADR 0080), so its
-      // result is the completion signal for a run the User started (#753).
-      const result = await apiFetch<import('../types').YouTubeSyncResult>(
-        '/uploads/sync',
-        { method: 'PUT' },
-      );
+  const triggerUploadSync = useCallback(
+    () => sendSyncRequest(UPLOAD_SYNC_REQUEST),
+    [sendSyncRequest],
+  );
 
-      // A failed re-read must not hide a run that did work.
-      await fetch_().catch(() => undefined);
-      return didSyncRequestRun(
-        result.status,
-        latest.lastSyncAttemptAt,
-        result.lastSyncAttemptAt,
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [fetch_]);
-
-  const triggerChannelSync = useCallback(async () => {
-    setLoading(true);
-    try {
-      const latest =
-        await apiFetch<import('../types').YouTubeSyncStatus>('/sync-status');
-      if (isRetryCooldownActive(latest.channelRetryAt)) {
-        throw new Error(
-          `Refresh channels disabled until ${formatRetryAt(latest.channelRetryAt) ?? latest.channelRetryAt}`,
-        );
-      }
-
-      const result = await apiFetch<
-        import('../types').YouTubeChannelSyncResult
-      >('/subscriptions/sync', {
-        method: 'PUT',
-      });
-
-      await fetch_().catch(() => undefined);
-      return didSyncRequestRun(
-        result.status,
-        latest.channelLastAttemptAt,
-        result.lastAttemptAt,
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [fetch_]);
+  const triggerChannelSync = useCallback(
+    () => sendSyncRequest(CHANNEL_SYNC_REQUEST),
+    [sendSyncRequest],
+  );
 
   useEffect(() => {
     if (!didMount.current) {
