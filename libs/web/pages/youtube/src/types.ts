@@ -103,7 +103,7 @@ export interface YouTubeSyncResult extends YouTubeSyncStatus {
 
 export interface YouTubeChannelSyncResult {
   synced: number;
-  status: string;
+  status: YouTubeSyncStatus['channelStatus'];
   lastAttemptAt: string | null;
   lastError: string | null;
   retryAt: string | null;

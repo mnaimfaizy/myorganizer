@@ -189,7 +189,7 @@ describe('YouTubeChannelsPageClient', () => {
     return screen.getByRole('dialog', { name: 'Disconnect YouTube?' });
   };
 
-  it('calls triggerChannelSync when Refresh channels is clicked', () => {
+  it('calls triggerChannelSync when Refresh channels is clicked', async () => {
     const triggerChannelSync = jest.fn().mockResolvedValue(undefined);
     mockUseYouTubeSyncStatus.mockReturnValue({
       status: statusOf({ status: 'never' }),
@@ -201,9 +201,223 @@ describe('YouTubeChannelsPageClient', () => {
 
     render(<YouTubeChannelsPageClient />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Refresh channels' }));
+    // The resolved request now ends the claim wait (#753), so let it settle.
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Refresh channels' }));
+    });
 
     expect(triggerChannelSync).toHaveBeenCalledTimes(1);
+  });
+
+  describe('channel sync request completion (#753)', () => {
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    const setupChannelSyncTest = (triggerResult: boolean | Error) => {
+      const refreshSync = jest
+        .fn()
+        .mockResolvedValue(statusOf({ status: 'never' }));
+
+      const subs = {
+        ...defaultSubs,
+        refresh: jest.fn(),
+      };
+      mockUseYouTubeSubscriptions.mockReturnValue(subs);
+
+      const triggerChannelSync =
+        triggerResult instanceof Error
+          ? jest.fn().mockRejectedValue(triggerResult)
+          : jest.fn().mockResolvedValue(triggerResult);
+
+      renderConnected(jest.fn().mockResolvedValue({ revokeFailed: false }), {
+        status: statusOf({ status: 'never' }),
+        loading: false,
+        triggerChannelSync,
+        isChannelCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      return { subs };
+    };
+
+    it.each([
+      {
+        label: 'request that ran (success)',
+        triggerResult: true,
+        shouldRefresh: true,
+      },
+      {
+        label: 'request that did not run (cooldown)',
+        triggerResult: false,
+        shouldRefresh: false,
+      },
+      {
+        label: 'request rejects',
+        triggerResult: new Error('request failed'),
+        shouldRefresh: false,
+      },
+    ])(
+      '$label → subs.refresh ${ #should call}',
+      async ({ triggerResult, shouldRefresh }) => {
+        const { subs } = setupChannelSyncTest(triggerResult);
+
+        await act(async () => {
+          fireEvent.click(
+            screen.getByRole('button', { name: 'Refresh channels' }),
+          );
+        });
+
+        await act(async () => {
+          jest.advanceTimersByTime(0);
+        });
+
+        if (shouldRefresh) {
+          expect(subs.refresh).toHaveBeenCalledTimes(1);
+        } else {
+          expect(subs.refresh).not.toHaveBeenCalled();
+        }
+      },
+    );
+
+    it('request that ran → claim-wait loop stops once', async () => {
+      const refreshSync = jest
+        .fn()
+        .mockResolvedValue(statusOf({ status: 'never' }));
+      const triggerChannelSync = jest.fn().mockResolvedValue(true);
+
+      const subs = {
+        ...defaultSubs,
+        refresh: jest.fn(),
+      };
+      mockUseYouTubeSubscriptions.mockReturnValue(subs);
+
+      renderConnected(jest.fn().mockResolvedValue({ revokeFailed: false }), {
+        status: statusOf({ status: 'never' }),
+        loading: false,
+        triggerChannelSync,
+        isChannelCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Refresh channels' }),
+        );
+      });
+
+      // Initial claim-wait poll from request resolution
+      expect(refreshSync).toHaveBeenCalledTimes(1);
+
+      // Advance several seconds — claim-wait loop should not call refreshSync again
+      // because the request resolved with ran=true
+      await act(async () => {
+        jest.advanceTimersByTime(5000);
+      });
+
+      // Still only the initial call (the request stopped the loop)
+      expect(refreshSync).toHaveBeenCalledTimes(1);
+    });
+
+    it('dedupe: channelStatus discovering → terminal then request resolves → once', async () => {
+      const refreshSync = jest
+        .fn()
+        .mockResolvedValue(statusOf({ status: 'never' }));
+
+      let resolveRequest: ((val: any) => void) | null = null;
+      const requestPromise = new Promise((resolve) => {
+        resolveRequest = resolve;
+      });
+
+      const triggerChannelSync = jest.fn().mockReturnValue(requestPromise);
+
+      const subs = {
+        ...defaultSubs,
+        refresh: jest.fn(),
+      };
+      mockUseYouTubeSubscriptions.mockReturnValue(subs);
+
+      mockUseYouTubeStatus.mockReturnValue({
+        connected: true,
+        status: 'connected',
+        refresh: jest.fn(),
+      });
+
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: statusOf({ status: 'success', channelStatus: 'never' }),
+        loading: false,
+        triggerChannelSync,
+        isChannelCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      const { rerender } = render(<YouTubeChannelsPageClient />);
+
+      // Click to start sync request
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('button', { name: 'Refresh channels' }),
+        );
+      });
+
+      // Transition channelStatus to discovering
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: statusOf({
+          status: 'success',
+          channelStatus: 'discovering',
+        }),
+        loading: false,
+        triggerChannelSync,
+        isChannelCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      act(() => {
+        rerender(<YouTubeChannelsPageClient />);
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(0);
+      });
+
+      // Transition to terminal
+      mockUseYouTubeSyncStatus.mockReturnValue({
+        status: statusOf({
+          status: 'success',
+          channelStatus: 'success',
+        }),
+        loading: false,
+        triggerChannelSync,
+        isChannelCooldownActive: false,
+        refresh: refreshSync,
+      });
+
+      act(() => {
+        rerender(<YouTubeChannelsPageClient />);
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(0);
+      });
+
+      // Poll path should have fired once
+      expect(subs.refresh).toHaveBeenCalledTimes(1);
+
+      // Now resolve the request — should be deduplicated
+      subs.refresh.mockClear();
+
+      await act(async () => {
+        resolveRequest?.(true);
+        jest.advanceTimersByTime(0);
+      });
+
+      // No additional refresh from the request path
+      expect(subs.refresh).not.toHaveBeenCalled();
+    });
   });
 
   describe('disconnect confirm', () => {
