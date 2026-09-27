@@ -4,7 +4,7 @@ import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
 import { RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   formatRetryAt,
   useChannelUploads,
@@ -69,7 +69,6 @@ function ConnectedDashboard() {
   const carouselData = useYouTubeCarousel();
   const syncStatus = useYouTubeSyncStatus();
   const [syncError, setSyncError] = useState<string | null>(null);
-  const [waitingForClaim, setWaitingForClaim] = useState(false);
 
   const syncBusy = isRunLive(syncStatus.status);
   const isCooldownActive = !!syncStatus.isCooldownActive;
@@ -94,45 +93,6 @@ function ConnectedDashboard() {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });
-
-  useEffect(() => {
-    if (!waitingForClaim) return;
-
-    let isMounted = true;
-    let elapsedMs = 0;
-    const pollIntervalMs = 1000;
-    const maxWaitMs = 30000;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const doPoll = async () => {
-      if (!isMounted) return;
-
-      try {
-        const status = await refreshSync();
-        if (!isMounted) return;
-        if (isRunLive(status)) {
-          setWaitingForClaim(false);
-          return;
-        }
-      } catch {
-        if (!isMounted) return;
-      }
-
-      elapsedMs += pollIntervalMs;
-      if (elapsedMs <= maxWaitMs && isMounted) {
-        timeoutId = setTimeout(doPoll, pollIntervalMs);
-      } else if (isMounted) {
-        setWaitingForClaim(false);
-      }
-    };
-
-    void doPoll();
-
-    return () => {
-      isMounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [waitingForClaim, refreshSync]);
 
   const channelUploads = useChannelUploads();
 
@@ -183,14 +143,7 @@ function ConnectedDashboard() {
       }
     }
 
-    // A resolved request ends the claim wait (#753); a rejected one leaves a
-    // long run to the live-poll path.
-    void runUserSync(triggerUploadSync).then(
-      () => setWaitingForClaim(false),
-      () => undefined,
-    );
-
-    setWaitingForClaim(true);
+    void runUserSync(triggerUploadSync);
   }, [
     isCooldownActive,
     syncBusy,

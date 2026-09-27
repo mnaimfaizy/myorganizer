@@ -9,6 +9,12 @@ import { useYouTubeSyncPoll } from './useYouTubeSyncPoll';
  */
 const POLL_INTERVAL_MS = 2000;
 
+/**
+ * Claim-wait loop constants must match the implementation.
+ */
+const CLAIM_POLL_INTERVAL_MS = 1000;
+const CLAIM_WAIT_MS = 30000;
+
 describe('useYouTubeSyncPoll', () => {
   const originalHidden = Object.getOwnPropertyDescriptor(document, 'hidden');
 
@@ -608,10 +614,13 @@ describe('useYouTubeSyncPoll', () => {
       });
 
       // Rerender with live status (poll path now running, triggers initial poll)
+      // The claim-wait loop will also call poll once (and stop since it sees a live status)
       act(() => {
         rerender({ status: statusOf({ status: 'running' }) });
       });
-      expect(poll).toHaveBeenCalledTimes(1);
+      // Poll called: once by claim-wait loop (sees live status and stops),
+      // once by main poll loop (total 2)
+      expect(poll.mock.calls.length).toBeGreaterThanOrEqual(2);
       expect(onRunComplete).not.toHaveBeenCalled();
 
       // Rerender to terminal (poll path fires onRunComplete)
@@ -743,6 +752,339 @@ describe('useYouTubeSyncPoll', () => {
       expect(oldCallback).not.toHaveBeenCalled();
       expect(newCallback).toHaveBeenCalledTimes(1);
     });
+  });
+
+  describe('claim wait (waitingForClaim)', () => {
+    // Factory for a pending trigger that never resolves, used in multiple tests
+    const pendingTrigger = () =>
+      jest.fn<Promise<boolean>, []>(
+        () =>
+          new Promise<boolean>(() => {
+            /* never resolves */
+          }),
+      );
+
+    it('initially waitingForClaim is false and poll is not called on mount with non-live status', () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
+      );
+
+      expect(result.current.waitingForClaim).toBe(false);
+      expect(poll).not.toHaveBeenCalled();
+    });
+
+    it('calling runUserSync with pending trigger sets waitingForClaim true and polls immediately then every 1s', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
+      );
+
+      // Create a pending trigger that never resolves
+      const trigger = pendingTrigger();
+
+      // Start the sync without awaiting
+      await act(async () => {
+        void result.current.runUserSync(trigger);
+        await Promise.resolve();
+      });
+
+      // Poll should be called once immediately when claim loop starts
+      expect(poll).toHaveBeenCalledTimes(1);
+      expect(result.current.waitingForClaim).toBe(true);
+
+      // Advance one claim-wait interval — poll should be called again
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(2);
+      expect(result.current.waitingForClaim).toBe(true);
+
+      // Advance another interval — poll should be called again
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(3);
+      expect(result.current.waitingForClaim).toBe(true);
+    });
+
+    it('poll returns live status → waitingForClaim false, claim loop stops', async () => {
+      let pollCount = 0;
+      const poll = jest.fn().mockImplementation(() => {
+        pollCount++;
+        if (pollCount === 2) {
+          // Second poll returns live status
+          return Promise.resolve(statusOf({ status: 'running' }));
+        }
+        return Promise.resolve(statusOf({ status: 'success' }));
+      });
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
+      );
+
+      const trigger = pendingTrigger();
+
+      await act(async () => {
+        void result.current.runUserSync(trigger);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(1);
+      expect(result.current.waitingForClaim).toBe(true);
+
+      // Advance one interval — poll returns live status
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(2);
+      expect(result.current.waitingForClaim).toBe(false);
+
+      // Advance more time — poll should not be called again
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(2);
+    });
+
+    it('poll never returns live status → claim loop respects 30s timeout', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
+      );
+
+      const trigger = pendingTrigger();
+
+      await act(async () => {
+        void result.current.runUserSync(trigger);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(1);
+      expect(result.current.waitingForClaim).toBe(true);
+
+      // Advance time 1 second at a time for CLAIM_WAIT_MS milliseconds.
+      // Each call to advanceTimersByTime fires the pending timeout from the previous poll,
+      // which calls doPoll, which awaits poll(), schedules the next timeout, and increments elapsedMs.
+      // After 30 iterations (30 * 1000ms = CLAIM_WAIT_MS), the final poll (31st call at t=30s) triggers.
+      // At that point, elapsedMs becomes 31s, exceeding CLAIM_WAIT_MS, so no more timeouts are scheduled.
+      const iterations = CLAIM_WAIT_MS / CLAIM_POLL_INTERVAL_MS;
+      for (let i = 0; i < iterations; i++) {
+        await act(async () => {
+          jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+          // Extra flush to ensure the poll's await and any state updates settle
+          await Promise.resolve();
+        });
+      }
+
+      // After advancing CLAIM_WAIT_MS, poll should have been called 31 times (t=0,1s,2s,...,30s)
+      // and waitingForClaim should be false
+      expect(poll).toHaveBeenCalledTimes(31);
+      expect(result.current.waitingForClaim).toBe(false);
+
+      // Advance more time to verify no additional polls are scheduled
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS * 3);
+        await Promise.resolve();
+      });
+
+      // Poll count should remain at 31
+      expect(poll).toHaveBeenCalledTimes(31);
+    });
+
+    it('trigger resolves true → waitingForClaim false, onRunComplete called, claim loop stops', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+      const trigger = jest.fn().mockResolvedValue(true);
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.runUserSync(trigger);
+      });
+
+      expect(result.current.waitingForClaim).toBe(false);
+      expect(onRunComplete).toHaveBeenCalledTimes(1);
+
+      // Claim loop should have stopped — no new polls after advancing time
+      const pollCount = poll.mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(pollCount);
+    });
+
+    it('trigger resolves false → waitingForClaim false, no onRunComplete call', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+      const onRunComplete = jest.fn();
+      const trigger = jest.fn().mockResolvedValue(false);
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), {
+          poll,
+          onRunComplete,
+        }),
+      );
+
+      await act(async () => {
+        await result.current.runUserSync(trigger);
+      });
+
+      expect(result.current.waitingForClaim).toBe(false);
+      expect(onRunComplete).not.toHaveBeenCalled();
+
+      // Claim loop should have stopped
+      const pollCount = poll.mock.calls.length;
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(pollCount);
+    });
+
+    it('poll rejects during claim wait → loop continues polling at 1s cadence', async () => {
+      let pollCount = 0;
+      const poll = jest.fn().mockImplementation(() => {
+        pollCount++;
+        if (pollCount === 2) {
+          // Second poll rejects
+          return Promise.reject(new Error('poll failed'));
+        }
+        return Promise.resolve(statusOf({ status: 'success' }));
+      });
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
+      );
+
+      const trigger = pendingTrigger();
+
+      await act(async () => {
+        void result.current.runUserSync(trigger);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(1);
+      expect(result.current.waitingForClaim).toBe(true);
+
+      // Advance one interval — poll rejects
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(2);
+      expect(result.current.waitingForClaim).toBe(true);
+
+      // Advance another interval — poll should continue despite the rejection
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(3);
+      expect(result.current.waitingForClaim).toBe(true);
+    });
+
+    it('unmount during claim wait clears timer and stops polling', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+
+      const { result, unmount } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
+      );
+
+      const trigger = pendingTrigger();
+
+      act(() => {
+        void result.current.runUserSync(trigger);
+      });
+
+      expect(poll).toHaveBeenCalledTimes(1);
+
+      // Unmount during the claim wait
+      act(() => {
+        unmount();
+      });
+
+      // Advance time — poll should not be called again
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(1);
+    });
+
+    it('second runUserSync while first is waiting does not double the poll rate', async () => {
+      const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
+
+      const { result } = renderHook(() =>
+        useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
+      );
+
+      const trigger1 = pendingTrigger();
+      const trigger2 = pendingTrigger();
+
+      // Start first sync
+      await act(async () => {
+        void result.current.runUserSync(trigger1);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(1);
+
+      // Advance halfway to the next interval
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+      });
+
+      // Start second sync before the first interval completes
+      await act(async () => {
+        void result.current.runUserSync(trigger2);
+        await Promise.resolve();
+      });
+
+      // Poll should still be just 1 (the claim loop is already running)
+      expect(poll).toHaveBeenCalledTimes(1);
+
+      // Advance another 500ms to complete one full interval from the first sync
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+        await Promise.resolve();
+      });
+
+      // Poll should be called again (total 2)
+      expect(poll).toHaveBeenCalledTimes(2);
+
+      // Advance another interval
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      // Still 3 total (one poll per second, not accelerated)
+      expect(poll).toHaveBeenCalledTimes(3);
+    });
 
     it('trigger resolves false → no call to onRunComplete', async () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
@@ -764,7 +1106,7 @@ describe('useYouTubeSyncPoll', () => {
       expect(trigger).toHaveBeenCalledTimes(1);
     });
 
-    it('trigger rejects → runUserSync rejects and no call to onRunComplete', async () => {
+    it('trigger rejects → runUserSync resolves, waitingForClaim stays true, claim loop continues', async () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
       const onRunComplete = jest.fn();
       const error = new Error('request failed');
@@ -777,16 +1119,24 @@ describe('useYouTubeSyncPoll', () => {
         }),
       );
 
-      let caughtError: Error | null = null;
+      // Start runUserSync with rejected trigger
       await act(async () => {
-        try {
-          await result.current.runUserSync(trigger);
-        } catch (err) {
-          caughtError = err as Error;
-        }
+        void result.current.runUserSync(trigger);
+        await Promise.resolve();
       });
 
-      expect(caughtError).toBe(error);
+      // Poll should be called once immediately when waitingForClaim becomes true
+      expect(poll).toHaveBeenCalledTimes(1);
+      expect(result.current.waitingForClaim).toBe(true);
+
+      // Advance one claim-wait interval — poll should be called again
+      await act(async () => {
+        jest.advanceTimersByTime(CLAIM_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(poll).toHaveBeenCalledTimes(2);
+      expect(result.current.waitingForClaim).toBe(true);
       expect(onRunComplete).not.toHaveBeenCalled();
       expect(trigger).toHaveBeenCalledTimes(1);
     });

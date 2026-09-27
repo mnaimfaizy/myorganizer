@@ -2,7 +2,7 @@
 
 import { Button, CardTitle } from '@myorganizer/web-ui';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import {
   useYouTubeAvailability,
   useYouTubeConnect,
@@ -97,7 +97,6 @@ function ConnectedChannelsDashboard({
   const syncStatus = useYouTubeSyncStatus();
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
   const [disconnectError, setDisconnectError] = useState<string | null>(null);
-  const [waitingForClaim, setWaitingForClaim] = useState(false);
 
   const syncBusy = isRunLive(syncStatus.status);
   const disconnectDisabledReason = syncBusy
@@ -105,8 +104,6 @@ function ConnectedChannelsDashboard({
     : undefined;
 
   const isChannelCooldownActive = !!syncStatus.isChannelCooldownActive;
-  const channelSyncInFlight =
-    waitingForClaim || syncStatus.status?.channelStatus === 'discovering';
 
   const refreshSync = syncStatus.refresh;
   const triggerChannelSync = syncStatus.triggerChannelSync;
@@ -115,61 +112,21 @@ function ConnectedChannelsDashboard({
     await subs.refresh();
   }, [subs]);
 
-  const { runUserSync } = useYouTubeSyncPoll(syncStatus.status, {
-    poll: refreshSync,
-    onRunComplete: handleRunComplete,
-  });
+  const { runUserSync, waitingForClaim } = useYouTubeSyncPoll(
+    syncStatus.status,
+    {
+      poll: refreshSync,
+      onRunComplete: handleRunComplete,
+    },
+  );
 
-  useEffect(() => {
-    if (!waitingForClaim) return;
-
-    let isMounted = true;
-    let elapsedMs = 0;
-    const pollIntervalMs = 1000;
-    const maxWaitMs = 30000;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const doPoll = async () => {
-      if (!isMounted) return;
-
-      try {
-        const status = await refreshSync();
-        if (!isMounted) return;
-        if (isRunLive(status)) {
-          setWaitingForClaim(false);
-          return;
-        }
-      } catch {
-        if (!isMounted) return;
-      }
-
-      elapsedMs += pollIntervalMs;
-      if (elapsedMs <= maxWaitMs && isMounted) {
-        timeoutId = setTimeout(doPoll, pollIntervalMs);
-      } else if (isMounted) {
-        setWaitingForClaim(false);
-      }
-    };
-
-    void doPoll();
-
-    return () => {
-      isMounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [waitingForClaim, refreshSync]);
+  const channelSyncInFlight =
+    waitingForClaim || syncStatus.status?.channelStatus === 'discovering';
 
   const handleChannelSync = useCallback(() => {
     if (isChannelCooldownActive || syncBusy) return;
 
-    // A resolved request ends the claim wait (#753); a rejected one leaves a
-    // long run to the live-poll path.
-    void runUserSync(triggerChannelSync).then(
-      () => setWaitingForClaim(false),
-      () => undefined,
-    );
-
-    setWaitingForClaim(true);
+    void runUserSync(triggerChannelSync);
   }, [isChannelCooldownActive, syncBusy, triggerChannelSync, runUserSync]);
 
   const handleRequestDisconnect = useCallback(() => {
