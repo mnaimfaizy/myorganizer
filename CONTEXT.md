@@ -81,8 +81,8 @@ A Grocery List’s reference to a Catalog Item for a trip, carrying trip-local s
 _Avoid_: Embedded item, list-owned item, row (as domain name)
 
 **Usage Location**:
-An organisation the User must notify when an Address or Mobile Number changes, together with whether that notification has been made yet. It is not a place — it is one line on a change-of-address checklist, carrying the organisation, how it is reached, how urgent it is, and whether it has been updated.
-_Avoid_: Location, place, address usage, linked organisation, contact
+An organisation the User must notify when an Address or Mobile Number changes, together with whether it has been notified yet. It is not a place — it is one line on a change-of-address checklist, carrying the organisation, how it is reached, how urgent it is, and whether it has been notified.
+_Avoid_: Location, place, address usage, linked organisation, contact; updated or changed (for the notified state)
 
 **Address**:
 A postal address the User keeps in their Vault, and the anchor for the Usage Locations that must be notified when it changes.
