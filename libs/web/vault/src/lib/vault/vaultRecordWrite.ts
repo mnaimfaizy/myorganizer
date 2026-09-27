@@ -42,6 +42,14 @@ async function readStoredDeletionLog(
   return readDeletionLog(stored);
 }
 
+/** A deletion to write down in the same save. */
+export interface VaultRecordDeletion {
+  /** The id of the record being deleted. */
+  deletedId: string;
+  /** When it was deleted. Defaults to now. */
+  deletedAt?: IsoDateTimeString;
+}
+
 /**
  * Saves `records` as the whole records half of `type`, with the stored
  * Deletion Log written back beside them.
@@ -49,22 +57,29 @@ async function readStoredDeletionLog(
  * A page that saves bare records drops the log, and every deletion another
  * device recorded is resurrected by the next merge with a copy that still
  * holds the record
- * ([ADR 0054](../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md)).
+ * ([ADR 0054](../../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md)).
  * Reading both halves and writing both back is what keeps it.
  *
- * Removing a record through here does not delete it. Use
- * `deleteVaultRecordAndSave`, which writes the deletion down.
+ * Leaving a record out of `records` does not delete it. Pass `deletedId`,
+ * and the deletion is written into the log as well: the record is dropped
+ * from `records` if it is still there, and recorded as deleted even if it
+ * is not.
  */
 export async function saveVaultRecords<TRecord extends IdentifiedRecord>(
   store: VaultRecordStore,
   type: EditableVaultRecordType,
   records: readonly TRecord[],
+  deletion?: VaultRecordDeletion,
 ): Promise<void> {
   const deletions = await readStoredDeletionLog(store, type);
-  const envelope: VaultBlobEnvelope<readonly TRecord[]> = {
-    records,
-    deletions,
-  };
+  const envelope: VaultBlobEnvelope<unknown> =
+    deletion === undefined
+      ? { records, deletions }
+      : deleteVaultRecord(
+          { records: [...records], deletions },
+          deletion.deletedId,
+          deletion.deletedAt ?? new Date().toISOString(),
+        );
   await store.saveEncryptedData({ type, value: envelope });
 }
 
@@ -83,14 +98,7 @@ export async function deleteVaultRecordAndSave<
   id: string,
   deletedAt: IsoDateTimeString,
 ): Promise<TRecord[]> {
-  const deletions = await readStoredDeletionLog(store, type);
-  const next = deleteVaultRecord(
-    { records: [...records], deletions },
-    id,
-    deletedAt,
-  );
-  await store.saveEncryptedData({ type, value: next });
-  // `deleteVaultRecord` only filters the array it was given, so every entry
-  // left is one of `records`.
-  return next.records as TRecord[];
+  const remaining = records.filter((record) => record.id !== id);
+  await saveVaultRecords(store, type, remaining, { deletedId: id, deletedAt });
+  return remaining;
 }

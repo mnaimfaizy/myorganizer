@@ -3,7 +3,6 @@
 import { MobileNumberRecord } from '@myorganizer/vault-core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
-  deleteVaultRecordAndSave,
   normalizeMobileNumbers,
   saveVaultRecords,
   type VaultHandle,
@@ -90,19 +89,12 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
     async (next: MobileNumberRecord[], deletedId?: string) => {
       setItems(next);
       try {
-        if (deletedId === undefined) {
-          await saveVaultRecords(props.handle, 'mobileNumbers', next);
-        } else {
-          // A delete must be written to the Deletion Log, or a merge brings
-          // the record back (ADR 0054).
-          await deleteVaultRecordAndSave(
-            props.handle,
-            'mobileNumbers',
-            next,
-            deletedId,
-            new Date().toISOString(),
-          );
-        }
+        await saveVaultRecords(
+          props.handle,
+          'mobileNumbers',
+          next,
+          deletedId === undefined ? undefined : { deletedId },
+        );
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         toast({

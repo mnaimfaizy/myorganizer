@@ -14,7 +14,6 @@ import {
 } from '@myorganizer/vault-core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
-  deleteVaultRecordAndSave,
   normalizeSubscriptions,
   saveVaultRecords,
   type VaultHandle,
@@ -111,19 +110,12 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   const persist = useCallback(
     async (next: SubscriptionRecord[], deletedId?: string) => {
       try {
-        if (deletedId === undefined) {
-          await saveVaultRecords(props.handle, 'subscriptions', next);
-        } else {
-          // A delete must be written to the Deletion Log, or a merge brings
-          // the record back (ADR 0054).
-          await deleteVaultRecordAndSave(
-            props.handle,
-            'subscriptions',
-            next,
-            deletedId,
-            new Date().toISOString(),
-          );
-        }
+        await saveVaultRecords(
+          props.handle,
+          'subscriptions',
+          next,
+          deletedId === undefined ? undefined : { deletedId },
+        );
         setItems(next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);

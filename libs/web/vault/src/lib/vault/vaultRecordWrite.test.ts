@@ -120,31 +120,69 @@ describe('vaultRecordWrite', () => {
       expect(saveEncryptedDataMock).not.toHaveBeenCalled();
     });
 
-    test('should work with addresses type', async () => {
-      const type: EditableVaultRecordType = 'addresses';
-      const records = [
-        {
-          id: 'addr-1',
-          line1: '123 Main St',
-          city: 'City',
-          country: 'Country',
-        },
-      ];
+    test('should delete record from records and record deletion with explicit deletedAt', async () => {
+      const record1 = { id: 'task-1', title: 'Task 1' };
+      const record2 = { id: 'task-2', title: 'Task 2' };
+      const records = [record1, record2];
+      const deletedAt = '2026-01-15T14:30:00.000Z';
+
       loadDecryptedDataMock.mockResolvedValue(null);
 
-      await saveVaultRecords(store, type, records);
+      await saveVaultRecords(store, type, records, {
+        deletedId: 'task-1',
+        deletedAt,
+      });
 
-      expect(loadDecryptedDataMock).toHaveBeenCalledWith({
-        type,
-        defaultValue: null,
+      const savedValue = (saveEncryptedDataMock.mock.calls[0] as unknown[])[0];
+      const envelope = (savedValue as Record<string, unknown>)
+        .value as VaultBlobEnvelope<unknown>;
+
+      expect(envelope.records).toEqual([record2]);
+      expect(envelope.deletions).toEqual({ 'task-1': deletedAt });
+    });
+
+    test('should record deletion even when deletedId not in records', async () => {
+      const records = [{ id: 'task-1', title: 'Task 1' }];
+      const deletedAt = '2026-01-15T14:30:00.000Z';
+
+      loadDecryptedDataMock.mockResolvedValue(null);
+
+      await saveVaultRecords(store, type, records, {
+        deletedId: 'task-999',
+        deletedAt,
       });
-      expect(saveEncryptedDataMock).toHaveBeenCalledWith({
-        type,
-        value: expect.objectContaining({
-          records,
-          deletions: {},
-        }),
+
+      const savedValue = (saveEncryptedDataMock.mock.calls[0] as unknown[])[0];
+      const envelope = (savedValue as Record<string, unknown>)
+        .value as VaultBlobEnvelope<unknown>;
+
+      expect(envelope.records).toEqual(records);
+      expect(envelope.deletions).toEqual({ 'task-999': deletedAt });
+    });
+
+    test('should use current time when deletedAt not provided', async () => {
+      const record1 = { id: 'task-1', title: 'Task 1' };
+      const record2 = { id: 'task-2', title: 'Task 2' };
+      const records = [record1, record2];
+
+      jest.useFakeTimers();
+      const now = new Date('2026-01-15T10:00:00.000Z');
+      jest.setSystemTime(now);
+
+      loadDecryptedDataMock.mockResolvedValue(null);
+
+      await saveVaultRecords(store, type, records, {
+        deletedId: 'task-1',
       });
+
+      jest.useRealTimers();
+
+      const savedValue = (saveEncryptedDataMock.mock.calls[0] as unknown[])[0];
+      const envelope = (savedValue as Record<string, unknown>)
+        .value as VaultBlobEnvelope<unknown>;
+
+      expect(envelope.records).toEqual([record2]);
+      expect(envelope.deletions['task-1']).toBe(now.toISOString());
     });
   });
 
@@ -306,52 +344,6 @@ describe('vaultRecordWrite', () => {
         deleteVaultRecordAndSave(store, type, records, 'task-1', deletedAt),
       ).rejects.toThrow('Decryption failed');
       expect(saveEncryptedDataMock).not.toHaveBeenCalled();
-    });
-
-    test('should work with mobile numbers type', async () => {
-      const type: EditableVaultRecordType = 'mobileNumbers';
-      const records = [
-        { id: 'num-1', number: '+1234567890' },
-        { id: 'num-2', number: '+0987654321' },
-      ];
-
-      loadDecryptedDataMock.mockResolvedValue(null);
-
-      const remaining = await deleteVaultRecordAndSave(
-        store,
-        type,
-        records,
-        'num-1',
-        deletedAt,
-      );
-
-      expect(remaining).toEqual([{ id: 'num-2', number: '+0987654321' }]);
-      expect(saveEncryptedDataMock).toHaveBeenCalledWith({
-        type,
-        value: expect.objectContaining({
-          deletions: { 'num-1': deletedAt },
-        }),
-      });
-    });
-
-    test('should work with subscriptions type', async () => {
-      const type: EditableVaultRecordType = 'subscriptions';
-      const records = [
-        { id: 'sub-1', name: 'Service 1' },
-        { id: 'sub-2', name: 'Service 2' },
-      ];
-
-      loadDecryptedDataMock.mockResolvedValue(null);
-
-      const remaining = await deleteVaultRecordAndSave(
-        store,
-        type,
-        records,
-        'sub-2',
-        deletedAt,
-      );
-
-      expect(remaining).toEqual([{ id: 'sub-1', name: 'Service 1' }]);
     });
   });
 });
