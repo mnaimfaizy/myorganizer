@@ -34,7 +34,7 @@ import {
 } from './useVaultClaimEvidence';
 
 /**
- * Which wrapping secret produced the current in-memory Vault Unlock.
+ * Which secret produced the current in-memory Vault Unlock.
  * Session-scoped only — never persisted into the Local Vault.
  */
 export type VaultUnlockSecret = 'passphrase' | 'recovery-key';
