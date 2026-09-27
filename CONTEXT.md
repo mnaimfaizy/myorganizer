@@ -24,6 +24,10 @@ _Avoid_: Todo, to-do, item, reminder
 A recurring financial commitment the user monitors.
 _Avoid_: Recurring payment, recurring task, bill
 
+**Monthly Equivalent**:
+A Subscription's amount restated as what it costs per month, whatever its billing cycle — a yearly charge divided by twelve, a weekly one multiplied out and divided back. Stays in the Subscription's own currency: it normalises time, never money. Distinct from a total of the Subscriptions billed monthly, which ignores every other cycle.
+_Avoid_: monthly total, monthly cost, burn rate, converted total
+
 **User**:
 A person's account in MyOrganizer. Authentication is a state a User may be in, not part of what a User is — a Disabled User and an Unverified User are both Users.
 _Avoid_: Account, member, customer, person
@@ -45,7 +49,7 @@ A group that allows multiple Users to share resources. Emerging — not fully im
 _Avoid_: Team, group, workspace
 
 **Grocery List**:
-A named trip-oriented collection of grocery lines the User shops against on the web Groceries experience.
+A named trip-oriented collection of grocery lines the User shops against.
 _Avoid_: Shopping list (as the product name), cart, basket
 
 **Checked Item**:
@@ -221,11 +225,11 @@ _Avoid_: Soft lock, cooldown, Shorts ban, timeout
 ## Frontend Architecture
 
 **UI Primitive**:
-A reusable React component in `libs/web/ui/` with no knowledge of domain state, vault data, or route context. It must be fully expressible with mock props — that expressibility is required, not optional. Stateful interaction (checked, open, a mount point that fires a toast) does not disqualify it; domain knowledge does.
+A reusable React component in `libs/web/ui/`, or its React Native counterpart in `libs/mobile/ui/`, with no knowledge of domain state, vault data, or route context. It must be fully expressible with mock props — that expressibility is required, not optional. Stateful interaction (checked, open, a mount point that fires a toast) does not disqualify it; domain knowledge does.
 _Avoid_: Shared component, base component, core component, common component, stateless component (as the definition)
 
 **Feature Component**:
-A React component in `libs/web/pages/<route>/src/components/` that composes UI Primitives with domain logic and route-specific state. Never imported by other routes.
+A React component in `libs/web/pages/<route>/src/components/`, or in a mobile feature's screens under `libs/mobile/`, that composes UI Primitives with domain logic and route- or screen-specific state. Never imported by other routes or other features' screens.
 _Avoid_: Page component, route component, smart component
 
 **Vault UI Component**:
@@ -278,6 +282,10 @@ _Avoid_: shim, web fallback, .web file, platform adapter (for this sense)
 A shared library's second import path, carrying only exports that hold on every runtime the Mobile App targets. The Mobile App's native code reaches a shared library through its Portable Entry Point, never through the library's main entry point, which may carry browser-only code. A Portable Entry Point is not a Platform Adapter — it selects what is exported, not how a platform behaves.
 _Avoid_: neutral barrel, mobile barrel, platform-agnostic export, secondary entry point
 
+**Unconfirmed Edit**:
+An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. It lives only in memory and never outlives the screen that made it.
+_Avoid_: pending edit, queued edit, sync state, dirty row
+
 ## Vault
 
 **Vault Unlock**:
@@ -285,7 +293,7 @@ The client-side action of producing the Master Key so vault Ciphertext can be de
 _Avoid_: vault login, decrypt vault, open vault
 
 **Vault Unlock Secret**:
-Which wrapping secret produced the current in-memory Vault Unlock — passphrase or Recovery Key. Client-only session state: it is never written into the Local Vault and never sent to the server. It lives only while the Vault is unlocked on this device, and a lock or a later passphrase unlock clears a recovery-key unlock. It is what authorizes a passphrase _reset_ (no current passphrase) versus a passphrase _change_ (current passphrase required).
+Which secret produced the current in-memory Vault Unlock — passphrase, Recovery Key, or, on mobile, Biometric Unlock. Client-only session state: it is never written into the Local Vault and never sent to the server. It lives only while the Vault is unlocked on this device, and a lock or a later passphrase unlock clears a recovery-key unlock. It is what authorizes a passphrase _reset_ (no current passphrase) versus a passphrase _change_ (current passphrase required); only a Recovery Key unlock authorizes a reset.
 _Avoid_: unlock provenance, unlock method, last unlock, recovery mode
 
 **Passphrase Reset Prompt**:
@@ -399,6 +407,10 @@ _Avoid_: vault key, encryption key, secret key
 **Recovery Key**:
 The second secret that opens a Vault, and the only way back into one whose passphrase is forgotten. It is minted per Vault rather than chosen by the User, and it wraps the Master Key directly instead of deriving anything — so it carries no salt and no parameters of its own, and replacing one moves a single wrapping and never reads as a different Vault. Being minted per Vault is also what makes it unable to collide, which is why it is Vault Claim Evidence where a passphrase is not. Whoever holds it holds the Vault: it is shown once, kept by the User, and stored nowhere the product can reach.
 _Avoid_: backup key, recovery code, reset code, escrow key, second passphrase
+
+**Biometric Unlock**:
+A Vault Unlock on a mobile device that reads the Master Key from the platform keystore after a biometric check, instead of deriving it from the passphrase. The User opts in after a passphrase unlock on that device. It belongs to that User on that device, ends at logout or when the device's enrolled biometrics change, and never replaces the passphrase or the Recovery Key — it is a shortcut to the same Vault, and it authorizes nothing a passphrase unlock does not ([ADR 0108](docs/adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md)).
+_Avoid_: Face ID login, fingerprint login, biometric login, quick unlock
 
 **Recovery Key Rotation**:
 Minting a new Recovery Key for a Vault and retiring the old one, from a session that is already unlocked. Authorized by the passphrase and never by the key being replaced: a User rotating because the old key is lost cannot produce it, and an unattended unlocked session must not be enough to mint a credential that opens the Vault. It is the one Vault change with a step the User can fail — the new key has to be recorded before the old one stops working — so it is minted and shown before anything is written, and abandoning it leaves the old key working. Retirement is not instant everywhere, and copy that claims otherwise is wrong: it holds on this device and on any device signing in afterwards, while a device already holding the old wrapping keeps honouring the old key until the User confirms the change there, and a Vault Export taken beforehand is opened by the retired key for as long as that file exists.
