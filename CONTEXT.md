@@ -25,7 +25,7 @@ A recurring financial commitment the user monitors.
 _Avoid_: Recurring payment, recurring task, bill
 
 **Monthly Equivalent**:
-A Subscription's amount restated as what it costs per month, whatever its billing cycle — a yearly charge divided by twelve, a weekly one multiplied out and divided back. Stays in the Subscription's own currency: it normalises time, never money. Distinct from a total of the Subscriptions billed monthly, which ignores every other cycle.
+A Subscription's amount restated as what it costs per month, whatever its billing cycle — a yearly charge divided by twelve, a weekly one multiplied out and divided back. Stays in the Subscription's own currency: it normalises time, never money. It is plaintext and client-only — derived on the device from decrypted Subscriptions and never stored or sent. Distinct from a total of the Subscriptions billed monthly, which ignores every other cycle.
 _Avoid_: monthly total, monthly cost, burn rate, converted total
 
 **User**:
@@ -283,7 +283,7 @@ A shared library's second import path, carrying only exports that hold on every 
 _Avoid_: neutral barrel, mobile barrel, platform-agnostic export, secondary entry point
 
 **Unconfirmed Edit**:
-An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. It lives only in memory and never outlives the screen that made it.
+An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. It is plaintext and client-only: it lives only in memory, never outlives the screen that made it, and reaches the server solely as the Ciphertext its Vault Push sends.
 _Avoid_: pending edit, queued edit, sync state, dirty row
 
 ## Vault

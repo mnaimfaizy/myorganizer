@@ -46,6 +46,12 @@ app stops being opened.
    leaves the foreground, and the Vault locks after five minutes in the
    background by default, configurable from immediately to fifteen minutes.
    A lock clears the in-memory Master Key; the keystore item stays.
+7. **The keystore is reached through a Platform Adapter.** Reading, writing,
+   and deleting the keystore item, and learning whether enrolment has been
+   invalidated, go through one Platform Adapter interface. The rules above —
+   when to offer, when to fall back, when to delete, what a biometric unlock
+   authorizes — are a pure policy over that interface, so they are tested
+   against a fake keystore rather than on a device.
 
 ## Considered Options
 
