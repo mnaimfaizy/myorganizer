@@ -755,6 +755,15 @@ describe('useYouTubeSyncPoll', () => {
   });
 
   describe('claim wait (waitingForClaim)', () => {
+    // Factory for a pending trigger that never resolves, used in multiple tests
+    const pendingTrigger = () =>
+      jest.fn<Promise<boolean>, []>(
+        () =>
+          new Promise<boolean>(() => {
+            /* never resolves */
+          }),
+      );
+
     it('initially waitingForClaim is false and poll is not called on mount with non-live status', () => {
       const poll = jest.fn().mockResolvedValue(statusOf({ status: 'success' }));
 
@@ -774,12 +783,7 @@ describe('useYouTubeSyncPoll', () => {
       );
 
       // Create a pending trigger that never resolves
-      const trigger = jest.fn<Promise<boolean>, []>(
-        () =>
-          new Promise<boolean>(() => {
-            /* never resolves */
-          }),
-      );
+      const trigger = pendingTrigger();
 
       // Start the sync without awaiting
       await act(async () => {
@@ -825,12 +829,7 @@ describe('useYouTubeSyncPoll', () => {
         useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
       );
 
-      const trigger = jest.fn<Promise<boolean>, []>(
-        () =>
-          new Promise<boolean>(() => {
-            /* never resolves */
-          }),
-      );
+      const trigger = pendingTrigger();
 
       await act(async () => {
         void result.current.runUserSync(trigger);
@@ -865,12 +864,7 @@ describe('useYouTubeSyncPoll', () => {
         useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
       );
 
-      const trigger = jest.fn<Promise<boolean>, []>(
-        () =>
-          new Promise<boolean>(() => {
-            /* never resolves */
-          }),
-      );
+      const trigger = pendingTrigger();
 
       await act(async () => {
         void result.current.runUserSync(trigger);
@@ -982,12 +976,7 @@ describe('useYouTubeSyncPoll', () => {
         useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
       );
 
-      const trigger = jest.fn<Promise<boolean>, []>(
-        () =>
-          new Promise<boolean>(() => {
-            /* never resolves */
-          }),
-      );
+      const trigger = pendingTrigger();
 
       await act(async () => {
         void result.current.runUserSync(trigger);
@@ -1023,12 +1012,7 @@ describe('useYouTubeSyncPoll', () => {
         useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
       );
 
-      const trigger = jest.fn<Promise<boolean>, []>(
-        () =>
-          new Promise<boolean>(() => {
-            /* never resolves */
-          }),
-      );
+      const trigger = pendingTrigger();
 
       act(() => {
         void result.current.runUserSync(trigger);
@@ -1057,19 +1041,8 @@ describe('useYouTubeSyncPoll', () => {
         useYouTubeSyncPoll(statusOf({ status: 'success' }), { poll }),
       );
 
-      const trigger1 = jest.fn<Promise<boolean>, []>(
-        () =>
-          new Promise<boolean>(() => {
-            /* never resolves */
-          }),
-      );
-
-      const trigger2 = jest.fn<Promise<boolean>, []>(
-        () =>
-          new Promise<boolean>(() => {
-            /* never resolves */
-          }),
-      );
+      const trigger1 = pendingTrigger();
+      const trigger2 = pendingTrigger();
 
       // Start first sync
       await act(async () => {

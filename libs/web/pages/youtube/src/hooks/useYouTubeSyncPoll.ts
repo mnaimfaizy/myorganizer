@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { startPollLoop } from '../lib/pollLoop';
 import { isRunLive, shouldPoll } from '../lib/syncProgress';
 import type { YouTubeSyncStatus } from '../types';
 
@@ -63,7 +64,11 @@ export interface YouTubeSyncPollControls {
 /**
  * Polls /sync-status while a Channel Sync or an Upload Sync is live.
  *
- * The poll loop:
+ * Two shared polling loops (startPollLoop) drive live-poll and claim-wait:
+ * - Both await each poll before scheduling the next; poll errors are swallowed
+ * - Both guard against post-cancel work
+ *
+ * The live-poll loop:
  * - Starts on mount when the mount fetch reports a live run (ADR 0080, decision 1)
  * - Continues every 2 seconds while shouldPoll returns true
  * - Pauses when the tab is hidden, resumes with an immediate poll on visible
@@ -94,7 +99,7 @@ export function useYouTubeSyncPoll(
 ): YouTubeSyncPollControls {
   const { onRunComplete, poll } = options;
   const [waitingForClaim, setWaitingForClaim] = useState(false);
-  const pollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const cancelLivePollRef = useRef<(() => void) | null>(null);
   const wasLiveRef = useRef(false);
   const hasCompletedRef = useRef(false);
   const userRunIdRef = useRef(0);
@@ -104,47 +109,32 @@ export function useYouTubeSyncPoll(
     onRunCompleteRef.current = onRunComplete;
   }, [onRunComplete]);
 
-  // Schedule the next poll (recursive via ref to avoid linting issues).
-  const scheduleNextPollRef = useRef<((delayMs?: number) => void) | undefined>(
-    undefined,
-  );
+  // Start the live-poll loop: cancel any existing loop, do immediate poll, start new loop.
+  const startLivePoll = useCallback(() => {
+    cancelLivePollRef.current?.();
+    void poll();
+    cancelLivePollRef.current = startPollLoop({
+      poll,
+      intervalMs: POLL_INTERVAL_MS,
+    });
+  }, [poll]);
 
-  const scheduleNextPoll = useCallback(
-    (delayMs: number = POLL_INTERVAL_MS) => {
-      if (pollTimeoutRef.current) clearTimeout(pollTimeoutRef.current);
-      pollTimeoutRef.current = setTimeout(async () => {
-        try {
-          // Await the poll before scheduling the next one — do not queue them up
-          await poll();
-        } catch {
-          // Swallow errors during polling — the component will keep trying.
-          // Real API errors are logged server-side; a network hiccup is temporary.
-        }
-        scheduleNextPollRef.current?.(POLL_INTERVAL_MS);
-      }, delayMs);
-    },
-    [poll],
-  );
-
-  // Keep the ref in sync with the callback.
-  useEffect(() => {
-    scheduleNextPollRef.current = scheduleNextPoll;
-  }, [scheduleNextPoll]);
+  // Stop the live-poll loop.
+  const stopLivePoll = useCallback(() => {
+    cancelLivePollRef.current?.();
+    cancelLivePollRef.current = null;
+  }, []);
 
   // Handle visibility changes: pause polling when tab is hidden, resume when visible.
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (document.hidden) {
         // Tab is hidden — stop polling.
-        if (pollTimeoutRef.current) {
-          clearTimeout(pollTimeoutRef.current);
-          pollTimeoutRef.current = null;
-        }
+        stopLivePoll();
       } else {
         // Tab is now visible — resume with an immediate poll if still live.
         if (wasLiveRef.current) {
-          void poll();
-          scheduleNextPoll();
+          startLivePoll();
         }
       }
     };
@@ -153,7 +143,7 @@ export function useYouTubeSyncPoll(
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [poll, scheduleNextPoll]);
+  }, [startLivePoll, stopLivePoll]);
 
   // Update polling state based on run status.
   useEffect(() => {
@@ -165,69 +155,47 @@ export function useYouTubeSyncPoll(
       wasLiveRef.current = true;
       hasCompletedRef.current = false;
       if (!document.hidden) {
-        void poll();
-        scheduleNextPoll();
+        startLivePoll();
       }
     } else if (wasLive && !nowLive) {
       // Transition to terminal — stop polling and call completion callback.
       wasLiveRef.current = false;
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current);
-        pollTimeoutRef.current = null;
-      }
+      stopLivePoll();
       if (!hasCompletedRef.current) {
         hasCompletedRef.current = true;
         onRunComplete?.();
       }
     }
-  }, [currentStatus, poll, scheduleNextPoll, onRunComplete]);
+  }, [currentStatus, startLivePoll, stopLivePoll, onRunComplete]);
 
   // Claim-wait loop: poll for a live status after the User clicks a sync button.
   useEffect(() => {
     if (!waitingForClaim) return;
 
-    let isMounted = true;
     let elapsedMs = 0;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-
-    const doPoll = async () => {
-      if (!isMounted) return;
-
-      try {
-        const status = await poll();
-        if (!isMounted) return;
-        if (isRunLive(status)) {
+    return startPollLoop({
+      poll,
+      intervalMs: CLAIM_POLL_INTERVAL_MS,
+      leading: true,
+      onResult: (status) => {
+        if (status && isRunLive(status)) {
           setWaitingForClaim(false);
-          return;
+          return false;
         }
-      } catch {
-        if (!isMounted) return;
-      }
-
-      elapsedMs += CLAIM_POLL_INTERVAL_MS;
-      if (elapsedMs <= CLAIM_WAIT_MS && isMounted) {
-        timeoutId = setTimeout(doPoll, CLAIM_POLL_INTERVAL_MS);
-      } else if (isMounted) {
+        elapsedMs += CLAIM_POLL_INTERVAL_MS;
+        if (elapsedMs <= CLAIM_WAIT_MS) return true;
         setWaitingForClaim(false);
-      }
-    };
-
-    void doPoll();
-
-    return () => {
-      isMounted = false;
-      if (timeoutId) clearTimeout(timeoutId);
-    };
+        return false;
+      },
+    });
   }, [waitingForClaim, poll]);
 
   // Cleanup on unmount.
   useEffect(() => {
     return () => {
-      if (pollTimeoutRef.current) {
-        clearTimeout(pollTimeoutRef.current);
-      }
+      stopLivePoll();
     };
-  }, []);
+  }, [stopLivePoll]);
 
   const runUserSync = useCallback(async (trigger: () => Promise<boolean>) => {
     setWaitingForClaim(true);
