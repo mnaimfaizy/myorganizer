@@ -325,7 +325,7 @@ The unit of Ciphertext the server stores and the client synchronises: one per Va
 _Avoid_: vault record, encrypted blob, blob (unqualified), vault entry
 
 **Vault Push**:
-Sending one changed Vault Blob to the server. Distinct from Vault Reconcile: a push is the ordinary consequence of a single edit, carries no comparison, and asks the User nothing. Reconcile compares two whole Vaults and is the backstop for what push did not carry.
+Sending one changed Vault Blob to the server. Distinct from Vault Reconcile: a push is the ordinary consequence of a single edit, carries no whole-Vault comparison, and asks the User nothing while it runs. Reconcile compares two whole Vaults and is the backstop for what push did not carry. On mobile, which keeps no Local Vault, a push is read-modify-write against the server: the edited envelope is sent under the ETag it was read at, and a newer server copy is merged into it per the pinned strategy before resending — a type pinned to prompt is refused rather than merged ([ADR 0107](docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md)).
 _Avoid_: vault sync (unqualified), upload, save to server, backup
 
 **Vault Pull**:

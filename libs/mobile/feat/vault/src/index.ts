@@ -14,6 +14,15 @@ export {
   MASTER_KEY_LENGTH,
 } from './constants';
 export { createVaultApi } from './api';
-export { pullDecryptedBlob } from './sync';
+export {
+  isNetworkError,
+  readVaultBlob,
+  pushVaultBlob,
+  VaultBlobConflictError,
+} from './sync';
+export type { VaultBlobSnapshot } from './sync';
+export { useVaultBlob } from './useVaultBlob';
+export type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
+export { newRecordId } from './recordId';
 export { VaultProvider, useVaultSession } from './context/VaultSessionContext';
 export type { VaultStatus } from './context/VaultSessionContext';

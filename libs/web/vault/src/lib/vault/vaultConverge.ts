@@ -39,11 +39,7 @@ import {
   VaultApi,
   VaultBlobType,
 } from '@myorganizer/app-api-client';
-import {
-  readDeletionLog,
-  readVaultBlobRecords,
-  type VaultBlobEnvelope,
-} from '@myorganizer/vault-core';
+import { toVaultBlobEnvelope } from '@myorganizer/vault-core';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
@@ -209,14 +205,6 @@ type ConvergeContext = {
   /** The Local Vault as loaded at entry. Every write below goes back to it. */
   vault: VaultStorageV1;
 };
-
-/** Both halves of a decrypted payload, whichever shape it was written in. */
-function toEnvelope(payload: unknown): VaultBlobEnvelope<unknown> {
-  return {
-    records: readVaultBlobRecords(payload),
-    deletions: readDeletionLog(payload),
-  };
-}
 
 function sameCiphertext(
   local: EncryptedBlob,
@@ -468,8 +456,8 @@ async function decideConflict(
   }
 
   const merged = strategy.merge(
-    toEnvelope(localPayload),
-    toEnvelope(remotePayload),
+    toVaultBlobEnvelope(localPayload),
+    toVaultBlobEnvelope(remotePayload),
   );
 
   // Save before sending. The merge is the converged truth whether or not the
