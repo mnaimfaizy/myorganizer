@@ -1,5 +1,177 @@
 # Changelog
 
+## v1.1.0 - 2026-09-27
+
+Date: 2026-09-27
+
+## Changes since v1.0.0
+
+Compare: https://github.com/mnaimfaizy/myorganizer/compare/v1.0.0...v1.1.0
+
+### Features
+
+- **mobile**: add Vault Push with read-modify-write and conflict handling (4a7c68b)
+- **review**: require fixes to name their origin (0b9046e)
+- **gates**: assert that no ADR is authored proposed (c69d0a7)
+- **web-vault-ui**: add recovery unlock passphrase reset prompt (967a6ea)
+- **gates**: assert the Prisma migration history before merge (2964081)
+- **youtube**: split channel sync and upload sync (ef1f2d9)
+- **web-vault**: consult blob inventory before reconcile GETs (62b2713)
+- **vault**: ship the standalone Escape Copy reader (e632727)
+
+### Fixes
+
+- **deps**: update image-size advisory IDs after npm registry re-keying (58c96c0)
+- **web-vault**: preserve deletion log on array-record writes (16b01c3)
+- **docs**: restore AGENTS.md line 193 citation anchor (d28068b)
+- **myorganizer**: pin dev server port to 4200 (26dc5ff)
+- **mobile**: clear add-task field after offline retry (36ec2d1)
+- **youtube-pages**: use the sync request as the completion signal (674ddfa)
+- **ci**: keep the mobile gate comment at its original line count (8e8cc84)
+- **mobile**: align TypeScript config with React Native 0.79 Metro (a725da5)
+- **claude-permissions**: allow the instructed checker scripts [skip replay] (a6dfe32)
+- **review**: read settings rules in Claude Code's wildcard syntax (2dabb8e)
+- **claude-permissions**: restore worktree ask and name check scripts exactly (95dc0bc)
+- **web-ui**: stack sequential toasts instead of replacing (919aef4)
+- **web-ui**: add toast after dismiss via REMOVE then ADD (3c12594)
+- **web-ui**: keep ToastProvider open for sequential toast updates (4ec76f5)
+- **backend**: log stack for cron YouTube upload sync failures (0192718)
+- **web-ui**: reuse toast slot id on replace via UPDATE_TOAST (4c39096)
+- **backend**: log YouTube sync auth failures once at the caller (cc24b7f)
+- **backend**: log YouTube sync run errors before bucket collapse (e85e091)
+- **ci**: keep the mobile-platform comment to its original two lines (19c7c65)
+- **web-ui**: defer sequential toast add for Chromium portal detach (b97b272)
+- **web-ui**: restore stable ToastProvider layout in Toaster (a4041a2)
+- **web-ui**: key toast Fragment instead of ToastProvider for Chromium (d932e99)
+- **docs**: update citations and workflow comment after AGENTS.md shift (1230e4d)
+- **typecheck**: add tsconfig.web.json to checked configs (cfbca77)
+- **web-ui**: remount ToastProvider on toast id for sequential toasts (1f9c718)
+- **mobile**: typecheck native without dom (1f6d52b)
+- **web-ui**: flushSync toast remove so Radix remounts (7bc9133)
+- **e2e**: document when export specs began using Download.path() (eacbfd3)
+- **web-ui**: show sequential toasts in Toaster (f2667ec)
+- **myorganizer-e2e**: use saveAs for vault export downloads (8bb5227)
+- **web-ui**: prevent sequential toasts from being dropped (8483b2e)
+- **ci**: close nightly E2E rot issue on green scheduled run (d2cb362)
+- **review**: test the tree-clean label, retarget shifted citations, demote a case (e8f46fe)
+- **code-review**: name git show as the way to read another tree (3f8feeb)
+- **review**: make coveringGate a site field, not an answer field (7bad487)
+- **gates**: retarget shifted citations, renumber to 0097, flip ADR 0096 (247b3d3)
+- **review**: retarget finding-lifecycle citations after SKILL.md shift (3110e38)
+- **code-review**: guard against ask rules blocking reviewer (f0e26b3)
+- **youtube**: renumber sync ADR to 0096 after slot collision on main (4c9713f)
+- **gates**: name the CI step that actually asserts the database tier (12c58de)
+- **docs**: retarget the citations my ci.yml and AGENTS.md edits shifted (9ac5784)
+- **mobile**: pin Metro to React 19.0.0 for RN renderer (fd02b26)
+- **component-hygiene**: unify verdicts and make the exemption mechanism usable (d1e01ea)
+- **escape-copy-reader**: take the spacing tokens that exist, and assert that too (2f24538)
+- **escape-copy-reader**: use spacing tokens that exist, and assert it (f6ef177)
+- **vault**: close the reader review findings and the scanner false positive (9543bdf)
+- **docs**: retarget explainer citations shifted by the reader wiring (0f7778a)
+
+### Documentation
+
+- **deps**: link #920 as the image-size exception's acceptance issue (92ed8a3)
+- **youtube-pages**: state the claim-wait end conditions once (1395b9a)
+- **agents**: clarify Nx PORT injection for Next.js dev server (25532a5)
+- **youtube**: describe the sync request as a completion signal (f2da0c8)
+- **adr**: name typecheck:check as a checker of mobile library configs (58cfdab)
+- **adr**: amend ADR 0103 for mobile libraries dropping dom (8def114)
+- **adr**: record what the ask list is for (4cbba9c)
+- **adr**: record the cloud push approval; deny forced git switch (a21677d)
+- **deployment**: retarget release-pipeline citations to ci.yml line shifts (5ed2470)
+- **adr**: correct path pointers in merged adrs rather than exempt them (316bdfa)
+- **vault-core**: update docs to reflect vault records move (875f77a)
+- **web-ui**: record origin of sequential toast skip (b12b765)
+- **review**: record run 35833576958 [skip replay] (9e3c57b)
+- retarget citation line numbers in explainer pages (993404b)
+- **adr**: finish the 0098 to 0099 renumber across the remaining references (b2b88fb)
+- **review**: document design-tokens:check in its library, record the second miss (2021d93)
+- **adr**: flip five merged ADRs from proposed to accepted (84d0f6a)
+- **vault**: record post-recovery passphrase reset prompt decision (d313b67)
+- **vault-core**: name the setup file that is actually there (85ab143)
+- **testing**: track the remaining test-setup duplication as an issue (063c00a)
+
+### Refactors
+
+- **web-vault**: let saveVaultRecords record a deletion (250575d)
+- **web-pages**: fold record delete into persist (ea475be)
+- **youtube-pages**: share one poll loop for live and claim-wait polls (22efaab)
+- **youtube-pages**: move the claim wait into useYouTubeSyncPoll (7c91cc4)
+- **youtube-pages**: share one sync request path for both triggers (32de6a1)
+- **youtube-pages**: run the user's sync through runUserSync (cf6a826)
+- **mobile**: share one tsconfig across the mobile libraries (3517ca9)
+- **copilot-hooks**: share one spawn path in the hook harness (92fa1e7)
+- **web-ui**: restore web-ui manifest name the move generator changed (b0266a4)
+- **web-ui**: move library to libs/web/ui with corrected pointers (f8f33a3)
+- **web-vault-ui**: move library to libs/web/vault-ui (98c88d9)
+- **web-vault**: move web-vault library to libs/web/vault (e6adac1)
+- **web-youtube**: move library under libs/web/ directory (46a6675)
+- **vault-core**: move vault records from core to vault-core (4b7c759)
+- **backend**: extract logErrorWithStack for sync failure logging (e5573b2)
+- **backend**: name sync failure logs as sync attempts (ce52ac7)
+- **myorganizer-e2e**: extract readDownloadText download helper (8885e6e)
+- **web-vault-ui**: extract shared NewPassphraseFields (acec7b4)
+- **web-vault-ui**: extract recovery passphrase reset sequence (62b5314)
+- **myorganizer-e2e**: delegate createOwnedVault to recovery-key helper (af81865)
+- **youtube**: drop retired Sync Run identifiers (6b27b86)
+- **backend**: extract shared manual sync flow in YouTubeSyncService (4228d2c)
+- **web-vault**: extract vaultBlobInventoryFetchDecision helper (2042c03)
+- **web-vault**: extract readVaultBlobInventoryEtags helper (460a0b3)
+
+### Tests
+
+- **youtube-pages**: name the channel sync request cases readably (3861fc2)
+- **ci**: add contract suite for dependency-manifest detector (7db9aa8)
+- **web-ui**: expect new toast id after dismiss then sequential toast (c063ac9)
+- **backend**: rename worker spec module-scope mocks (f24856d)
+- **backend**: assert YouTube sync worker failure logging (80481ac)
+- **backend**: expect upload sync auth failure log from onError handler (b8c2bf3)
+- **backend**: cover logSyncRunFailure JSON.stringify catch (7773e4a)
+- **backend**: assert sync run failure logging in YouTubeSyncService (c4aa961)
+- **web-ui**: align toast tests with sequential-replace behavior (664aa7f)
+- **web-ui**: extract shared clearToastState test helper (ab9d08c)
+- **review**: cover run-from-tooling's own behaviour (48dfceb)
+- **e2e**: restore Import complete toast in wrapping-reverts spec (e6158bd)
+- **web-ui**: assert empty toast commit between sequential toast() calls (f50c30d)
+- **e2e**: drop flaky Import complete toast in wrapping-reverts spec (6a8d6a8)
+- **e2e**: scope lastServerNote to main in wrapping-reverts import (c31dd33)
+- **e2e**: restore Import complete toast in different-vault import (2da9d0e)
+- **web-ui**: add multi-subscriber useToast regression for #810 (67d669c)
+- **e2e**: restore Import complete toast in wrapping-reverts import (d58be29)
+- **design-hygiene**: accept ci.yml unreadable or mismatch in #771 replay (baf47ac)
+- **gates**: share manifest workspace helper and pin headroom calibration (b4a6a26)
+- **gates**: fix Agent Brief date cite and add roster-growth guard (2d99ede)
+- **gates**: align cost-bound citations with Agent Brief (4a13310)
+- **gates**: bind aggregate runner cost to same-run node spawn (557f783)
+- **e2e**: navigate to gated route after reload in skip recovery spec (02f9744)
+- **e2e**: assert recovery card by its submit control (150b59f)
+- **e2e**: add passphrase reset prompt spec and vault helpers (903f5dd)
+- cover passphrase reset prompt session, UI, gate, and hook (263e257)
+- **youtube**: align page specs with channel/upload sync split (34bc118)
+- **backend**: point YouTube controller integration tests at syncChannels and syncUploads (c4d3aec)
+- **backend**: retarget YouTubeSyncService specs for ADR 0094 phase split (202df81)
+- **e2e**: expect two discovery inventory GETs after #857 reconcile (e453549)
+- **e2e**: align vault pull discovery spec with inventory-aware reconcile (3f038b5)
+- **web-vault**: retarget vaultReconcile tests for inventory-aware contract (a139e2c)
+
+### CI
+
+- **dependency-audit**: handle renamed manifests in dependency checks (3eef6c4)
+- **review**: run tooling scripts through one run-from-tooling entry point (1cbdb00)
+- **review**: replay on changes to every overlaid harness path (b34ebad)
+- **review**: name the overlaid paths in the replay facts from the overlay list (ee1ed00)
+- **review**: replay golden cases in the case tree with the PR's harness (afb0dc6)
+- **review**: wire obligations check before golden replay scoring (48533b4)
+
+### Chores
+
+- **claude**: add dev server launch configurations (3f98277)
+- **claude-permissions**: defer guard hooks and add cloud permission hook (d3b26d0)
+- **adr**: renumber to 0098 and author it accepted (68e97ee)
+- **testing**: typecheck the shared Web Crypto Jest setup (52ffba2)
+- **testing**: one Web Crypto setup file for every vault suite (c58a176)
+
 ## v1.0.0 - 2026-09-20
 
 Date: 2026-09-20
