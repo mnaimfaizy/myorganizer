@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["yarn", "start:backend"],
+      "port": 3000
+    },
+    {
+      "name": "web",
+      "runtimeExecutable": "env",
+      "runtimeArgs": ["PORT=4200", "corepack", "yarn", "start:myorganizer"],
+      "port": 4200
+    },
+    {
+      "name": "metro",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["yarn", "nx", "start", "mobile"],
+      "port": 8081
+    }
+  ]
+}
