@@ -24,8 +24,6 @@ const CLAIM_POLL_INTERVAL_MS = 1000;
 
 /**
  * Maximum time the claim-wait loop runs before giving up (30 seconds).
- * The claim wait is started by runUserSync and ends on whichever comes first:
- * the User's request resolves, a poll sees a live status, or 30 seconds pass.
  */
 const CLAIM_WAIT_MS = 30000;
 
