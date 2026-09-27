@@ -87,10 +87,22 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
   }, [props.handle, toast, revision]);
 
   const persist = useCallback(
-    async (next: MobileNumberRecord[]) => {
+    async (next: MobileNumberRecord[], deletedId?: string) => {
       setItems(next);
       try {
-        await saveVaultRecords(props.handle, 'mobileNumbers', next);
+        if (deletedId === undefined) {
+          await saveVaultRecords(props.handle, 'mobileNumbers', next);
+        } else {
+          // A delete must be written to the Deletion Log, or a merge brings
+          // the record back (ADR 0054).
+          await deleteVaultRecordAndSave(
+            props.handle,
+            'mobileNumbers',
+            next,
+            deletedId,
+            new Date().toISOString(),
+          );
+        }
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         toast({
@@ -126,41 +138,19 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
     setDeletingMobileNumber(item);
   }, []);
 
-  const persistDelete = useCallback(
-    async (id: string) => {
-      const filteredItems = items.filter((x) => x.id !== id);
-      setItems(filteredItems);
-      try {
-        await deleteVaultRecordAndSave(
-          props.handle,
-          'mobileNumbers',
-          items,
-          id,
-          new Date().toISOString(),
-        );
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
-        toast({
-          title: 'Failed to save',
-          description: message,
-          variant: 'destructive',
-        });
-        throw e;
-      }
-    },
-    [items, props.handle, toast],
-  );
-
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingMobileNumber) return;
     try {
-      await persistDelete(deletingMobileNumber.id);
+      await persist(
+        items.filter((x) => x.id !== deletingMobileNumber.id),
+        deletingMobileNumber.id,
+      );
       toast({ title: 'Deleted', description: 'Mobile number removed.' });
       setDeletingMobileNumber(null);
     } catch {
-      // persistDelete() already toasted the failure; leave the dialog open for retry
+      // persist() already toasted the failure; leave the dialog open for retry
     }
-  }, [deletingMobileNumber, persistDelete, toast]);
+  }, [deletingMobileNumber, items, persist, toast]);
 
   const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
     if (!open) {

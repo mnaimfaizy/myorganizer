@@ -109,9 +109,21 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   }, [props.handle, toast, revision]);
 
   const persist = useCallback(
-    async (next: SubscriptionRecord[]) => {
+    async (next: SubscriptionRecord[], deletedId?: string) => {
       try {
-        await saveVaultRecords(props.handle, 'subscriptions', next);
+        if (deletedId === undefined) {
+          await saveVaultRecords(props.handle, 'subscriptions', next);
+        } else {
+          // A delete must be written to the Deletion Log, or a merge brings
+          // the record back (ADR 0054).
+          await deleteVaultRecordAndSave(
+            props.handle,
+            'subscriptions',
+            next,
+            deletedId,
+            new Date().toISOString(),
+          );
+        }
         setItems(next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -342,40 +354,19 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
     [items],
   );
 
-  const persistDelete = useCallback(
-    async (id: string) => {
-      try {
-        const deleted = await deleteVaultRecordAndSave(
-          props.handle,
-          'subscriptions',
-          items,
-          id,
-          new Date().toISOString(),
-        );
-        setItems(deleted);
-      } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : String(e);
-        toast({
-          title: 'Failed to save',
-          description: message,
-          variant: 'destructive',
-        });
-        throw e;
-      }
-    },
-    [items, props.handle, toast],
-  );
-
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingSubscription) return;
     try {
-      await persistDelete(deletingSubscription.id);
+      await persist(
+        items.filter((x) => x.id !== deletingSubscription.id),
+        deletingSubscription.id,
+      );
       toast({ title: 'Deleted', description: 'Subscription removed.' });
       setDeletingSubscription(null);
     } catch {
-      // persistDelete() already toasted the failure; leave the dialog open for retry
+      // persist() already toasted the failure; leave the dialog open for retry
     }
-  }, [deletingSubscription, persistDelete, toast]);
+  }, [deletingSubscription, items, persist, toast]);
 
   const handleOpenAddDialog = useCallback(() => {
     setShowAddDialog(true);
