@@ -188,11 +188,19 @@ outcome and returns the live attempt's status rather than an error.
 supersedes the combined Sync Run in ADR 0080.
 
 A User-initiated run stays **inline in the request**, and the web client does not
-wait for the response. It fires the `PUT` and polls `GET /sync-status` every two
-seconds, which is the single source of truth for the run. Express does not abort a
-handler when the client disconnects, so the run finishes and records its outcome
-whether or not the tab is open — leaving the page is safe, and the page picks a run
-in flight back up on mount. A gateway timeout on the ignored `PUT` is cosmetic.
+block on the response. It fires the `PUT` and polls `GET /sync-status` every two
+seconds while the run is live, which is how the page shows progress and how it
+learns that a run it did not start (cron, another tab) has finished. For a run the
+User started, the `PUT` response is also a completion signal: a run that finishes
+before the first poll sees it live still refreshes the lists
+([#753](https://github.com/mnaimfaizy/myorganizer/issues/753)). The response
+counts as a run only when its status is one that did work and its attempt stamp
+moved past the one read just before the request, because a lost claim answers with
+an earlier run's stored status. Either path refreshes the lists at most once per
+run. Express does not abort a handler when the client disconnects, so the run
+finishes and records its outcome whether or not the tab is open — leaving the page
+is safe, and the page picks a run in flight back up on mount. A gateway timeout on
+the `PUT` is cosmetic: the poll covers a run too long for the request to return.
 [ADR 0080](../adr/0080-a-user-initiated-sync-is-tracked-in-place-not-queued.md)
 records why this is not a queued job: cron on the production host cannot tick more
 often than every five minutes, so a queued run could not start sooner than that.

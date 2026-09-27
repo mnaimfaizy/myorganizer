@@ -867,26 +867,19 @@ describe('YouTubePageClient', () => {
       return { subs, carousel };
     };
 
+    // The trigger resolves whether the run did work; which statuses count is
+    // pinned by didSyncRequestRun's own tests and the trigger tests in
+    // hooks/index.spec.ts, so the page only sees the two outcomes.
     it.each([
       {
-        label: 'request that ran (success)',
+        label: 'request that ran',
         triggerResult: true,
         expectedRefreshCalls: 1,
       },
       {
-        label: 'request that did not run (cooldown)',
+        label: 'request that did not run',
         triggerResult: false,
         expectedRefreshCalls: 0,
-      },
-      {
-        label: 'request that ran (failed)',
-        triggerResult: true,
-        expectedRefreshCalls: 1,
-      },
-      {
-        label: 'request that ran (partial)',
-        triggerResult: true,
-        expectedRefreshCalls: 1,
       },
     ])(
       '$label → refreshes $expectedRefreshCalls time(s)',
