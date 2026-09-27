@@ -114,15 +114,26 @@ export async function deleteTaskFromWorkflow(
   tasks: Task[],
   taskId: string,
 ): Promise<{ tasks: Task[]; result: TaskWorkflowMutationResult }> {
-  const next = tasks.filter((t) => t.id !== taskId);
-  const persisted = await persistTasks(adapter, next);
-  if (persisted.error) {
+  // Filtering the Task out is not a deletion: a merge unions by id, so the
+  // Task would come straight back from any copy that still holds it. The
+  // adapter writes the deletion into the Deletion Log (ADR 0054).
+  try {
+    const remaining = await adapter.deleteTask(
+      tasks,
+      taskId,
+      new Date().toISOString(),
+    );
     return {
-      tasks: persisted.tasks,
-      result: { ok: false, error: persisted.error },
+      tasks: sortTasks(remaining),
+      result: { ok: true, kind: 'deleted' },
+    };
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : String(e);
+    return {
+      tasks: sortTasks(tasks.filter((t) => t.id !== taskId)),
+      result: { ok: false, error: saveFailedError(message) },
     };
   }
-  return { tasks: persisted.tasks, result: { ok: true, kind: 'deleted' } };
 }
 
 export async function archiveTaskInWorkflow(

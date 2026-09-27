@@ -45,6 +45,16 @@ class ThrowOnSaveVaultAdapter extends InMemoryTasksVaultAdapter {
   }
 }
 
+class ThrowOnDeleteVaultAdapter extends InMemoryTasksVaultAdapter {
+  async deleteTask(
+    _tasks: Task[],
+    _taskId: string,
+    _deletedAt: string,
+  ): Promise<Task[]> {
+    throw new Error('disk full');
+  }
+}
+
 describe('task-workflow', () => {
   let idCounter = 0;
 
@@ -221,6 +231,28 @@ describe('task-workflow', () => {
       expect(tasks[0].title).toBe('Unsaved task');
       expect(adapter.getSavedTasks()).toBeNull();
     });
+
+    it('leaves existing deletions untouched when adding a new task', async () => {
+      const existing = makeTask({
+        id: 'existing-1',
+        priority: 'low',
+        createdAt: '2024-01-01T00:00:00.000Z',
+      });
+      const adapter = new InMemoryTasksVaultAdapter({
+        tasks: [existing],
+        deletions: { removed: '2024-01-01T00:00:00.000Z' },
+      });
+
+      await addTaskToWorkflow(adapter, [existing], {
+        title: 'New task',
+        priority: 'high',
+        status: 'pending',
+      });
+
+      expect(adapter.getSavedDeletions()).toEqual({
+        removed: '2024-01-01T00:00:00.000Z',
+      });
+    });
   });
 
   describe('updateTaskInWorkflow', () => {
@@ -291,6 +323,54 @@ describe('task-workflow', () => {
       expect(tasks).toHaveLength(1);
       expect(tasks[0].id).toBe('keep');
       expect(adapter.getSavedTasks()).toEqual(tasks);
+    });
+
+    it('records the deletion in the adapter with the current timestamp', async () => {
+      const keep = makeTask({ id: 'keep' });
+      const remove = makeTask({ id: 'remove' });
+      const adapter = new InMemoryTasksVaultAdapter({ tasks: [keep, remove] });
+
+      await deleteTaskFromWorkflow(adapter, [keep, remove], 'remove');
+
+      expect(adapter.getSavedDeletions()).toEqual({ remove: FIXED_NOW });
+    });
+
+    it('preserves existing deletions in the log when adding a new one', async () => {
+      const keep = makeTask({ id: 'keep' });
+      const remove = makeTask({ id: 'remove' });
+      const adapter = new InMemoryTasksVaultAdapter({
+        tasks: [keep, remove],
+        deletions: { 'old-task': '2024-01-01T00:00:00.000Z' },
+      });
+
+      await deleteTaskFromWorkflow(adapter, [keep, remove], 'remove');
+
+      expect(adapter.getSavedDeletions()).toEqual({
+        'old-task': '2024-01-01T00:00:00.000Z',
+        remove: FIXED_NOW,
+      });
+    });
+
+    it('returns save_failed but still returns filtered tasks optimistically on deleteTask error', async () => {
+      const keep = makeTask({ id: 'keep', title: 'Keep me' });
+      const remove = makeTask({ id: 'remove', title: 'Remove me' });
+      const adapter = new ThrowOnDeleteVaultAdapter({
+        tasks: [keep, remove],
+      });
+
+      const { tasks, result } = await deleteTaskFromWorkflow(
+        adapter,
+        [keep, remove],
+        'remove',
+      );
+
+      expect(result).toEqual({
+        ok: false,
+        error: { code: 'save_failed', message: 'disk full' },
+      });
+      expect(tasks).toHaveLength(1);
+      expect(tasks[0].id).toBe('keep');
+      expect(adapter.getSavedTasks()).toEqual([keep, remove]);
     });
   });
 

@@ -158,12 +158,16 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
-  normalizeAddresses: jest.fn((data) => ({
-    value: data || [],
-    changed: false,
-  })),
-}));
+jest.mock('@myorganizer/web-vault', () => {
+  const actual = jest.requireActual('@myorganizer/web-vault');
+  return {
+    ...actual,
+    normalizeAddresses: jest.fn((data) => ({
+      value: (data?.records ?? data) || [],
+      changed: false,
+    })),
+  };
+});
 
 jest.mock('@myorganizer/core', () => {
   const actual = jest.requireActual('@myorganizer/core');
@@ -356,7 +360,7 @@ describe('AddressDetailPageClient', () => {
       // Verify payload has updated label
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toContainEqual(
+      expect(lastCall[0].value.records).toContainEqual(
         expect.objectContaining({ label: 'Updated Home' }),
       );
 
@@ -400,6 +404,53 @@ describe('AddressDetailPageClient', () => {
       });
 
       expect(mockPush).not.toHaveBeenCalled();
+    });
+
+    it('should stamp updatedAt when editing address', async () => {
+      const address = makeAddressRecord('addr1', {
+        label: 'Home',
+        street: 'Old Street',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      const editButton = screen.getByRole('button', { name: /edit/i });
+      fireEvent.click(editButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Edit address')).toBeInTheDocument();
+      });
+
+      const labelInput = screen.getByDisplayValue('Home') as HTMLInputElement;
+      fireEvent.change(labelInput, { target: { value: 'Updated Home' } });
+      fireEvent.blur(labelInput);
+
+      const saveButton = screen.getByRole('button', { name: /save changes/i });
+
+      await waitFor(() => {
+        expect(saveButton).not.toBeDisabled();
+      });
+
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify updatedAt was stamped
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const savedAddress = lastCall[0].value.records[0];
+      expect(savedAddress.updatedAt).toEqual(expect.any(String));
+      expect(Number.isNaN(Date.parse(savedAddress.updatedAt ?? ''))).toBe(
+        false,
+      );
     });
   });
 
@@ -496,7 +547,7 @@ describe('AddressDetailPageClient', () => {
       // Verify the new location was persisted
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      const savedAddress = lastCall[0].value[0];
+      const savedAddress = lastCall[0].value.records[0];
       expect(savedAddress.usageLocations).toHaveLength(1);
       expect(savedAddress.usageLocations[0]).toEqual(
         expect.objectContaining({
@@ -618,7 +669,7 @@ describe('AddressDetailPageClient', () => {
       // Verify the location was updated
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      const savedAddress = lastCall[0].value[0];
+      const savedAddress = lastCall[0].value.records[0];
       expect(savedAddress.usageLocations[0].organisationName).toBe('Medicare');
       expect(savedAddress.usageLocations).toHaveLength(1);
     });
@@ -765,7 +816,7 @@ describe('AddressDetailPageClient', () => {
       // Verify location is removed
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      const savedAddress = lastCall[0].value[0];
+      const savedAddress = lastCall[0].value.records[0];
       expect(savedAddress.usageLocations).toHaveLength(0);
     });
 
@@ -878,6 +929,56 @@ describe('AddressDetailPageClient', () => {
 
       // Dialog should still be open for retry
       expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+    });
+
+    it('should stamp updatedAt on address when deleting a usage location', async () => {
+      const location = makeUsageLocation('loc1', {
+        organisationName: 'DHHS',
+      });
+      const address = makeAddressRecord('addr1', {
+        label: 'Home',
+        usageLocations: [location],
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<AddressDetailPageClient params={{ id: 'addr1' }} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('DHHS')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen
+        .getAllByRole('button')
+        .find(
+          (btn) => btn.textContent?.includes('Delete') && btn.closest('tr'),
+        );
+      if (!deleteButton) throw new Error('Delete button not found');
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify updatedAt was stamped on the address
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const savedAddress = lastCall[0].value.records[0];
+      expect(savedAddress.updatedAt).toEqual(expect.any(String));
+      expect(Number.isNaN(Date.parse(savedAddress.updatedAt ?? ''))).toBe(
+        false,
+      );
+      // Verify location was removed
+      expect(savedAddress.usageLocations).toHaveLength(0);
+      // Deleting a location must not record a deletion for the address
+      expect(lastCall[0].value.deletions).not.toHaveProperty('addr1');
     });
   });
 

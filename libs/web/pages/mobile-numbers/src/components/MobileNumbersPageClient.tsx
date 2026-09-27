@@ -3,7 +3,9 @@
 import { MobileNumberRecord } from '@myorganizer/vault-core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
+  deleteVaultRecordAndSave,
   normalizeMobileNumbers,
+  saveVaultRecords,
   type VaultHandle,
 } from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
@@ -63,10 +65,11 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
         const normalized = normalizeMobileNumbers(raw);
         if (isActive) setItems(normalized.value);
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'mobileNumbers',
-            value: normalized.value,
-          });
+          await saveVaultRecords(
+            props.handle,
+            'mobileNumbers',
+            normalized.value,
+          );
         }
       })
       .catch(() => {
@@ -87,10 +90,7 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
     async (next: MobileNumberRecord[]) => {
       setItems(next);
       try {
-        await props.handle.saveEncryptedData({
-          type: 'mobileNumbers',
-          value: next,
-        });
+        await saveVaultRecords(props.handle, 'mobileNumbers', next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         toast({
@@ -126,16 +126,41 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
     setDeletingMobileNumber(item);
   }, []);
 
+  const persistDelete = useCallback(
+    async (id: string) => {
+      const filteredItems = items.filter((x) => x.id !== id);
+      setItems(filteredItems);
+      try {
+        await deleteVaultRecordAndSave(
+          props.handle,
+          'mobileNumbers',
+          items,
+          id,
+          new Date().toISOString(),
+        );
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
+          variant: 'destructive',
+        });
+        throw e;
+      }
+    },
+    [items, props.handle, toast],
+  );
+
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingMobileNumber) return;
     try {
-      await persist(items.filter((x) => x.id !== deletingMobileNumber.id));
+      await persistDelete(deletingMobileNumber.id);
       toast({ title: 'Deleted', description: 'Mobile number removed.' });
       setDeletingMobileNumber(null);
     } catch {
-      // persist() already toasted the failure; leave the dialog open for retry
+      // persistDelete() already toasted the failure; leave the dialog open for retry
     }
-  }, [deletingMobileNumber, items, persist, toast]);
+  }, [deletingMobileNumber, persistDelete, toast]);
 
   const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
     if (!open) {

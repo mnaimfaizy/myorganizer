@@ -14,7 +14,9 @@ import {
 } from '@myorganizer/vault-core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
+  deleteVaultRecordAndSave,
   normalizeSubscriptions,
+  saveVaultRecords,
   type VaultHandle,
 } from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
@@ -85,10 +87,11 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         const normalized = normalizeSubscriptions(raw);
         if (isActive) setItems(normalized.value);
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'subscriptions',
-            value: normalized.value,
-          });
+          await saveVaultRecords(
+            props.handle,
+            'subscriptions',
+            normalized.value,
+          );
         }
       })
       .catch(() => {
@@ -108,10 +111,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   const persist = useCallback(
     async (next: SubscriptionRecord[]) => {
       try {
-        await props.handle.saveEncryptedData({
-          type: 'subscriptions',
-          value: next,
-        });
+        await saveVaultRecords(props.handle, 'subscriptions', next);
         setItems(next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -265,6 +265,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         cancellationReason: undefined,
         tier: values.tier,
         link: values.link?.trim() || undefined,
+        updatedAt: new Date().toISOString(),
       };
 
       await persist([nextItem, ...items]);
@@ -307,6 +308,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
               renewalType: values.renewalType,
               tier: values.tier,
               link: values.link?.trim() || undefined,
+              updatedAt: new Date().toISOString(),
             }
           : s,
       );
@@ -340,16 +342,40 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
     [items],
   );
 
+  const persistDelete = useCallback(
+    async (id: string) => {
+      try {
+        const deleted = await deleteVaultRecordAndSave(
+          props.handle,
+          'subscriptions',
+          items,
+          id,
+          new Date().toISOString(),
+        );
+        setItems(deleted);
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
+          variant: 'destructive',
+        });
+        throw e;
+      }
+    },
+    [items, props.handle, toast],
+  );
+
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingSubscription) return;
     try {
-      await persist(items.filter((s) => s.id !== deletingSubscription.id));
+      await persistDelete(deletingSubscription.id);
       toast({ title: 'Deleted', description: 'Subscription removed.' });
       setDeletingSubscription(null);
     } catch {
-      // persist() already toasted the failure; leave the dialog open for retry
+      // persistDelete() already toasted the failure; leave the dialog open for retry
     }
-  }, [deletingSubscription, items, persist, toast]);
+  }, [deletingSubscription, persistDelete, toast]);
 
   const handleOpenAddDialog = useCallback(() => {
     setShowAddDialog(true);

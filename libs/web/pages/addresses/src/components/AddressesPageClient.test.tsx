@@ -153,12 +153,16 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
-  normalizeAddresses: jest.fn((data) => ({
-    value: data || [],
-    changed: false,
-  })),
-}));
+jest.mock('@myorganizer/web-vault', () => {
+  const actual = jest.requireActual('@myorganizer/web-vault');
+  return {
+    ...actual,
+    normalizeAddresses: jest.fn((data) => ({
+      value: (data?.records ?? data) || [],
+      changed: false,
+    })),
+  };
+});
 
 jest.mock('@myorganizer/core', () => {
   const actual = jest.requireActual('@myorganizer/core');
@@ -429,7 +433,7 @@ describe('AddressesPageClient', () => {
       // Verify address is removed from payload
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toHaveLength(0);
+      expect(lastCall[0].value.records).toHaveLength(0);
     });
 
     it('should close delete dialog after confirm', async () => {
@@ -577,6 +581,93 @@ describe('AddressesPageClient', () => {
 
       // Dialog should still be open for retry
       expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+    });
+
+    it('should record deletion in deletion log with ISO timestamp', async () => {
+      const address = makeAddressRecord('addr1', { label: 'Home' });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([address]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<AddressesPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByRole('button', {
+        name: new RegExp(`Delete Home`, 'i'),
+      });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify deletion was recorded in the deletion log
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+      expect(envelope.deletions).toHaveProperty('addr1');
+      expect(typeof envelope.deletions.addr1).toBe('string');
+      // Verify it's a valid ISO timestamp
+      expect(new Date(envelope.deletions.addr1).toISOString()).toBe(
+        envelope.deletions.addr1,
+      );
+      // Records should be empty
+      expect(envelope.records).toHaveLength(0);
+    });
+
+    it('should preserve existing deletion log when deleting another address', async () => {
+      const existingDeletion = {
+        gone: '2024-01-01T00:00:00.000Z',
+      };
+      const existingEnvelope = {
+        records: [
+          makeAddressRecord('addr1', { label: 'Home' }),
+          makeAddressRecord('addr2', { label: 'Work' }),
+        ],
+        deletions: existingDeletion,
+      };
+      mockHandleLoadFn = jest.fn().mockResolvedValue(existingEnvelope);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<AddressesPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      const deleteButtons = screen.getAllByRole('button', {
+        name: /^Delete /i,
+      });
+      // Click delete on the first address
+      fireEvent.click(deleteButtons[0]);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify both the old and new deletion are recorded
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+      expect(envelope.deletions).toHaveProperty('gone');
+      expect(envelope.deletions).toHaveProperty('addr1');
+      expect(envelope.deletions.gone).toBe('2024-01-01T00:00:00.000Z');
     });
   });
 });

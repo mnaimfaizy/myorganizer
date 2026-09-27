@@ -2,7 +2,12 @@
 
 import { AddressRecord, AddressStatusEnum } from '@myorganizer/vault-core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
-import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
+import {
+  deleteVaultRecordAndSave,
+  normalizeAddresses,
+  saveVaultRecords,
+  type VaultHandle,
+} from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -59,10 +64,7 @@ function AddressesInner(props: AddressesInnerProps) {
         const normalized = normalizeAddresses(raw);
         if (isActive) setItems(normalized.value);
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'addresses',
-            value: normalized.value,
-          });
+          await saveVaultRecords(props.handle, 'addresses', normalized.value);
         }
       })
       .catch(() => {
@@ -83,10 +85,7 @@ function AddressesInner(props: AddressesInnerProps) {
     async (next: AddressRecord[]) => {
       setItems(next);
       try {
-        await props.handle.saveEncryptedData({
-          type: 'addresses',
-          value: next,
-        });
+        await saveVaultRecords(props.handle, 'addresses', next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         toast({
@@ -125,16 +124,41 @@ function AddressesInner(props: AddressesInnerProps) {
     setDeletingAddress(item);
   }, []);
 
+  const persistDelete = useCallback(
+    async (id: string) => {
+      const filteredItems = items.filter((x) => x.id !== id);
+      setItems(filteredItems);
+      try {
+        await deleteVaultRecordAndSave(
+          props.handle,
+          'addresses',
+          items,
+          id,
+          new Date().toISOString(),
+        );
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        toast({
+          title: 'Failed to save',
+          description: message,
+          variant: 'destructive',
+        });
+        throw e;
+      }
+    },
+    [items, props.handle, toast],
+  );
+
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingAddress) return;
     try {
-      await persist(items.filter((x) => x.id !== deletingAddress.id));
+      await persistDelete(deletingAddress.id);
       toast({ title: 'Deleted', description: 'Address removed.' });
       setDeletingAddress(null);
     } catch {
-      // persist() already toasted the failure; leave the dialog open for retry
+      // persistDelete() already toasted the failure; leave the dialog open for retry
     }
-  }, [deletingAddress, items, persist, toast]);
+  }, [deletingAddress, persistDelete, toast]);
 
   const handleDeleteDialogOpenChange = useCallback((open: boolean) => {
     if (!open) {

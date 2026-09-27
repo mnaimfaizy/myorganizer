@@ -138,12 +138,22 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
-  normalizeMobileNumbers: jest.fn((data) => ({
-    value: data || [],
-    changed: false,
-  })),
-}));
+jest.mock('@myorganizer/web-vault', () => {
+  const actual = jest.requireActual('@myorganizer/web-vault');
+  return {
+    ...actual,
+    normalizeMobileNumbers: jest.fn((data) => {
+      const records =
+        data && typeof data === 'object' && 'records' in data
+          ? data.records
+          : data;
+      return {
+        value: records || [],
+        changed: false,
+      };
+    }),
+  };
+});
 
 jest.mock('@myorganizer/core', () => {
   const actual = jest.requireActual('@myorganizer/core');
@@ -369,6 +379,90 @@ describe('MobileNumbersPageClient', () => {
       expect(description).toHaveTextContent('2 usage locations');
     });
 
+    it('should record deletion in envelope with timestamp and remove from records', async () => {
+      const mobileNumber = makeMobileNumberRecord('mob1', {
+        label: 'Home',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<MobileNumbersPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByRole('button', {
+        name: new RegExp(`Delete Home`, 'i'),
+      });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify envelope structure with deletion recorded
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+      expect(envelope.deletions).toBeDefined();
+      expect(envelope.deletions[mobileNumber.id]).toBeDefined();
+      expect(typeof envelope.deletions[mobileNumber.id]).toBe('string');
+      // Verify it's a valid ISO datetime string
+      expect(() => new Date(envelope.deletions[mobileNumber.id])).not.toThrow();
+      // Verify records exclude the deleted item
+      expect(envelope.records).toHaveLength(0);
+    });
+
+    it('should preserve existing deletion log when deleting a new record', async () => {
+      const existingMobileNumber = makeMobileNumberRecord('mob2', {
+        label: 'Old',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue({
+        records: [existingMobileNumber],
+        deletions: {
+          mob1: '2024-01-01T00:00:00.000Z',
+        },
+      });
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<MobileNumbersPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Old')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByRole('button', {
+        name: new RegExp(`Delete Old`, 'i'),
+      });
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify both old and new deletions are in the envelope
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+      expect(envelope.deletions['mob1']).toBe('2024-01-01T00:00:00.000Z');
+      expect(envelope.deletions['mob2']).toBeDefined();
+    });
+
     it('should not call saveEncryptedData when Delete button clicked (only on confirm)', async () => {
       const mobileNumber = makeMobileNumberRecord('mob1', {
         label: 'Home',
@@ -426,7 +520,7 @@ describe('MobileNumbersPageClient', () => {
       // Verify mobile number is removed from payload
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toHaveLength(0);
+      expect(lastCall[0].value.records).toHaveLength(0);
     });
 
     it('should close delete dialog after confirm', async () => {
@@ -692,8 +786,8 @@ describe('MobileNumbersPageClient', () => {
       // Verify the new mobile number was persisted with correct values
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toHaveLength(1);
-      expect(lastCall[0].value[0]).toEqual(
+      expect(lastCall[0].value.records).toHaveLength(1);
+      expect(lastCall[0].value.records[0]).toEqual(
         expect.objectContaining({
           label: 'Personal',
           countryCode: '+1',
@@ -709,6 +803,81 @@ describe('MobileNumbersPageClient', () => {
           ),
         ).not.toBeInTheDocument();
       });
+    });
+
+    it('should carry stored deletion log through when adding a new mobile number', async () => {
+      mockHandleLoadFn = jest.fn().mockResolvedValue({
+        records: [],
+        deletions: {
+          'deleted-id-1': '2024-01-01T10:00:00.000Z',
+          'deleted-id-2': '2024-01-02T15:30:00.000Z',
+        },
+      });
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<MobileNumbersPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Your mobile numbers')).toBeInTheDocument();
+      });
+
+      const addButton = screen.getByRole('button', {
+        name: /add mobile number/i,
+      });
+      await act(async () => {
+        fireEvent.click(addButton);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.getByText(
+            'Add a private mobile number to your encrypted vault.',
+          ),
+        ).toBeInTheDocument();
+      });
+
+      const labelInput = screen.getByPlaceholderText(
+        'Personal',
+      ) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(labelInput, { target: { value: 'Personal' } });
+        fireEvent.blur(labelInput);
+      });
+
+      const countryCodeSelect = screen.getByTestId('select-element');
+      await act(async () => {
+        fireEvent.change(countryCodeSelect, { target: { value: '+1' } });
+      });
+
+      const phoneInput = screen.getByPlaceholderText(
+        '555 123 4567',
+      ) as HTMLInputElement;
+      await act(async () => {
+        fireEvent.change(phoneInput, { target: { value: '5551234567' } });
+        fireEvent.blur(phoneInput);
+      });
+
+      const dialogContent = screen.getByTestId('dialog-content');
+      const form = dialogContent.querySelector('form');
+      if (!form) throw new Error('Form not found');
+
+      await act(async () => {
+        fireEvent.submit(form);
+      });
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify the envelope preserves the deletion log
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+      expect(envelope.deletions).toEqual({
+        'deleted-id-1': '2024-01-01T10:00:00.000Z',
+        'deleted-id-2': '2024-01-02T15:30:00.000Z',
+      });
+      expect(envelope.records).toHaveLength(1);
     });
   });
 });
