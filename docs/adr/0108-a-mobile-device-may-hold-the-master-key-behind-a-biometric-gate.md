@@ -28,6 +28,12 @@ app stops being opened.
    and is **invalidated when the device's biometric enrolment changes**
    (`BIOMETRY_CURRENT_SET` or its Android equivalent). The Master Key is
    exported from memory for this one write and never written anywhere else.
+   Turning it on later, from Account, asks for the passphrase again before
+   the biometric check, even though the Vault is already unlocked: enabling
+   it mints a new way into the Vault, and — as for Recovery Key Rotation —
+   an unattended unlocked session must not be enough for that. A biometric
+   check alone proves only that some face or finger enrolled on the device
+   is present, not that its holder knows the passphrase.
 2. **It is additive.** The passphrase and the Recovery Key always remain
    offered on the Unlock screen. A failed, cancelled, or invalidated biometric
    check falls back to them and never locks the User out.
