@@ -10,6 +10,7 @@ import {
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   normalizeMobileNumbers,
+  saveVaultRecords,
   type VaultHandle,
 } from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
@@ -61,10 +62,7 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
   const persist = useCallback(
     async (next: MobileNumberRecord[]) => {
       try {
-        await props.handle.saveEncryptedData({
-          type: 'mobileNumbers',
-          value: next,
-        });
+        await saveVaultRecords(props.handle, 'mobileNumbers', next);
         setMobileNumbers(next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -82,7 +80,9 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
   const persistUsageLocations = useCallback(
     async (next: UsageLocationRecord[]) => {
       const nextMobileNumbers = mobileNumbers.map((x) =>
-        x.id === props.mobileNumberId ? { ...x, usageLocations: next } : x,
+        x.id === props.mobileNumberId
+          ? { ...x, usageLocations: next, updatedAt: new Date().toISOString() }
+          : x,
       );
       return persist(nextMobileNumbers);
     },
@@ -144,10 +144,11 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
         }
 
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'mobileNumbers',
-            value: normalized.value,
-          });
+          await saveVaultRecords(
+            props.handle,
+            'mobileNumbers',
+            normalized.value,
+          );
         }
       })
       .catch(() => {
@@ -178,6 +179,7 @@ function MobileNumberDetailsInner(props: MobileNumberDetailsInnerProps) {
           ? {
               ...x,
               ...mobileNumberFormValuesToRecordFields(values),
+              updatedAt: new Date().toISOString(),
             }
           : x,
       );

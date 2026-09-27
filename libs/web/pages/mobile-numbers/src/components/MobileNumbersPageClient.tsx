@@ -4,6 +4,7 @@ import { MobileNumberRecord } from '@myorganizer/vault-core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   normalizeMobileNumbers,
+  saveVaultRecords,
   type VaultHandle,
 } from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
@@ -63,10 +64,11 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
         const normalized = normalizeMobileNumbers(raw);
         if (isActive) setItems(normalized.value);
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'mobileNumbers',
-            value: normalized.value,
-          });
+          await saveVaultRecords(
+            props.handle,
+            'mobileNumbers',
+            normalized.value,
+          );
         }
       })
       .catch(() => {
@@ -84,13 +86,15 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
   }, [props.handle, toast, revision]);
 
   const persist = useCallback(
-    async (next: MobileNumberRecord[]) => {
+    async (next: MobileNumberRecord[], deletedId?: string) => {
       setItems(next);
       try {
-        await props.handle.saveEncryptedData({
-          type: 'mobileNumbers',
-          value: next,
-        });
+        await saveVaultRecords(
+          props.handle,
+          'mobileNumbers',
+          next,
+          deletedId === undefined ? undefined : { deletedId },
+        );
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         toast({
@@ -129,7 +133,10 @@ function MobileNumbersInner(props: MobileNumbersInnerProps) {
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingMobileNumber) return;
     try {
-      await persist(items.filter((x) => x.id !== deletingMobileNumber.id));
+      await persist(
+        items.filter((x) => x.id !== deletingMobileNumber.id),
+        deletingMobileNumber.id,
+      );
       toast({ title: 'Deleted', description: 'Mobile number removed.' });
       setDeletingMobileNumber(null);
     } catch {

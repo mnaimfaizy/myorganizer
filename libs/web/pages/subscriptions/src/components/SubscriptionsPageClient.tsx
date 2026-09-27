@@ -15,6 +15,7 @@ import {
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
 import {
   normalizeSubscriptions,
+  saveVaultRecords,
   type VaultHandle,
 } from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
@@ -85,10 +86,11 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         const normalized = normalizeSubscriptions(raw);
         if (isActive) setItems(normalized.value);
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'subscriptions',
-            value: normalized.value,
-          });
+          await saveVaultRecords(
+            props.handle,
+            'subscriptions',
+            normalized.value,
+          );
         }
       })
       .catch(() => {
@@ -106,12 +108,14 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   }, [props.handle, toast, revision]);
 
   const persist = useCallback(
-    async (next: SubscriptionRecord[]) => {
+    async (next: SubscriptionRecord[], deletedId?: string) => {
       try {
-        await props.handle.saveEncryptedData({
-          type: 'subscriptions',
-          value: next,
-        });
+        await saveVaultRecords(
+          props.handle,
+          'subscriptions',
+          next,
+          deletedId === undefined ? undefined : { deletedId },
+        );
         setItems(next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -265,6 +269,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
         cancellationReason: undefined,
         tier: values.tier,
         link: values.link?.trim() || undefined,
+        updatedAt: new Date().toISOString(),
       };
 
       await persist([nextItem, ...items]);
@@ -307,6 +312,7 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
               renewalType: values.renewalType,
               tier: values.tier,
               link: values.link?.trim() || undefined,
+              updatedAt: new Date().toISOString(),
             }
           : s,
       );
@@ -343,7 +349,10 @@ function SubscriptionsInner(props: SubscriptionsInnerProps) {
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingSubscription) return;
     try {
-      await persist(items.filter((s) => s.id !== deletingSubscription.id));
+      await persist(
+        items.filter((x) => x.id !== deletingSubscription.id),
+        deletingSubscription.id,
+      );
       toast({ title: 'Deleted', description: 'Subscription removed.' });
       setDeletingSubscription(null);
     } catch {

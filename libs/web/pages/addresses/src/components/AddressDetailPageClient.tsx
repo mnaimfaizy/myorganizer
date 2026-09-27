@@ -8,7 +8,11 @@ import {
   UsageLocationRecord,
 } from '@myorganizer/vault-core';
 import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
-import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
+import {
+  normalizeAddresses,
+  saveVaultRecords,
+  type VaultHandle,
+} from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -57,10 +61,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
   const persist = useCallback(
     async (next: AddressRecord[]) => {
       try {
-        await props.handle.saveEncryptedData({
-          type: 'addresses',
-          value: next,
-        });
+        await saveVaultRecords(props.handle, 'addresses', next);
         setAddresses(next);
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -78,7 +79,9 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
   const persistUsageLocations = useCallback(
     async (next: UsageLocationRecord[]) => {
       const nextAddresses = addresses.map((x) =>
-        x.id === props.addressId ? { ...x, usageLocations: next } : x,
+        x.id === props.addressId
+          ? { ...x, usageLocations: next, updatedAt: new Date().toISOString() }
+          : x,
       );
       return persist(nextAddresses);
     },
@@ -138,10 +141,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
         }
 
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'addresses',
-            value: normalized.value,
-          });
+          await saveVaultRecords(props.handle, 'addresses', normalized.value);
         }
       })
       .catch(() => {
@@ -172,6 +172,7 @@ function AddressDetailsInner(props: AddressDetailsInnerProps) {
           ? {
               ...x,
               ...addressFormValuesToRecordFields(values),
+              updatedAt: new Date().toISOString(),
             }
           : x,
       );

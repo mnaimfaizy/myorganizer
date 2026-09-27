@@ -136,12 +136,24 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
-  normalizeSubscriptions: jest.fn((data) => ({
-    value: data || [],
-    changed: false,
-  })),
-}));
+jest.mock('@myorganizer/web-vault', () => {
+  const actual = jest.requireActual('@myorganizer/web-vault');
+  return {
+    ...actual,
+    normalizeSubscriptions: jest.fn((data) => {
+      let records: any[] = [];
+      if (Array.isArray(data)) {
+        records = data;
+      } else if (data && typeof data === 'object' && 'records' in data) {
+        records = Array.isArray(data.records) ? data.records : [];
+      }
+      return {
+        value: records,
+        changed: false,
+      };
+    }),
+  };
+});
 
 jest.mock('@myorganizer/core', () => {
   const actual = jest.requireActual('@myorganizer/core');
@@ -218,10 +230,18 @@ describe('SubscriptionsPageClient', () => {
     mockHandleLoadFn = null;
     mockHandleSaveFn = null;
     mockUseToast.mockReturnValue({ toast: mockToast });
-    mockNormalizeSubscriptions.mockImplementation((data) => ({
-      value: data || [],
-      changed: false,
-    }));
+    mockNormalizeSubscriptions.mockImplementation((data) => {
+      let records: any[] = [];
+      if (Array.isArray(data)) {
+        records = data;
+      } else if (data && typeof data === 'object' && 'records' in data) {
+        records = Array.isArray(data.records) ? data.records : [];
+      }
+      return {
+        value: records,
+        changed: false,
+      };
+    });
   });
 
   describe('Initial render', () => {
@@ -326,7 +346,7 @@ describe('SubscriptionsPageClient', () => {
       // Check that saveEncryptedData was called with a record containing the entered name
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toContainEqual(
+      expect(lastCall[0].value.records).toContainEqual(
         expect.objectContaining({ name: 'Disney Plus' }),
       );
 
@@ -402,6 +422,65 @@ describe('SubscriptionsPageClient', () => {
         );
       });
     });
+
+    it('should stamp ISO updatedAt on new subscription', async () => {
+      mockHandleLoadFn = jest.fn().mockResolvedValue([]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+      const beforeTime = new Date();
+
+      render(<SubscriptionsPageClient />);
+
+      await waitFor(() => {
+        expect(mockHandleLoadFn).toHaveBeenCalled();
+      });
+
+      const addButton = screen.getByRole('button', {
+        name: 'Add Subscription',
+      });
+      fireEvent.click(addButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('dialog-root')).toBeInTheDocument();
+      });
+
+      const nameInput = screen.getByLabelText('Name *') as HTMLInputElement;
+      fireEvent.change(nameInput, { target: { value: 'New Service' } });
+      fireEvent.blur(nameInput);
+
+      const submitButtons = screen.getAllByRole('button', {
+        name: 'Add Subscription',
+      });
+      const formSubmitButton = submitButtons[submitButtons.length - 1];
+
+      await waitFor(() => {
+        expect(formSubmitButton).not.toBeDisabled();
+      });
+      fireEvent.click(formSubmitButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const records = lastCall[0].value.records;
+
+      expect(records).toHaveLength(1);
+      const newRecord = records[0];
+      expect(newRecord).toHaveProperty('updatedAt');
+      // Verify it's a valid ISO string and within reasonable time bounds
+      const updatedAtTime = new Date(newRecord.updatedAt);
+      const afterTime = new Date();
+      expect(updatedAtTime.getTime()).toBeGreaterThanOrEqual(
+        beforeTime.getTime() - 100,
+      );
+      expect(updatedAtTime.getTime()).toBeLessThanOrEqual(
+        afterTime.getTime() + 100,
+      );
+      expect(newRecord.updatedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+    });
   });
 
   describe('Edit subscription', () => {
@@ -469,7 +548,7 @@ describe('SubscriptionsPageClient', () => {
       // Check that saveEncryptedData was called with the updated record
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toContainEqual(
+      expect(lastCall[0].value.records).toContainEqual(
         expect.objectContaining({ id: 'sub1', name: 'Netflix Premium' }),
       );
 
@@ -575,7 +654,7 @@ describe('SubscriptionsPageClient', () => {
       // The call should have empty array (subscription removed)
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toHaveLength(0); // Subscription removed
+      expect(lastCall[0].value.records).toHaveLength(0); // Subscription removed
     });
 
     it('should remove subscription from list after confirmed delete', async () => {
@@ -744,6 +823,184 @@ describe('SubscriptionsPageClient', () => {
 
       // Subscription should still be visible
       expect(screen.getByText('Trello')).toBeInTheDocument();
+    });
+
+    it('should record deletion with ISO timestamp and exclude record from list', async () => {
+      const sub = makeSubscriptionRecord('sub1', { name: 'Hulu' });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<SubscriptionsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Hulu')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByTestId('delete-sub1');
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify the deletion log contains the deleted subscription ID with a valid ISO timestamp
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+
+      expect(envelope.records).toHaveLength(0);
+      expect(envelope.deletions).toHaveProperty('sub1');
+      // Verify the timestamp is a valid ISO string
+      const deletedAt = envelope.deletions.sub1;
+      expect(deletedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+    });
+
+    it('should preserve existing deletion log when deleting another record', async () => {
+      const sub1 = makeSubscriptionRecord('sub1', { name: 'Netflix' });
+      const sub2 = makeSubscriptionRecord('sub2', { name: 'Spotify' });
+      const existingEnvelope = {
+        records: [sub1, sub2],
+        deletions: { old_id: '2024-01-01T00:00:00.000Z' },
+      };
+      mockHandleLoadFn = jest.fn().mockResolvedValue(existingEnvelope);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<SubscriptionsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Netflix')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByTestId('delete-sub1');
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify both the old deletion and the new one are in the log
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+
+      expect(envelope.deletions).toHaveProperty('old_id');
+      expect(envelope.deletions).toHaveProperty('sub1');
+      expect(envelope.deletions.old_id).toBe('2024-01-01T00:00:00.000Z');
+    });
+
+    it('should stamp ISO updatedAt and preserve deletion log on edit', async () => {
+      const sub = makeSubscriptionRecord('sub1', {
+        name: 'Original Name',
+        updatedAt: '2024-06-01T10:00:00.000Z',
+      });
+      const existingEnvelope = {
+        records: [sub],
+        deletions: { old_sub: '2024-01-01T00:00:00.000Z' },
+      };
+      mockHandleLoadFn = jest.fn().mockResolvedValue(existingEnvelope);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<SubscriptionsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Original Name')).toBeInTheDocument();
+      });
+
+      const editButton = screen.getByTestId('edit-sub1');
+      fireEvent.click(editButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Edit Subscription')).toBeInTheDocument();
+      });
+
+      const nameInput = screen.getByLabelText('Name *') as HTMLInputElement;
+      fireEvent.change(nameInput, { target: { value: 'Updated Name' } });
+      fireEvent.blur(nameInput);
+
+      const saveButton = screen.getByRole('button', { name: 'Save' });
+
+      await waitFor(() => {
+        expect(saveButton).not.toBeDisabled();
+      });
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const envelope = lastCall[0].value;
+
+      // Verify deletion log is preserved
+      expect(envelope.deletions).toHaveProperty('old_sub');
+      expect(envelope.deletions.old_sub).toBe('2024-01-01T00:00:00.000Z');
+
+      // Verify updatedAt was stamped (should be different from original)
+      const updated = envelope.records[0];
+      expect(updated.updatedAt).not.toBe('2024-06-01T10:00:00.000Z');
+      expect(updated.updatedAt).toMatch(
+        /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/,
+      );
+    });
+
+    it('should keep dialog open and record in list if delete save fails', async () => {
+      const sub = makeSubscriptionRecord('sub1', { name: 'Expensive Service' });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([sub]);
+      mockHandleSaveFn = jest.fn().mockRejectedValue(new Error('Save failed'));
+
+      render(<SubscriptionsPageClient />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Expensive Service')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen.getByTestId('delete-sub1');
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      // Wait for save to be attempted and fail
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Dialog should still be open
+      expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+
+      // Record should still be visible in the list
+      expect(screen.getByText('Expensive Service')).toBeInTheDocument();
+
+      // Error toast should show
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(
+          expect.objectContaining({
+            title: 'Failed to save',
+            variant: 'destructive',
+          }),
+        );
+      });
     });
   });
 

@@ -2,7 +2,11 @@
 
 import { AddressRecord, AddressStatusEnum } from '@myorganizer/vault-core';
 import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
-import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
+import {
+  normalizeAddresses,
+  saveVaultRecords,
+  type VaultHandle,
+} from '@myorganizer/web-vault';
 import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -59,10 +63,7 @@ function AddressesInner(props: AddressesInnerProps) {
         const normalized = normalizeAddresses(raw);
         if (isActive) setItems(normalized.value);
         if (normalized.changed) {
-          await props.handle.saveEncryptedData({
-            type: 'addresses',
-            value: normalized.value,
-          });
+          await saveVaultRecords(props.handle, 'addresses', normalized.value);
         }
       })
       .catch(() => {
@@ -80,13 +81,15 @@ function AddressesInner(props: AddressesInnerProps) {
   }, [props.handle, toast, revision]);
 
   const persist = useCallback(
-    async (next: AddressRecord[]) => {
+    async (next: AddressRecord[], deletedId?: string) => {
       setItems(next);
       try {
-        await props.handle.saveEncryptedData({
-          type: 'addresses',
-          value: next,
-        });
+        await saveVaultRecords(
+          props.handle,
+          'addresses',
+          next,
+          deletedId === undefined ? undefined : { deletedId },
+        );
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
         toast({
@@ -128,7 +131,10 @@ function AddressesInner(props: AddressesInnerProps) {
   const handleConfirmDelete = useCallback(async () => {
     if (!deletingAddress) return;
     try {
-      await persist(items.filter((x) => x.id !== deletingAddress.id));
+      await persist(
+        items.filter((x) => x.id !== deletingAddress.id),
+        deletingAddress.id,
+      );
       toast({ title: 'Deleted', description: 'Address removed.' });
       setDeletingAddress(null);
     } catch {

@@ -154,12 +154,22 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
-  normalizeMobileNumbers: jest.fn((data) => ({
-    value: data || [],
-    changed: false,
-  })),
-}));
+jest.mock('@myorganizer/web-vault', () => {
+  const actual = jest.requireActual('@myorganizer/web-vault');
+  return {
+    ...actual,
+    normalizeMobileNumbers: jest.fn((data) => {
+      const records =
+        data && typeof data === 'object' && 'records' in data
+          ? data.records
+          : data;
+      return {
+        value: records || [],
+        changed: false,
+      };
+    }),
+  };
+});
 
 jest.mock('@myorganizer/core', () => {
   const actual = jest.requireActual('@myorganizer/core');
@@ -341,7 +351,7 @@ describe('MobileNumberDetailPageClient', () => {
       // Verify payload has updated label
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      expect(lastCall[0].value).toContainEqual(
+      expect(lastCall[0].value.records).toContainEqual(
         expect.objectContaining({ label: 'Updated Home' }),
       );
 
@@ -385,6 +395,53 @@ describe('MobileNumberDetailPageClient', () => {
       await waitFor(() => {
         expect(mockHandleSaveFn).toHaveBeenCalled();
       });
+    });
+
+    it('should stamp updatedAt with ISO datetime when editing mobile number', async () => {
+      const mobileNumber = makeMobileNumberRecord('mob1', {
+        label: 'Home',
+        phoneNumber: '5551234567',
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('Home')).toBeInTheDocument();
+      });
+
+      const editButton = screen.getByRole('button', { name: /edit/i });
+      fireEvent.click(editButton);
+
+      await waitFor(() => {
+        expect(screen.getByText('Edit mobile number')).toBeInTheDocument();
+      });
+
+      const labelInput = screen.getByDisplayValue('Home') as HTMLInputElement;
+      fireEvent.change(labelInput, { target: { value: 'Updated Home' } });
+      fireEvent.blur(labelInput);
+
+      const saveButton = screen.getByRole('button', { name: /save changes/i });
+
+      await waitFor(() => {
+        expect(saveButton).not.toBeDisabled();
+      });
+
+      fireEvent.click(saveButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify updatedAt is stamped as ISO datetime
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const savedMobileNumber = lastCall[0].value.records[0];
+      expect(savedMobileNumber.updatedAt).toBeDefined();
+      expect(typeof savedMobileNumber.updatedAt).toBe('string');
+      // Verify it's a valid ISO datetime string
+      expect(() => new Date(savedMobileNumber.updatedAt)).not.toThrow();
     });
   });
 
@@ -477,7 +534,7 @@ describe('MobileNumberDetailPageClient', () => {
       // Verify the new location was persisted
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      const savedMobileNumber = lastCall[0].value[0];
+      const savedMobileNumber = lastCall[0].value.records[0];
       expect(savedMobileNumber.usageLocations).toHaveLength(1);
       expect(savedMobileNumber.usageLocations[0]).toEqual(
         expect.objectContaining({
@@ -595,7 +652,7 @@ describe('MobileNumberDetailPageClient', () => {
       // Verify the location was updated
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      const savedMobileNumber = lastCall[0].value[0];
+      const savedMobileNumber = lastCall[0].value.records[0];
       expect(savedMobileNumber.usageLocations[0].organisationName).toBe(
         'Medicare',
       );
@@ -742,7 +799,7 @@ describe('MobileNumberDetailPageClient', () => {
       // Verify location is removed
       const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
       const lastCall = calls[calls.length - 1];
-      const savedMobileNumber = lastCall[0].value[0];
+      const savedMobileNumber = lastCall[0].value.records[0];
       expect(savedMobileNumber.usageLocations).toHaveLength(0);
     });
 
@@ -855,6 +912,54 @@ describe('MobileNumberDetailPageClient', () => {
 
       // Dialog should still be open for retry
       expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+    });
+
+    it('should stamp parent updatedAt when deleting a usage location', async () => {
+      const location = makeUsageLocation('loc1', {
+        organisationName: 'DHHS',
+      });
+      const mobileNumber = makeMobileNumberRecord('mob1', {
+        usageLocations: [location],
+      });
+      mockHandleLoadFn = jest.fn().mockResolvedValue([mobileNumber]);
+      mockHandleSaveFn = jest.fn().mockResolvedValue(undefined);
+
+      render(<MobileNumberDetailPageClient params={{ id: 'mob1' }} />);
+
+      await waitFor(() => {
+        expect(screen.getByText('DHHS')).toBeInTheDocument();
+      });
+
+      const deleteButton = screen
+        .getAllByRole('button')
+        .find(
+          (btn) => btn.textContent?.includes('Delete') && btn.closest('tr'),
+        );
+      if (!deleteButton) throw new Error('Delete button not found');
+      fireEvent.click(deleteButton);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument();
+      });
+
+      const confirmButton = screen.getByTestId('delete-confirm-btn');
+      fireEvent.click(confirmButton);
+
+      await waitFor(() => {
+        expect(mockHandleSaveFn).toHaveBeenCalled();
+      });
+
+      // Verify parent record has updatedAt stamped and location removed
+      const calls = (mockHandleSaveFn as jest.Mock).mock.calls;
+      const lastCall = calls[calls.length - 1];
+      const savedMobileNumber = lastCall[0].value.records[0];
+      expect(savedMobileNumber.usageLocations).toHaveLength(0);
+      expect(savedMobileNumber.updatedAt).toBeDefined();
+      expect(typeof savedMobileNumber.updatedAt).toBe('string');
+      // Verify it's a valid ISO datetime string
+      expect(() => new Date(savedMobileNumber.updatedAt)).not.toThrow();
+      // Verify the parent mobile number itself is not marked as deleted
+      expect(lastCall[0].value.deletions).not.toHaveProperty('mob1');
     });
   });
 
