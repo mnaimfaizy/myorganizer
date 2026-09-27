@@ -90,7 +90,7 @@ function ConnectedDashboard() {
     }
   }, [subs, carouselData]);
 
-  useYouTubeSyncPoll(syncStatus.status, {
+  const { runUserSync } = useYouTubeSyncPoll(syncStatus.status, {
     poll: refreshSync,
     onRunComplete: handleRunComplete,
   });
@@ -183,12 +183,21 @@ function ConnectedDashboard() {
       }
     }
 
-    void triggerUploadSync().catch(() => {
-      // Swallow errors; the polled status is authoritative.
-    });
+    // A resolved request ends the claim wait (#753); a rejected one leaves a
+    // long run to the live-poll path.
+    void runUserSync(triggerUploadSync).then(
+      () => setWaitingForClaim(false),
+      () => undefined,
+    );
 
     setWaitingForClaim(true);
-  }, [isCooldownActive, syncBusy, triggerUploadSync, syncStatusValue]);
+  }, [
+    isCooldownActive,
+    syncBusy,
+    triggerUploadSync,
+    syncStatusValue,
+    runUserSync,
+  ]);
 
   const handleDirectoryRetry = useCallback(() => {
     carouselData.refresh();

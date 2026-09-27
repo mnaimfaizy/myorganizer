@@ -56,6 +56,51 @@ export function isRunLive(
 }
 
 /**
+ * Whether a response carrying this status can report a run that did work —
+ * succeeded, partially succeeded, or failed. `cooldown` is a refusal, and a
+ * live status belongs to a run the live-poll path is watching.
+ */
+const RAN_STATUS = {
+  never: false,
+  discovering: false,
+  running: false,
+  success: true,
+  partial: true,
+  failed: true,
+  quota_exceeded: true,
+  cooldown: false,
+} as const satisfies Record<YouTubeSyncStatus['status'], boolean>;
+
+/**
+ * True when the response to the User's own sync request reports a run that
+ * did work, rather than one refused before any work (issue #753).
+ *
+ * The request is synchronous (ADR 0080, ADR 0096), so its status is the run's
+ * terminal status. The status alone cannot tell a refusal apart: a lost mutex
+ * answers with the stored status of an earlier run. Every run that does work
+ * moves its attempt stamp, and a refusal leaves it where it was, so the stamp
+ * read before the request is compared with the one in the response.
+ *
+ * Two cases read as a run without being this request's work, and both are
+ * accepted: a sign-in failure records `failed` and moves the stamp before
+ * any channel is read, and a lost mutex can echo the stamp of a concurrent
+ * run that finished before the response was read. Telling either apart needs
+ * the server to say so, which #753 leaves out of scope; each costs one extra
+ * refresh, never a missed one.
+ */
+export function didSyncRequestRun(
+  status: YouTubeSyncStatus['status'],
+  attemptAtBefore: string | null,
+  attemptAtAfter: string | null,
+): boolean {
+  return (
+    RAN_STATUS[status] &&
+    attemptAtAfter !== null &&
+    attemptAtAfter !== attemptAtBefore
+  );
+}
+
+/**
  * True if the polling loop should continue.
  *
  * Stops when the run is terminal (not discovering/running).

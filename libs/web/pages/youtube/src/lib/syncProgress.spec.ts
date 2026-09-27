@@ -1,5 +1,10 @@
 import type { YouTubeSyncStatus, FailingChannelInfo } from '../types';
-import { describeSyncProgress, isRunLive, shouldPoll } from './syncProgress';
+import {
+  describeSyncProgress,
+  didSyncRequestRun,
+  isRunLive,
+  shouldPoll,
+} from './syncProgress';
 
 const NOW = new Date('2026-08-18T12:00:00.000Z');
 const HOUR_AGO = new Date(NOW.getTime() - 60 * 60 * 1000).toISOString();
@@ -594,5 +599,96 @@ describe('shouldPoll', () => {
     [statusOf({ status: 'success', channelStatus: 'success' }), false],
   ])('returns %p for status %p', (status, expected) => {
     expect(shouldPoll(status)).toBe(expected);
+  });
+});
+
+describe('didSyncRequestRun', () => {
+  const beforeStamp = '2026-08-18T12:00:00.000Z';
+  const afterStamp = '2026-08-18T12:01:00.000Z';
+
+  describe('ran statuses with advanced stamp', () => {
+    it('success with advanced stamp → true', () => {
+      expect(didSyncRequestRun('success', beforeStamp, afterStamp)).toBe(true);
+    });
+
+    it('partial with advanced stamp → true', () => {
+      expect(didSyncRequestRun('partial', beforeStamp, afterStamp)).toBe(true);
+    });
+
+    it('failed with advanced stamp → true', () => {
+      expect(didSyncRequestRun('failed', beforeStamp, afterStamp)).toBe(true);
+    });
+
+    it('quota_exceeded with advanced stamp → true', () => {
+      expect(didSyncRequestRun('quota_exceeded', beforeStamp, afterStamp)).toBe(
+        true,
+      );
+    });
+  });
+
+  describe('ran statuses with unchanged stamp (lost-mutex case)', () => {
+    it('success with unchanged stamp → false', () => {
+      expect(didSyncRequestRun('success', beforeStamp, beforeStamp)).toBe(
+        false,
+      );
+    });
+
+    it('partial with unchanged stamp → false', () => {
+      expect(didSyncRequestRun('partial', beforeStamp, beforeStamp)).toBe(
+        false,
+      );
+    });
+
+    it('failed with unchanged stamp → false', () => {
+      expect(didSyncRequestRun('failed', beforeStamp, beforeStamp)).toBe(false);
+    });
+
+    it('quota_exceeded with unchanged stamp → false', () => {
+      expect(
+        didSyncRequestRun('quota_exceeded', beforeStamp, beforeStamp),
+      ).toBe(false);
+    });
+  });
+
+  describe('ran statuses with attemptAtAfter null', () => {
+    it('success with null afterStamp → false', () => {
+      expect(didSyncRequestRun('success', beforeStamp, null)).toBe(false);
+    });
+
+    it('partial with null afterStamp → false', () => {
+      expect(didSyncRequestRun('partial', beforeStamp, null)).toBe(false);
+    });
+  });
+
+  describe('first-ever run (attemptAtBefore null, attemptAtAfter non-null)', () => {
+    it('success with null beforeStamp and advanced afterStamp → true', () => {
+      expect(didSyncRequestRun('success', null, afterStamp)).toBe(true);
+    });
+
+    it('partial with null beforeStamp and advanced afterStamp → true', () => {
+      expect(didSyncRequestRun('partial', null, afterStamp)).toBe(true);
+    });
+  });
+
+  describe('non-ran statuses with advanced stamp', () => {
+    it('cooldown with advanced stamp → false', () => {
+      expect(didSyncRequestRun('cooldown', beforeStamp, afterStamp)).toBe(
+        false,
+      );
+    });
+
+    it('discovering with advanced stamp → false', () => {
+      expect(didSyncRequestRun('discovering', beforeStamp, afterStamp)).toBe(
+        false,
+      );
+    });
+
+    it('running with advanced stamp → false', () => {
+      expect(didSyncRequestRun('running', beforeStamp, afterStamp)).toBe(false);
+    });
+
+    it('never with advanced stamp → false', () => {
+      expect(didSyncRequestRun('never', beforeStamp, afterStamp)).toBe(false);
+    });
   });
 });
