@@ -57,8 +57,9 @@ Testing on a Cloud Agent:
 
 - Prefer these native services over `docker-compose`. If a service is down, re-run
   `bash .cursor/start.sh` (safe and idempotent); it does not reinstall dependencies.
-- The frontend must run with `PORT=4200` (the inferred Nx `dev` target runs `next dev`, which
-  defaults to `:3000` and collides with the backend).
+- The frontend serves on `:4200` because `apps/myorganizer/project.json` pins `port: 4200` on the
+  inferred Nx `dev` target. Without it, `next dev` takes `PORT=3000` from the workspace `.env` (Nx
+  loads it into every task) and collides with the backend.
 - Verify email flows via the MailHog UI/API at `http://localhost:8025` (the app sends to
   `localhost:1025`). Login and refresh require a verified email, so register → read the
   verification email from MailHog → verify → login.
