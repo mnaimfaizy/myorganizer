@@ -1020,7 +1020,7 @@ components:
       description: Shared secret for cron-triggered endpoints
 info:
   title: "@myorganizer/source"
-  version: 1.0.0
+  version: 1.1.0
   license:
     name: Elastic-2.0
   contact: {}

@@ -1,99 +1,59 @@
-# Release v1.0.0
+# Release v1.1.0
 
-Date: 2026-09-20
+Date: 2026-09-27
 
-## Changes since v0.4.0
-
-Compare: https://github.com/mnaimfaizy/myorganizer/compare/v0.4.0...v1.0.0
-
-## Highlights
-
-Vault data can now sync across devices: pull, converge, sync status, recovery-key
-rotation, and owner-bound storage on shared devices. YouTube can be hidden by an
-operator availability switch, and disconnect confirms while preserving Watched
-marks by default. Add/edit flows for tasks, subscriptions, addresses, and mobile
-numbers open in summoned dialogs.
-
-## Breaking Changes
-
-- **Unclaimed vault unlock.** Passphrase and recovery-key unlock no longer claim
-  an unclaimed local vault. Claim it explicitly from the vault page
-  (`claimUnclaimedLocalVaultLocked` or `claimUnclaimedLocalVaultByRecoveryKey`).
-- **`todos` blob type removed.** Vault export/import no longer accepts `todos`.
-  That data lives under `tasks`; re-export if you still have a `todos`-era backup.
+Compare: https://github.com/mnaimfaizy/myorganizer/compare/v1.0.0...v1.1.0
 
 ## Added
 
-### Vault / E2EE
-
-- Cross-device vault sync: pull, blob convergence, sync status, and deletion logs.
-- Recovery-key rotation from the vault page, with a server reachability check.
-- Claim an unclaimed local vault via evidence instead of passphrase alone.
-- Change the vault passphrase from an already-unlocked session.
-- Per-user owner-bound vault handles so shared devices keep data isolated.
-- Import preview (merge, replace, or skip) before committing.
-- Explicit local vault removal, with confirmation naming unsent blob types.
-- `GET /vault/blobs` inventory endpoint for cross-device blob discovery.
-
-### YouTube
-
-- Operator-controlled availability switch; nav, Shorts, and dashboard cards hide when off.
-- Disconnect confirmation; Watched marks are preserved by default via a server ledger.
-- Live sync-run progress during subscription refreshes.
-
-### Elsewhere
-
-- Privacy Policy and Terms of Service pages with operator contact details.
-- Summoned add/edit dialogs for tasks, subscriptions, addresses, and mobile numbers.
-- Single `/dashboard/vault` page for vault management.
-- Shared email frame for verification and notification mail.
-- Dynamic dashboard breadcrumbs.
-- Reusable confirm-delete dialog with a customizable confirm label.
-
-## Fixed
-
-### Security
-
-- **`adm-zip` denial of service** — bumped to 0.6.1, patching the high-severity
-  memory-exhaustion advisory.
-- Vault unlock no longer hands an unclaimed local vault to a second user on a
-  shared device who happens to use the same passphrase.
-
-### Vault / E2EE
-
-- Never merge vault blobs when device identity differs.
-- Restore the unlock card after a hard reload on the vault page.
-- Disclose credential replacement when import replaces existing data.
-- Clear sync bookmarks on restore so stale server data cannot overwrite a restore.
-
-### Auth / Sessions
-
-- Logout no longer 500s; all `/auth` routes are served from AuthController.
-- Login validation errors return field-level Zod details.
-- API requests replay with a refreshed token after 401.
-
-### YouTube
-
-- Disconnect is blocked while a sync run is still live.
-- Sync progress no longer races the run-claim step.
-- Dashboard nav and Shorts are gated strictly on availability status.
-
-### UI
-
-- Groceries page styling restored via semantic colour and spacing tokens.
-- DatePicker opens on the selected date’s month instead of today.
-- Sign-up password labels are associated with their inputs.
+- **Passphrase reset after recovery** — unlocking your vault with the Recovery Key now prompts you to
+  set a new passphrase straight away. (#874)
+- **Escape Copy reader** — every GitHub Release now includes a standalone, offline HTML page (with a
+  SHA-256 checksum) that opens an Escape Copy backup with your passphrase or Recovery Key, no app
+  required. (#864)
 
 ## Changed
 
-- Vault management lives on one `/dashboard/vault` page instead of split routes.
-- Unlock never claims as a side effect; claiming is a separate, evidence-checked path.
+- **YouTube channel sync and upload sync are now separate** — channel management moves to its own
+  Channels page with a _Refresh channels_ button, and the main YouTube page keeps _Sync uploads_.
+  Channel refresh has a 5-minute cooldown, upload sync keeps its 15-minute cooldown, and only one runs
+  at a time. (#871)
+- **Faster vault sync** — the web vault checks the server's blob inventory first and skips
+  downloading data it already has. (#867)
+
+## Fixed
+
+- Deleting a task, address, mobile number, or subscription on the web now records the deletion, so
+  syncing with another device no longer brings the item back. Web saves also no longer discard
+  deletion history written by the mobile app. (#907)
+- The YouTube page now refreshes as soon as a sync you started finishes, instead of sometimes
+  missing it. (#902)
+- Toast notifications shown in quick succession no longer drop one another. (#886)
+
+## Mobile
+
+Mobile changes reach users with the next mobile app build; the production deploy ships the backend
+and the web app.
+
+- **Edit tasks on your phone** — the Tasks screen can now add a task by title, mark a task done, and
+  delete a task. Changes appear immediately; if saving fails, the change is undone and the app tells
+  you why. (#903)
+- **Vault Push** — edits made on mobile are written back to your encrypted vault on the server. If
+  another device changed the same data first, the app merges both versions and retries, up to three
+  times. (#903)
+- **Offline adds are safe to retry** — if adding a task fails while offline, what you typed stays in
+  the field, and it clears once a retry succeeds, so the task is not added twice. (#903)
+- **Fixed:** the Tasks screen no longer shows an empty list after the web app has saved your tasks
+  together with their deletion history. (#903)
+- **Fixed:** the app now bundles the React version that React Native's renderer requires, avoiding a
+  version-mismatch error at startup. (#869)
 
 ## Internal
 
-Agent code-review pipeline (tier classifier, golden replay, obligation gates),
-Nx inferred-target migration, staging host-apply preflight, assertion gates
-(doc file-refs, Tailwind classes, mobile platform imports, checker contracts),
-dependency security patches (Next.js 16.3.4, nodemailer 9.1.1, mysql2,
-browserslist, fast-uri), and expanded vault / YouTube / auth test coverage.
-None of this changes application behaviour on its own.
+- New CI gates: a fix must name the pull request that introduced its defect, an ADR cannot land as
+  `proposed`, and the Prisma migration history is checked before merge.
+- Code review pipeline and golden replay hardening.
+- The build-time `image-size` audit exception now tracks the npm registry's re-keyed advisory IDs,
+  restoring green CI on `main`. (#922)
+- Web libraries moved under `libs/web/`, and vault records moved into `vault-core`. Native mobile
+  code is now typechecked without DOM types.
