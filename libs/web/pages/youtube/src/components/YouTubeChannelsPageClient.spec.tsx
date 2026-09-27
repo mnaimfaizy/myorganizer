@@ -262,7 +262,7 @@ describe('YouTubeChannelsPageClient', () => {
         shouldRefresh: false,
       },
     ])(
-      '$label → subs.refresh ${ #should call}',
+      '$label → refreshes subscriptions: $shouldRefresh',
       async ({ triggerResult, shouldRefresh }) => {
         const { subs } = setupChannelSyncTest(triggerResult);
 
