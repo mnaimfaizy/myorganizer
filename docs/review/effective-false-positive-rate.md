@@ -126,6 +126,7 @@ next push — and "ignored" is the numerator.
 | Date       | Window                   | Pushes | Observations | Ignored | Rate               | Rules over budget |
 | ---------- | ------------------------ | -----: | -----------: | ------: | ------------------ | ----------------- |
 | 2026-09-11 | 2026-08-12 to 2026-09-11 |      0 |            0 |       0 | **not measurable** | —                 |
+| 2026-09-28 | 2026-08-28 to 2026-09-27 |    124 |           67 |       6 | **9.0%**           | `standard-other`  |
 
 ### The first measurement (2026-09-11)
 
@@ -147,6 +148,27 @@ rule**: while identity was free-form prose, the persisting count was zero in
 every push and every finding looked acted on. The most flattering number this
 measurement can produce is also the one a broken identity produces. The
 interpretation is in the frozen brief.
+
+### The second measurement (2026-09-28)
+
+The first taken with an authenticated `gh` and the first with a stable
+finding identity (issue #724), so observations could be paired at all.
+Taken for issue #925.
+
+- **9.0% overall**: 94 findings observed across 124 reviewed pushes on 27
+  branches; 67 counted, of which 61 were acted on and 6 ignored; 1
+  acknowledged with `Review-ack`; 8 pending and 18 unreadable (the next
+  push produced no report).
+- **One rule over budget: `standard-other`**, 2 ignored of 12 (16.7%).
+  `spec-requirement-implemented-wrong` sits exactly at the budget (1 of 10).
+  `smell-duplicated-code`, the most frequent rule, is within it (1 of 15).
+  Every other rule is under the ten-observation floor.
+- **The window may be incomplete**: the run listing hit its limit of 200
+  runs, and 45 of the 124 pushes carry no stored report.
+- The saved gather is kept out of the tree for size (about 0.6 MB); see #925.
+
+The interpretation is in
+[the 2026-09-28 brief](../research/2026-09-28-the-first-trust-measurements-with-gh.md).
 
 ## Reproduce
 
