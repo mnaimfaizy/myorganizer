@@ -4,11 +4,14 @@ import path from 'node:path';
 
 import { GhJsonError, ghJson } from './lib/gh.mjs';
 import {
-  abandonedCutSteps,
+  AbandonedCutError,
+  assertNothingLeftUnstaged,
+  runOrAbandonCut,
+} from './lib/release-cut.mjs';
+import {
   classifyCommit,
   releaseCommitPaths,
   resolveNotesPlan,
-  unstagedPaths,
   upsertChangelogSection,
 } from './lib/release-notes.mjs';
 import {
@@ -214,39 +217,6 @@ function assertCleanTree() {
   if (porcelain.length > 0) {
     die(
       'Working tree is not clean. Commit/stash your changes before releasing.',
-    );
-  }
-}
-
-// `openapi:sync` also regenerates backend routes and client code. On a clean
-// `main` those only move by the version stamp; anything else means main's
-// generated output had drifted from its contract, which belongs in its own
-// pull request rather than inside the release commit.
-function assertNothingLeftUnstaged(releaseBranch) {
-  // Raw output, not `run()`: trimming would eat the first line's status column.
-  const leftover = unstagedPaths(
-    execSync('git status --porcelain', {
-      stdio: ['ignore', 'pipe', 'pipe'],
-    }).toString('utf8'),
-  );
-  if (leftover.length > 0) {
-    die(
-      'Refusing to commit the release: `yarn openapi:sync` changed files the release commit does not carry:\n' +
-        leftover.map((file) => `  - ${file}`).join('\n') +
-        '\nThe generated OpenAPI output on main has drifted from its contract. Fix that on main in a pull request first.\n' +
-        abandonedCutSteps(releaseBranch),
-    );
-  }
-}
-
-// Past `git checkout -b`, a failure leaves the release branch checked out with
-// staged changes, so every exit from here names the way back to a clean main.
-function runOrAbandonCut(command, releaseBranch) {
-  try {
-    runInherit(command);
-  } catch {
-    die(
-      `\`${command}\` failed (output above).\n${abandonedCutSteps(releaseBranch)}`,
     );
   }
 }
@@ -737,10 +707,15 @@ if (command === 'cut') {
       console.log(`[dry-run] ${addCmd}`);
       console.log(`[dry-run] ${commitCmd}`);
     } else {
-      runOrAbandonCut(syncCmd, releaseBranch);
-      runOrAbandonCut(addCmd, releaseBranch);
-      assertNothingLeftUnstaged(releaseBranch);
-      runOrAbandonCut(commitCmd, releaseBranch);
+      try {
+        runOrAbandonCut(syncCmd, releaseBranch);
+        runOrAbandonCut(addCmd, releaseBranch);
+        assertNothingLeftUnstaged(releaseBranch);
+        runOrAbandonCut(commitCmd, releaseBranch);
+      } catch (error) {
+        if (error instanceof AbandonedCutError) die(error.message);
+        throw error;
+      }
     }
   }
 

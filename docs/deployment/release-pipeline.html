@@ -1176,7 +1176,7 @@
               </text>
               <text class="nc" x="72" y="260">
                 creates + pushes release/vX.Y.Z, only if Staging is Host
-                Applied &#183; package.json:26, release.mjs:634, :662-671
+                Applied &#183; package.json:26, release.mjs:604, :632-641
               </text>
             </g>
             <path
@@ -1521,7 +1521,7 @@
               </text>
               <text class="nc" x="272" y="1070">
                 no commit, no files &#8212; asserts branch state first &#183;
-                release.mjs:782-790
+                release.mjs:757-765
               </text>
               <text class="nc" x="272" y="1084">
                 package.json:27
@@ -1601,7 +1601,7 @@
           must have started after that upload landed. There is no flag to
           skip this. Only then does it create + push
           <code>release/vX.Y.Z</code> (<code>package.json:26</code>,
-          <code>release.mjs:634</code>, <code>:662-671</code>). If Staging's
+          <code>release.mjs:604</code>, <code>:632-641</code>). If Staging's
           last green <code>host-apply</code> is older than its last upload,
           the Cut refuses and names which condition failed &mdash; dispatch
           <code>Deploy Staging</code> with <code>apply_only</code> first
@@ -1735,8 +1735,8 @@
         <dd id="note-tag">
           Asserts it is on the release branch and up to date with origin, and
           that <code>package.json</code> matches the tag
-          (<code>release.mjs:782-784</code>); refuses an existing tag
-          (<code>:786-788</code>); creates no commit and writes no files
+          (<code>release.mjs:757-759</code>); refuses an existing tag
+          (<code>:761-763</code>); creates no commit and writes no files
           (<code>package.json:27</code>). A commit here would move the
           branch past the exact SHA CI verified and a reviewer approved.
           <code>vX.Y.Z</code> existing means that version reached production.
@@ -1793,7 +1793,7 @@
               creates + pushes <code>release/vX.Y.Z</code>, only if Staging
               is Host Applied at this commit
             </td>
-            <td class="cite">package.json:26, release.mjs:634, :662-671</td>
+            <td class="cite">package.json:26, release.mjs:604, :632-641</td>
           </tr>
           <tr class="fork">
             <td>4a</td>
@@ -1826,7 +1826,7 @@
             <td>6</td>
             <td><code>yarn release:tag --version vX.Y.Z --push</code></td>
             <td>annotated tag, no commit, no files</td>
-            <td class="cite">package.json:27, release.mjs:782-790</td>
+            <td class="cite">package.json:27, release.mjs:757-765</td>
           </tr>
           <tr>
             <td>7</td>
@@ -1950,11 +1950,11 @@
       <p>
         <code>release:tag</code> asserts it is on the release branch, up to
         date with origin, and that <code>package.json</code> matches the tag
-        (<code>release.mjs:782-784</code>); refuses an existing tag
-        (<code>:786-788</code>); and creates no commits and writes no files
+        (<code>release.mjs:757-759</code>); refuses an existing tag
+        (<code>:761-763</code>); and creates no commits and writes no files
         &mdash; a commit here would move the branch past the exact SHA that
         CI verified and a reviewer approved
-        (<code>:774-781</code>). <code>release:cut</code> has no way to tag
+        (<code>:749-756</code>). <code>release:cut</code> has no way to tag
         at all: there is no <code>--tag</code> flag. <code>vX.Y.Z</code>
         existing means that version reached production
         (<a href="../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md"
@@ -1980,7 +1980,7 @@
             <code>deploy-staging.yml</code>, <code>deploy-production.yml</code>.
             The repo floor is <code>&gt;=22.0.0</code>
             (<code>package.json:7</code>). <code>release.mjs</code> refuses a
-            major below 22 (<code>release.mjs:19-27</code>). Three scopes, one
+            major below 22 (<code>release.mjs:22-30</code>). Three scopes, one
             floor &mdash; not a single pinned number.
           </p>
         </div>
@@ -2060,7 +2060,7 @@
             <code>^v[0-9]+\.[0-9]+\.[0-9]+$</code>
             (<code>publish-github-release.yml:35</code>); and
             <code>/^v?(\d+)\.(\d+)\.(\d+)$/</code>
-            (<code>release.mjs:148</code>), which rejects prerelease input
+            (<code>release.mjs:151</code>), which rejects prerelease input
             outright.
           </p>
         </div>
@@ -2689,14 +2689,14 @@
       "release-pr.yml:4-6": { "file": ".github/workflows/release-pr.yml", "start": "push:", "end": "- 'release/v*'" },
       "release-pr.yml:34": { "file": ".github/workflows/release-pr.yml", "start": "if (!/^release\\/v\\d+\\.\\d+\\.\\d+$/.test(releaseBranch)) {" },
       "release-pr.yml:103-115": { "file": ".github/workflows/release-pr.yml", "start": "const mutation = `", "end": "core.info(`Enabled auto-merge for PR #${pr.number}`);" },
-      "release.mjs:19-27": { "file": "tools/scripts/release.mjs", "start": "function assertNodeVersion() {", "end": "}" },
-      "release.mjs:148": { "file": "tools/scripts/release.mjs", "start": "const match = /^v?(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(v);" },
-      "release.mjs:634": { "file": "tools/scripts/release.mjs", "start": "const releaseBranch = `release/${version}`;" },
-      "release.mjs:662-671": { "file": "tools/scripts/release.mjs", "start": "assertCleanTree();", "end": "}" },
-      "release.mjs:774-781": { "file": "tools/scripts/release.mjs", "start": "// command === 'tag'", "end": "// never deployed." },
-      "release.mjs:782-784": { "file": "tools/scripts/release.mjs", "start": "assertOnBranch(releaseBranch);", "end": "assertPackageJsonVersionMatches(packageJsonVersion);" },
-      "release.mjs:782-790": { "file": "tools/scripts/release.mjs", "start": "assertOnBranch(releaseBranch);", "end": "const tagCmd = `git tag -a ${version} -m \"Release ${version}\"`;" },
-      "release.mjs:786-788": { "file": "tools/scripts/release.mjs", "start": "if (tagExists(version)) {", "end": "}" }
+      "release.mjs:22-30": { "file": "tools/scripts/release.mjs", "start": "function assertNodeVersion() {", "end": "}" },
+      "release.mjs:151": { "file": "tools/scripts/release.mjs", "start": "const match = /^v?(\\d+)\\.(\\d+)\\.(\\d+)$/.exec(v);" },
+      "release.mjs:604": { "file": "tools/scripts/release.mjs", "start": "const releaseBranch = `release/${version}`;" },
+      "release.mjs:632-641": { "file": "tools/scripts/release.mjs", "start": "assertCleanTree();", "end": "}" },
+      "release.mjs:749-756": { "file": "tools/scripts/release.mjs", "start": "// command === 'tag'", "end": "// never deployed." },
+      "release.mjs:757-759": { "file": "tools/scripts/release.mjs", "start": "assertOnBranch(releaseBranch);", "end": "assertPackageJsonVersionMatches(packageJsonVersion);" },
+      "release.mjs:757-765": { "file": "tools/scripts/release.mjs", "start": "assertOnBranch(releaseBranch);", "end": "const tagCmd = `git tag -a ${version} -m \"Release ${version}\"`;" },
+      "release.mjs:761-763": { "file": "tools/scripts/release.mjs", "start": "if (tagExists(version)) {", "end": "}" }
     }
   }
 </script>

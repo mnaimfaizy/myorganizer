@@ -390,7 +390,7 @@ What this does:
 - Updates root `package.json` version to `X.Y.Z` and commits it (default)
 - Updates `CHANGELOG.md` with generated release notes and commits it (default)
 - Runs `yarn openapi:sync` and commits its outputs in the same commit — the OpenAPI spec and generated API client carry the package version, and the pre-commit `openapi:artifacts` gate refuses a commit where they differ. If the sync changes anything the commit would not carry (for example backend routes), the cut stops before committing: `main`'s generated output had drifted from its contract, and that fix belongs in its own pull request.
-- If the cut stops after creating the branch (the sync, the staging, or the commit fails), nothing is committed or pushed, but `release/vX.Y.Z` is left checked out with staged changes. The script prints the way back — `git checkout -f main`, `git branch -D release/vX.Y.Z`, then remove anything `git status` still lists — and a retry needs that clean tree.
+- If the cut stops after creating the branch (the sync or the staging fails, the drift check refuses, or the commit is refused), nothing is committed or pushed, but `release/vX.Y.Z` is left checked out with uncommitted changes — unstaged if the sync or the staging failed, staged if the drift check or the commit stopped it (the drift check also leaves the drifted files unstaged). The script prints the way back — `git checkout -f main`, `git branch -D release/vX.Y.Z`, then remove anything `git status` still lists — and a retry needs that clean tree.
 - Use `--no-notes` to skip the `CHANGELOG.md` entry.
 
 3. Production deploy:

@@ -86,7 +86,9 @@ export function releaseCommitPaths({ notesFile } = {}) {
 
 /**
  * What to run after `cut` stops between creating the release branch and
- * committing, which leaves that branch checked out with staged changes.
+ * committing, which leaves that branch checked out with uncommitted changes:
+ * unstaged if the sync or the staging failed, staged if the leftover check or
+ * the commit stopped it (the leftover check also leaves the drift unstaged).
  *
  * `cut` starts from a clean tree, so everything left behind is its own and
  * safe to discard. It prints the steps rather than running them: they discard
