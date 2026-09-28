@@ -110,8 +110,12 @@ The script will:
 4. Write `RELEASE_NOTES.md` — authored prose with `--notes-from`, otherwise generated
 5. Generate and write the CHANGELOG entry — **always** generated from the commit range, never the
    authored prose, so `CHANGELOG.md` stays a uniform commit log across every release
-6. Commit: `chore(release): vX.Y.Z`
-7. Push branch (if `--push`)
+6. Run `yarn openapi:sync` and stage its outputs — the spec and generated API client carry the
+   package version, and the pre-commit `openapi:artifacts` gate refuses a commit where they differ.
+   If the sync changes anything else, the cut stops before committing: main's generated output had
+   drifted, and that fix belongs in its own PR
+7. Commit: `chore(release): vX.Y.Z`
+8. Push branch (if `--push`)
 
 `RELEASE_NOTES.md` is a rolling file: the next release overwrites it. Authored prose survives on the
 GitHub Release page, which `publish-github-release.yml` builds from the file at the tagged commit.

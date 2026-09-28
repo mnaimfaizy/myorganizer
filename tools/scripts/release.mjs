@@ -5,7 +5,9 @@ import path from 'node:path';
 import { GhJsonError, ghJson } from './lib/gh.mjs';
 import {
   classifyCommit,
+  releaseCommitPaths,
   resolveNotesPlan,
+  unstagedPaths,
   upsertChangelogSection,
 } from './lib/release-notes.mjs';
 import {
@@ -211,6 +213,26 @@ function assertCleanTree() {
   if (porcelain.length > 0) {
     die(
       'Working tree is not clean. Commit/stash your changes before releasing.',
+    );
+  }
+}
+
+// `openapi:sync` also regenerates backend routes and client code. On a clean
+// `main` those only move by the version stamp; anything else means main's
+// generated output had drifted from its contract, which belongs in its own
+// pull request rather than inside the release commit.
+function assertNothingLeftUnstaged() {
+  // Raw output, not `run()`: trimming would eat the first line's status column.
+  const leftover = unstagedPaths(
+    execSync('git status --porcelain', {
+      stdio: ['ignore', 'pipe', 'pipe'],
+    }).toString('utf8'),
+  );
+  if (leftover.length > 0) {
+    die(
+      'Refusing to commit the release: `yarn openapi:sync` changed files the release commit does not carry:\n' +
+        leftover.map((file) => `  - ${file}`).join('\n') +
+        '\nThe generated OpenAPI output on main has drifted from its contract. Fix that on main in a pull request, then cut again. Nothing was committed or pushed.',
     );
   }
 }
@@ -533,6 +555,9 @@ What it does:
     - creates release branch: release/<version> (e.g. release/v1.2.3)
     - updates root package.json version to X.Y.Z and commits it (default)
       - use --no-version-bump to skip
+    - regenerates the OpenAPI spec and API client (yarn openapi:sync), which
+      carry that version, into the same commit; refuses to commit if the
+      sync changed anything the commit would not carry
     - optionally pushes the branch (with --push)
     - updates CHANGELOG.md with generated notes and commits it (default)
       - use --no-notes to skip
@@ -684,18 +709,23 @@ if (command === 'cut') {
   }
 
   if (didChangeFiles) {
-    const filesToAdd = ['package.json', 'CHANGELOG.md'];
-    if (args.notesFile) {
-      filesToAdd.push(args.notesFile);
-    }
-    const addCmd = `git add ${filesToAdd.map(quoteShellArg).join(' ')}`;
+    // The OpenAPI spec and generated client carry package.json's version, and
+    // the pre-commit `openapi:artifacts` gate refuses a commit where they
+    // differ. Without this the cut died at the commit (v1.0.0, v1.1.0).
+    const syncCmd = 'corepack yarn openapi:sync';
+    const addCmd = `git add ${releaseCommitPaths({ notesFile: args.notesFile })
+      .map(quoteShellArg)
+      .join(' ')}`;
     const commitCmd = `git commit -m "chore(release): ${version}"`;
 
     if (args.dryRun) {
+      console.log(`[dry-run] ${syncCmd}`);
       console.log(`[dry-run] ${addCmd}`);
       console.log(`[dry-run] ${commitCmd}`);
     } else {
+      runInherit(syncCmd);
       runInherit(addCmd);
+      assertNothingLeftUnstaged();
       runInherit(commitCmd);
     }
   }

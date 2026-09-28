@@ -389,6 +389,8 @@ What this does:
 - Creates `release/vX.Y.Z` from `main`
 - Updates root `package.json` version to `X.Y.Z` and commits it (default)
 - Updates `CHANGELOG.md` with generated release notes and commits it (default)
+- Runs `yarn openapi:sync` and commits its outputs in the same commit — the OpenAPI spec and generated API client carry the package version, and the pre-commit `openapi:artifacts` gate refuses a commit where they differ. If the sync changes anything the commit would not carry (for example backend routes), the cut stops before committing: `main`'s generated output had drifted from its contract, and that fix belongs in its own pull request.
+- Use `--no-notes` to skip the `CHANGELOG.md` entry.
 
 3. Production deploy:
 
@@ -403,8 +405,7 @@ What this does:
 - If it went red, do not hand-fix on the host — the sequence is fail-closed and left it as it was. Fix the cause and re-run with `apply_only`; the bundle is already uploaded. [Runbook](HOST_APPLY_OPERATOR_SETUP.md#step-8--production).
 - `yarn release:tag --version vX.Y.Z --push`
 
-This updates `CHANGELOG.md` with generated notes based on commits since the previous tag.
-Use `--no-notes` to disable.
+`release:tag` writes no files and creates no commits — the `CHANGELOG.md` entry was already committed by `release:cut`. The tag must name the exact commit that deployed.
 
 The tag is a receipt: `vX.Y.Z` existing means that version is live in production with Host Apply verified.
 
