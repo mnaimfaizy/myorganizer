@@ -135,6 +135,32 @@ test('a negation does not reach across a comma', () => {
   );
 });
 
+// "no" is a negation only when it denies: "no doubt", "no denying", "no
+// question", "no less", "no more" affirm what follows (review of #928).
+test('an affirming "no" idiom is not a negation', () => {
+  for (const text of [
+    'There is no doubt this was caused by #590.',
+    "There's no denying this was caused by #590.",
+    'It is no question it was introduced in #590.',
+    'It was no less clearly introduced by #590 than anything else.',
+  ])
+    assert.equal(parseRootCause(text)?.ref.number, 590, text);
+  assert.equal(parseRootCause('No regression from #590 here.'), null);
+});
+
+// A blank line starts a new paragraph, and a negation does not reach into
+// it. A single line break does not stop it: commit bodies wrap mid-sentence
+// at 72 columns, so "was not\nintroduced in #590" is one clause.
+test('a negation stops at a paragraph break but not at a wrapped line', () => {
+  assert.equal(
+    parseRootCause(
+      'Not a regression from anything\n\nintroduced in #590 is the cause.',
+    )?.ref.number,
+    590,
+  );
+  assert.equal(parseRootCause('This was not\nintroduced in #590.'), null);
+});
+
 // The acceptance criterion this file exists for: a fix that names no root
 // cause must be visible, not absent. Returning null is what lands it in
 // `unattributed` rather than dropping it from the denominator.

@@ -186,14 +186,23 @@ export const sameRef = (a, b) =>
  * an earlier clause ("did not run in CI, it was introduced in #590") never
  * reaches it. Emphasis markers are allowed around the words, because the
  * sentence that bought this rule was written in bold.
+ *
+ * `no` is a negation only when it denies: "no doubt", "no denying", "no
+ * question", "no less" and "no more" affirm what follows. A blank line ends
+ * the reach, as a new paragraph; a single line break does not, because commit
+ * bodies wrap mid-sentence.
  */
-const DENIED_BEFORE = /\b(?:not|never|no|\w+n't)(?:[\s*_]+\w+){0,4}[\s*_]*$/i;
+const DENIED_BEFORE =
+  /\b(?:not|never|no(?![\s*_]+(?:doubt|denying|question|less|more)\b)|\w+n't)(?:[\s*_]+\w+){0,4}[\s*_]*$/i;
 const NEGATION_REACH = 60;
 
-const isDenied = (text, index) =>
-  DENIED_BEFORE.test(
-    text.slice(Math.max(0, index - NEGATION_REACH), index).replace(/’/g, "'"),
-  );
+const isDenied = (text, index) => {
+  const before = text
+    .slice(Math.max(0, index - NEGATION_REACH), index)
+    .replace(/’/g, "'");
+  const paragraph = before.split(/\n[ \t]*\n/).pop();
+  return DENIED_BEFORE.test(paragraph);
+};
 
 const QUOTE_RADIUS = 60;
 
