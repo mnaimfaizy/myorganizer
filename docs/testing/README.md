@@ -34,6 +34,8 @@ below plus **only the file for the project you are testing**.
 | `libs/web/pages/*`                   | Jest unit/integration           | `babel-jest` + `jsdom` env (React)   | `yarn nx test <lib-name>`     | [web-pages.md](./projects/web-pages.md)       |
 | `apps/myorganizer-e2e`               | Playwright E2E                  | `@playwright/test`                   | `yarn nx e2e myorganizer-e2e` | [e2e.md](./projects/e2e.md)                   |
 | `libs/mobile/ui`                     | Jest unit (pure logic only)     | `babel-jest` + `node` env            | `yarn nx test mobile-ui`      | [mobile.md](./projects/mobile.md)             |
+| `libs/mobile/core`                   | Jest unit (pure logic only)     | `babel-jest` + `node` env            | `yarn nx test mobile-core`    | [mobile.md](./projects/mobile.md)             |
+| `libs/mobile/screens`                | Jest unit (pure logic only)     | `babel-jest` + `node` env            | `yarn nx test mobile-screens` | [mobile.md](./projects/mobile.md)             |
 | `apps/mobile`, other `libs/mobile/*` | Jest — **rendering unresolved** | `babel-jest` + `react-native` preset | `yarn nx test mobile`         | [mobile.md](./projects/mobile.md)             |
 
 Use Jest for `*.spec.ts(x)` and `*.test.ts(x)` **outside** `apps/myorganizer-e2e`.

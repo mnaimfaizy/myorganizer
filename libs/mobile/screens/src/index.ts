@@ -2,6 +2,7 @@
 export { RootNavigator } from './RootNavigator';
 export type { RootStackParamList } from './RootNavigator';
 export { MainTabs } from './MainTabs';
+export { navigationTheme } from './navigationTheme';
 export {
   DEFAULT_TAB,
   isTabName,

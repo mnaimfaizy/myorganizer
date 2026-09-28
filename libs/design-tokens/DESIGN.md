@@ -98,11 +98,11 @@ The shape language uses **Rounded (8px)** corners to soften the professional nav
 
 - **Primary:** Solid `#0F172A` background with white text. 8px radius.
 - **Secure Action:** Solid `#7C3AED` (Electric Purple). Used for "Unlock Vault" or "Save Passphrase."
-- **Secondary:** Transparent with a `#E2E8F0` border.
+- **Secondary:** Transparent with a **control edge** border. It is a control, so it takes the control edge rather than the structural hairline — see Focus & Controls above.
 
 ### Inputs & VaultGate
 
-- **Inputs:** White background, `#E2E8F0` border, 8px radius. On focus, use a 2px ring of `#94A3B8`.
+- **Inputs:** Raised surface background, **control edge** border, 8px radius. On focus, a 2px **focus** ring — the brand violet, not the neutral hairline the system started with, which sits below the contrast a focus indicator needs.
 - **VaultGate:** When data is locked, use a semi-transparent blur overlay with a centered lock icon and a `#7C3AED` primary button to initiate the decryption flow.
 
 ### Cards

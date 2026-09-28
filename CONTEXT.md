@@ -291,7 +291,7 @@ A shared library's second import path, carrying only exports that hold on every 
 _Avoid_: neutral barrel, mobile barrel, platform-agnostic export, secondary entry point
 
 **Device Setting**:
-A preference belonging to one installation of the Mobile App — the appearance choice (System, Light,
+A choice belonging to one installation of the Mobile App — the appearance choice (System, Light,
 or Dark) and the last used tab. Plaintext and client-only, and _deliberately_ not vault data: it is
 never encrypted, never pushed, and never reconciled, because it describes this device rather than the
 User. Two devices disagreeing about it is the correct outcome, not a conflict. Read synchronously,

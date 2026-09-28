@@ -1,4 +1,4 @@
-// The Device Settings store: preferences that belong to this installation of
+// The Device Settings store: the choices that belong to this installation of
 // the app and to nothing else. Never vault data, never synced, never sent
 // anywhere — which is exactly why it can be read synchronously and written
 // without a network round trip.

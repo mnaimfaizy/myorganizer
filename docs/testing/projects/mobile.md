@@ -7,9 +7,17 @@
 
 ## Current state
 
-One mobile library has a Jest project: `libs/mobile/ui/jest.config.ts`, with
-`libs/mobile/ui/src/theme.test.ts` in it, covering theme resolution, appearance resolution, and the
-Type Scale conversion. It sets `testEnvironment: 'node'` — not the Nx preset's jsdom — because a
+Three mobile libraries have a Jest project, each the same shape:
+
+| Project          | Config                               | Spec                                              | Covers                                                                                              |
+| ---------------- | ------------------------------------ | ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `mobile-ui`      | `libs/mobile/ui/jest.config.ts`      | `src/theme.test.ts`                               | theme resolution, appearance resolution, Type Scale conversion                                      |
+| `mobile-core`    | `libs/mobile/core/jest.config.ts`    | `src/settings/appearance.test.ts`                 | the appearance Device Setting read back out of storage                                              |
+| `mobile-screens` | `libs/mobile/screens/jest.config.ts` | `src/tabs.test.ts`, `src/navigationTheme.test.ts` | the tab vocabulary, the stored last used tab, and the projection of the theme onto React Navigation |
+
+`@nx/jest` infers a `test` target from each config, so `yarn nx test mobile-core` resolves without
+a declared target and CI's `nx affected -t test` runs all three. Every one sets
+`testEnvironment: 'node'` — not the Nx preset's jsdom — because a
 mobile library is typechecked without `dom` on purpose ([ADR 0103](../../adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md)),
 and a jsdom environment would let a browser global that cannot exist on a device pass a test.
 

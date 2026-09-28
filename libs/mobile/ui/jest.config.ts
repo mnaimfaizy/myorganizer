@@ -1,4 +1,3 @@
-/* eslint-disable */
 export default {
   displayName: 'mobile-ui',
   preset: '../../../jest.preset.js',

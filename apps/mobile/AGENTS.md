@@ -25,7 +25,11 @@ The autonomous verification gate for mobile is lint + typecheck + format. Do not
 - Keep vault plaintext and the Master Key on the device.
 - Keep the home-screen name and the registered component name separate. The home-screen name is **MyOrganizer** (iOS `CFBundleDisplayName`, Android `app_name`, `app.json` `displayName`); the registered component name stays **Mobile** (`AppDelegate` `withModuleName`, `MainActivity.getMainComponentName`, `app.json` `name`), and renaming it breaks startup for no visible gain.
 - Keep one copy of each bundled font, in `src/assets/fonts`. Android reaches it through the asset source set in `android/app/build.gradle`; iOS through `UIAppFonts` plus the Xcode Resources phase. Adding a weight means all three plus the Type Scale table — see [src/assets/fonts/README.md](src/assets/fonts/README.md).
-- Run `yarn nx run mobile:pod-install` after adding a native dependency. `react-native-mmkv` landed without it (no macOS in the sandbox that added it), so `ios/Podfile.lock` is behind until someone does.
+- Run `yarn nx run mobile:pod-install` after adding a native dependency, and commit the lockfile.
+
+## Known blocker — iOS pods
+
+- **`ios/Podfile.lock` is behind, and iOS does not start until it is caught up.** `react-native-mmkv` was added without a `pod install` — no macOS in the sandbox that added it — so the lockfile names no MMKV pod. That is not a deferred nicety: `libs/mobile/core/src/settings/settingsStorage.ts` constructs the MMKV store on the first Device Setting read, which happens before the first frame, so an iOS build from this tree fails at launch rather than degrading. Nothing in CI compares `Podfile.lock` against `package.json`, so nothing will catch it drifting further. Run `yarn nx run mobile:pod-install` on a macOS host and commit the result before signing off any iOS acceptance criterion — including the bundled-font screenshot, which needs an app that starts.
 
 ## Do Not
 
