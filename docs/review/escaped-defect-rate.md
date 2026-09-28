@@ -104,6 +104,7 @@ a root cause at all.
 | Date       | Window                   | Fixes | Attributed | Denominator | Escaped | Rate               |
 | ---------- | ------------------------ | ----: | ---------: | ----------: | ------: | ------------------ |
 | 2026-09-11 | 2026-07-13 to 2026-09-11 |    57 |          0 |           0 |       0 | **not measurable** |
+| 2026-09-28 | 2026-07-29 to 2026-09-27 |    89 |          9 |         102 |       1 | **1.0%**           |
 
 ### The first measurement (2026-09-11)
 
@@ -130,6 +131,29 @@ repository's fix commits describe root causes in prose — "Root cause was a
 stale pin" — while naming the Pull Request only in passing, in changes that
 are not fix branches. The interpretation, and what would have to change, is
 in the frozen brief.
+
+### The second measurement (2026-09-28)
+
+The first taken with an authenticated `gh`, so Pull Request bodies, issue
+bodies and review summaries were all read. Taken for issue #925; the parser
+it ran with is the one #928 corrected, and re-running over the same gather
+gives the same result.
+
+- **One escape: #902, root cause #745.** #902's commit carries
+  `Introduced in #745`. The reviewer passed #745 with `comment` on three
+  findings about its ADR status and its migration, none about the YouTube
+  page refresh #902 fixed.
+- **Nine fixes name a root cause and two declare it unknown.** Of the nine,
+  seven name a Pull Request merged before the reviewer went live (#77, #159
+  twice, #287, #297, #357, #573) and are `unreviewed`, and one (#905) names
+  itself and is `not-earlier`.
+- **78 of 89 fixes name nothing.** Nearly all merged before
+  `fix:attribution:check` landed on 2026-09-23 (ADR 0100); of the twelve
+  fixes merged since, nine name an origin or declare it unknown.
+- The saved gather is kept out of the tree for size (about 1 MB); see #925.
+
+The interpretation is in
+[the 2026-09-28 brief](../research/2026-09-28-the-first-trust-measurements-with-gh.md).
 
 ## Reproduce
 
