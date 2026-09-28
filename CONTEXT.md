@@ -507,7 +507,7 @@ The merge policy a Pull Request's diff earns — `review:auto`, `review:agent`, 
 _Avoid_: tier (alone), risk level, gate tier (for this sense), PR label, a Golden Case's Frontier/Guard tier (a third, different question)
 
 **Request Label**:
-A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. The one Request Label is `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0070 item 7). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
+A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. There are two: `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0070 item 7), and `golden-replay`, which replays the Golden Set against that Pull Request's reviewer (ADR 0109). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
 _Avoid_: trigger label (in prose), review label, review requested
 
 **Finding**:

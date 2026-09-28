@@ -618,10 +618,11 @@ yarn review:golden:check
 ```
 
 Run the replay from the Actions tab — the **Golden Replay** workflow takes a
-`tier` input (`frontier`, `guard`, or `all`). On a pull request it runs by
-itself: frontier cases on any review-tooling change, guards only when the brief
-or the finding contract changes. `[skip replay]` in the head commit message
-skips it for that push; `CODE_REVIEW_ENABLED=false` stops it entirely.
+`tier` input (`frontier`, `guard`, or `all`) — or add the `golden-replay`
+Request Label to a pull request, which replays frontier cases, and guards too
+when that pull request changes the brief or the finding contract. It never runs
+on a push; the weekly schedule is described under Cadence, above.
+`CODE_REVIEW_ENABLED=false` stops it entirely.
 
 Cases within a dispatch now run at parallelism one, so a dispatch is one
 repetition (see Cadence, above). Taking a real measurement means dispatching

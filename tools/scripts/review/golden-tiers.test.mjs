@@ -158,11 +158,14 @@ test('a changed week replays the frontier, and the first week of a changed month
   );
 });
 
-// The inputs are the ones a replay measures: what produces a review, and the
-// harness laid over each case tree (ADR 0102). Dropping one lets a reviewer
-// change go a month without a scheduled measurement.
-test('the scheduled replay watches every reviewer input', () => {
-  for (const path of [
+// Exactly the paths that produce a review. Dropping one lets a reviewer change
+// go a month without a scheduled measurement; adding one buys a replay for a
+// change that does not move the reviewer. `.claude`, the Copilot hooks and
+// the upstream-brief Skill are out by #925's decision: the permission clash
+// that once cost a replay its turns is review:allowlist:check's (ADR 0099),
+// and `.claude` moves most weeks, which would make the gate always true.
+test('the scheduled replay watches exactly the reviewer inputs', () => {
+  assert.deepEqual(REPLAY_INPUT_PATHS, [
     '.agents/skills/code-review',
     'tools/scripts/review',
     '.github/actions/code-reviewer',
@@ -171,10 +174,7 @@ test('the scheduled replay watches every reviewer input', () => {
     'tools/config/review-golden-set.json',
     'tools/config/review-obligations.json',
     'tools/config/review-rules.json',
-    '.claude',
-    'tools/scripts/copilot-hooks',
-  ])
-    assert.ok(REPLAY_INPUT_PATHS.includes(path), `${path} is not watched`);
+  ]);
 });
 
 test('the first week of the month is days one to seven', () => {

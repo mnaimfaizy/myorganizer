@@ -63,7 +63,14 @@ moved — never because a push happened to touch an input.**
    when one moved in the last seven days; every case in the first week of a
    month in which one moved in the last 31; nothing when the reviewer did not
    move. The input list and the decision live in one dependency-free module
-   the workflow calls, and its tests name every input.
+   the workflow calls, and its tests name every input. The inputs are the
+   paths that produce a review — the code-review Skill, the review scripts, the
+   reviewer action, both review workflows, the Golden Set, and the Obligation
+   and rule catalogues. `.claude/**`, the Copilot hooks and the upstream-brief
+   Skill are not, although the replay lays them over each case tree (ADR
+   0102): the one way they broke a replay, a permission rule refusing an
+   instructed command, is `review:allowlist:check`'s to catch (ADR 0099), and
+   `.claude` moves most weeks, so watching it would make the gate always true.
 3. **`workflow_dispatch` stays** exactly as ADR 0072 item 4 and item 8 left it:
    one repetition of a tier per dispatch, on any model.
 4. **`[skip replay]` is retired.** With no push trigger there is nothing for it

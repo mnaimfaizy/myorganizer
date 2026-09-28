@@ -47,10 +47,15 @@ export const caseIdsInTier = (set, tier) => {
 };
 
 /**
- * What a replay measures, as git pathspecs: everything that produces a review,
- * and the harness the replay lays over each case tree (ADR 0102). The
- * scheduled replay runs only when one of these moved (ADR 0109). A path left
- * off here is a reviewer change that waits up to a month to be measured.
+ * What a replay measures, as git pathspecs: the paths that produce a review.
+ * The scheduled replay runs only when one of these moved (ADR 0109). A path
+ * left off here is a reviewer change that waits up to a month to be measured.
+ *
+ * `.claude`, the Copilot hooks and the upstream-brief Skill are deliberately
+ * not here (#925), though the replay lays them over each case tree (ADR
+ * 0102): the one way they broke a replay, a permission rule refusing an
+ * instructed command, is review:allowlist:check's to catch (ADR 0099), and
+ * `.claude` moves most weeks, so watching it would make the gate always true.
  */
 export const REPLAY_INPUT_PATHS = [
   '.agents/skills/code-review',
@@ -61,9 +66,6 @@ export const REPLAY_INPUT_PATHS = [
   'tools/config/review-golden-set.json',
   'tools/config/review-obligations.json',
   'tools/config/review-rules.json',
-  '.claude',
-  'tools/scripts/copilot-hooks',
-  '.agents/skills/upstream-brief',
 ];
 
 /** How far back each scheduled tier looks for a changed input (ADR 0109). */
