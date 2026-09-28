@@ -2,7 +2,7 @@
 // on: the label step must not be able to fail the required check, and an
 // empty classifier output must not reach `--tier` or Publish Review.
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const REVIEW_TIER = readFileSync('.github/workflows/review-tier.yml', 'utf8');
@@ -124,4 +124,44 @@ test('Review Tier and Code Review share one classify-then-backfill helper', () =
     'the backfill lives in the helper, not duplicated shell',
   );
   assert.doesNotMatch(codeReview, /grep -q '\^label=review:'/);
+});
+
+// Release Pull Requests are opened as github-actions[bot], and the reviewer's
+// action refuses a bot it is not told to allow: v1.0.0 (#863) and v1.1.0
+// (#923) both got "no verdict" for it. Dropping or misspelling an entry here
+// brings that back silently.
+test('the reviewer allows exactly the cursor and github-actions bots', () => {
+  const line = ACTION.match(/^\s*allowed_bots:\s*(.+)$/m);
+  assert.ok(line, 'action.yml sets no allowed_bots');
+  assert.deepEqual(
+    line[1]
+      .split(',')
+      .map((b) => b.trim())
+      .sort(),
+    ['cursor', 'github-actions'],
+  );
+});
+
+// allowed_bots takes an actor, not a branch, so the grant to github-actions is
+// broader than "release Pull Requests" (#925, decided on #927). What keeps it
+// equivalent is that release-pr.yml is the only workflow here that opens a
+// Pull Request, and it runs only on a push to release/v*. A second workflow
+// that opens one widens the grant and must be looked at, so it fails here.
+test('release-pr.yml is the only workflow that opens a Pull Request', () => {
+  const dir = '.github/workflows';
+  const opens = readdirSync(dir)
+    .filter((f) => /\.ya?ml$/.test(f))
+    .filter((f) =>
+      /pulls\.create\b|gh pr create|create-pull-request@/.test(
+        readFileSync(`${dir}/${f}`, 'utf8'),
+      ),
+    );
+  assert.deepEqual(opens, ['release-pr.yml']);
+  const release = readFileSync(`${dir}/release-pr.yml`, 'utf8');
+  const push = release.match(/^ {2}push:\n((?: {4,}.*\n)+)/m);
+  assert.ok(push, 'release-pr.yml has no push trigger');
+  assert.deepEqual(
+    [...push[1].matchAll(/^\s*-\s*'([^']+)'/gm)].map((m) => m[1]),
+    ['release/v*'],
+  );
 });

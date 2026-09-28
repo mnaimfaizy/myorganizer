@@ -150,8 +150,14 @@ runs:
         # opens it as `github-actions[bot]`, and both v1.0.0 (#863) and v1.1.0
         # (#923) got "no verdict" for it — on the one diff shape the golden set
         # already knows the reviewer can miss (a version bump that leaves the
-        # generated client stale). Only this repository's own workflows act as
-        # that bot; a fork's Pull Request carries its author as the actor.
+        # generated client stale). The actor name is not the guard: a push made
+        # with any workflow's GITHUB_TOKEN, a fork's included, is attributed to
+        # github-actions[bot]. What bounds the grant is that a fork's
+        # pull_request run gets no repository secrets, so the preflight skips
+        # before this action runs, and Publish Review refuses a cross-repository
+        # Pull Request (same_repo). Here, release-pr.yml is the only workflow
+        # that opens a Pull Request, on a push to release/v* — asserted by
+        # tools/scripts/lib/review-tier-workflow.test.mjs.
         allowed_bots: cursor,github-actions
         prompt: |
           /code-review
