@@ -27,6 +27,7 @@ import {
 
 import { useOptionalVaultSession } from './session';
 import { NO_REVISION } from './useLocalVaultRevisionOf';
+import { useReportVaultMountSettle } from './vaultMountSettle';
 import { vaultBlobTypeLabel } from './vaultSyncMessages';
 
 type PendingVaultConflictPrompt = {
@@ -330,6 +331,8 @@ export function VaultReconcileRunner() {
    * unmounts, so a settlement landing between owners knocks on nothing.
    */
   const requestPassRef = useRef<(() => void) | null>(null);
+  const reportMountSettled = useReportVaultMountSettle('reconcile');
+  const reportMountSettledRef = useRef(reportMountSettled);
 
   useEffect(() => {
     toastRef.current = toast;
@@ -338,6 +341,10 @@ export function VaultReconcileRunner() {
   useEffect(() => {
     handleRef.current = handle;
   }, [handle]);
+
+  useEffect(() => {
+    reportMountSettledRef.current = reportMountSettled;
+  }, [reportMountSettled]);
 
   // Declared before the pass effect so the mount pass is the pass effect's
   // own; on mount this finds no `requestPass` registered yet and does nothing.
@@ -433,6 +440,10 @@ export function VaultReconcileRunner() {
           // where leaving the watermark behind would re-run the pass on the
           // partial convergence its own failure left, over and over.
           settledAt = currentRevision();
+          // Reported on every pass, not just the mount one — a no-op past
+          // the first report, since the mount-settle signal only ever means
+          // "the first pass finished."
+          reportMountSettledRef.current();
         });
     };
 
@@ -446,8 +457,19 @@ export function VaultReconcileRunner() {
       // which settlements lift it is pinned rather than decided here.
       if (handleRef.current?.vaultStatus() === 'unclaimed') {
         const evidence = claimEvidenceRef.current;
-        if (!evidence || evidence.status !== 'settled') return;
+        if (!evidence || evidence.status !== 'settled') {
+          // Reconcile has nothing in flight of its own right now — it is
+          // waiting on Vault Claim Evidence, tracked separately and not by
+          // this signal. Reported so a mount-settle reading does not hang
+          // on a question this runner did not even ask yet; a pass that
+          // *does* start later, once evidence settles, still runs and still
+          // does its work — this only affects how soon the signal fires,
+          // never whether the pass itself happens.
+          reportMountSettledRef.current();
+          return;
+        }
         if (!RECONCILE_MAY_START_AFTER_CLAIM_EVIDENCE[evidence.result.kind]) {
+          reportMountSettledRef.current();
           return;
         }
       }

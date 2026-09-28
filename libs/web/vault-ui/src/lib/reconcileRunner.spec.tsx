@@ -9,6 +9,7 @@ import {
 
 const mockToast = jest.fn();
 const mockReconcileVaultWithServer = jest.fn();
+const mockReportMountSettled = jest.fn();
 
 jest.mock('@myorganizer/web-ui', () => {
   const actual = jest.requireActual('@myorganizer/web-ui');
@@ -27,6 +28,10 @@ jest.mock('@myorganizer/web-vault', () => ({
 
 jest.mock('./session', () => ({
   useOptionalVaultSession: jest.fn(),
+}));
+
+jest.mock('./vaultMountSettle', () => ({
+  useReportVaultMountSettle: jest.fn(() => mockReportMountSettled),
 }));
 
 import type {
@@ -1025,6 +1030,60 @@ describe('VaultReconcileRunner', () => {
       await waitFor(() => {
         expect(mockReconcileVaultWithServer).toHaveBeenCalledTimes(1);
       });
+    });
+  });
+
+  describe('mount-settle signal (#858)', () => {
+    test('reports the mount-settle signal once a normal owned-vault pass finishes', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', { revision });
+      arrangeSession(handle, revision);
+      arrangeNoPromptReconcile();
+
+      render(<VaultReconcileRunner />);
+
+      await waitFor(() => {
+        expect(mockReportMountSettled).toHaveBeenCalledTimes(1);
+      });
+    });
+
+    test('reports the mount-settle signal even when the unclaimed gate defers and runs no pass', async () => {
+      // Mirrors "mount with unclaimed status and checking evidence runs no
+      // pass" above: reconcile itself has nothing in flight here, so the
+      // mount-settle signal must not hang on Vault Claim Evidence, which is
+      // tracked separately.
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'unclaimed',
+      });
+      arrangeSession(handle, revision, { status: 'checking' });
+      arrangeNoPromptReconcile();
+
+      render(<VaultReconcileRunner />);
+
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+      expect(mockReportMountSettled).toHaveBeenCalledTimes(1);
+    });
+
+    test('reports the mount-settle signal when settled evidence still refuses a pass (postponed)', async () => {
+      const revision = createFakeRevision();
+      const handle = createMockHandle('user-a', {
+        revision,
+        vaultStatus: 'unclaimed',
+      });
+      arrangeSession(handle, revision, {
+        status: 'settled',
+        result: { kind: 'postponed' },
+      });
+      arrangeNoPromptReconcile();
+
+      render(<VaultReconcileRunner />);
+
+      await flushPasses();
+      expect(mockReconcileVaultWithServer).not.toHaveBeenCalled();
+      expect(mockReportMountSettled).toHaveBeenCalledTimes(1);
     });
   });
 });
