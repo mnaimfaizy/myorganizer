@@ -7,6 +7,9 @@ export const GITHUB_LABELS_CATALOG_PATH = join(
   '../../config/github-labels.json',
 );
 
+// GitHub rejects a longer label description with a bare HTTP 422.
+export const GITHUB_LABEL_DESCRIPTION_MAX = 100;
+
 function isLabelRecord(value) {
   return (
     value !== null &&
@@ -64,6 +67,15 @@ export function loadGithubLabelCatalog(
   ) {
     throw new Error(
       'github-labels catalog surface.kind and surface.area must be arrays of label records.',
+    );
+  }
+
+  const overLong = provisionLabels(catalog).filter(
+    (label) => label.description.length > GITHUB_LABEL_DESCRIPTION_MAX,
+  );
+  if (overLong.length > 0) {
+    throw new Error(
+      `github-labels catalog descriptions must be at most ${GITHUB_LABEL_DESCRIPTION_MAX} characters, which GitHub enforces: ${overLong.map((l) => `${l.name} (${l.description.length})`).join(', ')}`,
     );
   }
 

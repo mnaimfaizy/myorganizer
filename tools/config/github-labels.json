@@ -103,7 +103,7 @@
     {
       "name": "golden-replay",
       "color": "5319e7",
-      "description": "Request a Golden Set replay of this pull request's reviewer; the workflow removes the label when the run finishes (ADR 0109)"
+      "description": "Request a Golden Set replay now; the workflow removes the label when the run finishes"
     }
   ],
   "surface": {
