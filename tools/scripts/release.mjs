@@ -4,7 +4,13 @@ import path from 'node:path';
 
 import { GhJsonError, ghJson } from './lib/gh.mjs';
 import {
+  AbandonedCutError,
+  assertNothingLeftUnstaged,
+  runOrAbandonCut,
+} from './lib/release-cut.mjs';
+import {
   classifyCommit,
+  releaseCommitPaths,
   resolveNotesPlan,
   upsertChangelogSection,
 } from './lib/release-notes.mjs';
@@ -533,6 +539,9 @@ What it does:
     - creates release branch: release/<version> (e.g. release/v1.2.3)
     - updates root package.json version to X.Y.Z and commits it (default)
       - use --no-version-bump to skip
+    - regenerates the OpenAPI spec and API client (yarn openapi:sync), which
+      carry that version, into the same commit; refuses to commit if the
+      sync changed anything the commit would not carry
     - optionally pushes the branch (with --push)
     - updates CHANGELOG.md with generated notes and commits it (default)
       - use --no-notes to skip
@@ -684,19 +693,29 @@ if (command === 'cut') {
   }
 
   if (didChangeFiles) {
-    const filesToAdd = ['package.json', 'CHANGELOG.md'];
-    if (args.notesFile) {
-      filesToAdd.push(args.notesFile);
-    }
-    const addCmd = `git add ${filesToAdd.map(quoteShellArg).join(' ')}`;
+    // The OpenAPI spec and generated client carry package.json's version, and
+    // the pre-commit `openapi:artifacts` gate refuses a commit where they
+    // differ. Without this the cut died at the commit (v1.0.0, v1.1.0).
+    const syncCmd = 'corepack yarn openapi:sync';
+    const addCmd = `git add ${releaseCommitPaths({ notesFile: args.notesFile })
+      .map(quoteShellArg)
+      .join(' ')}`;
     const commitCmd = `git commit -m "chore(release): ${version}"`;
 
     if (args.dryRun) {
+      console.log(`[dry-run] ${syncCmd}`);
       console.log(`[dry-run] ${addCmd}`);
       console.log(`[dry-run] ${commitCmd}`);
     } else {
-      runInherit(addCmd);
-      runInherit(commitCmd);
+      try {
+        runOrAbandonCut(syncCmd, releaseBranch);
+        runOrAbandonCut(addCmd, releaseBranch);
+        assertNothingLeftUnstaged(releaseBranch);
+        runOrAbandonCut(commitCmd, releaseBranch);
+      } catch (error) {
+        if (error instanceof AbandonedCutError) die(error.message);
+        throw error;
+      }
     }
   }
 
