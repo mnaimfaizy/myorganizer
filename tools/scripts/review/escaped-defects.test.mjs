@@ -56,6 +56,44 @@ test('each marker in the vocabulary names a Pull Request', () => {
   }
 });
 
+// A marker a sentence denies is the opposite of attribution. The first
+// measurement with `gh` (2026-09-28) counted #902 as escaping from #745 on
+// "**Not a regression from #745:** The same hole existed before that PR".
+test('a negated marker is not attribution', () => {
+  const denied = {
+    'root-cause': 'The root cause is not #590.',
+    'introduced-in': 'This was not introduced in #590.',
+    'caused-by': "It wasn't caused by #590.",
+    'regression-from': '**Not a regression from #590:** the hole predates it.',
+    'broke-in': 'It never broke in #590.',
+    'dates-to': 'It has not had it since #590.',
+  };
+  for (const marker of ROOT_CAUSE_MARKERS) {
+    const text = denied[marker.id];
+    assert.ok(text, `no negated fixture for marker ${marker.id}`);
+    assert.equal(
+      parseRootCause(text),
+      null,
+      `negated marker ${marker.id} was read as attribution`,
+    );
+  }
+});
+
+// Denying one origin and naming another is the common shape of the sentence;
+// the negation must not reach past its own clause.
+test('a negation does not suppress a later, affirmed marker', () => {
+  const found = parseRootCause(
+    'Not a regression from #745. The hole was introduced in #590.',
+  );
+  assert.equal(found?.marker, 'introduced-in');
+  assert.deepEqual(found.ref, { kind: 'pull-request', number: 590 });
+  assert.equal(
+    parseRootCause('The test did not run in CI; it was introduced in #590.')
+      ?.ref.number,
+    590,
+  );
+});
+
 // The acceptance criterion this file exists for: a fix that names no root
 // cause must be visible, not absent. Returning null is what lands it in
 // `unattributed` rather than dropping it from the denominator.
