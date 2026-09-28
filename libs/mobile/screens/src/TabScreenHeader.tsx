@@ -3,6 +3,23 @@ import { Platform } from 'react-native';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import { LargeTitleHeader } from '@myorganizer/mobile/ui';
 
+/**
+ * The safe-area edges a tab screen's root takes.
+ *
+ * The tab bar owns the bottom inset, so no tab screen takes it again —
+ * insetting twice leaves a visible gap above the bar. The top follows the
+ * title rule below: on Android the screen draws its own header and insets
+ * above it; on iOS the native large-title header sits over the screen, and
+ * the screen's scroll view clears it with `contentInsetAdjustmentBehavior`
+ * rather than a padding that only knows the status bar's height. A screen
+ * that insets its top on iOS puts its first row under the navigation bar,
+ * where the bar takes every tap.
+ */
+export const TAB_SCREEN_EDGES =
+  Platform.OS === 'ios'
+    ? (['left', 'right'] as const)
+    : (['top', 'left', 'right'] as const);
+
 export interface TabScreenHeaderProps {
   title: string;
 }

@@ -31,7 +31,7 @@ import {
   TextField,
   useTheme,
 } from '@myorganizer/mobile/ui';
-import { TabScreenHeader } from './TabScreenHeader';
+import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
 
 /**
  * A decrypted task as this screen reads it. The payload is decrypted JSON, so
@@ -39,12 +39,6 @@ import { TabScreenHeader } from './TabScreenHeader';
  * edit so fields this screen does not know survive the round trip.
  */
 type DecryptedTask = Partial<Task> & { id: string };
-
-/**
- * The tab bar owns the bottom inset, so a screen inside a tab does not take it
- * again — insetting twice leaves a visible gap above the bar.
- */
-const SCREEN_EDGES = ['top', 'left', 'right'] as const;
 
 function describeLoadError(err: unknown): string {
   if (isNetworkError(err)) {
@@ -201,10 +195,53 @@ export function TasksScreen(): React.JSX.Element {
     [theme, writing, toggleTask],
   );
 
-  return (
-    <Screen edges={SCREEN_EDGES}>
-      <TabScreenHeader title="Tasks" />
+  // Everything above the rows scrolls with them, as the list's header. On iOS
+  // the list is the first thing on screen, so its automatic content inset
+  // clears the native large-title header and the title collapses as the list
+  // scrolls; a row placed above the list would sit under the navigation bar,
+  // which takes every tap on it.
+  const listHeader = (
+    <View style={{ gap: theme.spacing.md, marginBottom: theme.spacing.sm }}>
       <OfflineBanner />
+      <View
+        style={[
+          styles.addRow,
+          { gap: theme.spacing.sm, marginTop: theme.spacing.sm },
+        ]}
+      >
+        <TextField
+          placeholder="Add a task"
+          value={newTitle}
+          onChangeText={setNewTitle}
+          onSubmitEditing={() => void addTask()}
+          returnKeyType="done"
+          editable={!writing}
+          accessibilityLabel="Add a task"
+          containerStyle={styles.addInput}
+        />
+        <Button
+          label="Add"
+          onPress={() => void addTask()}
+          disabled={writing || newTitle.trim().length === 0}
+        />
+      </View>
+
+      {writeError != null && (
+        <InlineNotice
+          tone="destructive"
+          message={WRITE_ERROR_MESSAGES[writeError]}
+          actionLabel={writeError === 'conflict' ? 'Reload' : 'Try again'}
+          onAction={() =>
+            void (writeError === 'conflict' ? reload() : retryFailedEdit())
+          }
+        />
+      )}
+    </View>
+  );
+
+  return (
+    <Screen edges={TAB_SCREEN_EDGES}>
+      <TabScreenHeader title="Tasks" />
 
       {loading ? (
         <View style={styles.centered}>
@@ -212,6 +249,7 @@ export function TasksScreen(): React.JSX.Element {
         </View>
       ) : loadError != null ? (
         <View style={[styles.centered, { gap: theme.spacing.md }]}>
+          <OfflineBanner />
           <InlineNotice
             tone="destructive"
             message={describeLoadError(loadError)}
@@ -223,66 +261,30 @@ export function TasksScreen(): React.JSX.Element {
           />
         </View>
       ) : (
-        <>
-          <View
-            style={[
-              styles.addRow,
-              {
-                gap: theme.spacing.sm,
-                marginTop: theme.spacing.sm,
-                marginBottom: theme.spacing.md,
-              },
-            ]}
-          >
-            <TextField
-              placeholder="Add a task"
-              value={newTitle}
-              onChangeText={setNewTitle}
-              onSubmitEditing={() => void addTask()}
-              returnKeyType="done"
-              editable={!writing}
-              accessibilityLabel="Add a task"
-              containerStyle={styles.addInput}
+        <FlatList
+          data={tasks}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          refreshing={refreshing}
+          onRefresh={() => void reload()}
+          contentInsetAdjustmentBehavior="automatic"
+          // The Add button has to take its tap while the keyboard is up;
+          // the default dismisses the keyboard and swallows that first tap.
+          keyboardShouldPersistTaps="handled"
+          ListHeaderComponent={listHeader}
+          ListEmptyComponent={
+            <EmptyState
+              icon="tasks"
+              title="No tasks yet"
+              description="Add one above, or on the web."
             />
-            <Button
-              label="Add"
-              onPress={() => void addTask()}
-              disabled={writing || newTitle.trim().length === 0}
-            />
-          </View>
-
-          {writeError != null && (
-            <InlineNotice
-              tone="destructive"
-              message={WRITE_ERROR_MESSAGES[writeError]}
-              actionLabel={writeError === 'conflict' ? 'Reload' : 'Try again'}
-              onAction={() =>
-                void (writeError === 'conflict' ? reload() : retryFailedEdit())
-              }
-              style={{ marginBottom: theme.spacing.md }}
-            />
-          )}
-
-          <FlatList
-            data={tasks}
-            keyExtractor={(item) => item.id}
-            renderItem={renderItem}
-            refreshing={refreshing}
-            onRefresh={() => void reload()}
-            ListEmptyComponent={
-              <EmptyState
-                icon="tasks"
-                title="No tasks yet"
-                description="Add one above, or on the web."
-              />
-            }
-            contentContainerStyle={[
-              styles.listContent,
-              { gap: theme.spacing.sm, paddingBottom: theme.spacing.xl },
-            ]}
-            showsVerticalScrollIndicator={false}
-          />
-        </>
+          }
+          contentContainerStyle={[
+            styles.listContent,
+            { gap: theme.spacing.sm, paddingBottom: theme.spacing.xl },
+          ]}
+          showsVerticalScrollIndicator={false}
+        />
       )}
 
       {/* Signing out lives here until the Account tab is built, because
