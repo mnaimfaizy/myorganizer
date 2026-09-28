@@ -91,8 +91,8 @@ and a value typed then never reaches React state. `waitForLoginFormInteractive` 
 sleeps that papered over it are gone. That helper is login-specific — another server-rendered
 controlled form needs its own probe.
 
-`src/e2e/helpers/auth.ts` also carries `submitLoginForm` and `waitForDashboardReady`. Use them
-rather than growing a seventh copy of the login helper.
+`src/e2e/helpers/auth.ts` also carries `submitLoginForm`, `waitForDashboardReady`, and
+`waitForVaultMountSettled`. Use them rather than growing a seventh copy of the login helper.
 
 ## Do
 

@@ -144,7 +144,10 @@ export async function waitForVaultMountSettled(page: Page): Promise<void> {
  * to vanish via `waitForFunction()`. `waitForFunction()` is resilient to
  * navigation and re-evaluates in the new execution context, so the absence
  * of the marker proves the reload committed. Then `waitForDashboardReady()`
- * ensures the new document's shell has mounted (issue #557).
+ * ensures the new document's shell has mounted (issue #557), and
+ * `waitForVaultMountSettled()` ensures the reloaded document's own mount-time
+ * vault work has too — a reload remounts `VaultSessionProvider` exactly like
+ * a fresh login does, so it is exposed to the same race (issue #858).
  */
 export async function waitForReload(
   page: Page,
@@ -164,4 +167,5 @@ export async function waitForReload(
   );
 
   await waitForDashboardReady(page);
+  await waitForVaultMountSettled(page);
 }

@@ -49,11 +49,13 @@ const VaultMountSettleContext =
  * runners' in-flight requests mid-pass — the race issue #858 traced a
  * recurring WebKit `page.goto: internal error` back to.
  */
+interface VaultMountSettleProviderProps {
+  children: ReactNode;
+}
+
 export function VaultMountSettleProvider({
   children,
-}: {
-  children: ReactNode;
-}) {
+}: VaultMountSettleProviderProps) {
   const vaultSession = useOptionalVaultSession();
   const owner = vaultSession?.handle?.owner ?? null;
   const pullTrigger = vaultSession?.pullTrigger ?? null;
