@@ -176,6 +176,34 @@ export const sameRef = (a, b) =>
     ? a.number === b.number
     : a.sha.startsWith(b.sha) || b.sha.startsWith(a.sha));
 
+/**
+ * A negation that denies the marker right after it: "Not a regression from
+ * #745", "was not introduced in #590", "doesn't look like it was introduced
+ * by". `not`, `never`, `no`, or any n't contraction, with either apostrophe —
+ * a curly one is folded to straight before matching. It must end the text
+ * before the marker, with at most four words between it and the marker, and
+ * those words may not cross punctuation, a comma included — so a negation in
+ * an earlier clause ("did not run in CI, it was introduced in #590") never
+ * reaches it. Emphasis markers are allowed around the words, because the
+ * sentence that bought this rule was written in bold.
+ *
+ * `no` is a negation only when it denies: "no doubt", "no denying", "no
+ * question", "no less" and "no more" affirm what follows. A blank line ends
+ * the reach, as a new paragraph; a single line break does not, because commit
+ * bodies wrap mid-sentence.
+ */
+const DENIED_BEFORE =
+  /\b(?:not|never|no(?![\s*_]+(?:doubt|denying|question|less|more)\b)|\w+n't)(?:[\s*_]+\w+){0,4}[\s*_]*$/i;
+const NEGATION_REACH = 60;
+
+const isDenied = (text, index) => {
+  const before = text
+    .slice(Math.max(0, index - NEGATION_REACH), index)
+    .replace(/’/g, "'");
+  const paragraph = before.split(/\n[ \t]*\n/).pop();
+  return DENIED_BEFORE.test(paragraph);
+};
+
 const QUOTE_RADIUS = 60;
 
 const quoteAround = (text, index, length) =>
@@ -202,6 +230,7 @@ export const parseRootCause = (text) => {
     // Each marker carries a `g` flag, so its lastIndex must not leak between
     // calls; matchAll on a fresh copy is the cheapest way to stay pure.
     for (const match of source.matchAll(new RegExp(m.re.source, 'gi'))) {
+      if (isDenied(source, match.index)) continue;
       hits.push({
         index: match.index,
         rank,
