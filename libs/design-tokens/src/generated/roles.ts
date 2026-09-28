@@ -37,11 +37,12 @@ export const roleLight = {
   sidebarAccentForeground: "#0f172a",
   sidebarBorder: "#e2e8f0",
   sidebarRing: "#94a3b8",
-  errorText: "#b91c1c",
-  focus: "#7c3aed",
-  controlEdge: "#7f8ea3",
+  errorText: "#dc2626",
+  errorEdge: "#dc2626",
+  focus: "#0f172a",
+  controlEdge: "#64748b",
   raisedSurface: "#ffffff",
-  scrim: "rgba(3, 7, 17, 0.45)",
+  scrim: "rgba(15, 23, 42, 0.4)",
 } as const;
 
 /**
@@ -87,11 +88,12 @@ export const roleDark = {
   sidebarAccentForeground: "#e2e8f0",
   sidebarBorder: "#1d283a",
   sidebarRing: "#1d283a",
-  errorText: "#f87171",
-  focus: "#a78bfa",
-  controlEdge: "#64748b",
+  errorText: "#f8fafc",
+  errorEdge: "#f87171",
+  focus: "#e2e8f0",
+  controlEdge: "#7f8ea3",
   raisedSurface: "#0f172a",
-  scrim: "rgba(2, 2, 5, 0.6)",
+  scrim: "rgba(0, 0, 0, 0.6)",
 } as const satisfies Record<keyof typeof roleLight, string>;
 
 /** The name of a Semantic Role — the same set in both colour modes. */

@@ -67,17 +67,14 @@ export const colorCyanOnDarkVar = 'var(--color-cyan-on-dark)';
 /** Dark-surface pairing for destructive. */
 export const colorDestructiveOnDark = "#811d1d";
 export const colorDestructiveOnDarkVar = 'var(--color-destructive-on-dark)';
-/** Error copy on a light surface. Darker than destructive because text carries no fill to be read against: 6.5:1 on white against destructive's 4.8:1. Never a fill; destructive is the fill. */
-export const colorErrorText = "#b91c1c";
-export const colorErrorTextVar = 'var(--color-error-text)';
-/** Dark-surface pairing for error text. destructive-on-dark is a fill and is unreadable as copy, so error text on dark is its own value rather than that one reused. */
-export const colorErrorTextOnDark = "#f87171";
-export const colorErrorTextOnDarkVar = 'var(--color-error-text-on-dark)';
-/** The wash a modal or sheet lays over the screen behind it. The one colour in this tier carrying alpha, because a scrim that is opaque is not a scrim — it is a surface. */
-export const colorScrim = "rgba(3, 7, 17, 0.45)";
+/** Dark-surface pairing for the error edge: the TextField edge and alert icon of a field in error. destructive-on-dark is a fill and reads at 2.04:1 as a mark on the dark background, so the edge takes its own lighter red. The error message itself is not red in dark; it takes the near-white error text role. */
+export const colorErrorEdgeOnDark = "#f87171";
+export const colorErrorEdgeOnDarkVar = 'var(--color-error-edge-on-dark)';
+/** The wash a modal or sheet lays over the screen behind it: primary at 40%. The one colour in this tier carrying alpha, because a scrim that is opaque is not a scrim — it is a surface. */
+export const colorScrim = "rgba(15, 23, 42, 0.4)";
 export const colorScrimVar = 'var(--color-scrim)';
-/** Dark-surface pairing for scrim. Darker and more opaque than the light one: the same 45% over a near-black ground does not separate the sheet from the page. */
-export const colorScrimOnDark = "rgba(2, 2, 5, 0.6)";
+/** Dark-surface pairing for scrim: black at 60%. Primary at 40% over a near-black ground does not separate the sheet from the page. */
+export const colorScrimOnDark = "rgba(0, 0, 0, 0.6)";
 export const colorScrimOnDarkVar = 'var(--color-scrim-on-dark)';
 /** Dark-surface pairing for warning. 11.8:1 on the dark background. */
 export const colorWarningOnDark = "#fbbd23";
@@ -100,7 +97,7 @@ export const typeDisplayLineHeight = "40px";
 export const typeDisplayLineHeightVar = 'var(--type-display-line-height)';
 export const typeDisplayWeight = "800";
 export const typeDisplayWeightVar = 'var(--type-display-weight)';
-export const typeDisplayTracking = "0em";
+export const typeDisplayTracking = "-0.02em";
 export const typeDisplayTrackingVar = 'var(--type-display-tracking)';
 export const typeTitleLgSize = "28px";
 export const typeTitleLgSizeVar = 'var(--type-title-lg-size)';
@@ -108,7 +105,7 @@ export const typeTitleLgLineHeight = "34px";
 export const typeTitleLgLineHeightVar = 'var(--type-title-lg-line-height)';
 export const typeTitleLgWeight = "700";
 export const typeTitleLgWeightVar = 'var(--type-title-lg-weight)';
-export const typeTitleLgTracking = "0em";
+export const typeTitleLgTracking = "-0.02em";
 export const typeTitleLgTrackingVar = 'var(--type-title-lg-tracking)';
 export const typeTitleSize = "20px";
 export const typeTitleSizeVar = 'var(--type-title-size)';
@@ -116,7 +113,7 @@ export const typeTitleLineHeight = "26px";
 export const typeTitleLineHeightVar = 'var(--type-title-line-height)';
 export const typeTitleWeight = "700";
 export const typeTitleWeightVar = 'var(--type-title-weight)';
-export const typeTitleTracking = "0em";
+export const typeTitleTracking = "-0.015em";
 export const typeTitleTrackingVar = 'var(--type-title-tracking)';
 export const typeBodySize = "17px";
 export const typeBodySizeVar = 'var(--type-body-size)';
@@ -212,10 +209,9 @@ export const tokens = {
   'color-secondary-on-dark': { value: "#a78bfa", cssVar: 'var(--color-secondary-on-dark)' },
   'color-cyan-on-dark': { value: "#22d3ee", cssVar: 'var(--color-cyan-on-dark)' },
   'color-destructive-on-dark': { value: "#811d1d", cssVar: 'var(--color-destructive-on-dark)' },
-  'color-error-text': { value: "#b91c1c", cssVar: 'var(--color-error-text)' },
-  'color-error-text-on-dark': { value: "#f87171", cssVar: 'var(--color-error-text-on-dark)' },
-  'color-scrim': { value: "rgba(3, 7, 17, 0.45)", cssVar: 'var(--color-scrim)' },
-  'color-scrim-on-dark': { value: "rgba(2, 2, 5, 0.6)", cssVar: 'var(--color-scrim-on-dark)' },
+  'color-error-edge-on-dark': { value: "#f87171", cssVar: 'var(--color-error-edge-on-dark)' },
+  'color-scrim': { value: "rgba(15, 23, 42, 0.4)", cssVar: 'var(--color-scrim)' },
+  'color-scrim-on-dark': { value: "rgba(0, 0, 0, 0.6)", cssVar: 'var(--color-scrim-on-dark)' },
   'color-warning-on-dark': { value: "#fbbd23", cssVar: 'var(--color-warning-on-dark)' },
   'color-success': { value: "#15803d", cssVar: 'var(--color-success)' },
   'color-success-on-dark': { value: "#4ade80", cssVar: 'var(--color-success-on-dark)' },
@@ -224,15 +220,15 @@ export const tokens = {
   'type-display-size': { value: "34px", cssVar: 'var(--type-display-size)' },
   'type-display-line-height': { value: "40px", cssVar: 'var(--type-display-line-height)' },
   'type-display-weight': { value: "800", cssVar: 'var(--type-display-weight)' },
-  'type-display-tracking': { value: "0em", cssVar: 'var(--type-display-tracking)' },
+  'type-display-tracking': { value: "-0.02em", cssVar: 'var(--type-display-tracking)' },
   'type-title-lg-size': { value: "28px", cssVar: 'var(--type-title-lg-size)' },
   'type-title-lg-line-height': { value: "34px", cssVar: 'var(--type-title-lg-line-height)' },
   'type-title-lg-weight': { value: "700", cssVar: 'var(--type-title-lg-weight)' },
-  'type-title-lg-tracking': { value: "0em", cssVar: 'var(--type-title-lg-tracking)' },
+  'type-title-lg-tracking': { value: "-0.02em", cssVar: 'var(--type-title-lg-tracking)' },
   'type-title-size': { value: "20px", cssVar: 'var(--type-title-size)' },
   'type-title-line-height': { value: "26px", cssVar: 'var(--type-title-line-height)' },
   'type-title-weight': { value: "700", cssVar: 'var(--type-title-weight)' },
-  'type-title-tracking': { value: "0em", cssVar: 'var(--type-title-tracking)' },
+  'type-title-tracking': { value: "-0.015em", cssVar: 'var(--type-title-tracking)' },
   'type-body-size': { value: "17px", cssVar: 'var(--type-body-size)' },
   'type-body-line-height': { value: "24px", cssVar: 'var(--type-body-line-height)' },
   'type-body-weight': { value: "400", cssVar: 'var(--type-body-weight)' },

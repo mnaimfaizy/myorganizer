@@ -265,7 +265,7 @@ export function TasksScreen(): React.JSX.Element {
               style={[
                 styles.writeError,
                 {
-                  borderColor: theme.colors.errorText,
+                  borderColor: theme.colors.errorEdge,
                   borderRadius: theme.radii.md,
                   padding: theme.spacing.md,
                   gap: theme.spacing.sm,

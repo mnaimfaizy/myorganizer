@@ -27,8 +27,11 @@ export function ThemedInput({
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
 
+  // An error marks the edge in errorEdge and the message in errorText. They
+  // match in light; in dark the edge is red and the message is near-white,
+  // because a red message on the dark background does not read.
   const borderColor = error
-    ? theme.colors.errorText
+    ? theme.colors.errorEdge
     : focused
       ? theme.colors.focus
       : theme.colors.controlEdge;

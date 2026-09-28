@@ -15,48 +15,49 @@ import { navigationTheme } from './navigationTheme';
  * silently disagreeing with the family it is paired with.
  */
 function buildFixtureTheme(mode: 'light' | 'dark'): Theme {
-  const colors = {
-    brand: '#brand00',
+  const colors: ThemeColors = {
     background: '#bg0000',
-    raisedSurface: '#raised0',
-    card: '#card000', // distinct from raisedSurface to catch mapping errors
     foreground: '#fg0000',
+    card: '#card000', // distinct from raisedSurface to catch mapping errors
+    cardForeground: '#cgf000',
+    popover: '#pop000',
+    popoverForeground: '#pgf000',
+    muted: '#muted00',
+    mutedForeground: '#mfg000',
     border: '#border0',
-    destructive: '#destr00',
-    errorText: '#errtxt0', // distinct from destructive to catch mapping errors
-    // Placeholder roles not read by navigationTheme (required to satisfy ThemeColors)
+    input: '#input00',
     primary: '#prim00',
+    primaryForeground: '#pfg000',
     secondary: '#sec000',
-    tertiary: '#tert00',
-    neutral: '#neut00',
-    neutralVariant: '#nvar00',
-    outline: '#outl00',
-    outlineVariant: '#ovar00',
+    secondaryForeground: '#sfg000',
+    accent: '#accnt00',
+    accentForeground: '#afg000',
+    destructive: '#destr00',
+    destructiveForeground: '#dfg000',
+    warning: '#warn00',
+    warningForeground: '#wfg000',
+    success: '#succ00',
+    successForeground: '#sfg00',
+    ring: '#ring00',
+    brand: '#brand00',
+    brandForeground: '#bfg000',
+    cyan: '#cyan00',
+    cyanForeground: '#cfg000',
+    sidebarBackground: '#sbg000',
+    sidebarForeground: '#sfg000',
+    sidebarPrimary: '#spr00',
+    sidebarPrimaryForeground: '#spfg0',
+    sidebarAccent: '#sac000',
+    sidebarAccentForeground: '#safg0',
+    sidebarBorder: '#sbdr00',
+    sidebarRing: '#srng00',
+    errorText: '#errtxt0', // distinct from destructive to catch mapping errors
+    errorEdge: '#erredge', // new role
+    focus: '#focus00',
+    controlEdge: '#ctrlEdge',
+    raisedSurface: '#raised0',
     scrim: '#scrim0',
-    surfaceDim: '#sdim00',
-    surface: '#surf00',
-    surfaceBright: '#sbri00',
-    surfaceContainerLowest: '#scl000',
-    surfaceContainerLow: '#scll00',
-    surfaceContainer: '#scnt00',
-    surfaceContainerHigh: '#sch000',
-    surfaceContainerHighest: '#schs00',
-    onBrand: '#obra00',
-    onBrandContainer: '#obrc00',
-    onBackground: '#obg000',
-    onSurface: '#osrf00',
-    onSurfaceVariant: '#osrv00',
-    onErrorContainer: '#oerrc0',
-    onTertiary: '#oter00',
-    onTertiaryContainer: '#oterc0',
-    tertiaryContainer: '#terc00',
-    onSecondaryContainer: '#osecc0',
-    secondaryContainer: '#secc00',
-    onPrimaryContainer: '#oprc00',
-    primaryContainer: '#primc0',
-    onNeutral: '#oneut0',
-    onOutline: '#oout00',
-  } as unknown as ThemeColors;
+  };
 
   const type = {
     body: {
@@ -117,7 +118,7 @@ function buildFixtureTheme(mode: 'light' | 'dark'): Theme {
     spacing: { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, gutter: 16 },
     radii: { sm: 4, md: 8, lg: 12, xl: 16, '2xl': 20, full: 999 },
     type,
-  } as unknown as Theme;
+  };
 }
 
 describe('navigationTheme', () => {

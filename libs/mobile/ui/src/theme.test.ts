@@ -17,20 +17,33 @@ describe('Mobile App Theme Resolution', () => {
     });
   });
 
-  describe('2. Five new roles present in both modes with approved values', () => {
-    it('should have errorText with correct light (#b91c1c) and dark (#f87171) values', () => {
-      expect(lightTheme.colors.errorText).toBe('#b91c1c');
-      expect(darkTheme.colors.errorText).toBe('#f87171');
+  describe('2. Six new roles present in both modes with approved values', () => {
+    it('should have errorText with correct light (#dc2626) and dark (#f8fafc) values', () => {
+      expect(lightTheme.colors.errorText).toBe('#dc2626');
+      expect(darkTheme.colors.errorText).toBe('#f8fafc');
     });
 
-    it('should have focus with correct light (#7c3aed) and dark (#a78bfa) values', () => {
-      expect(lightTheme.colors.focus).toBe('#7c3aed');
-      expect(darkTheme.colors.focus).toBe('#a78bfa');
+    it('should have errorEdge with correct light (#dc2626) and dark (#f87171) values', () => {
+      expect(lightTheme.colors.errorEdge).toBe('#dc2626');
+      expect(darkTheme.colors.errorEdge).toBe('#f87171');
     });
 
-    it('should have controlEdge with correct light (#7f8ea3) and dark (#64748b) values', () => {
-      expect(lightTheme.colors.controlEdge).toBe('#7f8ea3');
-      expect(darkTheme.colors.controlEdge).toBe('#64748b');
+    it('should have focus with correct light (#0f172a) and dark (#e2e8f0) values, and focus equals foreground', () => {
+      expect(lightTheme.colors.focus).toBe('#0f172a');
+      expect(darkTheme.colors.focus).toBe('#e2e8f0');
+      expect(lightTheme.colors.focus).toBe(lightTheme.colors.foreground);
+      expect(darkTheme.colors.focus).toBe(darkTheme.colors.foreground);
+    });
+
+    it('should have controlEdge with correct light (#64748b) and dark (#7f8ea3) values, and controlEdge equals mutedForeground', () => {
+      expect(lightTheme.colors.controlEdge).toBe('#64748b');
+      expect(darkTheme.colors.controlEdge).toBe('#7f8ea3');
+      expect(lightTheme.colors.controlEdge).toBe(
+        lightTheme.colors.mutedForeground,
+      );
+      expect(darkTheme.colors.controlEdge).toBe(
+        darkTheme.colors.mutedForeground,
+      );
     });
 
     it('should have raisedSurface with correct light (#ffffff) and dark (#0f172a) values', () => {
@@ -38,9 +51,9 @@ describe('Mobile App Theme Resolution', () => {
       expect(darkTheme.colors.raisedSurface).toBe('#0f172a');
     });
 
-    it('should have scrim with correct light (rgba(3, 7, 17, 0.45)) and dark (rgba(2, 2, 5, 0.6)) values', () => {
-      expect(lightTheme.colors.scrim).toBe('rgba(3, 7, 17, 0.45)');
-      expect(darkTheme.colors.scrim).toBe('rgba(2, 2, 5, 0.6)');
+    it('should have scrim with correct light (rgba(15, 23, 42, 0.4)) and dark (rgba(0, 0, 0, 0.6)) values', () => {
+      expect(lightTheme.colors.scrim).toBe('rgba(15, 23, 42, 0.4)');
+      expect(darkTheme.colors.scrim).toBe('rgba(0, 0, 0, 0.6)');
     });
   });
 
@@ -164,16 +177,31 @@ describe('Mobile App Theme Resolution', () => {
   });
 
   describe('8. Letter-spacing is converted from em to points', () => {
-    it('should have labelCaps letterSpacing as 12 * 0.02 = 0.24', () => {
-      expect(typeScale.labelCaps.letterSpacing).toBe(0.24);
+    it('should have display letterSpacing as 34 * -0.02 = -0.68', () => {
+      expect(typeScale.display.letterSpacing).toBeCloseTo(-0.68);
     });
 
-    it('should have all other steps with letterSpacing of 0', () => {
-      expect(typeScale.display.letterSpacing).toBe(0);
-      expect(typeScale.titleLg.letterSpacing).toBe(0);
-      expect(typeScale.title.letterSpacing).toBe(0);
+    it('should have titleLg letterSpacing as 28 * -0.02 = -0.56', () => {
+      expect(typeScale.titleLg.letterSpacing).toBeCloseTo(-0.56);
+    });
+
+    it('should have title letterSpacing as 20 * -0.015 = -0.3', () => {
+      expect(typeScale.title.letterSpacing).toBeCloseTo(-0.3);
+    });
+
+    it('should have body letterSpacing as 17 * 0 = 0', () => {
       expect(typeScale.body.letterSpacing).toBe(0);
+    });
+
+    it('should have bodySm letterSpacing as 15 * 0 = 0', () => {
       expect(typeScale.bodySm.letterSpacing).toBe(0);
+    });
+
+    it('should have labelCaps letterSpacing as 12 * 0.02 = 0.24', () => {
+      expect(typeScale.labelCaps.letterSpacing).toBeCloseTo(0.24);
+    });
+
+    it('should have caption letterSpacing as 13 * 0 = 0', () => {
       expect(typeScale.caption.letterSpacing).toBe(0);
     });
   });
