@@ -94,6 +94,47 @@ test('a negation does not suppress a later, affirmed marker', () => {
   );
 });
 
+// The code review of #928 ran these against the first version, which knew a
+// short list of negations and only the curly forms of two of them.
+test('any n’t contraction, with either apostrophe, is a negation', () => {
+  for (const neg of [
+    "isn't",
+    "wasn't",
+    "aren't",
+    "weren't",
+    "doesn't",
+    "didn't",
+    "hasn't",
+    "hadn't",
+    "won't",
+    "don't",
+    "can't",
+  ])
+    for (const word of [neg, neg.replace("'", '’')])
+      assert.equal(
+        parseRootCause(`It ${word} caused by #590.`),
+        null,
+        `"${word}" was not read as a negation`,
+      );
+  assert.equal(
+    parseRootCause("This doesn't look like it was introduced by #590."),
+    null,
+  );
+  assert.equal(parseRootCause("It hasn't been caused by #590."), null);
+});
+
+// A comma joins clauses as often as it sets off an aside, so a negation does
+// not reach across one: "was not, in fact, introduced by #590" stays
+// attribution. Declined deliberately in the review of #928 — a comma splice
+// hiding a real origin is worse than an aside that counts one.
+test('a negation does not reach across a comma', () => {
+  assert.equal(
+    parseRootCause('The test did not run in CI, it was introduced in #590.')
+      ?.ref.number,
+    590,
+  );
+});
+
 // The acceptance criterion this file exists for: a fix that names no root
 // cause must be visible, not absent. Returning null is what lands it in
 // `unattributed` rather than dropping it from the denominator.

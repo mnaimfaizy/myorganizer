@@ -178,19 +178,22 @@ export const sameRef = (a, b) =>
 
 /**
  * A negation that denies the marker right after it: "Not a regression from
- * #745", "was not introduced in #590", "wasn't caused by". It must end the
- * text before the marker, with at most two words between it and the marker,
- * and those words may not cross punctuation — so a negation in an earlier
- * clause ("did not run in CI; it was introduced in #590") never reaches it.
- * Emphasis markers are allowed around the words, because the sentence that
- * bought this rule was written in bold.
+ * #745", "was not introduced in #590", "doesn't look like it was introduced
+ * by". `not`, `never`, `no`, or any n't contraction, with either apostrophe —
+ * a curly one is folded to straight before matching. It must end the text
+ * before the marker, with at most four words between it and the marker, and
+ * those words may not cross punctuation, a comma included — so a negation in
+ * an earlier clause ("did not run in CI, it was introduced in #590") never
+ * reaches it. Emphasis markers are allowed around the words, because the
+ * sentence that bought this rule was written in bold.
  */
-const DENIED_BEFORE =
-  /\b(?:not|never|no|isn't|wasn't|aren't|weren't|isn’t|wasn’t)(?:[\s*_]+\w+){0,2}[\s*_]*$/i;
-const NEGATION_REACH = 40;
+const DENIED_BEFORE = /\b(?:not|never|no|\w+n't)(?:[\s*_]+\w+){0,4}[\s*_]*$/i;
+const NEGATION_REACH = 60;
 
 const isDenied = (text, index) =>
-  DENIED_BEFORE.test(text.slice(Math.max(0, index - NEGATION_REACH), index));
+  DENIED_BEFORE.test(
+    text.slice(Math.max(0, index - NEGATION_REACH), index).replace(/’/g, "'"),
+  );
 
 const QUOTE_RADIUS = 60;
 
