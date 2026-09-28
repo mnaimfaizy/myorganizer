@@ -213,7 +213,7 @@
     "react-for-native": "npm:react@19.0.0",
     "react-hook-form": "7.71.1",
     "react-native": "~0.79.3",
-    "react-native-gesture-handler": "2.33.0",
+    "react-native-gesture-handler": "2.32.0",
     "react-native-haptic-feedback": "3.0.0",
     "react-native-keychain": "10.0.0",
     "react-native-mmkv": "3.3.3",

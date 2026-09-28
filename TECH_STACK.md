@@ -91,7 +91,7 @@
 
 | Package | Version | Purpose                                      |
 | ------- | ------- | -------------------------------------------- |
-| `axios` | 1.16.0  | HTTP client used by the generated API client |
+| `axios` | 1.18.1  | HTTP client used by the generated API client |
 
 ---
 
@@ -101,27 +101,27 @@
 > `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
 > NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
 
-| Package                           | Version  | Purpose                                                     |
-| --------------------------------- | -------- | ----------------------------------------------------------- |
-| `react-native`                    | ~0.79.3  | Mobile app runtime                                          |
-| `@nx/react-native`                | 22.7.7   | Nx plugin for React Native apps/libs                        |
-| `@react-navigation/native`        | 7.2.5    | Navigation core                                             |
-| `@react-navigation/native-stack`  | 7.16.0   | Native stack navigator                                      |
-| `@react-navigation/bottom-tabs`   | 7.16.2   | Bottom tab navigator (the app's five-tab shell)             |
-| `react-native-screens`            | 4.11.1   | Native screen primitives (pinned for RN 0.79)               |
-| `react-native-safe-area-context`  | 5.8.0    | Safe-area insets                                            |
-| `react-native-keychain`           | 10.0.0   | Secure token storage (mobile auth)                          |
-| `react-native-mmkv`               | 3.3.3    | Per-device settings storage (appearance, last used tab)     |
-| `react-native-quick-base64`       | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                   |
-| `react-native-quick-crypto`       | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)             |
-| `react-native-nitro-modules`      | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)            |
-| `@craftzdog/react-native-buffer`  | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own) |
-| `react-native-url-polyfill`       | 3.0.0    | URL polyfill for fetch/API client on RN                     |
-| `react-native-svg`                | ~15.11.2 | SVG rendering — the UI Primitives' icon set is drawn in it  |
-| `react-native-gesture-handler`    | 2.33.0   | Native-thread gestures (the swipeable list row)             |
-| `react-native-reanimated`         | 3.19.5   | UI-thread animation (row swipe, skeleton pulse)             |
-| `@react-native-community/netinfo` | 12.0.1   | Connectivity, read by the offline banner                    |
-| `react-native-haptic-feedback`    | 3.0.0    | Tick and untick haptics                                     |
+| Package                           | Version  | Purpose                                                                                                    |
+| --------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `react-native`                    | ~0.79.3  | Mobile app runtime                                                                                         |
+| `@nx/react-native`                | 22.7.7   | Nx plugin for React Native apps/libs                                                                       |
+| `@react-navigation/native`        | 7.2.5    | Navigation core                                                                                            |
+| `@react-navigation/native-stack`  | 7.16.0   | Native stack navigator                                                                                     |
+| `@react-navigation/bottom-tabs`   | 7.16.2   | Bottom tab navigator (the app's five-tab shell)                                                            |
+| `react-native-screens`            | 4.11.1   | Native screen primitives (pinned for RN 0.79)                                                              |
+| `react-native-safe-area-context`  | 5.8.0    | Safe-area insets                                                                                           |
+| `react-native-keychain`           | 10.0.0   | Secure token storage (mobile auth)                                                                         |
+| `react-native-mmkv`               | 3.3.3    | Per-device settings storage (appearance, last used tab)                                                    |
+| `react-native-quick-base64`       | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                                                                  |
+| `react-native-quick-crypto`       | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)                                                            |
+| `react-native-nitro-modules`      | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)                                                           |
+| `@craftzdog/react-native-buffer`  | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own)                                                |
+| `react-native-url-polyfill`       | 3.0.0    | URL polyfill for fetch/API client on RN                                                                    |
+| `react-native-svg`                | ~15.11.2 | SVG rendering — the UI Primitives' icon set is drawn in it                                                 |
+| `react-native-gesture-handler`    | 2.32.0   | Native-thread gestures (the swipeable list row); held at 2.32.0 — 2.33.0's codegen needs React Native 0.80 |
+| `react-native-reanimated`         | 3.19.5   | UI-thread animation (row swipe, skeleton pulse)                                                            |
+| `@react-native-community/netinfo` | 12.0.1   | Connectivity, read by the offline banner                                                                   |
+| `react-native-haptic-feedback`    | 3.0.0    | Tick and untick haptics                                                                                    |
 
 ### Metro & React Native Tooling
 

@@ -6031,7 +6031,7 @@ __metadata:
     react-for-native: "npm:react@19.0.0"
     react-hook-form: "npm:7.71.1"
     react-native: "npm:~0.79.3"
-    react-native-gesture-handler: "npm:2.33.0"
+    react-native-gesture-handler: "npm:2.32.0"
     react-native-haptic-feedback: "npm:3.0.0"
     react-native-keychain: "npm:10.0.0"
     react-native-mmkv: "npm:3.3.3"
@@ -25649,9 +25649,9 @@ __metadata:
   languageName: node
   linkType: hard
 
-"react-native-gesture-handler@npm:2.33.0":
-  version: 2.33.0
-  resolution: "react-native-gesture-handler@npm:2.33.0"
+"react-native-gesture-handler@npm:2.32.0":
+  version: 2.32.0
+  resolution: "react-native-gesture-handler@npm:2.32.0"
   dependencies:
     "@egjs/hammerjs": "npm:^2.0.17"
     "@types/react-test-renderer": "npm:^19.1.0"
@@ -25660,7 +25660,7 @@ __metadata:
   peerDependencies:
     react: "*"
     react-native: "*"
-  checksum: 10c0/2eb7182020eaf1ce4705bc347651234ae726098696411680ee8b543a03f7f99e87c184a98f2963bcd2746ef9799001dd63a95225dbc35451ec4834ae9371cd8a
+  checksum: 10c0/f3d903a8ad1f053732f7cbfbd16891a6bc696f4d03428a334948587a203fdcfa29592f1fc6c4c03c175932febe9df1fce3eb40ddd54d2fa3de63cc939ccd0e85
   languageName: node
   linkType: hard
 
