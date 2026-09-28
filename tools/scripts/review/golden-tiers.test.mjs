@@ -8,7 +8,10 @@ import {
   ALL_TIERS,
   CASE_TIERS,
   GOLDEN_SET_PATH,
+  REPLAY_INPUT_PATHS,
   caseIdsInTier,
+  isFirstWeekOfMonth,
+  scheduledTier,
 } from './golden-tiers.mjs';
 
 const set = {
@@ -99,4 +102,83 @@ test('the CLI and the workflow agree on every tier', () => {
       `the two callers disagree for tier ${tier}`,
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// The scheduled cadence (ADR 0109)
+// ---------------------------------------------------------------------------
+
+test('a week with no reviewer input change replays nothing', () => {
+  assert.equal(
+    scheduledTier({
+      changedInWeek: false,
+      changedInMonth: false,
+      firstWeekOfMonth: false,
+    }),
+    null,
+  );
+  // The first week of the month is no exception: a guard re-confirms a
+  // reviewer that has not moved, which is the spend ADR 0109 removes.
+  assert.equal(
+    scheduledTier({
+      changedInWeek: false,
+      changedInMonth: false,
+      firstWeekOfMonth: true,
+    }),
+    null,
+  );
+});
+
+test('a changed week replays the frontier, and the first week of a changed month replays all', () => {
+  assert.equal(
+    scheduledTier({
+      changedInWeek: true,
+      changedInMonth: true,
+      firstWeekOfMonth: false,
+    }),
+    'frontier',
+  );
+  assert.equal(
+    scheduledTier({
+      changedInWeek: true,
+      changedInMonth: true,
+      firstWeekOfMonth: true,
+    }),
+    ALL_TIERS,
+  );
+  // A change three weeks ago still earns the monthly guard run, though the
+  // week itself was quiet.
+  assert.equal(
+    scheduledTier({
+      changedInWeek: false,
+      changedInMonth: true,
+      firstWeekOfMonth: true,
+    }),
+    ALL_TIERS,
+  );
+});
+
+// Exactly the paths that produce a review. Dropping one lets a reviewer change
+// go a month without a scheduled measurement; adding one buys a replay for a
+// change that does not move the reviewer. `.claude`, the Copilot hooks and
+// the upstream-brief Skill are out by #925's decision: the permission clash
+// that once cost a replay its turns is review:allowlist:check's (ADR 0099),
+// and `.claude` moves most weeks, which would make the gate always true.
+test('the scheduled replay watches exactly the reviewer inputs', () => {
+  assert.deepEqual(REPLAY_INPUT_PATHS, [
+    '.agents/skills/code-review',
+    'tools/scripts/review',
+    '.github/actions/code-reviewer',
+    '.github/workflows/code-review.yml',
+    '.github/workflows/review-golden-replay.yml',
+    'tools/config/review-golden-set.json',
+    'tools/config/review-obligations.json',
+    'tools/config/review-rules.json',
+  ]);
+});
+
+test('the first week of the month is days one to seven', () => {
+  assert.equal(isFirstWeekOfMonth(new Date('2026-10-05T03:00:00Z')), true);
+  assert.equal(isFirstWeekOfMonth(new Date('2026-10-07T03:00:00Z')), true);
+  assert.equal(isFirstWeekOfMonth(new Date('2026-10-08T03:00:00Z')), false);
 });

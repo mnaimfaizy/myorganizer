@@ -3,9 +3,14 @@
  */
 
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  GITHUB_LABEL_DESCRIPTION_MAX,
+  GITHUB_LABELS_CATALOG_PATH,
   loadGithubLabelCatalog,
   normalizeLabelArgs,
   provisionLabels,
@@ -75,16 +80,21 @@ test('review:* is a third set: provisioned, never a Surface Label, never accepte
   for (const name of review) assert.equal(provisioned.includes(name), true);
 });
 
-test('agent-review is a trigger: provisioned, not a Surface Label, accepted from --label, never a tier', () => {
+test('agent-review and golden-replay are triggers: provisioned, not Surface Labels, accepted from --label, never a tier', () => {
   const catalog = loadGithubLabelCatalog();
-  assert.deepEqual([...triggerLabelNames(catalog)], ['agent-review']);
-  assert.equal(surfaceLabelNames(catalog).has('agent-review'), false);
-  assert.equal(reviewTierLabelNames(catalog).has('agent-review'), false);
-  assert.deepEqual(rejectedPrLabels(['agent-review', 'tooling'], catalog), []);
-  assert.equal(
-    provisionLabels(catalog).some((l) => l.name === 'agent-review'),
-    true,
+  assert.deepEqual(
+    [...triggerLabelNames(catalog)],
+    ['agent-review', 'golden-replay'],
   );
+  for (const name of ['agent-review', 'golden-replay']) {
+    assert.equal(surfaceLabelNames(catalog).has(name), false);
+    assert.equal(reviewTierLabelNames(catalog).has(name), false);
+    assert.deepEqual(rejectedPrLabels([name, 'tooling'], catalog), []);
+    assert.equal(
+      provisionLabels(catalog).some((l) => l.name === name),
+      true,
+    );
+  }
 });
 
 test('provision list includes orchestration and surface labels', () => {
@@ -142,4 +152,28 @@ test('sync to an empty draft removes Surface Labels only', () => {
       toRemove: ['documentation'],
     },
   );
+});
+
+// GitHub refuses a label description over 100 characters with a bare HTTP
+// 422, which `ai:create-labels` can only report as "Validation Failed". The
+// golden-replay label first shipped at 124 and was caught only when the
+// labels were provisioned; the catalog loader is the place to refuse it.
+test('every label description fits GitHub’s 100-character limit', () => {
+  const catalog = loadGithubLabelCatalog();
+  for (const label of provisionLabels(catalog))
+    assert.ok(
+      label.description.length <= GITHUB_LABEL_DESCRIPTION_MAX,
+      `${label.name}: description is ${label.description.length} characters`,
+    );
+});
+
+test('a catalog with an over-long description is refused on load', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'labels-'));
+  const path = join(dir, 'github-labels.json');
+  const catalog = JSON.parse(readFileSync(GITHUB_LABELS_CATALOG_PATH, 'utf8'));
+  catalog.triggers[0].description = 'x'.repeat(
+    GITHUB_LABEL_DESCRIPTION_MAX + 1,
+  );
+  writeFileSync(path, JSON.stringify(catalog));
+  assert.throws(() => loadGithubLabelCatalog(path), /100 characters/);
 });

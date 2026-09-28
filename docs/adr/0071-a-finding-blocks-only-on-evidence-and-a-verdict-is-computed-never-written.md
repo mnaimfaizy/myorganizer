@@ -210,3 +210,7 @@ verdict as a required check can be written once the golden-set replay has a reco
 > `Golden Replay` is in no ruleset, which
 > [ADR 0072](0072-a-golden-case-earns-its-replay-frequency.md) makes deliberate. Noted here because
 > it sits beside a claim being corrected, not because ADR 0073 changed it.
+
+> **Superseded in part by [ADR 0109](0109-a-golden-replay-runs-on-a-schedule-and-on-request.md).**
+> The replay no longer runs on "any Pull Request touching" a reviewer input. It runs weekly on
+> `main` when one moved, on the `golden-replay` Request Label, and by dispatch.

@@ -507,7 +507,7 @@ The merge policy a Pull Request's diff earns — `review:auto`, `review:agent`, 
 _Avoid_: tier (alone), risk level, gate tier (for this sense), PR label, a Golden Case's Frontier/Guard tier (a third, different question)
 
 **Request Label**:
-A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. The one Request Label is `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0070 item 7). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
+A GitHub label a human or `ai:create-pr` puts on a Pull Request to ask a workflow to run now, and which that workflow removes when the run ends — a button, not a state. There are two: `agent-review`, which starts the CI code review in any `CODE_REVIEW_MODE` (ADR 0070 item 7), and `golden-replay`, which replays the Golden Set against that Pull Request's reviewer (ADR 0109). Distinct from a Surface Label (names the change), a Review Tier label (computed, never hand-applied), and an Issue Orchestration Label (never on a Pull Request). Carries no classification and never appears on an Issue.
 _Avoid_: trigger label (in prose), review label, review requested
 
 **Finding**:
@@ -535,11 +535,11 @@ One entry in the Golden Set: a real commit range from this repository's history 
 _Avoid_: test case (for this sense), fixture, incident (alone), golden test
 
 **Frontier**:
-The Golden Case tier for a case the reviewer misses — the reason to run the replay at all, and the tier every case falls back to on a single miss. It runs on any change to the paths that produce a review ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md)). A third sense of "tier," distinct from a Gate Tier (chosen before code exists) and a Review Tier (the merge policy a diff earns).
+The Golden Case tier for a case the reviewer misses — the reason to run the replay at all, and the tier every case falls back to on a single miss. It replays weekly when a reviewer input moved, and on request ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md), [ADR 0109](docs/adr/0109-a-golden-replay-runs-on-a-schedule-and-on-request.md)). A third sense of "tier," distinct from a Gate Tier (chosen before code exists) and a Review Tier (the merge policy a diff earns).
 _Avoid_: Gate Tier (a different question), Review Tier (a different question), hard case, risk tier
 
 **Guard**:
-The Golden Case tier for a case the reviewer catches reliably — a detector for whether a brief or contract edit has silently undone something that already works. It replays only when the Standards brief or the finding contract changes, and it is earned: promotion takes three consecutive catches cited in the case's own evidence, demotion back to Frontier takes one miss ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md)). The same third sense of "tier" as Frontier.
+The Golden Case tier for a case the reviewer catches reliably — a detector for whether a brief or contract edit has silently undone something that already works. It replays in the first week of a month in which a reviewer input moved, and on request when the Standards brief or the finding contract changes ([ADR 0109](docs/adr/0109-a-golden-replay-runs-on-a-schedule-and-on-request.md)), and it is earned: promotion takes three consecutive catches cited in the case's own evidence, demotion back to Frontier takes one miss ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md)). The same third sense of "tier" as Frontier.
 _Avoid_: Gate Tier (a different question), Review Tier (a different question), stable case, safe case
 
 **Obligation**:
