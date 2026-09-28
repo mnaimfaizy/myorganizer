@@ -101,23 +101,27 @@
 > `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
 > NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
 
-| Package                          | Version  | Purpose                                                     |
-| -------------------------------- | -------- | ----------------------------------------------------------- |
-| `react-native`                   | ~0.79.3  | Mobile app runtime                                          |
-| `@nx/react-native`               | 22.7.7   | Nx plugin for React Native apps/libs                        |
-| `@react-navigation/native`       | 7.2.5    | Navigation core                                             |
-| `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                                      |
-| `@react-navigation/bottom-tabs`  | 7.16.2   | Bottom tab navigator (the app's five-tab shell)             |
-| `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)               |
-| `react-native-safe-area-context` | 5.8.0    | Safe-area insets                                            |
-| `react-native-keychain`          | 10.0.0   | Secure token storage (mobile auth)                          |
-| `react-native-mmkv`              | 3.3.3    | Per-device settings storage (appearance, last used tab)     |
-| `react-native-quick-base64`      | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                   |
-| `react-native-quick-crypto`      | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)             |
-| `react-native-nitro-modules`     | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)            |
-| `@craftzdog/react-native-buffer` | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own) |
-| `react-native-url-polyfill`      | 3.0.0    | URL polyfill for fetch/API client on RN                     |
-| `react-native-svg`               | ~15.11.2 | SVG rendering                                               |
+| Package                           | Version  | Purpose                                                     |
+| --------------------------------- | -------- | ----------------------------------------------------------- |
+| `react-native`                    | ~0.79.3  | Mobile app runtime                                          |
+| `@nx/react-native`                | 22.7.7   | Nx plugin for React Native apps/libs                        |
+| `@react-navigation/native`        | 7.2.5    | Navigation core                                             |
+| `@react-navigation/native-stack`  | 7.16.0   | Native stack navigator                                      |
+| `@react-navigation/bottom-tabs`   | 7.16.2   | Bottom tab navigator (the app's five-tab shell)             |
+| `react-native-screens`            | 4.11.1   | Native screen primitives (pinned for RN 0.79)               |
+| `react-native-safe-area-context`  | 5.8.0    | Safe-area insets                                            |
+| `react-native-keychain`           | 10.0.0   | Secure token storage (mobile auth)                          |
+| `react-native-mmkv`               | 3.3.3    | Per-device settings storage (appearance, last used tab)     |
+| `react-native-quick-base64`       | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                   |
+| `react-native-quick-crypto`       | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)             |
+| `react-native-nitro-modules`      | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)            |
+| `@craftzdog/react-native-buffer`  | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own) |
+| `react-native-url-polyfill`       | 3.0.0    | URL polyfill for fetch/API client on RN                     |
+| `react-native-svg`                | ~15.11.2 | SVG rendering — the UI Primitives' icon set is drawn in it  |
+| `react-native-gesture-handler`    | 2.33.0   | Native-thread gestures (the swipeable list row)             |
+| `react-native-reanimated`         | 3.19.5   | UI-thread animation (row swipe, skeleton pulse)             |
+| `@react-native-community/netinfo` | 12.0.1   | Connectivity, read by the offline banner                    |
+| `react-native-haptic-feedback`    | 3.0.0    | Tick and untick haptics                                     |
 
 ### Metro & React Native Tooling
 
@@ -238,29 +242,31 @@
 
 ## Testing
 
-| Package                         | Version | Purpose                                                |
-| ------------------------------- | ------- | ------------------------------------------------------ |
-| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice    |
-| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                    |
-| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests              |
-| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                     |
-| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                       |
-| `babel-jest`                    | 30.2.0  | Babel transform for Jest                               |
-| `@testing-library/react`        | 16.3.1  | React component testing utilities                      |
-| `@testing-library/react-native` | ~13.2.0 | React Native component testing utilities               |
-| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                  |
-| `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests (deprecated) |
-| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                         |
-| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)             |
-| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                      |
-| `@playwright/test`              | 1.57.0  | End-to-end test runner                                 |
-| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests   |
+| Package                         | Version | Purpose                                                                           |
+| ------------------------------- | ------- | --------------------------------------------------------------------------------- |
+| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice                               |
+| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                                               |
+| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests                                         |
+| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                                                |
+| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                                                  |
+| `babel-jest`                    | 30.2.0  | Babel transform for Jest                                                          |
+| `@testing-library/react`        | 16.3.1  | React component testing utilities                                                 |
+| `@testing-library/react-native` | 14.0.1  | React Native component testing utilities                                          |
+| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                                             |
+| `test-renderer`                 | 1.3.0   | React test renderer RNTL 14 uses in place of the deprecated `react-test-renderer` |
+| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                                                    |
+| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)                                        |
+| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                                                 |
+| `@playwright/test`              | 1.57.0  | End-to-end test runner                                                            |
+| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests                              |
 
 > **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
 
-> **Mobile Test Toolchain Note**: **Rendering** a mobile component in a test is still unresolved, and the reason is `react-test-renderer`, not a React version range. The installed `@testing-library/react-native` (13.2.2) declares `react: >=18.2.0` with no upper bound, which React 19.2.3 satisfies — but it also declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package outright. RNTL v14 is the line that drops the peer. Compounding it, `react-test-renderer` is pinned `19.0.0` against React `19.2.3`, a skew in a package React publishes in lockstep with itself. No package bumps are planned until the gate tier decision is made.
+> **Mobile Test Toolchain Note**: **Rendering a mobile component in a test works**, as of #910. It was blocked by `react-test-renderer` — a package React deprecated outright, pinned at `19.0.0` against React `19.2.3`, and declared as a peer by `@testing-library/react-native` 13. RNTL **14** is the line that drops it, for `test-renderer@1`, and that is the version installed; `react-test-renderer` is gone from the tree.
 >
-> What that does **not** block is a mobile test of pure logic, which needs neither package. `libs/mobile/ui` has a Jest project (`jest.config.ts`, `testEnvironment: 'node'`, babel-jest) and `src/theme.test.ts` runs in it, covering theme resolution and the Type Scale conversion — data and pure functions, no renderer. The rule that follows: a mobile spec that imports `react-native`, `react`, or `@testing-library/react-native` is blocked by this note; one that imports neither is not. Keep the tested logic reachable without them and the seam stays available.
+> `libs/mobile/ui` is the project that renders: `preset: 'react-native'`, the native modules stubbed once in its `jest.setup.ts`, and React mapped to `react-for-native` because React Native 0.79's own renderer asserts an exact version match against it and `findNodeHandle` loads that renderer. **`render` is async in RNTL 14** — `await` it, or `screen` throws "`render` function has not been called", which reads as a broken component rather than a missing `await`. See [the Mobile UI Agent Guide](libs/mobile/ui/AGENTS.md).
+>
+> `libs/mobile/core` and `libs/mobile/screens` still run pure logic in a `node` environment and have no renderer configured, so a spec in either must still import neither `react-native`, `react`, nor `@testing-library/react-native`.
 
 ---
 

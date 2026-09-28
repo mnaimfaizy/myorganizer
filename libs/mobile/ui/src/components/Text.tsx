@@ -1,6 +1,11 @@
 import React from 'react';
-import { StyleSheet, Text, type TextProps } from 'react-native';
+import {
+  StyleSheet,
+  Text as RNText,
+  type TextProps as RNTextProps,
+} from 'react-native';
 import { useTheme } from '../useTheme';
+import { TEXT_SCALE_CAP } from '../metrics';
 import type { ThemeColors } from '../theme';
 import type { TypeScaleStep } from '../typeScale';
 
@@ -19,7 +24,7 @@ const DEFAULT_COLOR_BY_VARIANT = {
   caption: 'mutedForeground',
 } as const satisfies Record<TypeScaleStep, keyof ThemeColors>;
 
-export interface ThemedTextProps extends TextProps {
+export interface TextProps extends RNTextProps {
   children?: React.ReactNode;
   /** A step of the shared type scale. Used whole — size, line height, weight, tracking. */
   variant?: TypeScaleStep;
@@ -27,17 +32,27 @@ export interface ThemedTextProps extends TextProps {
   color?: keyof ThemeColors;
 }
 
-export function ThemedText({
+/**
+ * Every string the app renders.
+ *
+ * It is the one place the app-wide text-scaling cap is applied, which is what
+ * makes the cap app-wide rather than a thing each screen has to remember: a
+ * caller can lower it for a control whose width is fixed — the tab bar does —
+ * but nothing renders above it.
+ */
+export function Text({
   children,
   variant = 'body',
   color,
   style,
+  maxFontSizeMultiplier = TEXT_SCALE_CAP,
   ...rest
-}: ThemedTextProps): React.JSX.Element {
+}: TextProps): React.JSX.Element {
   const theme = useTheme();
 
   return (
-    <Text
+    <RNText
+      maxFontSizeMultiplier={maxFontSizeMultiplier}
       style={[
         styles.base,
         theme.type[variant],
@@ -47,7 +62,7 @@ export function ThemedText({
       {...rest}
     >
       {children}
-    </Text>
+    </RNText>
   );
 }
 

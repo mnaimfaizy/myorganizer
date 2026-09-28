@@ -3,10 +3,11 @@ import { StyleSheet, View } from 'react-native';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import {
-  ScreenContainer,
-  ThemedText,
-  ThemedInput,
-  ThemedButton,
+  Button,
+  InlineNotice,
+  Screen,
+  Text,
+  TextField,
   useTheme,
 } from '@myorganizer/mobile/ui';
 
@@ -60,14 +61,14 @@ export function UnlockScreen(): React.JSX.Element {
   }
 
   return (
-    <ScreenContainer>
+    <Screen>
       <View style={[styles.content, { gap: theme.spacing.md }]}>
-        <ThemedText variant="titleLg">Unlock your vault</ThemedText>
-        <ThemedText variant="caption">
+        <Text variant="titleLg">Unlock your vault</Text>
+        <Text variant="caption">
           Enter your passphrase to decrypt your data on this device.
-        </ThemedText>
+        </Text>
 
-        <ThemedInput
+        <TextField
           label="Passphrase"
           value={passphrase}
           onChangeText={setPassphrase}
@@ -80,27 +81,23 @@ export function UnlockScreen(): React.JSX.Element {
           onSubmitEditing={() => void handleSubmit()}
         />
 
-        {error != null && (
-          <ThemedText variant="caption" color="errorText">
-            {error}
-          </ThemedText>
-        )}
+        {error != null && <InlineNotice tone="destructive" message={error} />}
 
-        <ThemedButton
+        <Button
           label={submitting ? 'Unlocking…' : 'Unlock'}
           onPress={() => void handleSubmit()}
           disabled={!canSubmit}
           style={{ marginTop: theme.spacing.sm }}
         />
 
-        <ThemedButton
+        <Button
           label="Sign out"
           variant="ghost"
           onPress={() => void logout()}
           disabled={submitting}
         />
       </View>
-    </ScreenContainer>
+    </Screen>
   );
 }
 

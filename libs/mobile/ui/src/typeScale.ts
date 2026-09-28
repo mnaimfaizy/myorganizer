@@ -68,7 +68,9 @@ export const FONT_FAMILY = {
   displayBold: 'PlusJakartaSans-Bold',
   displayExtraBold: 'PlusJakartaSans-ExtraBold',
   bodyRegular: 'Inter-Regular',
+  bodyMedium: 'Inter-Medium',
   bodySemiBold: 'Inter-SemiBold',
+  bodyBold: 'Inter-Bold',
 } as const;
 
 /** The two faces of the scale: Plus Jakarta Sans for headings, Inter for the rest. */
@@ -93,6 +95,11 @@ const FACE_BY_STEP = {
  * reaches its cut through its token weight, so re-weighting a step in
  * tokens.json either picks the matching file or fails at load — it cannot keep
  * rendering the old cut while claiming the new weight.
+ *
+ * The body face carries two weights no Type Scale step names — 500 and 700.
+ * They are the tab bar's, whose label the approved design sets in Inter 11/14
+ * at 500 inactive and 700 active rather than at a step; a component with a
+ * style of its own still reaches its cut here rather than naming a file.
  */
 const CUTS = {
   display: {
@@ -101,7 +108,9 @@ const CUTS = {
   },
   body: {
     '400': FONT_FAMILY.bodyRegular,
+    '500': FONT_FAMILY.bodyMedium,
     '600': FONT_FAMILY.bodySemiBold,
+    '700': FONT_FAMILY.bodyBold,
   },
 } as const satisfies Record<TypeFace, Record<string, string>>;
 

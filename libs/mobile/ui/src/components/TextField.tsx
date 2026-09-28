@@ -1,35 +1,41 @@
 import React, { useState } from 'react';
 import {
   StyleSheet,
-  Text,
   TextInput,
   View,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
 import { useTheme } from '../useTheme';
+import { MIN_TOUCH_TARGET, TEXT_SCALE_CAP } from '../metrics';
+import { InlineNotice } from './InlineNotice';
+import { Text } from './Text';
 
-export interface ThemedInputProps extends TextInputProps {
+export interface TextFieldProps extends TextInputProps {
   label?: string;
+  /** What is wrong with the value, in one line. Announced when it appears. */
   error?: string;
+  /** How to fill the field in, when that is not obvious from the label. */
+  hint?: string;
   containerStyle?: ViewStyle;
 }
 
-export function ThemedInput({
+export function TextField({
   label,
   error,
+  hint,
   containerStyle,
   style,
   onFocus,
   onBlur,
+  maxFontSizeMultiplier = TEXT_SCALE_CAP,
   ...rest
-}: ThemedInputProps): React.JSX.Element {
+}: TextFieldProps): React.JSX.Element {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
 
-  // An error marks the edge in errorEdge and the message in errorText. They
-  // match in light; in dark the edge is red and the message is near-white,
-  // because a red message on the dark background does not read.
+  // An error marks the edge in errorEdge; the message itself is an
+  // InlineNotice, which is where the tone's text colour is decided.
   const borderColor = error
     ? theme.colors.errorEdge
     : focused
@@ -37,25 +43,25 @@ export function ThemedInput({
       : theme.colors.controlEdge;
 
   return (
-    <View style={[styles.wrapper, containerStyle]}>
+    <View style={[{ gap: theme.spacing.xs }, containerStyle]}>
       {label != null && (
-        <Text
-          style={[
-            styles.label,
-            theme.type.labelCaps,
-            { color: theme.colors.mutedForeground },
-          ]}
-        >
+        <Text variant="labelCaps" color="mutedForeground">
           {label}
         </Text>
       )}
       <TextInput
+        accessibilityLabel={label}
+        accessibilityState={{ disabled: rest.editable === false }}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
         style={[
           styles.input,
           theme.type.body,
           {
+            minHeight: MIN_TOUCH_TARGET,
             borderColor,
             borderRadius: theme.radii.md,
+            paddingHorizontal: theme.spacing.md,
+            paddingVertical: theme.spacing.sm,
             backgroundColor: theme.colors.card,
             color: theme.colors.foreground,
           },
@@ -72,36 +78,15 @@ export function ThemedInput({
         }}
         {...rest}
       />
-      {error != null && (
-        <Text
-          style={[
-            styles.error,
-            theme.type.caption,
-            { color: theme.colors.errorText },
-          ]}
-        >
-          {error}
-        </Text>
-      )}
+      {hint != null && error == null && <Text variant="caption">{hint}</Text>}
+      {error != null && <InlineNotice tone="destructive" message={error} />}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    gap: 6,
-  },
-  label: {
-    includeFontPadding: false,
-  },
   input: {
     borderWidth: 1,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    minHeight: 44,
-    includeFontPadding: false,
-  },
-  error: {
     includeFontPadding: false,
   },
 });

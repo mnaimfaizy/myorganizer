@@ -1,69 +1,72 @@
 # Mobile testing (`apps/mobile`, `libs/mobile/*`)
 
-> **Pure logic can be tested here. Rendering a component cannot.** Read this before writing a
-> mobile spec. See the Mobile Test Toolchain Note in
+> **`libs/mobile/ui` renders components; the other mobile projects run pure logic.** Read this
+> before writing a mobile spec. See the Mobile Test Toolchain Note in
 > [`TECH_STACK.md`](../../../TECH_STACK.md) and the mobile lane in
 > [`unit-test-delegation-workflow`](../../../.agents/skills/unit-test-delegation-workflow/SKILL.md).
 
 ## Current state
 
-Three mobile libraries have a Jest project, each the same shape:
+Three mobile libraries have a Jest project:
 
-| Project          | Config                               | Spec                                              | Covers                                                                                              |
-| ---------------- | ------------------------------------ | ------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| `mobile-ui`      | `libs/mobile/ui/jest.config.ts`      | `src/theme.test.ts`                               | theme resolution, appearance resolution, Type Scale conversion                                      |
-| `mobile-core`    | `libs/mobile/core/jest.config.ts`    | `src/settings/appearance.test.ts`                 | the appearance Device Setting read back out of storage                                              |
-| `mobile-screens` | `libs/mobile/screens/jest.config.ts` | `src/tabs.test.ts`, `src/navigationTheme.test.ts` | the tab vocabulary, the stored last used tab, and the projection of the theme onto React Navigation |
+| Project          | Config                               | Environment              | Covers                                                                                              |
+| ---------------- | ------------------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------- |
+| `mobile-ui`      | `libs/mobile/ui/jest.config.ts`      | `preset: 'react-native'` | the UI Primitives, the theme, the Type Scale conversion, the shadow conversion                      |
+| `mobile-core`    | `libs/mobile/core/jest.config.ts`    | `node`                   | the appearance Device Setting read back out of storage                                              |
+| `mobile-screens` | `libs/mobile/screens/jest.config.ts` | `node`                   | the tab vocabulary, the stored last used tab, and the projection of the theme onto React Navigation |
 
 `@nx/jest` infers a `test` target from each config, so `yarn nx test mobile-core` resolves without
-a declared target and CI's `nx affected -t test` runs all three. Every one sets
-`testEnvironment: 'node'` — not the Nx preset's jsdom — because a
-mobile library is typechecked without `dom` on purpose ([ADR 0103](../../adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md)),
-and a jsdom environment would let a browser global that cannot exist on a device pass a test.
+a declared target and CI's `nx affected -t test` runs all three.
 
 `apps/mobile/jest.config.ts` also exists, wired to `yarn nx test mobile`, and still holds no test
 files. Its `passWithNoTests: true` means that target reports success by finding nothing, which is
 not evidence of anything.
 
-## What a mobile spec may import
+## Rendering, in `mobile-ui`
 
-**Nothing that reaches a renderer.** A spec in a mobile library must not import `react-native`,
-`react`, `@testing-library/react-native`, the library's own barrel, or any component — the barrel
-and the components reach React Native, and the toolchain below is why that does not run.
+`@testing-library/react-native` **14** and `test-renderer@1` replaced RNTL 13 and the deprecated
+`react-test-renderer` in #910, which is what unblocked this. Three details of the project are
+load-bearing:
+
+- **`render` is async.** `await render(<X />)`. Without the `await`, `screen` throws
+  "`render` function has not been called", which reads as a broken component rather than as a
+  missing keyword.
+- **React is mapped to `react-for-native`** (19.0.0). React Native 0.79's bundled renderer asserts
+  an exact version match against the React it was built for, and `findNodeHandle` — which
+  `react-native-gesture-handler` calls on mount — loads that renderer. Without the mapping, every
+  spec that renders a `GestureDetector` fails on the version pair rather than on anything it
+  asserts.
+- **Native modules are stubbed once**, in `libs/mobile/ui/jest.setup.ts`, each with the double its
+  own package publishes. A new native dependency is added there, not in a spec, so every spec sees
+  the same device.
+
+Every component needs a `ThemeProvider` around it: `useTheme` throws outside one on purpose, so
+that a missing provider reads as the wiring mistake it is rather than as a light-mode app.
+
+## What a spec in `mobile-core` or `mobile-screens` may import
+
+**Nothing that reaches a renderer.** Neither project configures one, so a spec there must not
+import `react-native`, `react`, `@testing-library/react-native`, the library's own barrel, or any
+component.
 
 A type-only import (`import type { TextStyle } from 'react-native'`) is fine: it is erased before
-Jest sees it. That is how `libs/mobile/ui/src/typeScale.ts` is testable while naming React Native
-types.
+Jest sees it. That is how `libs/mobile/ui/src/typeScale.ts` and
+`libs/mobile/screens/src/navigationTheme.ts` are testable while naming React Native types.
 
-The practical consequence is a design one, not a testing one: keep the logic worth asserting
-reachable without a renderer, and the seam stays open. Theme resolution, the Type Scale conversion,
-and the Device Settings parsing are all pure for that reason.
+The practical consequence is a design one: keep the logic worth asserting reachable without a
+renderer and the cheapest lane stays open. Theme resolution, the Type Scale conversion, the shadow
+conversion, and the Device Settings parsing are all pure for that reason.
 
-## Why rendering is still blocked
-
-| Package                         | Pinned                       | Problem                                                                                                                                                                                                                                                                                    |
-| ------------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `@testing-library/react-native` | `~13.2.0` (installed 13.2.2) | Declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package. Its `react` peer is `>=18.2.0` with no upper bound, so React 19.2.3 satisfies it — the React version is _not_ the blocker. RNTL v14 is the line that drops the `react-test-renderer` peer. |
-| `react-test-renderer`           | `19.0.0`                     | Deprecated upstream by React, and pinned off-version against React `19.2.3` — a skew in a package React publishes in lockstep with itself.                                                                                                                                                 |
-
-Resolving this means moving to RNTL v14 and dropping `react-test-renderer` — a package change that
-waits on whether mobile gets a test gate at all. Neither package is needed by a pure-logic spec,
-which is why one exists while this stays open. The mobile verification gate is
-**lint + typecheck + format** (ADR 0005) plus `yarn mobile-platform:check`, and mobile work takes no
-specialist hop (see the gate matrix in [`AGENTS.md`](../../../AGENTS.md)).
-
-## If you are about to write a mobile test
-
-Ask whether the thing you want to assert is reachable without a renderer. If it is, add it to the
-`mobile-ui` project (or a sibling project shaped the same way) and run it with:
+## Running one
 
 ```bash
 node node_modules/.bin/jest --config=libs/mobile/ui/jest.config.ts --no-coverage --forceExit
 ```
 
-If it is not — you need to mount a component, fire a press, or read rendered output — stop and
-resolve the toolchain first, because the spec will not run. Do not add a mobile test file to make a
-target look covered, and do not reach for the blocked packages to get one written.
+The mobile verification gate is **lint + typecheck + format** (ADR 0005) plus
+`yarn mobile-platform:check`, and mobile work takes no specialist hop for the implementation (see
+the gate matrix in [`AGENTS.md`](../../../AGENTS.md)). Tests still go through
+`TestScaffold → TestReviewer → TestRunner`.
 
 Note that `tools/scripts/check-mobile-platform.test.mjs` is **not** a Jest test — it is a
 `node --test` sibling of its checker, like every other `tools/scripts/check-*.mjs`, and it runs

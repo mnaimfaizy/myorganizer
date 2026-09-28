@@ -15,6 +15,7 @@ import {
   spaceXs,
   type SemanticRoleName,
 } from '@myorganizer/design-tokens';
+import { shadows, type Shadow, type ShadowName } from './shadows';
 import {
   toRnSize,
   typeScale,
@@ -57,6 +58,7 @@ export interface Theme {
     full: number;
   };
   type: Record<TypeScaleStep, TypeStyle>;
+  shadows: Record<ShadowName, Shadow>;
 }
 
 function themeFor(mode: ColorMode, colors: ThemeColors): Theme {
@@ -80,6 +82,7 @@ function themeFor(mode: ColorMode, colors: ThemeColors): Theme {
       full: toRnSize(radiusFull),
     },
     type: typeScale,
+    shadows,
   };
 }
 

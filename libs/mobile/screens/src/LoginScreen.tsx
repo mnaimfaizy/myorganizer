@@ -2,10 +2,11 @@ import React, { useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import {
-  ScreenContainer,
-  ThemedText,
-  ThemedInput,
-  ThemedButton,
+  Button,
+  InlineNotice,
+  Screen,
+  Text,
+  TextField,
   useTheme,
 } from '@myorganizer/mobile/ui';
 
@@ -55,14 +56,12 @@ export function LoginScreen(): React.JSX.Element {
   }
 
   return (
-    <ScreenContainer>
+    <Screen>
       <View style={[styles.content, { gap: theme.spacing.md }]}>
-        <ThemedText variant="titleLg">Sign in</ThemedText>
-        <ThemedText variant="caption">
-          Access your MyOrganizer account.
-        </ThemedText>
+        <Text variant="titleLg">Sign in</Text>
+        <Text variant="caption">Access your MyOrganizer account.</Text>
 
-        <ThemedInput
+        <TextField
           label="Email"
           value={email}
           onChangeText={setEmail}
@@ -74,7 +73,7 @@ export function LoginScreen(): React.JSX.Element {
           placeholder="you@example.com"
         />
 
-        <ThemedInput
+        <TextField
           label="Password"
           value={password}
           onChangeText={setPassword}
@@ -87,20 +86,16 @@ export function LoginScreen(): React.JSX.Element {
           onSubmitEditing={() => void handleSubmit()}
         />
 
-        {error != null && (
-          <ThemedText variant="caption" color="errorText">
-            {error}
-          </ThemedText>
-        )}
+        {error != null && <InlineNotice tone="destructive" message={error} />}
 
-        <ThemedButton
+        <Button
           label={submitting ? 'Signing in…' : 'Sign in'}
           onPress={() => void handleSubmit()}
           disabled={!canSubmit}
           style={{ marginTop: theme.spacing.sm }}
         />
       </View>
-    </ScreenContainer>
+    </Screen>
   );
 }
 

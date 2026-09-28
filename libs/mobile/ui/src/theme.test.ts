@@ -295,18 +295,20 @@ describe('Mobile App Theme Resolution', () => {
 
       it('should return bundled body cuts for valid weights', () => {
         expect(fontCutFor('body', '400')).toBe('Inter-Regular');
+        expect(fontCutFor('body', '500')).toBe('Inter-Medium');
         expect(fontCutFor('body', '600')).toBe('Inter-SemiBold');
+        expect(fontCutFor('body', '700')).toBe('Inter-Bold');
       });
 
       it('should throw for unbundled weights with message prefix', () => {
-        expect(() => fontCutFor('body', '700')).toThrow(
-          'Type-scale weight 700 has no bundled body cut',
+        expect(() => fontCutFor('body', '300')).toThrow(
+          'Type-scale weight 300 has no bundled body cut',
         );
         expect(() => fontCutFor('display', '400')).toThrow(
           'Type-scale weight 400 has no bundled display cut',
         );
-        expect(() => fontCutFor('body', '500')).toThrow(
-          'Type-scale weight 500 has no bundled body cut',
+        expect(() => fontCutFor('display', '600')).toThrow(
+          'Type-scale weight 600 has no bundled display cut',
         );
       });
     });

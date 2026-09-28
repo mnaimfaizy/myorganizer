@@ -1,12 +1,18 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
-import { ScreenContainer, ThemedText, useTheme } from '@myorganizer/mobile/ui';
+import { EmptyState, OfflineBanner, Screen } from '@myorganizer/mobile/ui';
+import { TabScreenHeader } from './TabScreenHeader';
 
 export interface PlaceholderScreenProps {
   title: string;
   /** What this tab will do, in one sentence. Not a promise about when. */
   description: string;
 }
+
+/**
+ * The tab bar owns the bottom inset, so a screen inside a tab does not take it
+ * again — insetting twice leaves a visible gap above the bar.
+ */
+const SCREEN_EDGES = ['top', 'left', 'right'] as const;
 
 /**
  * A tab that exists in the shell before its feature does. It says which tab it
@@ -17,24 +23,11 @@ export function PlaceholderScreen({
   title,
   description,
 }: PlaceholderScreenProps): React.JSX.Element {
-  const theme = useTheme();
-
   return (
-    <ScreenContainer>
-      <View style={[styles.content, { gap: theme.spacing.sm }]}>
-        <ThemedText variant="titleLg">{title}</ThemedText>
-        <ThemedText variant="body" color="mutedForeground">
-          {description}
-        </ThemedText>
-      </View>
-    </ScreenContainer>
+    <Screen edges={SCREEN_EDGES}>
+      <TabScreenHeader title={title} />
+      <OfflineBanner />
+      <EmptyState title="Coming soon" description={description} />
+    </Screen>
   );
 }
-
-const styles = StyleSheet.create({
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

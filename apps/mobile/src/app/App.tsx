@@ -1,4 +1,6 @@
 import React, { useMemo } from 'react';
+import { StyleSheet } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { AuthProvider, apiClient } from '@myorganizer/mobile/feat-auth';
 import { VaultProvider, createVaultApi } from '@myorganizer/mobile/feat-vault';
@@ -27,12 +29,23 @@ export default function App(): React.JSX.Element {
   const vaultApi = useMemo(() => createVaultApi(apiClient), []);
 
   return (
-    <SafeAreaProvider>
-      <AuthProvider>
-        <VaultProvider vaultApi={vaultApi}>
-          <ThemedApp />
-        </VaultProvider>
-      </AuthProvider>
-    </SafeAreaProvider>
+    // The gesture root has to be above everything that uses a gesture, and it
+    // has to fill the window: a swipeable row inside a tree that is not under
+    // one receives no touches at all on Android.
+    <GestureHandlerRootView style={styles.root}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <VaultProvider vaultApi={vaultApi}>
+            <ThemedApp />
+          </VaultProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
+
+const styles = StyleSheet.create({
+  root: {
+    flex: 1,
+  },
+});

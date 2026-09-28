@@ -1,10 +1,15 @@
 import React, { useMemo } from 'react';
-import { ActivityIndicator, StatusBar, StyleSheet } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  StatusBar,
+  StyleSheet,
+} from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
-import { ScreenContainer, useTheme } from '@myorganizer/mobile/ui';
+import { Screen, useTheme } from '@myorganizer/mobile/ui';
 import { navigationTheme } from './navigationTheme';
 import { LoginScreen } from './LoginScreen';
 import { UnlockScreen } from './UnlockScreen';
@@ -30,9 +35,9 @@ function LoadingScreen(): React.JSX.Element {
   const theme = useTheme();
 
   return (
-    <ScreenContainer noPadding style={styles.center}>
+    <Screen noPadding style={styles.center}>
       <ActivityIndicator color={theme.colors.primary} />
-    </ScreenContainer>
+    </Screen>
   );
 }
 
@@ -45,7 +50,7 @@ function LoadingScreen(): React.JSX.Element {
  *
  * The colour mode reaches two places outside this app's own components — the
  * navigator, through `NavigationContainer`'s theme, and the OS status bar.
- * Both default to light and neither is covered by `ScreenContainer`, so a dark
+ * Both default to light and neither is covered by `Screen`, so a dark
  * app without them has a light seam behind its transitions and unreadable
  * status-bar glyphs. The status bar sits outside the auth branch because the
  * spinner is a full screen too.
@@ -54,7 +59,13 @@ export function RootNavigator(): React.JSX.Element {
   const { status } = useAuth();
   const { status: vaultStatus } = useVaultSession();
   const theme = useTheme();
-  const navTheme = useMemo(() => navigationTheme(theme), [theme]);
+  // `Platform.OS` is read here rather than inside `navigationTheme`, which
+  // stays pure: the two platforms disagree about what a font weight means, and
+  // that is a fact about the device, not about the theme.
+  const navTheme = useMemo(
+    () => navigationTheme(theme, Platform.OS === 'ios' ? 'ios' : 'android'),
+    [theme],
+  );
 
   return (
     <>

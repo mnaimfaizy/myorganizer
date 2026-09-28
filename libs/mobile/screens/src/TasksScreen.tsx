@@ -1,9 +1,7 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
-  Pressable,
   StyleSheet,
   View,
   type ListRenderItemInfo,
@@ -13,7 +11,6 @@ import {
   isNetworkError,
   newRecordId,
   useVaultBlob,
-  useVaultSession,
   type VaultBlobWriteErrorKind,
 } from '@myorganizer/mobile/feat-vault';
 import { VaultBlobType } from '@myorganizer/app-api-client';
@@ -23,12 +20,18 @@ import {
   type Task,
 } from '@myorganizer/vault-core/portable';
 import {
-  ScreenContainer,
-  ThemedText,
-  ThemedButton,
-  ThemedInput,
+  Button,
+  Checkbox,
+  ConfirmSheet,
+  EmptyState,
+  InlineNotice,
+  ListRow,
+  OfflineBanner,
+  Screen,
+  TextField,
   useTheme,
 } from '@myorganizer/mobile/ui';
+import { TabScreenHeader } from './TabScreenHeader';
 
 /**
  * A decrypted task as this screen reads it. The payload is decrypted JSON, so
@@ -36,6 +39,12 @@ import {
  * edit so fields this screen does not know survive the round trip.
  */
 type DecryptedTask = Partial<Task> & { id: string };
+
+/**
+ * The tab bar owns the bottom inset, so a screen inside a tab does not take it
+ * again — insetting twice leaves a visible gap above the bar.
+ */
+const SCREEN_EDGES = ['top', 'left', 'right'] as const;
 
 function describeLoadError(err: unknown): string {
   if (isNetworkError(err)) {
@@ -68,14 +77,15 @@ function toVisibleTasks(records: unknown): DecryptedTask[] {
 
 /**
  * The Tasks list: once the Vault is unlocked, pull the Tasks blob and decrypt
- * it on-device with the Master Key. Tap a task to toggle it done, long-press
- * to delete it, or add one by title; pull down to re-read edits made on
- * another device. Each edit is pushed to the server as Ciphertext straight
- * away; a failed push puts the list back and offers a retry (ADR 0107).
+ * it on-device with the Master Key. Tick a task to mark it done, swipe it to
+ * delete — which is also an accessibility action on the row, so the delete is
+ * reachable without a drag — or add one by title; pull down to re-read edits
+ * made on another device. Each edit is pushed to the server as Ciphertext
+ * straight away; a failed push puts the list back and offers a retry
+ * (ADR 0107).
  */
 export function TasksScreen(): React.JSX.Element {
   const { logout } = useAuth();
-  const { lock } = useVaultSession();
   const theme = useTheme();
   const {
     snapshot,
@@ -90,6 +100,9 @@ export function TasksScreen(): React.JSX.Element {
   } = useVaultBlob(VaultBlobType.Tasks);
 
   const [newTitle, setNewTitle] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<DecryptedTask | null>(
+    null,
+  );
   // The title of an add whose push failed, so that a successful retry of it
   // clears the field exactly as a successful Add does — otherwise the title
   // left behind invites the same task being added twice. Any other edit
@@ -116,20 +129,11 @@ export function TasksScreen(): React.JSX.Element {
     [apply],
   );
 
-  const confirmDelete = useCallback(
+  const deleteTask = useCallback(
     (task: DecryptedTask): void => {
-      Alert.alert('Delete task?', task.title ?? 'Untitled task', [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            const now = new Date().toISOString();
-            failedAddTitleRef.current = null;
-            void apply((envelope) => deleteVaultRecord(envelope, task.id, now));
-          },
-        },
-      ]);
+      const now = new Date().toISOString();
+      failedAddTitleRef.current = null;
+      void apply((envelope) => deleteVaultRecord(envelope, task.id, now));
     },
     [apply],
   );
@@ -168,57 +172,39 @@ export function TasksScreen(): React.JSX.Element {
     ({ item }: ListRenderItemInfo<DecryptedTask>): React.JSX.Element => {
       const done = item.status === 'done';
       const meta = [item.status, item.priority].filter(Boolean).join(' · ');
+      const title = item.title ?? 'Untitled task';
       return (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ checked: done, disabled: writing }}
-          accessibilityHint="Toggles done. Long-press to delete."
-          disabled={writing}
-          onPress={() => toggleTask(item)}
-          onLongPress={() => confirmDelete(item)}
-          style={[
-            styles.card,
+        <ListRow
+          title={title}
+          subtitle={meta.length > 0 ? meta : undefined}
+          leading={
+            <Checkbox
+              checked={done}
+              disabled={writing}
+              accessibilityLabel={title}
+              onChange={() => toggleTask(item)}
+            />
+          }
+          rightActions={[
             {
-              backgroundColor: theme.colors.card,
-              borderColor: theme.colors.border,
-              borderRadius: theme.radii.md,
-              padding: theme.spacing.md,
-              gap: theme.spacing.xs,
+              id: 'delete',
+              label: 'Delete',
+              icon: 'close',
+              tone: 'destructive',
+              onPress: () => setPendingDelete(item),
             },
           ]}
-        >
-          <ThemedText
-            variant="body"
-            style={done ? styles.doneTitle : undefined}
-          >
-            {item.title ?? 'Untitled task'}
-          </ThemedText>
-          {meta.length > 0 && <ThemedText variant="caption">{meta}</ThemedText>}
-        </Pressable>
+          style={{ borderRadius: theme.radii.md, overflow: 'hidden' }}
+        />
       );
     },
-    [theme, writing, toggleTask, confirmDelete],
+    [theme, writing, toggleTask],
   );
 
   return (
-    <ScreenContainer>
-      <View style={[styles.header, { marginBottom: theme.spacing.md }]}>
-        <ThemedText variant="titleLg">Tasks</ThemedText>
-        <View style={[styles.headerActions, { gap: theme.spacing.sm }]}>
-          <ThemedButton
-            label="Lock"
-            variant="ghost"
-            onPress={lock}
-            style={styles.headerButton}
-          />
-          <ThemedButton
-            label="Sign out"
-            variant="ghost"
-            onPress={() => void logout()}
-            style={styles.headerButton}
-          />
-        </View>
-      </View>
+    <Screen edges={SCREEN_EDGES}>
+      <TabScreenHeader title="Tasks" />
+      <OfflineBanner />
 
       {loading ? (
         <View style={styles.centered}>
@@ -226,12 +212,13 @@ export function TasksScreen(): React.JSX.Element {
         </View>
       ) : loadError != null ? (
         <View style={[styles.centered, { gap: theme.spacing.md }]}>
-          <ThemedText variant="body" color="errorText">
-            {describeLoadError(loadError)}
-          </ThemedText>
-          <ThemedButton
+          <InlineNotice
+            tone="destructive"
+            message={describeLoadError(loadError)}
+          />
+          <Button
             label="Try again"
-            variant="outline"
+            variant="secondary"
             onPress={() => void reload()}
           />
         </View>
@@ -240,19 +227,24 @@ export function TasksScreen(): React.JSX.Element {
           <View
             style={[
               styles.addRow,
-              { gap: theme.spacing.sm, marginBottom: theme.spacing.md },
+              {
+                gap: theme.spacing.sm,
+                marginTop: theme.spacing.sm,
+                marginBottom: theme.spacing.md,
+              },
             ]}
           >
-            <ThemedInput
+            <TextField
               placeholder="Add a task"
               value={newTitle}
               onChangeText={setNewTitle}
               onSubmitEditing={() => void addTask()}
               returnKeyType="done"
               editable={!writing}
+              accessibilityLabel="Add a task"
               containerStyle={styles.addInput}
             />
-            <ThemedButton
+            <Button
               label="Add"
               onPress={() => void addTask()}
               disabled={writing || newTitle.trim().length === 0}
@@ -260,32 +252,15 @@ export function TasksScreen(): React.JSX.Element {
           </View>
 
           {writeError != null && (
-            <View
-              accessibilityRole="alert"
-              style={[
-                styles.writeError,
-                {
-                  borderColor: theme.colors.errorEdge,
-                  borderRadius: theme.radii.md,
-                  padding: theme.spacing.md,
-                  gap: theme.spacing.sm,
-                  marginBottom: theme.spacing.md,
-                },
-              ]}
-            >
-              <ThemedText variant="body" color="errorText">
-                {WRITE_ERROR_MESSAGES[writeError]}
-              </ThemedText>
-              <ThemedButton
-                label={writeError === 'conflict' ? 'Reload' : 'Try again'}
-                variant="outline"
-                onPress={() =>
-                  void (writeError === 'conflict'
-                    ? reload()
-                    : retryFailedEdit())
-                }
-              />
-            </View>
+            <InlineNotice
+              tone="destructive"
+              message={WRITE_ERROR_MESSAGES[writeError]}
+              actionLabel={writeError === 'conflict' ? 'Reload' : 'Try again'}
+              onAction={() =>
+                void (writeError === 'conflict' ? reload() : retryFailedEdit())
+              }
+              style={{ marginBottom: theme.spacing.md }}
+            />
           )}
 
           <FlatList
@@ -295,15 +270,11 @@ export function TasksScreen(): React.JSX.Element {
             refreshing={refreshing}
             onRefresh={() => void reload()}
             ListEmptyComponent={
-              <View style={styles.centered}>
-                <ThemedText variant="body">No tasks yet.</ThemedText>
-                <ThemedText
-                  variant="caption"
-                  style={{ marginTop: theme.spacing.xs }}
-                >
-                  Add one above, or on the web.
-                </ThemedText>
-              </View>
+              <EmptyState
+                icon="tasks"
+                title="No tasks yet"
+                description="Add one above, or on the web."
+              />
             }
             contentContainerStyle={[
               styles.listContent,
@@ -313,43 +284,46 @@ export function TasksScreen(): React.JSX.Element {
           />
         </>
       )}
-    </ScreenContainer>
+
+      {/* Signing out lives here until the Account tab is built, because
+          nothing else in the shell offers it. Lock is the header's trailing
+          action on both platforms and is not repeated. */}
+      <Button
+        label="Sign out"
+        variant="ghost"
+        onPress={() => void logout()}
+        style={styles.signOut}
+      />
+
+      <ConfirmSheet
+        visible={pendingDelete !== null}
+        title="Delete task?"
+        message={pendingDelete?.title ?? 'Untitled task'}
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {
+          if (pendingDelete !== null) deleteTask(pendingDelete);
+          setPendingDelete(null);
+        }}
+        onCancel={() => setPendingDelete(null)}
+      />
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  headerButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    minHeight: 0,
-  },
   addRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
   },
   addInput: {
     flex: 1,
   },
-  writeError: {
-    borderWidth: 1,
-  },
-  card: {
-    borderWidth: 1,
-  },
   listContent: {
     flexGrow: 1,
   },
-  doneTitle: {
-    textDecorationLine: 'line-through',
+  signOut: {
+    alignSelf: 'center',
   },
   centered: {
     flex: 1,

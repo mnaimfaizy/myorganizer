@@ -2,12 +2,15 @@
 export { RootNavigator } from './RootNavigator';
 export type { RootStackParamList } from './RootNavigator';
 export { MainTabs } from './MainTabs';
-export { navigationTheme } from './navigationTheme';
+export { navigationTheme, type NavigationPlatform } from './navigationTheme';
+export { TabScreenHeader, type TabScreenHeaderProps } from './TabScreenHeader';
 export {
   DEFAULT_TAB,
   isTabName,
+  TAB_META,
   TAB_NAMES,
   type MainTabParamList,
+  type TabMeta,
   type TabName,
 } from './tabs';
 export { LoginScreen } from './LoginScreen';

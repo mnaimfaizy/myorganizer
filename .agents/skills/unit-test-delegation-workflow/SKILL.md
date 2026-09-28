@@ -16,12 +16,12 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-
 
 Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/myorganizer-e2e`.
 
-**Mobile App**: there is a narrow Jest lane, and which side of it you are on is decided by what the spec imports.
+**Mobile App**: which Jest lane you are in is decided by the project, not by what the spec imports.
 
-- **Pure logic runs.** `libs/mobile/ui` has a Jest project (`libs/mobile/ui/jest.config.ts`, `testEnvironment: 'node'`, babel-jest) with `src/theme.test.ts` in it. A spec that imports only plain modules — no `react-native`, no `react`, no `@testing-library/react-native`, no library barrel, no component — runs there today. A type-only import of a React Native type is fine; it is erased before Jest sees it.
-- **Rendering does not.** Mounting a component, firing a press, or reading rendered output needs `@testing-library/react-native`, which still peers on the deprecated `react-test-renderer` (see the Mobile Test Toolchain Note in TECH_STACK.md). Do not proceed with that: stop, tell the user the toolchain is the blocker, and do not silently skip the work or report the empty `yarn nx test mobile` pass as success.
+- **`libs/mobile/ui` renders.** It runs on `preset: 'react-native'` with `@testing-library/react-native` 14, which dropped the deprecated `react-test-renderer` peer that blocked this until #910. Mount a component, fire a press, read rendered output. Two things catch people out: **`render` is async** — `await` it — and the native modules are stubbed once in `libs/mobile/ui/jest.setup.ts` rather than per spec. See [the Mobile UI Agent Guide](../../../libs/mobile/ui/AGENTS.md).
+- **`libs/mobile/core` and `libs/mobile/screens` run pure logic only.** Both use `testEnvironment: 'node'` with no renderer configured, so a spec in either must import no `react-native`, no `react`, no `@testing-library/react-native`, no library barrel, and no component. A type-only import of a React Native type is fine; it is erased before Jest sees it.
 
-When the behaviour worth asserting is only reachable through a renderer, say so rather than reaching for the blocked packages — the fix is usually to lift the logic clear of the component, which is why theme resolution and the Device Settings parsing are pure.
+Logic worth asserting that needs no renderer still belongs in a pure module — that is why theme resolution and the Device Settings parsing are pure, and it keeps the cheapest lane open.
 
 ## Gate tier routing
 

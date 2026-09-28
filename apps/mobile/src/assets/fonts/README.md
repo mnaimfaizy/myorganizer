@@ -4,15 +4,22 @@ The two families the Mobile App renders in, as static cuts. Bundled rather than
 loaded at runtime: a font that arrives over the network arrives after first
 paint, and a phone is routinely offline.
 
-| File                            | Family            | Weight | Type scale steps that use it |
+| File                            | Family            | Weight | What uses it                 |
 | ------------------------------- | ----------------- | ------ | ---------------------------- |
 | `PlusJakartaSans-ExtraBold.ttf` | Plus Jakarta Sans | 800    | `display`                    |
 | `PlusJakartaSans-Bold.ttf`      | Plus Jakarta Sans | 700    | `title-lg`, `title`          |
+| `Inter-Bold.ttf`                | Inter             | 700    | the active tab bar label     |
 | `Inter-SemiBold.ttf`            | Inter             | 600    | `label-caps`                 |
+| `Inter-Medium.ttf`              | Inter             | 500    | the inactive tab bar label   |
 | `Inter-Regular.ttf`             | Inter             | 400    | `body`, `body-sm`, `caption` |
 
-Only the four weights the type scale actually names are vendored. A fifth cut is
-~340 KB of app binary that nothing renders.
+Only weights something actually renders are vendored; an unused cut is ~340 KB
+of app binary for nothing. Four of the six are named by a Type Scale step. The
+other two are the tab bar's, whose label the approved design sets at Inter
+11/14 in 500 inactive and 700 active rather than at a step — a weight with no
+bundled cut falls back to a synthesized or system face on Android, which is the
+whole reason a component with a style of its own still reaches the table in
+`typeScale.ts` instead of naming a file.
 
 ## Why the file names are what they are
 
