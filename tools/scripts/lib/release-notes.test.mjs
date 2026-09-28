@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
+  abandonedCutSteps,
   classifyCommit,
   DEFAULT_NOTES_FILE,
   OPENAPI_SYNC_OUTPUTS,
@@ -256,6 +257,16 @@ test('release commit paths include the notes file only when there is one', () =>
     'CHANGELOG.md',
     ...OPENAPI_SYNC_OUTPUTS,
   ]);
+});
+
+test('an abandoned cut names the way back to a clean main', () => {
+  const steps = abandonedCutSteps('release/v1.2.3');
+
+  assert.match(steps, /Nothing was committed or pushed/);
+  assert.match(steps, /^ {2}git checkout -f main$/m);
+  assert.match(steps, /^ {2}git branch -D release\/v1\.2\.3$/m);
+  // A bare retry fails assertCleanTree() until the leftovers are gone.
+  assert.match(steps, /git status/);
 });
 
 test('unstaged paths ignore staged changes and report everything else', () => {

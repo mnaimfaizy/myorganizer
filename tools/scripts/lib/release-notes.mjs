@@ -85,6 +85,26 @@ export function releaseCommitPaths({ notesFile } = {}) {
 }
 
 /**
+ * What to run after `cut` stops between creating the release branch and
+ * committing, which leaves that branch checked out with staged changes.
+ *
+ * `cut` starts from a clean tree, so everything left behind is its own and
+ * safe to discard. It prints the steps rather than running them: they discard
+ * files, and that stays the operator's decision.
+ *
+ * @param {string} releaseBranch e.g. `release/v1.2.3`
+ * @returns {string}
+ */
+export function abandonedCutSteps(releaseBranch) {
+  return [
+    'Nothing was committed or pushed. To retry from a clean main:',
+    '  git checkout -f main',
+    `  git branch -D ${releaseBranch}`,
+    'then remove anything `git status` still lists, and cut again.',
+  ].join('\n');
+}
+
+/**
  * Paths `git status --porcelain` (v1) reports as changed but not staged,
  * untracked ones included.
  *

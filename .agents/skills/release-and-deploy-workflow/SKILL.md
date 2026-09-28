@@ -114,7 +114,9 @@ The script will:
    package version, and the pre-commit `openapi:artifacts` gate refuses a commit where they differ.
    If the sync changes anything else, the cut stops before committing: main's generated output had
    drifted, and that fix belongs in its own PR
-7. Commit: `chore(release): vX.Y.Z`
+7. Commit: `chore(release): vX.Y.Z`. If the sync, the staging or the commit fails, the script prints
+   how to get back to a clean `main` (`git checkout -f main`, `git branch -D release/vX.Y.Z`)
+   before a retry
 8. Push branch (if `--push`)
 
 `RELEASE_NOTES.md` is a rolling file: the next release overwrites it. Authored prose survives on the

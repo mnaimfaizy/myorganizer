@@ -4,6 +4,7 @@ import path from 'node:path';
 
 import { GhJsonError, ghJson } from './lib/gh.mjs';
 import {
+  abandonedCutSteps,
   classifyCommit,
   releaseCommitPaths,
   resolveNotesPlan,
@@ -221,7 +222,7 @@ function assertCleanTree() {
 // `main` those only move by the version stamp; anything else means main's
 // generated output had drifted from its contract, which belongs in its own
 // pull request rather than inside the release commit.
-function assertNothingLeftUnstaged() {
+function assertNothingLeftUnstaged(releaseBranch) {
   // Raw output, not `run()`: trimming would eat the first line's status column.
   const leftover = unstagedPaths(
     execSync('git status --porcelain', {
@@ -232,7 +233,20 @@ function assertNothingLeftUnstaged() {
     die(
       'Refusing to commit the release: `yarn openapi:sync` changed files the release commit does not carry:\n' +
         leftover.map((file) => `  - ${file}`).join('\n') +
-        '\nThe generated OpenAPI output on main has drifted from its contract. Fix that on main in a pull request, then cut again. Nothing was committed or pushed.',
+        '\nThe generated OpenAPI output on main has drifted from its contract. Fix that on main in a pull request first.\n' +
+        abandonedCutSteps(releaseBranch),
+    );
+  }
+}
+
+// Past `git checkout -b`, a failure leaves the release branch checked out with
+// staged changes, so every exit from here names the way back to a clean main.
+function runOrAbandonCut(command, releaseBranch) {
+  try {
+    runInherit(command);
+  } catch {
+    die(
+      `\`${command}\` failed (output above).\n${abandonedCutSteps(releaseBranch)}`,
     );
   }
 }
@@ -723,10 +737,10 @@ if (command === 'cut') {
       console.log(`[dry-run] ${addCmd}`);
       console.log(`[dry-run] ${commitCmd}`);
     } else {
-      runInherit(syncCmd);
-      runInherit(addCmd);
-      assertNothingLeftUnstaged();
-      runInherit(commitCmd);
+      runOrAbandonCut(syncCmd, releaseBranch);
+      runOrAbandonCut(addCmd, releaseBranch);
+      assertNothingLeftUnstaged(releaseBranch);
+      runOrAbandonCut(commitCmd, releaseBranch);
     }
   }
 
