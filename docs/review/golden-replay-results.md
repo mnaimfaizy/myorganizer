@@ -142,6 +142,14 @@ qualifier" run above).
 
 ## Cadence
 
+**When it runs** is [ADR 0109](../adr/0109-a-golden-replay-runs-on-a-schedule-and-on-request.md)
+since 2026-09-28: weekly on `main` when a reviewer input moved (frontier that
+week, every case in the first week of a month), on a Pull Request when the
+`golden-replay` Request Label is added, and by `workflow_dispatch`. It no
+longer runs on a push, and `[skip replay]` is retired. The three weeks before
+it — 108 runs, 228 reviewer sessions, $531 billed-equivalent, 88% of it from
+Pull Request pushes — are the record that decision rests on (issue #925).
+
 The replay's own strategy now runs at **parallelism one**
 (`.github/workflows/review-golden-replay.yml`): cases replay one at a time
 within a dispatch instead of four at once. That is a direct response to what

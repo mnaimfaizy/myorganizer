@@ -8,6 +8,7 @@ import {
   loadGoldenSet,
   renderScore,
   replayObligationCheckFindings,
+  replayTriggerFindings,
   scoreCase,
 } from './golden.mjs';
 import { findingId } from './schema.mjs';
@@ -480,5 +481,151 @@ test('a score with an if: can run after a failed sheet', () => {
       }),
     ).join(),
     /carries an if:/,
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The replay's triggers (ADR 0109)
+// ---------------------------------------------------------------------------
+
+const triggers = ({
+  on = `on:
+  pull_request:
+    types: [labeled]
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+    inputs:
+      tier:
+        type: choice
+`,
+  concurrency = `concurrency:
+  group: golden-replay-\${{ github.event.pull_request.number || github.ref }}\${{ github.event.action == 'labeled' && github.event.label.name != 'golden-replay' && format('-inert-{0}', github.run_id) || '' }}
+  cancel-in-progress: true
+`,
+  body = `jobs:
+  cases:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'golden-replay'
+    steps:
+      - run: node tools/scripts/review/golden-tiers.mjs --scheduled
+`,
+} = {}) =>
+  `name: Golden Replay\n\n${on}\npermissions:\n  contents: read\n\n${concurrency}\n${body}`;
+
+test('the replay workflow in the tree runs on a schedule and on request only', () => {
+  const workflow = readFileSync(
+    '.github/workflows/review-golden-replay.yml',
+    'utf8',
+  );
+  assert.deepEqual(replayTriggerFindings(workflow), []);
+});
+
+test('a replay on request, on a schedule, and by dispatch is sound', () => {
+  assert.deepEqual(replayTriggerFindings(triggers()), []);
+});
+
+// The trigger ADR 0109 removes: a path filter matched against the whole Pull
+// Request diff, which bought 88% of three weeks' replay spend.
+test('a replay that fires on pushes to a Pull Request is refused', () => {
+  const findings = replayTriggerFindings(
+    triggers({
+      on: `on:
+  pull_request:
+    paths:
+      - '.agents/skills/code-review/**'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+`,
+    }),
+  );
+  assert.ok(
+    findings.some((f) => /labeled/.test(f)),
+    findings.join('\n'),
+  );
+  assert.ok(
+    findings.some((f) => /paths/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+// YAML keeps a comment in whatever block it sits in, so a comment line
+// between two keys of pull_request must not end the block before the second.
+test('a path filter behind a comment line is still seen', () => {
+  const findings = replayTriggerFindings(
+    triggers({
+      on: `on:
+  pull_request:
+    types: [labeled]
+  # a note at the trigger's own depth
+    paths:
+      - '.claude/**'
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+`,
+    }),
+  );
+  assert.ok(
+    findings.some((f) => /paths filter/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+test('a replay with no schedule or no dispatch is refused', () => {
+  const noSchedule = replayTriggerFindings(
+    triggers({
+      on: 'on:\n  pull_request:\n    types: [labeled]\n  workflow_dispatch:\n',
+    }),
+  );
+  assert.ok(
+    noSchedule.some((f) => /schedule/.test(f)),
+    noSchedule.join('\n'),
+  );
+  const noDispatch = replayTriggerFindings(
+    triggers({
+      on: "on:\n  pull_request:\n    types: [labeled]\n  schedule:\n    - cron: '0 3 * * 1'\n",
+    }),
+  );
+  assert.ok(
+    noDispatch.some((f) => /workflow_dispatch/.test(f)),
+    noDispatch.join('\n'),
+  );
+});
+
+// Any other label reaches the workflow too. Without the job guard it replays;
+// without the inert concurrency group it cancels a replay already running —
+// the failure that cost three Code Review runs (AGENTS.md, review:concurrency).
+test('a replay that answers every label, or lets one cancel it, is refused', () => {
+  const unguarded = replayTriggerFindings(
+    triggers({
+      body: 'jobs:\n  cases:\n    steps:\n      - run: node tools/scripts/review/golden-tiers.mjs --scheduled\n',
+    }),
+  );
+  assert.ok(
+    unguarded.some((f) => /other label/.test(f)),
+    unguarded.join('\n'),
+  );
+  const cancels = replayTriggerFindings(
+    triggers({
+      concurrency:
+        'concurrency:\n  group: golden-replay-${{ github.ref }}\n  cancel-in-progress: true\n',
+    }),
+  );
+  assert.ok(
+    cancels.some((f) => /concurrency/.test(f)),
+    cancels.join('\n'),
+  );
+});
+
+test('a schedule that does not ask which inputs moved is refused', () => {
+  const findings = replayTriggerFindings(
+    triggers({
+      body: "jobs:\n  cases:\n    if: github.event_name != 'pull_request' || github.event.label.name == 'golden-replay'\n",
+    }),
+  );
+  assert.ok(
+    findings.some((f) => /--scheduled/.test(f)),
+    findings.join('\n'),
   );
 });

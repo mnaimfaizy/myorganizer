@@ -75,16 +75,21 @@ test('review:* is a third set: provisioned, never a Surface Label, never accepte
   for (const name of review) assert.equal(provisioned.includes(name), true);
 });
 
-test('agent-review is a trigger: provisioned, not a Surface Label, accepted from --label, never a tier', () => {
+test('agent-review and golden-replay are triggers: provisioned, not Surface Labels, accepted from --label, never a tier', () => {
   const catalog = loadGithubLabelCatalog();
-  assert.deepEqual([...triggerLabelNames(catalog)], ['agent-review']);
-  assert.equal(surfaceLabelNames(catalog).has('agent-review'), false);
-  assert.equal(reviewTierLabelNames(catalog).has('agent-review'), false);
-  assert.deepEqual(rejectedPrLabels(['agent-review', 'tooling'], catalog), []);
-  assert.equal(
-    provisionLabels(catalog).some((l) => l.name === 'agent-review'),
-    true,
+  assert.deepEqual(
+    [...triggerLabelNames(catalog)],
+    ['agent-review', 'golden-replay'],
   );
+  for (const name of ['agent-review', 'golden-replay']) {
+    assert.equal(surfaceLabelNames(catalog).has(name), false);
+    assert.equal(reviewTierLabelNames(catalog).has(name), false);
+    assert.deepEqual(rejectedPrLabels([name, 'tooling'], catalog), []);
+    assert.equal(
+      provisionLabels(catalog).some((l) => l.name === name),
+      true,
+    );
+  }
 });
 
 test('provision list includes orchestration and surface labels', () => {

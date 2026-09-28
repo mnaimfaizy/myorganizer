@@ -8,7 +8,10 @@ import {
   ALL_TIERS,
   CASE_TIERS,
   GOLDEN_SET_PATH,
+  REPLAY_INPUT_PATHS,
   caseIdsInTier,
+  isFirstWeekOfMonth,
+  scheduledTier,
 } from './golden-tiers.mjs';
 
 const set = {
@@ -99,4 +102,83 @@ test('the CLI and the workflow agree on every tier', () => {
       `the two callers disagree for tier ${tier}`,
     );
   }
+});
+
+// ---------------------------------------------------------------------------
+// The scheduled cadence (ADR 0109)
+// ---------------------------------------------------------------------------
+
+test('a week with no reviewer input change replays nothing', () => {
+  assert.equal(
+    scheduledTier({
+      changedInWeek: false,
+      changedInMonth: false,
+      firstWeekOfMonth: false,
+    }),
+    null,
+  );
+  // The first week of the month is no exception: a guard re-confirms a
+  // reviewer that has not moved, which is the spend ADR 0109 removes.
+  assert.equal(
+    scheduledTier({
+      changedInWeek: false,
+      changedInMonth: false,
+      firstWeekOfMonth: true,
+    }),
+    null,
+  );
+});
+
+test('a changed week replays the frontier, and the first week of a changed month replays all', () => {
+  assert.equal(
+    scheduledTier({
+      changedInWeek: true,
+      changedInMonth: true,
+      firstWeekOfMonth: false,
+    }),
+    'frontier',
+  );
+  assert.equal(
+    scheduledTier({
+      changedInWeek: true,
+      changedInMonth: true,
+      firstWeekOfMonth: true,
+    }),
+    ALL_TIERS,
+  );
+  // A change three weeks ago still earns the monthly guard run, though the
+  // week itself was quiet.
+  assert.equal(
+    scheduledTier({
+      changedInWeek: false,
+      changedInMonth: true,
+      firstWeekOfMonth: true,
+    }),
+    ALL_TIERS,
+  );
+});
+
+// The inputs are the ones a replay measures: what produces a review, and the
+// harness laid over each case tree (ADR 0102). Dropping one lets a reviewer
+// change go a month without a scheduled measurement.
+test('the scheduled replay watches every reviewer input', () => {
+  for (const path of [
+    '.agents/skills/code-review',
+    'tools/scripts/review',
+    '.github/actions/code-reviewer',
+    '.github/workflows/code-review.yml',
+    '.github/workflows/review-golden-replay.yml',
+    'tools/config/review-golden-set.json',
+    'tools/config/review-obligations.json',
+    'tools/config/review-rules.json',
+    '.claude',
+    'tools/scripts/copilot-hooks',
+  ])
+    assert.ok(REPLAY_INPUT_PATHS.includes(path), `${path} is not watched`);
+});
+
+test('the first week of the month is days one to seven', () => {
+  assert.equal(isFirstWeekOfMonth(new Date('2026-10-05T03:00:00Z')), true);
+  assert.equal(isFirstWeekOfMonth(new Date('2026-10-07T03:00:00Z')), true);
+  assert.equal(isFirstWeekOfMonth(new Date('2026-10-08T03:00:00Z')), false);
 });

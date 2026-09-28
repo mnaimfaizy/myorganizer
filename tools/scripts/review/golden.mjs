@@ -404,3 +404,85 @@ export const replayObligationCheckFindings = (workflowText) => {
     );
   return findings;
 };
+
+/** The label that asks for a replay on a Pull Request (ADR 0109). */
+export const REPLAY_REQUEST_LABEL = 'golden-replay';
+
+// A top-level YAML block: from `key:` to the next line that starts in column 0.
+const topLevelBlock = (text, key) => {
+  const m = new RegExp(
+    String.raw`^${key}:[^\n]*\n((?:[ \t#][^\n]*\n|\n)*)`,
+    'm',
+  ).exec(text);
+  return m ? m[1] : null;
+};
+
+// A key two spaces in, inside the on: block, to the next key at that depth.
+// A comment line at any indentation belongs to the block it sits in, as YAML
+// reads it, so a comment between two keys cannot hide the second from it.
+const triggerBlock = (onBlock, key) => {
+  const m = new RegExp(
+    String.raw`^  ${key}:[^\n]*\n((?:(?: {3,}|[ \t]*#)[^\n]*\n|\n)*)`,
+    'm',
+  ).exec(onBlock);
+  return m ? m[1] : null;
+};
+
+/**
+ * Whether the replay runs when ADR 0109 says it does and at no other time: on
+ * a weekly schedule that asks which reviewer inputs moved, on the
+ * `golden-replay` Request Label, and by dispatch — never on a push to a Pull
+ * Request. Text-based like replayObligationCheckFindings; the workflow is
+ * this repository's own and its shape is known.
+ *
+ * @param {string} workflowText
+ * @returns {string[]} one line per violation; empty when sound
+ */
+export const replayTriggerFindings = (workflowText) => {
+  const on = topLevelBlock(workflowText, 'on');
+  if (on === null) return ['no top-level on: block'];
+  const findings = [];
+  const pr = triggerBlock(on, 'pull_request');
+  if (pr !== null) {
+    if (/^\s*paths(-ignore)?:/m.test(pr))
+      findings.push(
+        'pull_request carries a paths filter, so every push to a Pull Request touching a reviewer input buys a replay (ADR 0109)',
+      );
+    const types = /^\s*types:\s*\[([^\]]*)\]/m.exec(pr);
+    const listed = types ? types[1].split(',').map((t) => t.trim()) : [];
+    if (listed.length !== 1 || listed[0] !== 'labeled')
+      findings.push(
+        'pull_request must list only types: [labeled]; any other type replays on pushes rather than on request (ADR 0109)',
+      );
+    if (
+      !workflowText.includes(
+        `github.event.label.name == '${REPLAY_REQUEST_LABEL}'`,
+      )
+    )
+      findings.push(
+        `nothing skips a label other than ${REPLAY_REQUEST_LABEL}, so any other label on the Pull Request buys a replay`,
+      );
+    const concurrency = topLevelBlock(workflowText, 'concurrency') ?? '';
+    if (
+      !concurrency.includes(
+        `github.event.label.name != '${REPLAY_REQUEST_LABEL}'`,
+      )
+    )
+      findings.push(
+        `the concurrency group does not steer other labels out, so adding any label cancels a replay in flight`,
+      );
+  }
+  if (triggerBlock(on, 'schedule') === null)
+    findings.push(
+      'no schedule trigger, so nothing measures the reviewer unless somebody asks (ADR 0109)',
+    );
+  if (triggerBlock(on, 'workflow_dispatch') === null)
+    findings.push(
+      'no workflow_dispatch trigger, so a tier cannot be replayed on demand (ADR 0072 item 4)',
+    );
+  if (!/golden-tiers\.mjs --scheduled\b/.test(workflowText))
+    findings.push(
+      'the schedule never runs golden-tiers.mjs --scheduled, so it replays an untouched reviewer every week (ADR 0109)',
+    );
+  return findings;
+};
