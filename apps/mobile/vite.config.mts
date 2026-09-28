@@ -48,7 +48,12 @@ export default defineConfig({
     commonjsOptions: { transformMixedEsModules: true },
     outDir: '../../dist/apps/mobile/web',
     rollupOptions: {
-      plugins: [rollupPlugin([/react-native-vector-icons/])],
+      // Packages that publish JSX inside `.js` files. Rollup parses `.js` as
+      // plain JavaScript, so each one is named here or the web build fails
+      // on its first `<`; `optimizeDeps` covers the same case for dev only.
+      plugins: [
+        rollupPlugin([/react-native-vector-icons/, /react-native-reanimated/]),
+      ],
     },
   },
   server: {
