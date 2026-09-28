@@ -4,6 +4,7 @@ import { formatMoney } from '@myorganizer/core';
 import {
   SubscriptionStatusEnum,
   type CurrencyCode,
+  type SubscriptionBillingCycle,
 } from '@myorganizer/vault-core';
 import {
   normalizeSubscriptions,
@@ -36,10 +37,10 @@ export function SubscriptionsOverviewCard({
 type Summary = {
   active: number;
   total: number;
-  monthlyCosts: Array<{ currency: CurrencyCode; amount: number }>;
+  monthlyEquivalents: Array<{ currency: CurrencyCode; amount: number }>;
 };
 
-const MONTHLY_MULTIPLIERS: Record<string, number> = {
+const MONTHLY_EQUIVALENT_FACTORS = {
   weekly: 52 / 12,
   fortnightly: 26 / 12,
   monthly: 1,
@@ -47,7 +48,7 @@ const MONTHLY_MULTIPLIERS: Record<string, number> = {
   yearly: 1 / 12,
   twoYears: 1 / 24,
   threeYears: 1 / 36,
-};
+} as const satisfies Record<SubscriptionBillingCycle, number>;
 
 interface SubscriptionsContentProps {
   handle: VaultHandle;
@@ -79,23 +80,28 @@ function SubscriptionsContent({ handle }: SubscriptionsContentProps) {
           (s) => s.status === SubscriptionStatusEnum.Active,
         );
 
-        const costMap = new Map<CurrencyCode, number>();
+        const monthlyEquivalentByCurrency = new Map<CurrencyCode, number>();
         for (const s of active) {
-          const multiplier = MONTHLY_MULTIPLIERS[s.billingCycle] ?? 1;
-          const monthly = s.amount * multiplier;
-          costMap.set(s.currency, (costMap.get(s.currency) ?? 0) + monthly);
+          const factor = MONTHLY_EQUIVALENT_FACTORS[s.billingCycle];
+          const monthlyEquivalent = s.amount * factor;
+          monthlyEquivalentByCurrency.set(
+            s.currency,
+            (monthlyEquivalentByCurrency.get(s.currency) ?? 0) +
+              monthlyEquivalent,
+          );
         }
 
         setSummary({
           active: active.length,
           total: value.length,
-          monthlyCosts: Array.from(costMap.entries()).map(
-            ([currency, amount]) => ({ currency, amount }),
-          ),
+          monthlyEquivalents: Array.from(
+            monthlyEquivalentByCurrency.entries(),
+          ).map(([currency, amount]) => ({ currency, amount })),
         });
       })
       .catch(() => {
-        if (isActive) setSummary({ active: 0, total: 0, monthlyCosts: [] });
+        if (isActive)
+          setSummary({ active: 0, total: 0, monthlyEquivalents: [] });
       });
 
     return () => {
@@ -113,9 +119,9 @@ function SubscriptionsContent({ handle }: SubscriptionsContentProps) {
       <p className="text-xs text-muted-foreground">
         active of {summary.total} total
       </p>
-      {summary.monthlyCosts.length > 0 && (
+      {summary.monthlyEquivalents.length > 0 && (
         <div className="mt-2 space-y-0.5">
-          {summary.monthlyCosts.map(({ currency, amount }) => (
+          {summary.monthlyEquivalents.map(({ currency, amount }) => (
             <p key={currency} className="text-xs text-muted-foreground">
               {formatMoney({ amount, currency })} / mo
             </p>
