@@ -145,7 +145,14 @@ runs:
         # AGENTS.md), so allow that bot to be reviewed like any human push. The
         # reviewer's job still holds only read scopes; nothing about the trust
         # boundary changes by reviewing a cursor-authored diff.
-        allowed_bots: cursor
+        #
+        # `github-actions` is the release Pull Request: the release workflow
+        # opens it as `github-actions[bot]`, and both v1.0.0 (#863) and v1.1.0
+        # (#923) got "no verdict" for it — on the one diff shape the golden set
+        # already knows the reviewer can miss (a version bump that leaves the
+        # generated client stale). Only this repository's own workflows act as
+        # that bot; a fork's Pull Request carries its author as the actor.
+        allowed_bots: cursor,github-actions
         prompt: |
           /code-review
 
