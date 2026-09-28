@@ -188,7 +188,7 @@ export function TasksScreen(): React.JSX.Element {
           ]}
         >
           <ThemedText
-            variant="label"
+            variant="body"
             style={done ? styles.doneTitle : undefined}
           >
             {item.title ?? 'Untitled task'}
@@ -203,7 +203,7 @@ export function TasksScreen(): React.JSX.Element {
   return (
     <ScreenContainer>
       <View style={[styles.header, { marginBottom: theme.spacing.md }]}>
-        <ThemedText variant="heading">Tasks</ThemedText>
+        <ThemedText variant="titleLg">Tasks</ThemedText>
         <View style={[styles.headerActions, { gap: theme.spacing.sm }]}>
           <ThemedButton
             label="Lock"
@@ -226,7 +226,7 @@ export function TasksScreen(): React.JSX.Element {
         </View>
       ) : loadError != null ? (
         <View style={[styles.centered, { gap: theme.spacing.md }]}>
-          <ThemedText variant="body" color="destructive">
+          <ThemedText variant="body" color="errorText">
             {describeLoadError(loadError)}
           </ThemedText>
           <ThemedButton
@@ -265,7 +265,7 @@ export function TasksScreen(): React.JSX.Element {
               style={[
                 styles.writeError,
                 {
-                  borderColor: theme.colors.destructive,
+                  borderColor: theme.colors.errorText,
                   borderRadius: theme.radii.md,
                   padding: theme.spacing.md,
                   gap: theme.spacing.sm,
@@ -273,7 +273,7 @@ export function TasksScreen(): React.JSX.Element {
                 },
               ]}
             >
-              <ThemedText variant="body" color="destructive">
+              <ThemedText variant="body" color="errorText">
                 {WRITE_ERROR_MESSAGES[writeError]}
               </ThemedText>
               <ThemedButton

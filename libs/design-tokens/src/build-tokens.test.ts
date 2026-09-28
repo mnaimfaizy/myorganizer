@@ -96,26 +96,26 @@ describe('design-tokens build script', () => {
         expect(() => {
           hslTriple('#FFF');
         }).toThrow(
-          /Semantic Role value must be a 6-digit hex colour, got: #FFF/,
+          /Semantic Role value must be a hex or rgb\(a\) colour, got: #FFF/,
         );
       });
 
       it('throws on non-hex string "not-hex"', () => {
         expect(() => {
           hslTriple('not-hex');
-        }).toThrow(/Semantic Role value must be a 6-digit hex colour/);
+        }).toThrow(/Semantic Role value must be a hex or rgb\(a\) colour/);
       });
 
       it('throws on CSS colour name "red"', () => {
         expect(() => {
           hslTriple('red');
-        }).toThrow(/Semantic Role value must be a 6-digit hex colour/);
+        }).toThrow(/Semantic Role value must be a hex or rgb\(a\) colour/);
       });
 
       it('throws on hsl() string "hsl(0, 100%, 50%)"', () => {
         expect(() => {
           hslTriple('hsl(0, 100%, 50%)');
-        }).toThrow(/Semantic Role value must be a 6-digit hex colour/);
+        }).toThrow(/Semantic Role value must be a hex or rgb\(a\) colour/);
       });
 
       it('error message names the offending value', () => {
@@ -123,6 +123,47 @@ describe('design-tokens build script', () => {
         expect(() => {
           hslTriple(badValue);
         }).toThrow(badValue);
+      });
+    });
+
+    describe('happy path: rgba and 8-digit hex with translucency', () => {
+      it('converts rgba(3, 7, 17, 0.45) to HSL with alpha suffix', () => {
+        expect(hslTriple('rgba(3, 7, 17, 0.45)')).toBe('222.9 70% 3.9% / 0.45');
+      });
+
+      it('converts rgba(2, 2, 5, 0.6) to HSL with alpha suffix', () => {
+        expect(hslTriple('rgba(2, 2, 5, 0.6)')).toBe('240 42.9% 1.4% / 0.6');
+      });
+
+      it('converts rgb(255, 255, 255) to plain triple with no alpha suffix', () => {
+        expect(hslTriple('rgb(255, 255, 255)')).toBe('0 0% 100%');
+      });
+
+      it('converts rgba(255, 255, 255, 1) with explicit alpha=1 to plain triple', () => {
+        expect(hslTriple('rgba(255, 255, 255, 1)')).toBe('0 0% 100%');
+      });
+
+      it('converts 8-digit hex #03071173 to HSL with alpha suffix', () => {
+        // 0x73 = 115 decimal = 0.451... when divided by 255 and rounded to 3 decimals
+        expect(hslTriple('#03071173')).toBe('222.9 70% 3.9% / 0.451');
+      });
+
+      it('8-digit hex #030711 (opaque) and #03071173 produce same H S% L% but only latter has alpha', () => {
+        const opaque = hslTriple('#030711');
+        const translucent = hslTriple('#03071173');
+        // Extract H S% L% part (before the /)
+        const opaqueTriple = opaque;
+        const translucentTriple = translucent.split(' / ')[0];
+        expect(opaqueTriple).toBe(translucentTriple);
+        expect(translucent).toContain(' / ');
+        expect(opaque).not.toContain(' / ');
+      });
+
+      it('rounds alpha to at most 3 decimal places', () => {
+        // #0307110A: 0x0A = 10 decimal = 0.0392... -> rounds to 0.039
+        const result = hslTriple('#0307110A');
+        expect(result).toMatch(/ \/ 0\.\d{1,3}$/);
+        expect(result).toBe('222.9 70% 3.9% / 0.039');
       });
     });
 
@@ -367,6 +408,33 @@ describe('design-tokens build script', () => {
         rolesOf(mode).filter(([, value]) => value.includes('-')),
       );
       expect(hyphenated.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('tokens.json: translucent colour primitives', () => {
+    it('only scrim and scrim-on-dark are non-hex colour primitives', () => {
+      const HEX_COLOUR = /^#[\da-fA-F]{6}$/;
+      const REFERENCE = /^\{([\w.-]+)\}$/;
+      const nonHexColours: string[] = [];
+
+      Object.entries(
+        tokens.color as Record<string, { $value?: string; value?: string }>,
+      ).forEach(([name, data]) => {
+        // Skip non-colour-token entries like $description
+        if (!data || typeof data !== 'object') return;
+        const value = (data.$value ?? data.value) as string | undefined;
+        if (typeof value !== 'string') return;
+
+        // Colour primitives must be either 6-digit hex or a reference
+        if (!HEX_COLOUR.test(value) && !REFERENCE.test(value)) {
+          nonHexColours.push(name);
+        }
+      });
+
+      // Only the translucent scrim primitives should be non-hex, non-reference
+      expect(new Set(nonHexColours)).toEqual(
+        new Set(['scrim', 'scrim-on-dark']),
+      );
     });
   });
 

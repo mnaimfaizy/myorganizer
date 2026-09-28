@@ -7,8 +7,29 @@ import {
   type ViewStyle,
 } from 'react-native';
 import { useTheme } from '../useTheme';
+import type { ThemeColors } from '../theme';
 
-export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost';
+export type ButtonVariant = 'primary' | 'brand' | 'outline' | 'ghost';
+
+/**
+ * What each variant is made of, named by Semantic Role rather than by resolved
+ * colour so one table serves both colour modes. Pinned to the variant set, and
+ * one table rather than two: a variant renamed in one of a pair of literals and
+ * not the other compiles.
+ */
+const VARIANTS = {
+  primary: { fill: 'primary', label: 'primaryForeground', edge: null },
+  brand: { fill: 'brand', label: 'brandForeground', edge: null },
+  outline: { fill: null, label: 'foreground', edge: 'controlEdge' },
+  ghost: { fill: null, label: 'foreground', edge: null },
+} as const satisfies Record<
+  ButtonVariant,
+  {
+    fill: keyof ThemeColors | null;
+    label: keyof ThemeColors;
+    edge: keyof ThemeColors | null;
+  }
+>;
 
 export interface ThemedButtonProps extends Omit<PressableProps, 'style'> {
   label: string;
@@ -24,48 +45,34 @@ export function ThemedButton({
   ...rest
 }: ThemedButtonProps): React.JSX.Element {
   const theme = useTheme();
-
-  const variantContainerStyle: ViewStyle = {
-    primary: {
-      backgroundColor: theme.colors.primary,
-      borderWidth: 0,
-    },
-    secondary: {
-      backgroundColor: theme.colors.secondary,
-      borderWidth: 0,
-    },
-    outline: {
-      backgroundColor: 'transparent',
-      borderColor: theme.colors.primary,
-      borderWidth: 1,
-    },
-    ghost: {
-      backgroundColor: 'transparent',
-      borderWidth: 0,
-    },
-  }[variant];
-
-  const labelColor = {
-    primary: theme.colors.onPrimary,
-    secondary: theme.colors.onSecondary,
-    outline: theme.colors.primary,
-    ghost: theme.colors.primary,
-  }[variant];
+  const { fill, label: labelRole, edge } = VARIANTS[variant];
 
   return (
     <Pressable
       disabled={disabled}
       style={({ pressed }) => [
         styles.base,
-        { borderRadius: theme.radii.md },
-        variantContainerStyle,
+        {
+          borderRadius: theme.radii.md,
+          backgroundColor: fill === null ? 'transparent' : theme.colors[fill],
+          borderWidth: edge === null ? 0 : 1,
+          borderColor: edge === null ? undefined : theme.colors[edge],
+        },
         pressed && styles.pressed,
         disabled && styles.disabled,
         style,
       ]}
       {...rest}
     >
-      <Text style={[styles.label, { color: labelColor }]}>{label}</Text>
+      <Text
+        style={[
+          styles.label,
+          theme.type.body,
+          { color: theme.colors[labelRole] },
+        ]}
+      >
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -85,8 +92,6 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   label: {
-    fontSize: 16,
-    fontWeight: '600',
     includeFontPadding: false,
   },
 });

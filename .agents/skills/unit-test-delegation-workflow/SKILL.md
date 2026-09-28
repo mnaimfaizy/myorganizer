@@ -16,7 +16,12 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-
 
 Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/myorganizer-e2e`.
 
-**Mobile App**: React Native code has no Jest lane. The mobile test toolchain is unresolved (see TECH_STACK.md mobile note). The first mobile test should not be written without resolving the toolchain. Do not proceed with mobile test implementation: stop, tell the user the toolchain is the blocker, and do not silently skip the work or report the empty `yarn nx test mobile` pass as success.
+**Mobile App**: there is a narrow Jest lane, and which side of it you are on is decided by what the spec imports.
+
+- **Pure logic runs.** `libs/mobile/ui` has a Jest project (`libs/mobile/ui/jest.config.ts`, `testEnvironment: 'node'`, babel-jest) with `src/theme.test.ts` in it. A spec that imports only plain modules — no `react-native`, no `react`, no `@testing-library/react-native`, no library barrel, no component — runs there today. A type-only import of a React Native type is fine; it is erased before Jest sees it.
+- **Rendering does not.** Mounting a component, firing a press, or reading rendered output needs `@testing-library/react-native`, which still peers on the deprecated `react-test-renderer` (see the Mobile Test Toolchain Note in TECH_STACK.md). Do not proceed with that: stop, tell the user the toolchain is the blocker, and do not silently skip the work or report the empty `yarn nx test mobile` pass as success.
+
+When the behaviour worth asserting is only reachable through a renderer, say so rather than reaching for the blocked packages — the fix is usually to lift the logic clear of the component, which is why theme resolution and the Device Settings parsing are pure.
 
 ## Gate tier routing
 

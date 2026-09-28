@@ -62,7 +62,7 @@ export function UnlockScreen(): React.JSX.Element {
   return (
     <ScreenContainer>
       <View style={[styles.content, { gap: theme.spacing.md }]}>
-        <ThemedText variant="heading">Unlock your vault</ThemedText>
+        <ThemedText variant="titleLg">Unlock your vault</ThemedText>
         <ThemedText variant="caption">
           Enter your passphrase to decrypt your data on this device.
         </ThemedText>
@@ -81,7 +81,7 @@ export function UnlockScreen(): React.JSX.Element {
         />
 
         {error != null && (
-          <ThemedText variant="caption" color="destructive">
+          <ThemedText variant="caption" color="errorText">
             {error}
           </ThemedText>
         )}

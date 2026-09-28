@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-09-21.
+> Last synced from `package.json` on 2026-09-28.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -107,9 +107,11 @@
 | `@nx/react-native`               | 22.7.7   | Nx plugin for React Native apps/libs                        |
 | `@react-navigation/native`       | 7.2.5    | Navigation core                                             |
 | `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                                      |
+| `@react-navigation/bottom-tabs`  | 7.16.2   | Bottom tab navigator (the app's five-tab shell)             |
 | `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)               |
 | `react-native-safe-area-context` | 5.8.0    | Safe-area insets                                            |
 | `react-native-keychain`          | 10.0.0   | Secure token storage (mobile auth)                          |
+| `react-native-mmkv`              | 3.3.3    | Per-device settings storage (appearance, last used tab)     |
 | `react-native-quick-base64`      | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                   |
 | `react-native-quick-crypto`      | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)             |
 | `react-native-nitro-modules`     | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)            |
@@ -256,7 +258,9 @@
 
 > **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
 
-> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved, and the reason is `react-test-renderer`, not a React version range. The installed `@testing-library/react-native` (13.2.2) declares `react: >=18.2.0` with no upper bound, which React 19.2.3 satisfies — but it also declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package outright. RNTL v14 is the line that drops the peer. Compounding it, `react-test-renderer` is pinned `19.0.0` against React `19.2.3`, a skew in a package React publishes in lockstep with itself. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
+> **Mobile Test Toolchain Note**: **Rendering** a mobile component in a test is still unresolved, and the reason is `react-test-renderer`, not a React version range. The installed `@testing-library/react-native` (13.2.2) declares `react: >=18.2.0` with no upper bound, which React 19.2.3 satisfies — but it also declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package outright. RNTL v14 is the line that drops the peer. Compounding it, `react-test-renderer` is pinned `19.0.0` against React `19.2.3`, a skew in a package React publishes in lockstep with itself. No package bumps are planned until the gate tier decision is made.
+>
+> What that does **not** block is a mobile test of pure logic, which needs neither package. `libs/mobile/ui` has a Jest project (`jest.config.ts`, `testEnvironment: 'node'`, babel-jest) and `src/theme.test.ts` runs in it, covering theme resolution and the Type Scale conversion — data and pure functions, no renderer. The rule that follows: a mobile spec that imports `react-native`, `react`, or `@testing-library/react-native` is blocked by this note; one that imports neither is not. Keep the tested logic reachable without them and the seam stays available.
 
 ---
 

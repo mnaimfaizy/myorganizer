@@ -1,14 +1,30 @@
 import React from 'react';
 import { StyleSheet, Text, type TextProps } from 'react-native';
 import { useTheme } from '../useTheme';
-import type { Theme } from '../theme';
+import type { ThemeColors } from '../theme';
+import type { TypeScaleStep } from '../typeScale';
 
-export type TextVariant = 'heading' | 'body' | 'label' | 'caption';
+/**
+ * Which Semantic Role each step is read in unless the caller says otherwise.
+ * Pinned to the step set: the scale decides how big a thing is, and the two
+ * metadata steps are the ones that are quieter by default.
+ */
+const DEFAULT_COLOR_BY_VARIANT = {
+  display: 'foreground',
+  titleLg: 'foreground',
+  title: 'foreground',
+  body: 'foreground',
+  bodySm: 'foreground',
+  labelCaps: 'mutedForeground',
+  caption: 'mutedForeground',
+} as const satisfies Record<TypeScaleStep, keyof ThemeColors>;
 
 export interface ThemedTextProps extends TextProps {
   children?: React.ReactNode;
-  variant?: TextVariant;
-  color?: keyof Theme['colors'];
+  /** A step of the shared type scale. Used whole — size, line height, weight, tracking. */
+  variant?: TypeScaleStep;
+  /** A Semantic Role to read this text in, overriding the step's default. */
+  color?: keyof ThemeColors;
 }
 
 export function ThemedText({
@@ -20,37 +36,12 @@ export function ThemedText({
 }: ThemedTextProps): React.JSX.Element {
   const theme = useTheme();
 
-  const variantStyle = {
-    heading: {
-      fontSize: 24,
-      fontWeight: '700' as const,
-      fontFamily: theme.fonts.display,
-      color: theme.colors.primary,
-    },
-    body: {
-      fontSize: 16,
-      fontFamily: theme.fonts.body,
-      color: theme.colors.primary,
-    },
-    label: {
-      fontSize: 14,
-      fontWeight: '600' as const,
-      fontFamily: theme.fonts.body,
-      color: theme.colors.primary,
-    },
-    caption: {
-      fontSize: 12,
-      fontFamily: theme.fonts.body,
-      color: theme.colors.muted,
-    },
-  }[variant];
-
   return (
     <Text
       style={[
         styles.base,
-        variantStyle,
-        color != null && { color: theme.colors[color] },
+        theme.type[variant],
+        { color: theme.colors[color ?? DEFAULT_COLOR_BY_VARIANT[variant]] },
         style,
       ]}
       {...rest}

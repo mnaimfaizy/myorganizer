@@ -78,6 +78,18 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.mobile"
+
+    // The bundled app fonts live with the rest of the app's source, not under
+    // android/. Pointing the asset source set at apps/mobile/src/assets puts
+    // this repo's `fonts/` directory at `assets/fonts/` in the APK, which is
+    // where React Native's font manager looks — and keeps one copy of each
+    // .ttf instead of one per platform. See src/assets/fonts/README.md.
+    sourceSets {
+        main {
+            assets.srcDirs += ["../../src/assets"]
+        }
+    }
+
     defaultConfig {
         applicationId "com.mobile"
         minSdkVersion rootProject.ext.minSdkVersion

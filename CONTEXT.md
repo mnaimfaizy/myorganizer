@@ -254,6 +254,14 @@ The ordered greyscale in the primitive tier that both colour modes index into �
 one way, dark mode inverted. Token data only; never exposed as Tailwind utility classes.
 _Avoid_: elevation scale, surface tiers, tonal palette
 
+**Type Scale**:
+The seven named steps of the typography system — `display`, `title-lg`, `title`, `body`, `body-sm`,
+`label-caps`, `caption` — each carrying a size, a line height, a weight, and a letter-spacing in
+`libs/design-tokens/src/tokens.json`. A step is used whole; a size taken from one step and a weight
+from another is not a step. Named steps, not a numbered ramp: a step says what the text _is_, which
+a number does not.
+_Avoid_: font scale, text styles, typography tokens, heading levels
+
 **Material Design 3 role names** (`surface-container-low`, `on-surface-variant`, `outline-variant`,
 `surface-bright`, `secondary-fixed`, `primary-container`, `error-container`, `action-cyan`):
 Not vocabulary in this codebase. They appeared in the groceries page library written against a
@@ -281,6 +289,14 @@ _Avoid_: shim, web fallback, .web file, platform adapter (for this sense)
 **Portable Entry Point**:
 A shared library's second import path, carrying only exports that hold on every runtime the Mobile App targets. The Mobile App's native code reaches a shared library through its Portable Entry Point, never through the library's main entry point, which may carry browser-only code. A Portable Entry Point is not a Platform Adapter — it selects what is exported, not how a platform behaves.
 _Avoid_: neutral barrel, mobile barrel, platform-agnostic export, secondary entry point
+
+**Device Setting**:
+A preference belonging to one installation of the Mobile App — the appearance choice (System, Light,
+or Dark) and the last used tab. Plaintext and client-only, and _deliberately_ not vault data: it is
+never encrypted, never pushed, and never reconciled, because it describes this device rather than the
+User. Two devices disagreeing about it is the correct outcome, not a conflict. Read synchronously,
+which is what lets the app resolve its colour mode before the first frame.
+_Avoid_: preference, user setting, local storage, app config, profile setting
 
 **Unconfirmed Edit**:
 An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. It is plaintext and client-only: it lives only in memory, never outlives the screen that made it, and reaches the server solely as the Ciphertext its Vault Push sends.

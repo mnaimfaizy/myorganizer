@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, type ViewProps } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { theme } from '../theme';
+import { useTheme } from '../useTheme';
 
 export interface ScreenContainerProps extends ViewProps {
   children?: React.ReactNode;
@@ -14,9 +14,16 @@ export function ScreenContainer({
   style,
   ...rest
 }: ScreenContainerProps): React.JSX.Element {
+  const theme = useTheme();
+
   return (
     <SafeAreaView
-      style={[styles.base, !noPadding && styles.padded, style]}
+      style={[
+        styles.base,
+        { backgroundColor: theme.colors.background },
+        !noPadding && { paddingHorizontal: theme.spacing.gutter },
+        style,
+      ]}
       {...rest}
     >
       {children}
@@ -27,9 +34,5 @@ export function ScreenContainer({
 const styles = StyleSheet.create({
   base: {
     flex: 1,
-    backgroundColor: theme.colors.surface,
-  },
-  padded: {
-    paddingHorizontal: theme.spacing.gutter,
   },
 });

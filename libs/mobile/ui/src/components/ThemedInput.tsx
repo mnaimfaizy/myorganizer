@@ -1,5 +1,12 @@
 import React, { useState } from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputProps, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  type TextInputProps,
+  type ViewStyle,
+} from 'react-native';
 import { useTheme } from '../useTheme';
 
 export interface ThemedInputProps extends TextInputProps {
@@ -21,31 +28,37 @@ export function ThemedInput({
   const [focused, setFocused] = useState(false);
 
   const borderColor = error
-    ? theme.colors.destructive
+    ? theme.colors.errorText
     : focused
-      ? theme.colors.primary
-      : theme.colors.border;
+      ? theme.colors.focus
+      : theme.colors.controlEdge;
 
   return (
     <View style={[styles.wrapper, containerStyle]}>
       {label != null && (
-        <Text style={[styles.label, { color: theme.colors.primary, fontFamily: theme.fonts.body }]}>
+        <Text
+          style={[
+            styles.label,
+            theme.type.labelCaps,
+            { color: theme.colors.mutedForeground },
+          ]}
+        >
           {label}
         </Text>
       )}
       <TextInput
         style={[
           styles.input,
+          theme.type.body,
           {
             borderColor,
             borderRadius: theme.radii.md,
             backgroundColor: theme.colors.card,
-            color: theme.colors.primary,
-            fontFamily: theme.fonts.body,
+            color: theme.colors.foreground,
           },
           style,
         ]}
-        placeholderTextColor={theme.colors.muted}
+        placeholderTextColor={theme.colors.mutedForeground}
         onFocus={(e) => {
           setFocused(true);
           onFocus?.(e);
@@ -57,7 +70,13 @@ export function ThemedInput({
         {...rest}
       />
       {error != null && (
-        <Text style={[styles.error, { color: theme.colors.destructive, fontFamily: theme.fonts.body }]}>
+        <Text
+          style={[
+            styles.error,
+            theme.type.caption,
+            { color: theme.colors.errorText },
+          ]}
+        >
           {error}
         </Text>
       )}
@@ -70,20 +89,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
     includeFontPadding: false,
   },
   input: {
     borderWidth: 1,
     paddingHorizontal: 12,
     paddingVertical: 10,
-    fontSize: 16,
     minHeight: 44,
     includeFontPadding: false,
   },
   error: {
-    fontSize: 12,
     includeFontPadding: false,
   },
 });

@@ -57,7 +57,7 @@ export function LoginScreen(): React.JSX.Element {
   return (
     <ScreenContainer>
       <View style={[styles.content, { gap: theme.spacing.md }]}>
-        <ThemedText variant="heading">Sign in</ThemedText>
+        <ThemedText variant="titleLg">Sign in</ThemedText>
         <ThemedText variant="caption">
           Access your MyOrganizer account.
         </ThemedText>
@@ -88,7 +88,7 @@ export function LoginScreen(): React.JSX.Element {
         />
 
         {error != null && (
-          <ThemedText variant="caption" color="destructive">
+          <ThemedText variant="caption" color="errorText">
             {error}
           </ThemedText>
         )}

@@ -20,7 +20,12 @@ The color palette is architected to balance trust with interactive energy.
 - **Neutral (#F8FAFC):** A cool, sterile slate-white used for page backgrounds to keep the workspace feeling fresh and uncluttered.
 - **Named Accents:**
   - **Action Cyan (#06B6D4)** is used for successful connections and active navigation nodes.
-  - **Destructive (#EF4444)** is strictly used for irreversible actions like vault deletion or cache purging.
+  - **Destructive (#DC2626)** is strictly used for irreversible actions like vault deletion or cache purging.
+    It is a **fill**, not a text colour: at 4.8:1 against white it carries a white label on a filled
+    button, and the lighter red it replaced did not.
+  - **Error text** is the reading colour for a failure message, and is deliberately not Destructive.
+    Text has no fill to be read against, so it needs more contrast than a filled control does; and on a
+    dark surface the destructive pairing is a deep red used as a background, which is unreadable as copy.
   - **Caution Amber (#B45309)** marks a state the User should notice where nothing has failed and nothing is irreversible — a change that has not reached the server yet, or a condition worth seeing before an action rather than after it. It is the deliberate middle ground the palette previously lacked: Destructive overstates these, claiming a failure or a point of no return, and the muted neutral understates them into invisibility. Reach for Caution before an action, and Destructive only for one that cannot be undone.
 
 **A caution colour is read against a surface, so it is a pair rather than a value.** #B45309 is the light-surface value, chosen at 5.0:1 on white so it passes AA as body text; the lighter amber it replaced did not. The dark-surface pairing is a _lighter_ amber, not this hue darkened, and lives with the other themed roles in the app stylesheet because this token layer has no dark variant to hold it.
@@ -32,10 +37,20 @@ The typography strategy uses a dual-font approach to differentiate between "Disp
 - **Plus Jakarta Sans** is the headline font. Its modern, geometric shapes project a forward-thinking tech persona. It is used for all major section headers and display titles.
 - **Inter** is the workhorse font for body copy and UI labels. It was chosen for its exceptional legibility at small sizes, which is critical for viewing dense task lists and personal data.
 
+**The named type scale.** There are seven steps and no eighth — `display`,
+`title-lg`, `title`, `body`, `body-sm`, `label-caps`, `caption`. Each carries a
+size, a line height, a weight, and a letter-spacing, pinned in
+[`src/tokens.json`](src/tokens.json) under `type`, and each is used **whole**: a
+step assembled from three tokens and a fourth value chosen at the call site is
+not a scale, it is a suggestion. Plus Jakarta Sans sets `display` through
+`title`; Inter sets everything from `body` down.
+
 **Hierarchy Rules:**
 
-- Tighter letter-spacing on headlines (`-0.015em` to `-0.02em`) creates a more compact, high-end editorial look.
-- Increased letter-spacing on `label-caps` (`0.02em`) ensures metadata remains readable even at 12px.
+- Letter-spacing is `0` on every step but one. The scale's own size and weight
+  carry the hierarchy; tracking is reserved for the case where size alone fails.
+- That case is `label-caps` (`0.02em`), where the tracking is what keeps
+  uppercase metadata readable at 12px.
 
 ## Layout & Spacing
 
@@ -54,9 +69,20 @@ A strict 4px baseline grid ensures vertical rhythm. Components are spaced using 
 
 Visual hierarchy is primarily conveyed through **Tonal Layers** and **Low-Contrast Outlines** rather than heavy shadows.
 
-- **Surface Tiers:** The page background is the lowest tier (`#F8FAFC`). Cards and interactive containers sit one level above on pure white (`#FFFFFF`).
+- **Surface Tiers:** The page background is the lowest tier (`#F8FAFC`). Cards and interactive containers sit one level above on pure white (`#FFFFFF`). A **raised surface** is the tier above a card — a bottom tab bar, a sheet — and exists as its own role because in dark mode the card and the page background are the same value, so "one level above" cannot be expressed by reusing either.
+- **Scrim:** What a modal or sheet lays over the screen behind it. It is the one colour in the system carrying alpha, because a scrim that is opaque is not a scrim — it is a surface.
 - **Shadow Character:** Use an ultra-diffused, low-opacity shadow for cards (`0px 1px 3px rgba(15, 23, 42, 0.05)`). This "ambient" shadow adds just enough depth to signify interactivity without breaking the clean SaaS aesthetic.
 - **Borders:** Every card and input uses a 1px solid border (`#E2E8F0`). This creates a rigid, structural feel that mimics the boundaries of a physical safe or vault.
+
+## Focus & Controls
+
+- **Focus** is the brand violet, not the neutral hairline. A focus indicator that
+  cannot be seen is not one, and the neutral ring the system started with sits at
+  2.5:1 against the page — below the 3:1 a non-text indicator needs.
+- **Control edge** is the border of something the User can operate — an input, a
+  checkbox, an outlined button — and is a full step darker than the hairline
+  `border` used for structure. A 1.2:1 hairline is right for separating a card
+  from the page and wrong for saying "you can type here".
 
 ## Shapes
 

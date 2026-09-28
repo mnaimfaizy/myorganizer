@@ -5859,6 +5859,7 @@ __metadata:
     "@react-native-community/cli-platform-ios": "npm:~18.0.0"
     "@react-native/babel-preset": "npm:~0.79.3"
     "@react-native/metro-config": "npm:~0.79.3"
+    "@react-navigation/bottom-tabs": "npm:7.16.2"
     "@react-navigation/native": "npm:7.2.5"
     "@react-navigation/native-stack": "npm:7.16.0"
     "@storybook/core-server": "npm:8.6.17"
@@ -5950,6 +5951,7 @@ __metadata:
     react-hook-form: "npm:7.71.1"
     react-native: "npm:~0.79.3"
     react-native-keychain: "npm:10.0.0"
+    react-native-mmkv: "npm:3.3.3"
     react-native-nitro-modules: "npm:0.35.0"
     react-native-quick-base64: "npm:3.0.0"
     react-native-quick-crypto: "npm:1.1.5"
@@ -8799,6 +8801,23 @@ __metadata:
     "@types/react":
       optional: true
   checksum: 10c0/27639611a69d2ea7f7ae376cb777c06985fae77196bb4c88b8e57485af143e286049290b121a0752da5c95719ac9511306a5ea611ea1dda7041ef3fcafe6e30b
+  languageName: node
+  linkType: hard
+
+"@react-navigation/bottom-tabs@npm:7.16.2":
+  version: 7.16.2
+  resolution: "@react-navigation/bottom-tabs@npm:7.16.2"
+  dependencies:
+    "@react-navigation/elements": "npm:^2.9.19"
+    color: "npm:^4.2.3"
+    sf-symbols-typescript: "npm:^2.1.0"
+  peerDependencies:
+    "@react-navigation/native": ^7.2.5
+    react: ">= 18.2.0"
+    react-native: "*"
+    react-native-safe-area-context: ">= 4.0.0"
+    react-native-screens: ">= 4.0.0"
+  checksum: 10c0/4216701fe2695d3f66e3335e5844a4c5d9e2c7a6750eb177bdac9e407675d4b4254dcb67dde171d6b5b495307dd6c1e8e989462325ca5452d3372887c5d01cc3
   languageName: node
   linkType: hard
 
@@ -25514,6 +25533,16 @@ __metadata:
   version: 10.0.0
   resolution: "react-native-keychain@npm:10.0.0"
   checksum: 10c0/a632ad27e58264506d2b373d329a867f042fb014e8a78db3a63031e953d61b5c98066eed1be238ee6c186d3f213d0efaa2a26526fb3a1d36a624c4460e982230
+  languageName: node
+  linkType: hard
+
+"react-native-mmkv@npm:3.3.3":
+  version: 3.3.3
+  resolution: "react-native-mmkv@npm:3.3.3"
+  peerDependencies:
+    react: "*"
+    react-native: "*"
+  checksum: 10c0/efd7f725674d686ea126a213bd8c4270e8e4e8f306917a1b846a9f7ddf652ad057c7d509a9292d7bbf6a58603d4ab5a18e0c3b0d1b00447df45eeac81cbbd1e1
   languageName: node
   linkType: hard
 

@@ -5,11 +5,13 @@
   "dependencies": {
     "@craftzdog/react-native-buffer": "*",
     "@react-native/metro-config": "*",
+    "@react-navigation/bottom-tabs": "*",
     "@react-navigation/native": "*",
     "@react-navigation/native-stack": "*",
     "react": "*",
     "react-native": "*",
     "react-native-keychain": "*",
+    "react-native-mmkv": "*",
     "react-native-nitro-modules": "*",
     "react-native-quick-base64": "3.0.0",
     "react-native-quick-crypto": "*",
