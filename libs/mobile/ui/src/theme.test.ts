@@ -4,7 +4,7 @@ import {
   typeScale,
   toRnSize,
   toRnLetterSpacing,
-  toRnFontWeight,
+  fontCutFor,
   FONT_FAMILY,
 } from './typeScale';
 
@@ -123,57 +123,55 @@ describe('Mobile App Theme Resolution', () => {
         step: 'display',
         expectedFontSize: 34,
         expectedLineHeight: 40,
-        expectedFontWeight: '800',
       },
       {
         step: 'titleLg',
         expectedFontSize: 28,
         expectedLineHeight: 34,
-        expectedFontWeight: '700',
       },
       {
         step: 'title',
         expectedFontSize: 20,
         expectedLineHeight: 26,
-        expectedFontWeight: '700',
       },
       {
         step: 'body',
         expectedFontSize: 17,
         expectedLineHeight: 24,
-        expectedFontWeight: '400',
       },
       {
         step: 'bodySm',
         expectedFontSize: 15,
         expectedLineHeight: 20,
-        expectedFontWeight: '400',
       },
       {
         step: 'labelCaps',
         expectedFontSize: 12,
         expectedLineHeight: 16,
-        expectedFontWeight: '600',
       },
       {
         step: 'caption',
         expectedFontSize: 13,
         expectedLineHeight: 18,
-        expectedFontWeight: '400',
       },
     ];
 
     it.each(typeScaleTests)(
-      'should have $step with fontSize=$expectedFontSize, lineHeight=$expectedLineHeight, fontWeight=$expectedFontWeight',
-      ({ step, expectedFontSize, expectedLineHeight, expectedFontWeight }) => {
+      'should have $step with fontSize=$expectedFontSize and lineHeight=$expectedLineHeight',
+      ({ step, expectedFontSize, expectedLineHeight }) => {
         const typeStep = typeScale[step as keyof typeof typeScale];
         expect(typeof typeStep.fontSize).toBe('number');
         expect(typeof typeStep.lineHeight).toBe('number');
         expect(typeStep.fontSize).toBe(expectedFontSize);
         expect(typeStep.lineHeight).toBe(expectedLineHeight);
-        expect(typeStep.fontWeight).toBe(expectedFontWeight);
       },
     );
+
+    it('should not have fontWeight key on any step (regression guard for Android fallback)', () => {
+      expect(Object.values(typeScale).some((s) => 'fontWeight' in s)).toBe(
+        false,
+      );
+    });
   });
 
   describe('8. Letter-spacing is converted from em to points', () => {
@@ -289,23 +287,26 @@ describe('Mobile App Theme Resolution', () => {
       });
     });
 
-    describe('toRnFontWeight', () => {
-      it('should accept bundled weights', () => {
-        expect(toRnFontWeight('400')).toBe('400');
-        expect(toRnFontWeight('600')).toBe('600');
-        expect(toRnFontWeight('700')).toBe('700');
-        expect(toRnFontWeight('800')).toBe('800');
+    describe('fontCutFor', () => {
+      it('should return bundled display cuts for valid weights', () => {
+        expect(fontCutFor('display', '700')).toBe('PlusJakartaSans-Bold');
+        expect(fontCutFor('display', '800')).toBe('PlusJakartaSans-ExtraBold');
       });
 
-      it('should throw for unbundled weights', () => {
-        expect(() => toRnFontWeight('500')).toThrow(
-          'Type-scale weight is not one this app bundles',
+      it('should return bundled body cuts for valid weights', () => {
+        expect(fontCutFor('body', '400')).toBe('Inter-Regular');
+        expect(fontCutFor('body', '600')).toBe('Inter-SemiBold');
+      });
+
+      it('should throw for unbundled weights with message prefix', () => {
+        expect(() => fontCutFor('body', '700')).toThrow(
+          'Type-scale weight 700 has no bundled body cut',
         );
-        expect(() => toRnFontWeight('250')).toThrow(
-          'Type-scale weight is not one this app bundles',
+        expect(() => fontCutFor('display', '400')).toThrow(
+          'Type-scale weight 400 has no bundled display cut',
         );
-        expect(() => toRnFontWeight('900')).toThrow(
-          'Type-scale weight is not one this app bundles',
+        expect(() => fontCutFor('body', '500')).toThrow(
+          'Type-scale weight 500 has no bundled body cut',
         );
       });
     });

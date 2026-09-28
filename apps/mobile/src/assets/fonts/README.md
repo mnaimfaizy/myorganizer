@@ -31,8 +31,16 @@ So `fontFamily: 'Inter-SemiBold'` is the one string that means the same thing on
 both. Asking for family `Inter` at weight 600 does not: these are separate
 static families, and iOS would find only Regular in `Inter`.
 
-The pairing lives in one table — `FONT_FAMILY_BY_STEP` in
-`libs/mobile/ui/src/typeScale.ts` — so a renamed file breaks in one place.
+**And a step sets no `fontWeight`**, because the file already is the weight.
+Adding one breaks both platforms in different ways: on Android, React Native
+0.79 treats any weight of 700 or more as bold and looks for
+`PlusJakartaSans-Bold_bold.ttf`, finds nothing, and renders Roboto; on iOS, a
+weight turns the PostScript name back into a family lookup and picks the
+family's closest weight instead of the named cut. Both were seen on #909.
+
+The cuts live in one table — `CUTS` in `libs/mobile/ui/src/typeScale.ts`,
+keyed by face and token weight — so a renamed file breaks in one place, and a
+step re-weighted in `tokens.json` either finds its cut or fails at load.
 
 ## How they reach a build
 

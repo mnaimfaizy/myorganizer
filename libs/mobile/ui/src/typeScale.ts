@@ -49,7 +49,6 @@ export interface TypeStyle {
   fontSize: number;
   lineHeight: number;
   letterSpacing: number;
-  fontWeight: TextStyle['fontWeight'];
   textTransform?: TextStyle['textTransform'];
 }
 
@@ -59,7 +58,11 @@ export interface TypeStyle {
  * Neither platform can reach a 600 or an 800 cut through a family name plus a
  * weight — Android maps only regular/bold/italic onto a family, and these are
  * separate static families on iOS — so a weight is selected by naming its file.
- * See apps/mobile/src/assets/fonts/README.md.
+ * The file *is* the weight, which is why a step carries no `fontWeight` at all:
+ * on Android any weight of 700 or more makes React Native look for a
+ * `<name>_bold.ttf` that does not exist and fall back to the system font, and
+ * on iOS a weight sends the lookup back through the family instead of the cut
+ * that was named. See apps/mobile/src/assets/fonts/README.md.
  */
 export const FONT_FAMILY = {
   displayBold: 'PlusJakartaSans-Bold',
@@ -68,19 +71,39 @@ export const FONT_FAMILY = {
   bodySemiBold: 'Inter-SemiBold',
 } as const;
 
+/** The two faces of the scale: Plus Jakarta Sans for headings, Inter for the rest. */
+export type TypeFace = 'display' | 'body';
+
 /**
- * Which bundled cut renders each step. Pinned to the step set, so a new step
- * without a font is a compile error rather than a silent system-font fallback.
+ * Which face sets each step. Pinned to the step set, so a new step without a
+ * face is a compile error rather than a silent system-font fallback.
  */
-const FONT_FAMILY_BY_STEP = {
-  display: FONT_FAMILY.displayExtraBold,
-  titleLg: FONT_FAMILY.displayBold,
-  title: FONT_FAMILY.displayBold,
-  body: FONT_FAMILY.bodyRegular,
-  bodySm: FONT_FAMILY.bodyRegular,
-  labelCaps: FONT_FAMILY.bodySemiBold,
-  caption: FONT_FAMILY.bodyRegular,
-} as const satisfies Record<TypeScaleStep, string>;
+const FACE_BY_STEP = {
+  display: 'display',
+  titleLg: 'display',
+  title: 'display',
+  body: 'body',
+  bodySm: 'body',
+  labelCaps: 'body',
+  caption: 'body',
+} as const satisfies Record<TypeScaleStep, TypeFace>;
+
+/**
+ * The cuts bundled for each face, keyed by the token weight they carry. A step
+ * reaches its cut through its token weight, so re-weighting a step in
+ * tokens.json either picks the matching file or fails at load — it cannot keep
+ * rendering the old cut while claiming the new weight.
+ */
+const CUTS = {
+  display: {
+    '700': FONT_FAMILY.displayBold,
+    '800': FONT_FAMILY.displayExtraBold,
+  },
+  body: {
+    '400': FONT_FAMILY.bodyRegular,
+    '600': FONT_FAMILY.bodySemiBold,
+  },
+} as const satisfies Record<TypeFace, Record<string, string>>;
 
 /** A CSS length token (`16px` | `1rem`) as React Native density pixels. */
 export function toRnSize(value: string): number {
@@ -106,19 +129,19 @@ export function toRnLetterSpacing(tracking: string, fontSize: number): number {
   return parseFloat(tracking) * fontSize;
 }
 
-/** The weights the scale uses, pinned so an unhandled one fails loudly. */
-const FONT_WEIGHTS = {
-  '400': '400',
-  '600': '600',
-  '700': '700',
-  '800': '800',
-} as const;
-
-export function toRnFontWeight(value: string): TextStyle['fontWeight'] {
-  if (!Object.prototype.hasOwnProperty.call(FONT_WEIGHTS, value)) {
-    throw new Error(`Type-scale weight is not one this app bundles: ${value}`);
+/**
+ * The bundled cut that renders `face` at a token weight. Throws for a weight
+ * this app bundles no cut for, rather than handing the platform a weight it
+ * would silently render in the system font.
+ */
+export function fontCutFor(face: TypeFace, weight: string): string {
+  const cuts: Readonly<Record<string, string>> = CUTS[face];
+  if (!Object.prototype.hasOwnProperty.call(cuts, weight)) {
+    throw new Error(
+      `Type-scale weight ${weight} has no bundled ${face} cut: ${Object.keys(cuts).join(', ')}`,
+    );
   }
-  return FONT_WEIGHTS[value as keyof typeof FONT_WEIGHTS];
+  return cuts[weight];
 }
 
 function step(
@@ -130,11 +153,10 @@ function step(
 ): TypeStyle {
   const fontSize = toRnSize(size);
   return {
-    fontFamily: FONT_FAMILY_BY_STEP[name],
+    fontFamily: fontCutFor(FACE_BY_STEP[name], weight),
     fontSize,
     lineHeight: toRnSize(lineHeight),
     letterSpacing: toRnLetterSpacing(tracking, fontSize),
-    fontWeight: toRnFontWeight(weight),
     // `labelCaps` is the one step whose name is a claim about its casing, so
     // the step carries the casing. A step is used whole or not at all.
     ...(name === 'labelCaps' ? { textTransform: 'uppercase' as const } : {}),

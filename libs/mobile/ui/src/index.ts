@@ -9,7 +9,8 @@ export {
 } from './theme';
 export {
   FONT_FAMILY,
-  toRnFontWeight,
+  fontCutFor,
+  type TypeFace,
   toRnLetterSpacing,
   toRnSize,
   typeScale,
