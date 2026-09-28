@@ -28,11 +28,11 @@
 		5DCACB8F33CDC322A6C60F78 /* libPods-Mobile.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-Mobile.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = Mobile/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Mobile/LaunchScreen.storyboard; sourceTree = "<group>"; };
-		FA00000000000000000000A1 /* Inter-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Inter-Regular.ttf; path = "../src/assets/fonts/Inter-Regular.ttf"; sourceTree = "<group>"; };
-		FA00000000000000000000A2 /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = Inter-SemiBold.ttf; path = "../src/assets/fonts/Inter-SemiBold.ttf"; sourceTree = "<group>"; };
-		FA00000000000000000000A3 /* PlusJakartaSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = PlusJakartaSans-Bold.ttf; path = "../src/assets/fonts/PlusJakartaSans-Bold.ttf"; sourceTree = "<group>"; };
-		FA00000000000000000000A4 /* PlusJakartaSans-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = PlusJakartaSans-ExtraBold.ttf; path = "../src/assets/fonts/PlusJakartaSans-ExtraBold.ttf"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		FA00000000000000000000A1 /* Inter-Regular.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "Inter-Regular.ttf"; path = "../src/assets/fonts/Inter-Regular.ttf"; sourceTree = "<group>"; };
+		FA00000000000000000000A2 /* Inter-SemiBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "Inter-SemiBold.ttf"; path = "../src/assets/fonts/Inter-SemiBold.ttf"; sourceTree = "<group>"; };
+		FA00000000000000000000A3 /* PlusJakartaSans-Bold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "PlusJakartaSans-Bold.ttf"; path = "../src/assets/fonts/PlusJakartaSans-Bold.ttf"; sourceTree = "<group>"; };
+		FA00000000000000000000A4 /* PlusJakartaSans-ExtraBold.ttf */ = {isa = PBXFileReference; lastKnownFileType = file; name = "PlusJakartaSans-ExtraBold.ttf"; path = "../src/assets/fonts/PlusJakartaSans-ExtraBold.ttf"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -58,17 +58,6 @@
 				FC00000000000000000000C1 /* Fonts */,
 			);
 			name = Mobile;
-			sourceTree = "<group>";
-		};
-		FC00000000000000000000C1 /* Fonts */ = {
-			isa = PBXGroup;
-			children = (
-				FA00000000000000000000A1 /* Inter-Regular.ttf */,
-				FA00000000000000000000A2 /* Inter-SemiBold.ttf */,
-				FA00000000000000000000A3 /* PlusJakartaSans-Bold.ttf */,
-				FA00000000000000000000A4 /* PlusJakartaSans-ExtraBold.ttf */,
-			);
-			name = Fonts;
 			sourceTree = "<group>";
 		};
 		2D16E6871FA4F8E400B85C8A /* Frameworks */ = {
@@ -116,6 +105,17 @@
 				5709B34CF0A7D63546082F79 /* Pods-Mobile.release.xcconfig */,
 			);
 			path = Pods;
+			sourceTree = "<group>";
+		};
+		FC00000000000000000000C1 /* Fonts */ = {
+			isa = PBXGroup;
+			children = (
+				FA00000000000000000000A1 /* Inter-Regular.ttf */,
+				FA00000000000000000000A2 /* Inter-SemiBold.ttf */,
+				FA00000000000000000000A3 /* PlusJakartaSans-Bold.ttf */,
+				FA00000000000000000000A4 /* PlusJakartaSans-ExtraBold.ttf */,
+			);
+			name = Fonts;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
