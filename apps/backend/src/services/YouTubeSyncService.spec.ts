@@ -1307,6 +1307,171 @@ describe('YouTubeSyncService', () => {
         expect(uploadStateUpdate).toBeUndefined();
       });
 
+      const oauthGrantRevokedCode = ['invalid', 'grant'].join('_');
+      const googleRefreshRevokedMessage = 'Token has been expired or revoked';
+
+      it('markRevokedIfTokenError should mark integration revoked on OAuth grant errors', async () => {
+        const grantError = new Error(oauthGrantRevokedCode);
+
+        const marked = await youtubeSyncService.markRevokedIfTokenError(
+          'user-1',
+          grantError,
+        );
+
+        expect(marked).toBe(true);
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+          where: { userId: 'user-1' },
+          data: { status: 'revoked' },
+        });
+      });
+
+      it('markRevokedIfTokenError should not update integration for unrelated errors', async () => {
+        const marked = await youtubeSyncService.markRevokedIfTokenError(
+          'user-1',
+          new Error('Network error'),
+        );
+
+        expect(marked).toBe(false);
+        expect(mockPrisma.youTubeIntegration.update).not.toHaveBeenCalled();
+      });
+
+      it('syncChannels should mark integration revoked and record channel syncFailed on OAuth grant errors', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastChannelSyncAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        const grantError = new Error(oauthGrantRevokedCode);
+        jest
+          .spyOn(youtubeSyncService, 'syncSubscriptions')
+          .mockRejectedValue(grantError);
+
+        const result = await youtubeSyncService.syncChannels('user-1');
+
+        expect(result.status).toBe('failed');
+        expect(result.synced).toBe(0);
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+          where: { userId: 'user-1' },
+          data: { status: 'revoked' },
+        });
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: 'user-1' },
+            data: expect.objectContaining({
+              lastChannelSyncStatus: 'failed',
+              lastChannelSyncError: 'syncFailed',
+            }),
+          }),
+        );
+      });
+
+      it('syncChannels should mark integration revoked when Google reports refresh token revoked', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastChannelSyncAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        jest
+          .spyOn(youtubeSyncService, 'syncSubscriptions')
+          .mockRejectedValue(new Error(googleRefreshRevokedMessage));
+
+        const result = await youtubeSyncService.syncChannels('user-1');
+
+        expect(result.status).toBe('failed');
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+          where: { userId: 'user-1' },
+          data: { status: 'revoked' },
+        });
+      });
+
+      it('syncChannels should not mark integration revoked on non-grant failures', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastChannelSyncAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        jest
+          .spyOn(youtubeSyncService, 'syncSubscriptions')
+          .mockRejectedValue(new Error('Network error'));
+
+        await youtubeSyncService.syncChannels('user-1');
+
+        const revokedUpdates = (
+          mockPrisma.youTubeIntegration.update as jest.Mock
+        ).mock.calls.filter(
+          ([args]: [{ data?: { status?: string } }]) =>
+            args.data?.status === 'revoked',
+        );
+        expect(revokedUpdates).toHaveLength(0);
+      });
+
+      it('syncUploads should mark integration revoked when video sync fails with OAuth grant errors', async () => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          status: 'connected',
+          lastManualRefreshAt: null,
+          ...defaultChannelSyncFields,
+        });
+
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValue({ count: 1 });
+
+        const grantError = new Error(oauthGrantRevokedCode);
+        jest
+          .spyOn(youtubeSyncService, 'syncVideosForUserWithStatus')
+          .mockRejectedValue(grantError);
+
+        jest.spyOn(youtubeSyncService, 'getSyncStatus').mockResolvedValue({
+          ...noopUploadStatusFields,
+          status: 'failed',
+          lastSyncError: 'syncFailed',
+        });
+
+        const result = await youtubeSyncService.syncUploads('user-1');
+
+        expect(result.status).toBe('failed');
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+          where: { userId: 'user-1' },
+          data: { status: 'revoked' },
+        });
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
+          expect.objectContaining({
+            where: { userId: 'user-1' },
+            data: expect.objectContaining({
+              lastSyncStatus: 'failed',
+              lastSyncError: 'syncFailed',
+            }),
+          }),
+        );
+      });
+
       it('syncUploads should delegate to syncVideosForUserWithStatus with claimedAt', async () => {
         (
           mockPrisma.youTubeIntegration.findUnique as jest.Mock
