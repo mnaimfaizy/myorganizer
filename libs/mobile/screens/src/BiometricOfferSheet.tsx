@@ -16,12 +16,18 @@ import {
   Text,
   useTheme,
 } from '@myorganizer/mobile/ui';
-import { describeEnrolmentFailure } from './biometricUnlockMessages';
+import {
+  biometricCopyFor,
+  describeEnrolmentFailure,
+} from './biometricUnlockMessages';
+import { BrandIconTile } from './EntryParts';
 
 /**
  * The one offer to turn Biometric Unlock on (ADR 0108 decision 1), made after
  * a passphrase unlock and never again — every later chance is the switch in
- * Account.
+ * Account. Drawn as Entry · Offer: the method's mark on a violet tile, the
+ * question naming the method ("Unlock with Face ID next time?"), one line on
+ * what it means, and Turn on / Not now.
  *
  * Four things have to hold for it to appear, and each one is a rule rather
  * than a guard:
@@ -100,42 +106,80 @@ export function BiometricOfferSheet(): React.JSX.Element | null {
     setError(describeEnrolmentFailure(enrolment));
   }
 
+  const copy = biometricCopyFor(biometric.method);
+
   return (
     <BottomSheet
       visible
       // Dismissing after a failed write is not an answer, so it does not spend
       // the offer; dismissing the question itself is, and does.
       onDismiss={() => close(error === null)}
-      title="Turn on Biometric Unlock?"
     >
-      <Text variant="body" color="mutedForeground">
-        Unlock your vault with a glance instead of typing your passphrase. Your
-        passphrase and recovery key keep working, the key never leaves this
-        device, and logging out removes it.
-      </Text>
+      {/* The sheet draws its own heading under the icon tile rather than the
+          sheet's title row, so the title is set here, centred, as a header. */}
+      <View
+        style={[
+          styles.body,
+          { paddingTop: theme.spacing.sm + theme.spacing.xs },
+        ]}
+      >
+        <BrandIconTile icon={copy.icon} />
+        <Text
+          variant="title"
+          accessibilityRole="header"
+          style={[styles.centred, { marginTop: theme.spacing.md }]}
+        >
+          {copy.offerTitle}
+        </Text>
+        <Text
+          variant="bodySm"
+          color="popoverForeground"
+          style={[styles.centred, { marginTop: theme.spacing.sm }]}
+        >
+          {copy.offerBody}
+        </Text>
 
-      {error != null && <InlineNotice tone="destructive" message={error} />}
+        {error != null && (
+          <InlineNotice
+            tone="destructive"
+            message={error}
+            style={{ alignSelf: 'stretch', marginTop: theme.spacing.md }}
+          />
+        )}
 
-      <View style={[styles.actions, { gap: theme.spacing.sm }]}>
-        <Button
-          label="Turn on"
-          icon="biometric"
-          busy={busy}
-          onPress={() => void handleTurnOn()}
-        />
-        <Button
-          label="Not now"
-          variant="ghost"
-          disabled={busy}
-          onPress={() => close(error === null)}
-        />
+        <View
+          style={[
+            styles.actions,
+            { gap: theme.spacing.sm, marginTop: theme.spacing.lg },
+          ]}
+        >
+          <Button
+            label="Turn on"
+            variant="brand"
+            busy={busy}
+            onPress={() => void handleTurnOn()}
+          />
+          <Button
+            label="Not now"
+            variant="secondary"
+            disabled={busy}
+            onPress={() => close(error === null)}
+          />
+        </View>
       </View>
     </BottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
+  body: {
+    alignItems: 'center',
+  },
+  centred: {
+    textAlign: 'center',
+  },
   actions: {
+    alignSelf: 'stretch',
     flexDirection: 'column',
   },
 });

@@ -5,6 +5,7 @@ import {
   stripRecoveryKeyWhitespace,
   formatRecoveryKeyForDisplay,
   UNLOCK_NETWORK_ERROR_MESSAGE,
+  UNLOCK_OFFLINE_MESSAGE,
   UNLOCK_SERVER_ERROR_MESSAGE,
   type UnlockSecretMode,
 } from './unlockErrorClassification';
@@ -78,13 +79,13 @@ describe('unlockErrorClassification', () => {
   describe('describeWrongSecret', () => {
     it('returns recovery key message for "recovery-key" mode', () => {
       expect(describeWrongSecret('recovery-key')).toBe(
-        'That recovery key does not unlock this vault.',
+        'That Recovery Key didn’t unlock your Vault. Check each group.',
       );
     });
 
     it('returns passphrase message for "passphrase" mode', () => {
       expect(describeWrongSecret('passphrase')).toBe(
-        'Incorrect passphrase. Please try again.',
+        'That passphrase didn’t unlock your Vault.',
       );
     });
 
@@ -92,7 +93,7 @@ describe('unlockErrorClassification', () => {
       // Typing allows only 'recovery-key' | 'passphrase', but test robustness
       const unknownMode = 'unknown' as UnlockSecretMode;
       expect(describeWrongSecret(unknownMode)).toBe(
-        'Incorrect passphrase. Please try again.',
+        'That passphrase didn’t unlock your Vault.',
       );
     });
 
@@ -124,12 +125,14 @@ describe('unlockErrorClassification', () => {
 
     it('returns describeWrongSecret(passphrase) for "wrong-secret" with passphrase mode', () => {
       const result = describeUnlockFailure('wrong-secret', 'passphrase');
-      expect(result).toBe('Incorrect passphrase. Please try again.');
+      expect(result).toBe('That passphrase didn’t unlock your Vault.');
     });
 
     it('returns describeWrongSecret(recovery-key) for "wrong-secret" with recovery-key mode', () => {
       const result = describeUnlockFailure('wrong-secret', 'recovery-key');
-      expect(result).toBe('That recovery key does not unlock this vault.');
+      expect(result).toBe(
+        'That Recovery Key didn’t unlock your Vault. Check each group.',
+      );
     });
 
     it('returns empty string for "no-vault" failure (regardless of secret mode)', () => {
@@ -325,6 +328,12 @@ describe('unlockErrorClassification', () => {
     it('UNLOCK_SERVER_ERROR_MESSAGE is a non-empty string', () => {
       expect(typeof UNLOCK_SERVER_ERROR_MESSAGE).toBe('string');
       expect(UNLOCK_SERVER_ERROR_MESSAGE.length).toBeGreaterThan(0);
+    });
+
+    it('UNLOCK_OFFLINE_MESSAGE is the drawn offline line', () => {
+      expect(UNLOCK_OFFLINE_MESSAGE).toBe(
+        'Unlocking needs a connection. Your Vault isn’t stored on this phone.',
+      );
     });
 
     it('network and server error messages are distinct', () => {

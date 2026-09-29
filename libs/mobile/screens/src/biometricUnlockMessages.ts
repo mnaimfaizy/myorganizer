@@ -1,7 +1,80 @@
 import type {
   BiometricEnrolment,
+  BiometricMethod,
   BiometricUnlockAttempt,
 } from '@myorganizer/mobile/feat-vault';
+import type { IconName } from '@myorganizer/mobile/ui';
+
+/** Everything the Entry screens say that depends on which biometric it is. */
+export interface BiometricMethodCopy {
+  /** The Unlock screen's hero button. */
+  unlockLabel: string;
+  /** Its glyph — the method's own mark, drawn beside the label. */
+  icon: IconName;
+  /** The offer sheet's question. */
+  offerTitle: string;
+  /** The offer sheet's one line on what turning it on means. */
+  offerBody: string;
+  /** The quiet line under the hero button after the User dismissed the prompt. */
+  cancelled: string;
+}
+
+/**
+ * The words and mark for each biometric the keystore can report, pinned to
+ * the method set so a new method cannot reach a screen without them
+ * (ADR 0053). The Entry sheets draw Face ID on iOS and fingerprint on Android;
+ * `touch-id` and the unnamed `biometrics` follow the same sentences.
+ *
+ * The setting is always called Biometric Unlock; the method names the button
+ * and the prompt, never the feature (#908).
+ */
+export const BIOMETRIC_METHOD_COPY = {
+  'face-id': {
+    unlockLabel: 'Unlock with Face ID',
+    icon: 'faceId',
+    offerTitle: 'Unlock with Face ID next time?',
+    offerBody:
+      'Your key stays on this device, protected by Face ID. Your passphrase always works too.',
+    cancelled: 'Face ID was cancelled. Try again, or use your passphrase.',
+  },
+  'touch-id': {
+    unlockLabel: 'Unlock with Touch ID',
+    icon: 'fingerprint',
+    offerTitle: 'Unlock with Touch ID next time?',
+    offerBody:
+      'Your key stays on this device, protected by Touch ID. Your passphrase always works too.',
+    cancelled: 'Touch ID was cancelled. Try again, or use your passphrase.',
+  },
+  fingerprint: {
+    unlockLabel: 'Unlock with fingerprint',
+    icon: 'fingerprint',
+    offerTitle: 'Unlock with fingerprint next time?',
+    offerBody:
+      'Your key stays on this device, protected by your fingerprint. Your passphrase always works too.',
+    cancelled:
+      'The fingerprint check was cancelled. Try again, or use your passphrase.',
+  },
+  biometrics: {
+    unlockLabel: 'Unlock with biometrics',
+    icon: 'biometric',
+    offerTitle: 'Unlock with biometrics next time?',
+    offerBody:
+      'Your key stays on this device, protected by your biometrics. Your passphrase always works too.',
+    cancelled:
+      'The biometric check was cancelled. Try again, or use your passphrase.',
+  },
+} as const satisfies Record<BiometricMethod, BiometricMethodCopy>;
+
+/**
+ * The copy for `method`, or the unnamed one while the keystore has not said
+ * which biometric it has — a button that names Face ID on a fingerprint phone
+ * is read as the wrong control.
+ */
+export function biometricCopyFor(
+  method: BiometricMethod | null,
+): BiometricMethodCopy {
+  return BIOMETRIC_METHOD_COPY[method ?? 'biometrics'];
+}
 
 /** The endings that leave Biometric Unlock gone for this User on this device. */
 export type BiometricUnavailableReason = Extract<
@@ -10,25 +83,26 @@ export type BiometricUnavailableReason = Extract<
 >['reason'];
 
 export const BIOMETRIC_FAILED_MESSAGE =
-  "Biometric Unlock didn't work. Enter your passphrase to unlock.";
+  'Biometric Unlock didn’t work. Unlock with your passphrase.';
 
 /**
  * What the Unlock screen says when Biometric Unlock has just gone away, pinned
  * to the reasons the policy can produce so a fourth one cannot be added
  * without a sentence for it (ADR 0053).
  *
- * All three say the same second half. The first half differs because the three
- * are not the same event to the User: one is something they did to the device,
- * one is something that happened to their Vault, and one is a feature that was
- * simply not on.
+ * `invalidated` is the sheet's own line (Entry · Unlock · Biometric no longer
+ * valid). The other two follow its shape: what happened, then what to do. The
+ * first halves differ because the three are not the same event to the User:
+ * one is something they did to the device, one is something that happened to
+ * their Vault, and one is a feature that was simply not on.
  */
 const UNAVAILABLE_MESSAGES = {
   invalidated:
-    "Biometric Unlock is off — this device's biometrics changed since you turned it on. Enter your passphrase to unlock.",
+    'Your device’s biometrics changed. Unlock with your passphrase to turn Biometric Unlock back on.',
   stale:
-    'Biometric Unlock is off — the key stored here no longer opens this vault. Enter your passphrase to unlock.',
+    'The key on this phone no longer opens your Vault. Unlock with your passphrase to turn Biometric Unlock back on.',
   missing:
-    'Biometric Unlock is not set up on this device. Enter your passphrase to unlock.',
+    'Biometric Unlock isn’t set up on this phone. Unlock with your passphrase.',
 } as const satisfies Record<BiometricUnavailableReason, string>;
 
 /** Why turning Biometric Unlock on was refused before anything was written. */

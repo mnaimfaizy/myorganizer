@@ -8,6 +8,11 @@ export {
   type BiometricRefusalReason,
   type BiometricUnavailableReason,
 } from './biometricUnlockMessages';
+export {
+  BIOMETRIC_METHOD_COPY,
+  biometricCopyFor,
+  type BiometricMethodCopy,
+} from './biometricUnlockMessages';
 export { RootNavigator } from './RootNavigator';
 export type { RootStackParamList } from './RootNavigator';
 export { MainTabs } from './MainTabs';
@@ -26,6 +31,7 @@ export { LoginScreen } from './LoginScreen';
 export { UnlockScreen } from './UnlockScreen';
 export { TasksScreen } from './TasksScreen';
 export { AccountScreen } from './AccountScreen';
+export type { AccountScreenProps, AppVersion } from './AccountScreen';
 export { AddressDetailScreen } from './AddressDetailScreen';
 export { DetailsScreen } from './DetailsScreen';
 export { DETAILS_ROUTES, type DetailsStackParamList } from './detailsStack';

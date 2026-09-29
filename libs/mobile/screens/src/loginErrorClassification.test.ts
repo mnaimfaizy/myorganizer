@@ -1,195 +1,123 @@
 import {
+  classifyLoginError,
   describeLoginError,
-  LOGIN_ERROR_MESSAGES,
-  DEFAULT_LOGIN_ERROR_MESSAGE,
-  LOGIN_NETWORK_ERROR_MESSAGE,
+  LOGIN_FAILURES,
+  type LoginFailure,
 } from './loginErrorClassification';
 
+function serverError(message: unknown): unknown {
+  return { response: { data: { message } } };
+}
+
 describe('loginErrorClassification', () => {
+  describe('classifyLoginError', () => {
+    it('reads an Axios error with no response as offline', () => {
+      expect(classifyLoginError({ isAxiosError: true })).toBe('offline');
+    });
+
+    it('reads an ERR_NETWORK code as offline', () => {
+      expect(classifyLoginError({ code: 'ERR_NETWORK' })).toBe('offline');
+    });
+
+    it('reads "Incorrect email or password!" as wrong credentials', () => {
+      expect(
+        classifyLoginError(serverError('Incorrect email or password!')),
+      ).toBe('wrong-credentials');
+    });
+
+    it('reads "Email not verified" as unverified', () => {
+      expect(classifyLoginError(serverError('Email not verified'))).toBe(
+        'unverified',
+      );
+    });
+
+    it('reads "Account disabled" as disabled (GitHub Issue #911 acceptance criterion)', () => {
+      expect(classifyLoginError(serverError('Account disabled'))).toBe(
+        'disabled',
+      );
+    });
+
+    it('matches the backend message case-insensitively', () => {
+      expect(classifyLoginError(serverError('ACCOUNT DISABLED'))).toBe(
+        'disabled',
+      );
+    });
+
+    it('reads a classified code that cannot answer a login as unknown', () => {
+      expect(
+        classifyLoginError(
+          serverError('Email already registered. Please log in.'),
+        ),
+      ).toBe('unknown');
+    });
+
+    it.each([
+      ['an unrecognised message', serverError('Some random error message')],
+      ['a message that is not a string', serverError(123)],
+      ['a response with no message', { response: { data: {} } }],
+      ['a null body', { response: { data: null } }],
+      ['no response at all', {}],
+    ])('reads %s as unknown', (_label, err) => {
+      expect(classifyLoginError(err)).toBe('unknown');
+    });
+  });
+
   describe('describeLoginError', () => {
-    it('returns LOGIN_NETWORK_ERROR_MESSAGE when isNetworkError(err) is true', () => {
-      const networkErr = { isAxiosError: true };
-      expect(describeLoginError(networkErr)).toBe(LOGIN_NETWORK_ERROR_MESSAGE);
+    it('puts wrong credentials under the password field, in the drawn words', () => {
+      expect(
+        describeLoginError(serverError('Incorrect email or password!')),
+      ).toEqual({
+        message:
+          'That email and password don’t match. Check both and try again.',
+        placement: 'password',
+        mark: 'error',
+      });
     });
 
-    it('returns LOGIN_NETWORK_ERROR_MESSAGE for ERR_NETWORK code', () => {
-      const networkErr = { code: 'ERR_NETWORK' };
-      expect(describeLoginError(networkErr)).toBe(LOGIN_NETWORK_ERROR_MESSAGE);
+    it('shows an unverified email as an amber notice', () => {
+      expect(describeLoginError(serverError('Email not verified'))).toEqual({
+        message: 'Verify your email from the link we sent, then sign in.',
+        placement: 'notice',
+        mark: 'warning',
+      });
     });
 
-    it('returns DEFAULT_LOGIN_ERROR_MESSAGE when there is no server message', () => {
-      const err = {
-        response: {
-          data: {},
-        },
-      };
-      expect(describeLoginError(err)).toBe(DEFAULT_LOGIN_ERROR_MESSAGE);
+    it('shows a Disabled User as a red-marked notice', () => {
+      expect(describeLoginError(serverError('Account disabled'))).toEqual({
+        message: 'This account has been disabled, so it can’t sign in.',
+        placement: 'notice',
+        mark: 'error',
+      });
     });
 
-    it('returns DEFAULT_LOGIN_ERROR_MESSAGE when response is missing', () => {
-      const err = {};
-      expect(describeLoginError(err)).toBe(DEFAULT_LOGIN_ERROR_MESSAGE);
+    it('shows a network failure as the offline notice', () => {
+      expect(describeLoginError({ code: 'ERR_NETWORK' })).toEqual({
+        message: 'You’re offline. Connect to the internet to sign in.',
+        placement: 'notice',
+        mark: 'warning',
+      });
     });
 
-    it('returns LOGIN_ERROR_MESSAGES[invalid_credentials] for "Incorrect email or password!" message', () => {
-      const err = {
-        response: {
-          data: {
-            message: 'Incorrect email or password!',
-          },
-        },
-      };
-      expect(describeLoginError(err)).toBe(
-        LOGIN_ERROR_MESSAGES['invalid_credentials'],
+    it('never shows the raw backend text', () => {
+      const { message } = describeLoginError(
+        serverError('Some random error message'),
       );
-      expect(describeLoginError(err)).toBe('Incorrect email or password.');
-    });
-
-    it('returns LOGIN_ERROR_MESSAGES[email_not_verified] for "Email not verified" message', () => {
-      const err = {
-        response: {
-          data: {
-            message: 'Email not verified',
-          },
-        },
-      };
-      expect(describeLoginError(err)).toBe(
-        LOGIN_ERROR_MESSAGES['email_not_verified'],
-      );
-      expect(describeLoginError(err)).toBe(
-        'Verify your email before signing in.',
-      );
-    });
-
-    it('returns the disabled account message for "Account disabled" (GitHub Issue #911 acceptance criterion)', () => {
-      const err = {
-        response: {
-          data: {
-            message: 'Account disabled',
-          },
-        },
-      };
-      const result = describeLoginError(err);
-      expect(result).toBe(LOGIN_ERROR_MESSAGES['account_disabled']);
-      expect(result).toBe(
-        'This account has been disabled. Contact support for help.',
-      );
-      // Verify it is NOT the default message
-      expect(result).not.toBe(DEFAULT_LOGIN_ERROR_MESSAGE);
-    });
-
-    it('returns DEFAULT_LOGIN_ERROR_MESSAGE for a classified-but-unmapped code (email_already_registered)', () => {
-      const err = {
-        response: {
-          data: {
-            message: 'Email already registered. Please log in.',
-          },
-        },
-      };
-      const result = describeLoginError(err);
-      expect(result).toBe(DEFAULT_LOGIN_ERROR_MESSAGE);
-      // Verify it classifies but is not in the map
-      expect(result).not.toBe('Incorrect email or password.');
-      expect(result).not.toBe('Verify your email before signing in.');
-      expect(result).not.toBe(
-        'This account has been disabled. Contact support for help.',
-      );
-    });
-
-    it('returns DEFAULT_LOGIN_ERROR_MESSAGE for an unknown classified code', () => {
-      const err = {
-        response: {
-          data: {
-            message: 'Some random error message',
-          },
-        },
-      };
-      expect(describeLoginError(err)).toBe(DEFAULT_LOGIN_ERROR_MESSAGE);
-    });
-
-    it('returns DEFAULT_LOGIN_ERROR_MESSAGE when message is not a string', () => {
-      const err = {
-        response: {
-          data: {
-            message: 123,
-          },
-        },
-      };
-      expect(describeLoginError(err)).toBe(DEFAULT_LOGIN_ERROR_MESSAGE);
-    });
-
-    it('returns DEFAULT_LOGIN_ERROR_MESSAGE when data is null', () => {
-      const err = {
-        response: {
-          data: null,
-        },
-      };
-      expect(describeLoginError(err)).toBe(DEFAULT_LOGIN_ERROR_MESSAGE);
-    });
-
-    it('handles case-insensitive message matching', () => {
-      const err = {
-        response: {
-          data: {
-            message: 'ACCOUNT DISABLED',
-          },
-        },
-      };
-      expect(describeLoginError(err)).toBe(
-        'This account has been disabled. Contact support for help.',
-      );
+      expect(message).toBe(LOGIN_FAILURES.unknown.message);
+      expect(message).not.toContain('random');
     });
   });
 
-  describe('LOGIN_ERROR_MESSAGES constant', () => {
-    it('contains exactly three mapped codes', () => {
-      const keys = Object.keys(LOGIN_ERROR_MESSAGES);
-      expect(keys).toContain('invalid_credentials');
-      expect(keys).toContain('email_not_verified');
-      expect(keys).toContain('account_disabled');
-      expect(keys.length).toBe(3);
+  describe('LOGIN_FAILURES', () => {
+    it('gives every failure its own sentence', () => {
+      const messages = Object.values(LOGIN_FAILURES).map((f) => f.message);
+      expect(new Set(messages).size).toBe(messages.length);
     });
 
-    it('maps invalid_credentials to a user-friendly message', () => {
-      expect(LOGIN_ERROR_MESSAGES['invalid_credentials']).toBe(
-        'Incorrect email or password.',
+    it('puts only wrong credentials on the field', () => {
+      const onField = (Object.keys(LOGIN_FAILURES) as LoginFailure[]).filter(
+        (failure) => LOGIN_FAILURES[failure].placement === 'password',
       );
-    });
-
-    it('maps email_not_verified to a user-friendly message', () => {
-      expect(LOGIN_ERROR_MESSAGES['email_not_verified']).toBe(
-        'Verify your email before signing in.',
-      );
-    });
-
-    it('maps account_disabled to a user-friendly message', () => {
-      expect(LOGIN_ERROR_MESSAGES['account_disabled']).toBe(
-        'This account has been disabled. Contact support for help.',
-      );
-    });
-  });
-
-  describe('constant messages', () => {
-    it('DEFAULT_LOGIN_ERROR_MESSAGE is a non-empty string', () => {
-      expect(typeof DEFAULT_LOGIN_ERROR_MESSAGE).toBe('string');
-      expect(DEFAULT_LOGIN_ERROR_MESSAGE.length).toBeGreaterThan(0);
-    });
-
-    it('LOGIN_NETWORK_ERROR_MESSAGE is a non-empty string', () => {
-      expect(typeof LOGIN_NETWORK_ERROR_MESSAGE).toBe('string');
-      expect(LOGIN_NETWORK_ERROR_MESSAGE.length).toBeGreaterThan(0);
-    });
-
-    it('all messages are distinct', () => {
-      const messages = [
-        DEFAULT_LOGIN_ERROR_MESSAGE,
-        LOGIN_NETWORK_ERROR_MESSAGE,
-        LOGIN_ERROR_MESSAGES['invalid_credentials'],
-        LOGIN_ERROR_MESSAGES['email_not_verified'],
-        LOGIN_ERROR_MESSAGES['account_disabled'],
-      ];
-      const uniqueMessages = new Set(messages);
-      expect(uniqueMessages.size).toBe(messages.length);
+      expect(onField).toEqual(['wrong-credentials']);
     });
   });
 });

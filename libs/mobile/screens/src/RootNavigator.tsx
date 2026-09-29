@@ -9,7 +9,12 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
-import { Screen, useTheme } from '@myorganizer/mobile/ui';
+import {
+  MOTION,
+  Screen,
+  useReduceMotion,
+  useTheme,
+} from '@myorganizer/mobile/ui';
 import { navigationTheme } from './navigationTheme';
 import { BiometricOfferSheet } from './BiometricOfferSheet';
 import { LoginScreen } from './LoginScreen';
@@ -23,6 +28,13 @@ export type RootStackParamList = {
 };
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
+
+/**
+ * How long Unlock takes to rise over the privacy cover after a lock (Entry ·
+ * Locked, step 3). Its own beat rather than one of the Motion sheet's: it is
+ * the one full-screen transition the Entry page draws.
+ */
+const UNLOCK_RISE_MS = 240;
 
 const styles = StyleSheet.create({
   center: {
@@ -60,6 +72,7 @@ export function RootNavigator(): React.JSX.Element {
   const { status } = useAuth();
   const { status: vaultStatus } = useVaultSession();
   const theme = useTheme();
+  const reduceMotion = useReduceMotion();
   // `Platform.OS` is read here rather than inside `navigationTheme`, which
   // stays pure: the two platforms disagree about what a font weight means, and
   // that is a fact about the device, not about the theme.
@@ -87,7 +100,22 @@ export function RootNavigator(): React.JSX.Element {
             {status !== 'authenticated' ? (
               <Stack.Screen name="Login" component={LoginScreen} />
             ) : vaultStatus === 'locked' ? (
-              <Stack.Screen name="Unlock" component={UnlockScreen} />
+              <Stack.Screen
+                name="Unlock"
+                component={UnlockScreen}
+                // Unlock rises over the cover when the Vault locks under the
+                // User, so the tab they were on is never drawn again; under
+                // Reduce Motion it cross-fades instead (Entry · Locked). The
+                // native stack takes a duration but not a curve — it runs
+                // the platform's own deceleration, which is the ease-out
+                // drawn — and honours the duration on iOS only.
+                options={{
+                  animation: reduceMotion ? 'fade' : 'slide_from_bottom',
+                  animationDuration: reduceMotion
+                    ? MOTION.reducedFade
+                    : UNLOCK_RISE_MS,
+                }}
+              />
             ) : (
               <Stack.Screen name="Main" component={MainTabs} />
             )}

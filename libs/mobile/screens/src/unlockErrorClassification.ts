@@ -11,7 +11,31 @@ export type UnlockFailure =
 export const UNLOCK_NETWORK_ERROR_MESSAGE =
   'Network error — check your connection and try again.';
 export const UNLOCK_SERVER_ERROR_MESSAGE =
-  'Could not load your vault. Please try again.';
+  'Your Vault couldn’t be loaded. Try again.';
+
+/**
+ * The Unlock screen's own offline line (Entry · Unlock · Offline), shown both
+ * while the device reports no connection and when an attempt fails for want
+ * of one. It says why rather than only that: nothing of the Vault is kept on
+ * the phone (ADR 0107), so there is nothing to unlock without the server.
+ */
+export const UNLOCK_OFFLINE_MESSAGE =
+  'Unlocking needs a connection. Your Vault isn’t stored on this phone.';
+
+const WRONG_PASSPHRASE_LINE = 'That passphrase didn’t unlock your Vault.';
+const WRONG_RECOVERY_KEY_LINE =
+  'That Recovery Key didn’t unlock your Vault. Check each group.';
+
+/**
+ * What each typed secret's wrong-secret line says (Entry · Unlock · Wrong and
+ * Recovery · Wrong), pinned to the secret set (ADR 0053). The Recovery Key's
+ * asks the User to check each group, because one mistyped group is the likely
+ * cause of a 44-character key failing.
+ */
+const WRONG_SECRET_MESSAGES = {
+  passphrase: WRONG_PASSPHRASE_LINE,
+  'recovery-key': WRONG_RECOVERY_KEY_LINE,
+} as const satisfies Record<UnlockSecretMode, string>;
 
 /**
  * Classifies an unlock failure by transport shape, not by message: a 404
@@ -28,10 +52,9 @@ export function classifyUnlockFailure(err: unknown): UnlockFailure {
 }
 
 export function describeWrongSecret(secret: UnlockSecretMode): string {
-  if (secret === 'recovery-key') {
-    return 'That recovery key does not unlock this vault.';
-  }
-  return 'Incorrect passphrase. Please try again.';
+  // The fallback covers a caller outside the type system (a test passing an
+  // arbitrary string); every typed caller hits the table.
+  return WRONG_SECRET_MESSAGES[secret] ?? WRONG_SECRET_MESSAGES.passphrase;
 }
 
 export function describeUnlockFailure(
@@ -55,7 +78,11 @@ export function stripRecoveryKeyWhitespace(value: string): string {
   return value.replace(/\s+/g, '');
 }
 
-/** Displays the raw key in groups of four, matching how the web shows it. */
+/**
+ * Displays the raw key in groups of four (Entry · Recovery sheets). The web
+ * shows and copies it as one unbroken string, so the grouping is display only
+ * — `stripRecoveryKeyWhitespace` takes it back out before decoding.
+ */
 export function formatRecoveryKeyForDisplay(raw: string): string {
   return raw.replace(/(.{4})/g, '$1 ').trimEnd();
 }

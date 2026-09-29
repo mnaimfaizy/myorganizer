@@ -3,6 +3,8 @@ import type {
   BiometricEnrolment,
 } from '@myorganizer/mobile/feat-vault';
 import {
+  BIOMETRIC_METHOD_COPY,
+  biometricCopyFor,
   describeBiometricAttempt,
   describeEnrolmentFailure,
   BIOMETRIC_FAILED_MESSAGE,
@@ -39,9 +41,9 @@ describe('biometricUnlockMessages.ts', () => {
 
       const result = describeBiometricAttempt(attempt);
 
-      expect(result).not.toBeNull();
-      expect(result).toContain('Biometric Unlock is off');
-      expect(result).toContain('biometrics changed');
+      expect(result).toBe(
+        'Your device’s biometrics changed. Unlock with your passphrase to turn Biometric Unlock back on.',
+      );
     });
 
     it('returns a message for unavailable with stale reason', () => {
@@ -53,8 +55,7 @@ describe('biometricUnlockMessages.ts', () => {
       const result = describeBiometricAttempt(attempt);
 
       expect(result).not.toBeNull();
-      expect(result).toContain('Biometric Unlock is off');
-      expect(result).toContain('no longer opens');
+      expect(result).toContain('no longer opens your Vault');
     });
 
     it('returns a message for unavailable with missing reason', () => {
@@ -66,7 +67,7 @@ describe('biometricUnlockMessages.ts', () => {
       const result = describeBiometricAttempt(attempt);
 
       expect(result).not.toBeNull();
-      expect(result).toContain('Biometric Unlock is not set up');
+      expect(result).toContain('Biometric Unlock isn’t set up');
     });
 
     it('all unavailable messages are distinct', () => {
@@ -194,6 +195,47 @@ describe('biometricUnlockMessages.ts', () => {
 
       const uniqueMessages = new Set(messages);
       expect(uniqueMessages.size).toBe(4);
+    });
+  });
+
+  describe('biometricCopyFor', () => {
+    it('names Face ID on iOS, in the drawn words', () => {
+      expect(biometricCopyFor('face-id')).toEqual({
+        unlockLabel: 'Unlock with Face ID',
+        icon: 'faceId',
+        offerTitle: 'Unlock with Face ID next time?',
+        offerBody:
+          'Your key stays on this device, protected by Face ID. Your passphrase always works too.',
+        cancelled: 'Face ID was cancelled. Try again, or use your passphrase.',
+      });
+    });
+
+    it('names the fingerprint on Android, in the drawn words', () => {
+      const copy = biometricCopyFor('fingerprint');
+      expect(copy.unlockLabel).toBe('Unlock with fingerprint');
+      expect(copy.icon).toBe('fingerprint');
+      expect(copy.offerTitle).toBe('Unlock with fingerprint next time?');
+      expect(copy.offerBody).toBe(
+        'Your key stays on this device, protected by your fingerprint. Your passphrase always works too.',
+      );
+    });
+
+    it('names no method until the keystore has said which it has', () => {
+      expect(biometricCopyFor(null)).toBe(BIOMETRIC_METHOD_COPY.biometrics);
+      expect(biometricCopyFor(null).unlockLabel).toBe('Unlock with biometrics');
+    });
+
+    it('says the passphrase still works, whichever the method', () => {
+      for (const copy of Object.values(BIOMETRIC_METHOD_COPY)) {
+        expect(copy.offerBody).toContain('Your passphrase always works too.');
+      }
+    });
+
+    it('gives every method its own button label', () => {
+      const labels = Object.values(BIOMETRIC_METHOD_COPY).map(
+        (copy) => copy.unlockLabel,
+      );
+      expect(new Set(labels).size).toBe(labels.length);
     });
   });
 });
