@@ -2,9 +2,9 @@
 
 import { formatMoney } from '@myorganizer/core';
 import {
+  calculateMonthlyEquivalents,
   SubscriptionStatusEnum,
   type CurrencyCode,
-  type SubscriptionBillingCycle,
 } from '@myorganizer/vault-core';
 import {
   normalizeSubscriptions,
@@ -40,16 +40,6 @@ type Summary = {
   monthlyEquivalents: Array<{ currency: CurrencyCode; amount: number }>;
 };
 
-const MONTHLY_EQUIVALENT_FACTORS = {
-  weekly: 52 / 12,
-  fortnightly: 26 / 12,
-  monthly: 1,
-  quarterly: 1 / 3,
-  yearly: 1 / 12,
-  twoYears: 1 / 24,
-  threeYears: 1 / 36,
-} as const satisfies Record<SubscriptionBillingCycle, number>;
-
 interface SubscriptionsContentProps {
   handle: VaultHandle;
 }
@@ -76,27 +66,14 @@ function SubscriptionsContent({ handle }: SubscriptionsContentProps) {
       .then((raw) => {
         if (!isActive) return;
         const { value } = normalizeSubscriptions(raw);
-        const active = value.filter(
+        const activeCount = value.filter(
           (s) => s.status === SubscriptionStatusEnum.Active,
-        );
-
-        const monthlyEquivalentByCurrency = new Map<CurrencyCode, number>();
-        for (const s of active) {
-          const factor = MONTHLY_EQUIVALENT_FACTORS[s.billingCycle];
-          const monthlyEquivalent = s.amount * factor;
-          monthlyEquivalentByCurrency.set(
-            s.currency,
-            (monthlyEquivalentByCurrency.get(s.currency) ?? 0) +
-              monthlyEquivalent,
-          );
-        }
+        ).length;
 
         setSummary({
-          active: active.length,
+          active: activeCount,
           total: value.length,
-          monthlyEquivalents: Array.from(
-            monthlyEquivalentByCurrency.entries(),
-          ).map(([currency, amount]) => ({ currency, amount })),
+          monthlyEquivalents: calculateMonthlyEquivalents(value),
         });
       })
       .catch(() => {

@@ -4,6 +4,11 @@ import {
   SubscriptionRenewalTypeEnum,
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
+  type SubscriptionBillingCycle,
+  type SubscriptionPaymentMethod,
+  type SubscriptionRenewalType,
+  type SubscriptionStatus,
+  type SubscriptionTier,
 } from '@myorganizer/vault-core';
 import { format, isValid, parseISO } from 'date-fns';
 
@@ -21,15 +26,22 @@ function fallbackLabel(raw: string) {
   return titleCase(spaced);
 }
 
-const statusLabels: Record<string, string> = {
+// Pinned to each enum's member set (ADR 0053): a status, cycle, method,
+// renewal type, or tier added to its enum and not here fails to compile
+// instead of silently falling back to a title-cased guess. The lookup
+// functions below still fall back for a raw value that is not a member at
+// all — decrypted data written by a build with a different enum — which
+// `satisfies` cannot see coming from data rather than from code.
+
+const statusLabels = {
   [SubscriptionStatusEnum.Active]: 'Active',
   [SubscriptionStatusEnum.Inactive]: 'Inactive',
   [SubscriptionStatusEnum.Cancelled]: 'Cancelled',
   [SubscriptionStatusEnum.Expired]: 'Expired',
   [SubscriptionStatusEnum.Pending]: 'Pending',
-};
+} as const satisfies Record<SubscriptionStatus, string>;
 
-const billingCycleLabels: Record<string, string> = {
+const billingCycleLabels = {
   [SubscriptionBillingCycleEnum.Weekly]: 'Weekly',
   [SubscriptionBillingCycleEnum.Fortnightly]: 'Fortnightly',
   [SubscriptionBillingCycleEnum.Monthly]: 'Monthly',
@@ -37,46 +49,56 @@ const billingCycleLabels: Record<string, string> = {
   [SubscriptionBillingCycleEnum.Yearly]: 'Yearly',
   [SubscriptionBillingCycleEnum.TwoYears]: 'Every 2 years',
   [SubscriptionBillingCycleEnum.ThreeYears]: 'Every 3 years',
-};
+} as const satisfies Record<SubscriptionBillingCycle, string>;
 
-const paymentMethodLabels: Record<string, string> = {
+const paymentMethodLabels = {
   [SubscriptionPaymentMethodEnum.CreditCard]: 'Credit Card',
   [SubscriptionPaymentMethodEnum.PayPal]: 'PayPal',
   [SubscriptionPaymentMethodEnum.BankTransfer]: 'Bank Transfer',
-};
+} as const satisfies Record<SubscriptionPaymentMethod, string>;
 
-const renewalTypeLabels: Record<string, string> = {
+const renewalTypeLabels = {
   [SubscriptionRenewalTypeEnum.AutoRenew]: 'Auto renew',
   [SubscriptionRenewalTypeEnum.Manual]: 'Manual',
-};
+} as const satisfies Record<SubscriptionRenewalType, string>;
 
-const tierLabels: Record<string, string> = {
+const tierLabels = {
   [SubscriptionTierEnum.Free]: 'Free',
   [SubscriptionTierEnum.Basic]: 'Basic',
   [SubscriptionTierEnum.Pro]: 'Pro',
   [SubscriptionTierEnum.Enterprise]: 'Enterprise',
   [SubscriptionTierEnum.Individual]: 'Individual',
   [SubscriptionTierEnum.Family]: 'Family',
-};
+} as const satisfies Record<SubscriptionTier, string>;
 
 export function getSubscriptionStatusLabel(value: string) {
-  return statusLabels[value] ?? fallbackLabel(value);
+  return (
+    (statusLabels as Record<string, string>)[value] ?? fallbackLabel(value)
+  );
 }
 
 export function getSubscriptionBillingCycleLabel(value: string) {
-  return billingCycleLabels[value] ?? fallbackLabel(value);
+  return (
+    (billingCycleLabels as Record<string, string>)[value] ??
+    fallbackLabel(value)
+  );
 }
 
 export function getSubscriptionPaymentMethodLabel(value: string) {
-  return paymentMethodLabels[value] ?? fallbackLabel(value);
+  return (
+    (paymentMethodLabels as Record<string, string>)[value] ??
+    fallbackLabel(value)
+  );
 }
 
 export function getSubscriptionRenewalTypeLabel(value: string) {
-  return renewalTypeLabels[value] ?? fallbackLabel(value);
+  return (
+    (renewalTypeLabels as Record<string, string>)[value] ?? fallbackLabel(value)
+  );
 }
 
 export function getSubscriptionTierLabel(value: string) {
-  return tierLabels[value] ?? fallbackLabel(value);
+  return (tierLabels as Record<string, string>)[value] ?? fallbackLabel(value);
 }
 
 export function formatIsoDateForDisplay(iso?: string) {

@@ -16,7 +16,9 @@ import { DetailsScreen } from './DetailsScreen';
 import { GroceriesScreen } from './GroceriesScreen';
 import { GroceryTripScreen } from './GroceryTripScreen';
 import { GROCERIES_ROUTES } from './groceriesStack';
+import { SubscriptionDetailScreen } from './SubscriptionDetailScreen';
 import { SubscriptionsScreen } from './SubscriptionsScreen';
+import { SUBSCRIPTIONS_ROUTES } from './subscriptionsStack';
 import { TaskDetailScreen } from './TaskDetailScreen';
 import { TasksScreen } from './TasksScreen';
 import { TASKS_ROUTES } from './tasksStack';
@@ -106,7 +108,9 @@ const TAB_STACKS = {
   Tasks: tabStack('Tasks', TasksScreen, [
     { name: TASKS_ROUTES.detail, component: TaskDetailScreen },
   ]),
-  Subscriptions: tabStack('Subscriptions', SubscriptionsScreen),
+  Subscriptions: tabStack('Subscriptions', SubscriptionsScreen, [
+    { name: SUBSCRIPTIONS_ROUTES.detail, component: SubscriptionDetailScreen },
+  ]),
   Details: tabStack('Details', DetailsScreen),
   Account: tabStack('Account', AccountScreen),
 } as const satisfies Record<TabName, React.ComponentType>;

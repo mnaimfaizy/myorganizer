@@ -5,6 +5,7 @@ export * from './grocery';
 export * from './groceryCategories';
 export * from './groceryEdit';
 export * from './mergeVaultRecords';
+export * from './subscriptionMonthlyEquivalent';
 export * from './subscriptionRecordMerge';
 export * from './subscriptionRecords';
 export * from './task';
