@@ -177,7 +177,7 @@ runs:
         claude_args: >-
           --model ${{ inputs.model }}
           --max-turns 80
-          --allowedTools "Read,Glob,Grep,Write(tmp/code-review/**),Edit(tmp/code-review/**),Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+          --allowedTools "Read,Glob,Grep,Write(tmp/code-review/**),Edit(tmp/code-review/**),Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree add:*),Bash(git worktree list:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
 
     # A reviewer stopped by the five-hour subscription window produces no
     # report, which is indistinguishable from a reviewer that read the diff and

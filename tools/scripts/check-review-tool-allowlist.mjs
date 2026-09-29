@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Asserts that every command the code-review skill and the Review Checklist
-// instruct the reviewer to run is a command the reviewer's tool allowlist
-// permits.
+// Asserts that the reviewer's tool allowlist and the repository's project
+// settings agree: every instructed command is permitted, none is intercepted
+// by an ask or deny rule, and no Bash grant is wholly or partly retracted by
+// one of those rules.
 //
 //   node tools/scripts/check-review-tool-allowlist.mjs [--print]
 //
@@ -79,7 +80,7 @@
 // command, refused while `Bash(node:*)` was granted
 // (docs/research/2026-09-22-a-project-ask-rule-is-a-refusal-in-ci.md, ADR 0099).
 //
-// So this checker asserts two directions, and both are needed:
+// So this checker asserts three directions, and all three are needed:
 //
 //   1. Every instructed command is *permitted* by `--allowedTools`. An
 //      instruction nothing grants is an instruction nothing can carry out.
@@ -87,16 +88,35 @@
 //      `.claude/settings.json`. A grant an interposed rule overrides is a
 //      permission the reviewer does not actually have, which is exactly the
 //      gap direction 1 passed straight through for two runs.
+//   3. No `--allowedTools` Bash grant is *retracted*, wholly or partly, by an
+//      `ask` or `deny` rule in `.claude/settings.json`. Direction 2 only sees
+//      a command a document instructs. A grant the reviewer reaches for on
+//      its own is refused the same way, and direction 2 stays green because
+//      nobody was told to run it. Golden replay run 35714717480 spent 9
+//      permission denials on exactly that: commands the allowlist names and
+//      the project settings retract (ADR 0099). "Wholly" means the rule
+//      matches every command the grant permits (`Bash(find:*)` against the
+//      same rule). "Partly" means it matches a narrower form, which is the
+//      damaging case: `Bash(node:*)` still looks granted while
+//      `Bash(node -e:*)` takes the inline-script form out from under it.
+//      Matching is the same token-wise reading as direction 2, so
+//      `git merge-base` is not `git merge`. A pair can be exempted, with a
+//      written reason, when the rule has to stay and the grant is still the
+//      one the reviewer should have; an exemption that matches no live pair
+//      is stale and the check cannot run.
 //
-// No third direction is asserted, and the omission is deliberate: an
-// `--allowedTools` entry matching no instruction is *not* failed here. #715
-// removed `Bash(sed -n:*)` on that reading and the reviewer was refused `sed`
-// anyway — the entry was never what refused it. An unused grant costs a turn
-// only if something instructs it, which direction 1 already covers.
+// One direction is still not asserted, and the omission is deliberate: an
+// `--allowedTools` entry matching no instruction and retracted by no rule is
+// *not* failed here. #715 removed `Bash(sed -n:*)` on that reading and the
+// reviewer was refused `sed` anyway — the entry was never what refused it.
+// An unused grant costs a turn only if something instructs it (direction 1)
+// or a rule retracts it (direction 3).
 //
-// Exit 0 = every instructed command is permitted and none is intercepted.
-// Exit 1 = at least one is refused, each named with its instruction site and
-// either the nearest allow entry or the interposed rule. Exit 2 = could not run.
+// Exit 0 = every instructed command is permitted, none is intercepted, and
+// no grant is retracted. Exit 1 = at least one is refused or retracted, each
+// named with its instruction site or its grant and the interposed rule.
+// Exit 2 = could not run, including a suppression or a grant exemption that
+// matches nothing.
 import { readFileSync } from 'node:fs';
 
 import { tokenize } from './lib/shell-command.mjs';
@@ -751,6 +771,135 @@ export function formatFinding({ site, nearest }) {
   return lines.join('\n');
 }
 
+/**
+ * Written exemptions from direction 3. A pair is `{ grant, rule, reason }`,
+ * matched on the raw text of the `--allowedTools` entry and the interposed
+ * rule — `Bash(git worktree remove *)` and `Bash(git worktree remove:*)` are
+ * the same prefix to the matcher and are not the same line in the file.
+ *
+ * An entry matching no live retraction fails the check (exit 2). A
+ * suppression for an overlap that is gone is a hole the next one falls into.
+ *
+ * Empty on purpose. The overlaps this direction was built for were resolved
+ * by changing the grant — `Bash(find:*)` dropped, because the skill sends the
+ * reviewer to Glob and Grep, and `Bash(git worktree:*)` narrowed to `add` and
+ * `list`, because `remove` is not the reviewer's to run (ADR 0099) — rather
+ * than by keeping them. The `node -e` and `node --eval` ask rules are not in
+ * `.claude/settings.json` (ADR 0106), so an exemption for them would be the
+ * stale case.
+ */
+export const GRANT_RETRACTION_EXEMPTIONS = [];
+
+/**
+ * A token substituted for `*` when building a command an entry permits.
+ * Letters only: it must not be read as an unfixed token, and it must not
+ * split on whitespace.
+ */
+const WITNESS = 'zzwitness';
+
+const concreteCommands = (entry) => {
+  if (entry.kind === 'tool' || entry.tokens.length === 0) return [];
+  const concrete = entry.tokens.map((token) => token.replace(/\*/g, WITNESS));
+  if (entry.kind === 'exact') return [concrete];
+  return [concrete, [...concrete, WITNESS]];
+};
+
+/**
+ * How an interposed rule takes a grant back, or `null` when no command is in
+ * both sets.
+ *
+ * `wholly` — every witness command the grant permits, the rule matches too.
+ * `partly` — at least one command is in both sets, and the grant still
+ * permits something the rule does not. The witnesses are the entry's own
+ * tokens, with `*` filled in, plus one extra token for a prefix or a glob,
+ * which is enough to tell "the same command" from "a narrower form" for the
+ * rule shapes this file actually contains. A prefix grant against a rule
+ * whose first token is itself a glob also tries the grant's tokens with the
+ * rule's pattern appended, because neither entry's own command is in the
+ * intersection (`git push` is not `*--force*`, and `*--force*` is not
+ * `git push`) while `git push --force` is in both.
+ */
+export function retractionExtent(grant, rule) {
+  if (grant.kind === 'tool' || rule.kind === 'tool') return null;
+  const grantCommands = concreteCommands(grant).filter((command) =>
+    matchesEntry(grant, command),
+  );
+  const candidates = [...grantCommands, ...concreteCommands(rule)];
+  if (grant.kind === 'prefix' && rule.tokens[0]?.includes('*')) {
+    candidates.push([
+      ...grant.tokens,
+      ...rule.tokens.map((token) => token.replace(/\*/g, WITNESS)),
+    ]);
+  }
+  const inBoth = (command) =>
+    matchesEntry(grant, command) &&
+    matchesEntry(rule, command, { unfixedMatches: false });
+  if (!candidates.some(inBoth)) return null;
+  if (
+    grantCommands.length === 0 ||
+    !grantCommands.every((command) =>
+      matchesEntry(rule, command, { unfixedMatches: false }),
+    )
+  )
+    return 'partly';
+  return 'wholly';
+}
+
+/**
+ * Compares Bash grants with the interposed rules.
+ *
+ * Returns `{ ok, retractions, exempted, staleExemptions }`. A retraction is
+ * one grant a rule takes back, with `extent` `wholly` or `partly`. An
+ * exemption names that pair and is not a retraction; an exemption naming no
+ * pair is stale, which the caller treats as "could not run".
+ */
+export function assertGrantRetractions({
+  entries = [],
+  interposed = [],
+  exemptions = GRANT_RETRACTION_EXEMPTIONS,
+}) {
+  const found = [];
+  for (const grant of entries) {
+    if (grant.kind === 'tool') continue;
+    for (const rule of interposed) {
+      const extent = retractionExtent(grant, rule);
+      if (extent) found.push({ grant, rule, extent });
+    }
+  }
+
+  const used = new Set();
+  const retractions = [];
+  const exempted = [];
+  for (const retraction of found) {
+    const exemption = exemptions.find(
+      (candidate) =>
+        candidate.grant === retraction.grant.raw &&
+        candidate.rule === retraction.rule.raw,
+    );
+    if (exemption) {
+      used.add(exemption);
+      exempted.push({ ...retraction, exemption });
+      continue;
+    }
+    retractions.push(retraction);
+  }
+
+  return {
+    ok: retractions.length === 0 && used.size === exemptions.length,
+    retractions,
+    exempted,
+    staleExemptions: exemptions.filter((exemption) => !used.has(exemption)),
+  };
+}
+
+/** One retracted grant, as the lines a reader needs to act on it. */
+export function formatRetraction({ grant, rule, extent }) {
+  return [
+    `  - ${grant.raw} is ${extent} retracted`,
+    `      by: ${rule.raw} in ${SETTINGS} (permissions.${rule.list})`,
+  ].join('\n');
+}
+
 const main = () => {
   let action;
   try {
@@ -818,6 +967,8 @@ const main = () => {
   }
 
   const result = assertToolAllowlist({ entries, sites, interposed });
+  const grants = assertGrantRetractions({ entries, interposed });
+  const bashGrants = entries.filter((entry) => entry.kind !== 'tool');
 
   if (process.argv.includes('--print')) {
     for (const entry of entries)
@@ -834,6 +985,17 @@ const main = () => {
       console.log(
         `interposed: ${rule.raw} (permissions.${rule.list})${rule.kind === 'tool' ? ' — not a command' : ''}`,
       );
+    for (const retraction of grants.retractions)
+      console.log(
+        `retracted: ${retraction.extent} ${retraction.grant.raw} by ${retraction.rule.raw} (permissions.${retraction.rule.list})`,
+      );
+    for (const { grant, rule, exemption } of grants.exempted)
+      console.log(
+        `exempt-grant: ${grant.raw} / ${rule.raw} — ${exemption.reason}`,
+      );
+    console.log(
+      `direction 3: ${grants.retractions.length} retraction(s), ${grants.exempted.length} exemption(s) across ${bashGrants.length} Bash grant(s)`,
+    );
   }
 
   if (result.staleExemptions.length) {
@@ -844,6 +1006,20 @@ const main = () => {
       console.error(`  - \`${exemption.command}\` — "${exemption.reason}"`);
     console.error(
       '\nDrop the entry. A suppression for an instruction nobody gives is a hole the next one falls into.',
+    );
+    process.exit(2);
+  }
+
+  if (grants.staleExemptions.length) {
+    console.error(
+      `review-allowlist: ${grants.staleExemptions.length} grant exemption(s) match no retraction:`,
+    );
+    for (const exemption of grants.staleExemptions)
+      console.error(
+        `  - \`${exemption.grant}\` / \`${exemption.rule}\` — "${exemption.reason}"`,
+      );
+    console.error(
+      '\nDrop the entry. An exemption for an overlap that is not there hides the next one.',
     );
     process.exit(2);
   }
@@ -881,11 +1057,29 @@ const main = () => {
     process.exit(1);
   }
 
+  if (grants.retractions.length) {
+    console.error(
+      `review-allowlist: ${grants.retractions.length} finding(s) — an --allowedTools Bash grant is retracted by a rule in ${SETTINGS}\n`,
+    );
+    for (const retraction of grants.retractions)
+      console.error(formatRetraction(retraction));
+    console.error(
+      `\nClaude Code evaluates deny, then ask, then allow, so the rule outranks the grant, and in a` +
+        '\nheadless run an `ask` is a refusal (ADR 0099). Direction 2 does not see this: it only' +
+        '\ncompares commands a document instructs. Drop the grant, narrow it to a form no rule' +
+        '\nmatches, or exempt the pair with a written reason in GRANT_RETRACTION_EXEMPTIONS.' +
+        '\nGolden replay run 35714717480 spent 9 permission denials on grants retracted this way.',
+    );
+    process.exit(1);
+  }
+
   console.log(
     `review-allowlist: OK — ${result.permitted.length} instructed command(s) across ` +
       `${INSTRUCTION_SOURCES.length} documents are permitted by ${ACTION} ` +
       `and intercepted by none of ${SETTINGS}'s ${interposed.length} ask/deny rule(s) ` +
-      `(${result.exempted.length} site(s) suppressed by written reason)`,
+      `(${result.exempted.length} site(s) suppressed by written reason); ` +
+      `${bashGrants.length} Bash grant(s), none retracted ` +
+      `(${grants.exempted.length} exempted)`,
   );
 };
 
