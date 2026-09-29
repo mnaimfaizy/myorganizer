@@ -1,259 +1,399 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { useAuth } from '@myorganizer/mobile/feat-auth';
+import React, { useEffect, useState } from 'react';
+import { Linking, Platform, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  DEFAULT_AUTO_LOCK_DELAY,
+  readAppVersion,
+  type AppVersion,
+} from '@myorganizer/mobile/core';
+import {
+  useAuth,
+  WEB_APP_URL,
+  webAppPath,
+} from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import {
   BottomSheet,
   Button,
   ConfirmSheet,
   Icon,
+  InlineNotice,
   ListRow,
   ListSection,
   MenuSheet,
   OfflineBanner,
   Screen,
+  SegmentedControl,
   Switch,
   Text,
   TextField,
+  useLargeTitleCollapse,
   useTheme,
 } from '@myorganizer/mobile/ui';
+import {
+  APPEARANCE_SEGMENTS,
+  AUTO_LOCK_CHOICES,
+  autoLockOptions,
+  describeBiometricEnable,
+  describeBiometricRow,
+  displayName,
+  formatAppVersion,
+  initialsFor,
+  type AccountPlatform,
+} from './accountScreenLogic';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
 import { useAccountScreenState } from './useAccountScreenState';
 
-export function AccountScreen(): React.JSX.Element {
+/** The avatar's side, as the Account sheet draws it. No token carries 56. */
+const AVATAR_SIZE = 56;
+
+/**
+ * How far the Biometric Unlock row is dimmed when the device has no biometric
+ * enrolled — the sheet's 0.55, lighter than a disabled row's 0.4 so the line
+ * saying where to set it up stays readable.
+ */
+const UNAVAILABLE_OPACITY = 0.55;
+
+const PLATFORM: AccountPlatform = Platform.OS === 'ios' ? 'ios' : 'android';
+
+export type { AppVersion };
+
+export interface AccountScreenProps {
+  /**
+   * What the About section's Version row shows. Read from the native bundle
+   * (`readAppVersion`) unless a caller supplies it; the row is left out when
+   * there is none, rather than showing a number written here by hand that
+   * goes stale on the next release.
+   */
+  appVersion?: AppVersion | null;
+}
+
+/** The trailing note on a section whose settings belong to this device. */
+function ThisPhone(): React.JSX.Element {
+  const theme = useTheme();
+  return (
+    <View style={[styles.inline, { gap: theme.spacing.xs }]}>
+      <Icon name="phone" size={12} color="mutedForeground" />
+      <Text variant="caption" color="mutedForeground">
+        this phone
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * A switch drawn for sight inside a row that is itself announced as the
+ * switch (`ListRow`'s `toggle`), so a screen reader meets it once.
+ */
+function RowSwitch({
+  value,
+  onValueChange,
+  disabled,
+  label,
+  placeholder = false,
+}: {
+  value: boolean;
+  onValueChange: (value: boolean) => void;
+  disabled?: boolean;
+  label: string;
+  /** Holds the switch's place without showing an answer — still loading. */
+  placeholder?: boolean;
+}): React.JSX.Element {
+  return (
+    <View
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+      pointerEvents={placeholder ? 'none' : 'auto'}
+      style={placeholder && styles.placeholder}
+    >
+      <Switch
+        value={value}
+        onValueChange={onValueChange}
+        disabled={disabled}
+        accessibilityLabel={label}
+      />
+    </View>
+  );
+}
+
+/** A row that leaves the app for the web: the sheet's external-link glyph. */
+function ExternalGlyph(): React.JSX.Element {
+  return <Icon name="external" size={18} color="mutedForeground" />;
+}
+
+export function AccountScreen({
+  appVersion = readAppVersion(),
+}: AccountScreenProps = {}): React.JSX.Element {
   const theme = useTheme();
   const { user } = useAuth();
-  const { lock } = useVaultSession();
+  const { lock, biometric } = useVaultSession();
   const accountState = useAccountScreenState();
+  const { collapsed, onScroll, scrollEventThrottle } = useLargeTitleCollapse();
   // The passphrase typed into the enable sheet. Held only while the sheet is
   // open and dropped as it closes, so it never outlives the one check it is for.
   const [enablePassphrase, setEnablePassphrase] = useState('');
+  const enableOpen = accountState.sheet === 'biometricEnable';
 
-  const closeBiometricEnable = (): void => {
-    accountState.setShowBiometricEnable(false);
-    accountState.setBiometricError(null);
-    setEnablePassphrase('');
-  };
+  useEffect(() => {
+    if (!enableOpen) setEnablePassphrase('');
+  }, [enableOpen]);
 
-  useFocusEffect(
-    useCallback(() => {
-      // Trigger state refresh on focus
-      // The hook handles this internally via refreshKey
-    }, []),
+  const biometricRow = describeBiometricRow(
+    biometric.state,
+    biometric.method,
+    PLATFORM,
+  );
+  const autoLockItems = autoLockOptions(DEFAULT_AUTO_LOCK_DELAY).map(
+    (option) => ({
+      id: option.value,
+      label: option.label,
+      selected: option.value === accountState.autoLockDelay,
+      onPress: () => accountState.handleAutoLockChange(option.value),
+    }),
   );
 
-  const initials = useMemo(() => {
-    if (!user) return '?';
-    const first = user.firstName?.charAt(0)?.toUpperCase() ?? '';
-    const last = user.lastName?.charAt(0)?.toUpperCase() ?? '';
-    return (first + last).slice(0, 2) || '?';
-  }, [user]);
+  const name = displayName(user);
 
-  const autoLockDelayOptions = [
-    { id: 'immediately', label: 'Immediately', value: 'immediately' as const },
-    { id: '1m', label: '1 minute', value: '1m' as const },
-    { id: '5m', label: '5 minutes', value: '5m' as const },
-    { id: '15m', label: '15 minutes', value: '15m' as const },
-  ];
+  const submitEnable = (): void => {
+    if (enablePassphrase.length === 0 || accountState.biometricBusy) return;
+    void accountState
+      .handleBiometricEnable(enablePassphrase)
+      .then(() => setEnablePassphrase(''));
+  };
 
-  const appearanceOptions = [
-    { id: 'system', label: 'System', value: 'system' as const },
-    { id: 'light', label: 'Light', value: 'light' as const },
-    { id: 'dark', label: 'Dark', value: 'dark' as const },
-  ];
+  const closeEnable = (): void => {
+    if (accountState.biometricBusy) return;
+    accountState.closeSheet();
+  };
+
+  const biometricUnavailable = biometricRow.kind === 'unavailable';
+  const biometricLoading = biometricRow.kind === 'loading';
 
   return (
     <>
-      <Screen edges={TAB_SCREEN_EDGES} style={styles.container}>
-        <TabScreenHeader title="Account" />
+      <Screen edges={TAB_SCREEN_EDGES} noPadding>
+        <TabScreenHeader title="Account" collapsed={collapsed} />
 
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
-          scrollIndicatorInsets={{
-            right: 1,
-            bottom: 1,
-          }}
+          onScroll={onScroll}
+          scrollEventThrottle={scrollEventThrottle}
+          contentContainerStyle={{ paddingBottom: theme.spacing.lg }}
         >
-          <View style={[styles.content, { gap: theme.spacing.md }]}>
-            {/* User Header */}
+          <View
+            style={[
+              styles.inline,
+              {
+                marginHorizontal: theme.spacing.md,
+                // The sheet draws a 14 gap, which rounds to `md`.
+                gap: theme.spacing.md,
+                paddingTop: theme.spacing.xs,
+                paddingBottom: theme.spacing.sm,
+              },
+            ]}
+          >
             <View
-              style={[
-                styles.userHeader,
-                { paddingHorizontal: theme.spacing.md },
-              ]}
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              style={[styles.avatar, { backgroundColor: theme.colors.muted }]}
             >
-              <View
-                style={[styles.avatar, { backgroundColor: theme.colors.brand }]}
-              >
-                <Text variant="title" color="foreground">
-                  {initials}
-                </Text>
-              </View>
-              <View style={styles.userInfo}>
-                <Text variant="titleLg">
-                  {user?.firstName} {user?.lastName}
-                </Text>
-                <Text variant="bodySm" color="mutedForeground">
-                  {user?.email}
-                </Text>
-                <Text variant="caption" color="mutedForeground">
-                  Settings on this device don't sync
-                </Text>
-              </View>
+              <Text variant="title">{initialsFor(user)}</Text>
             </View>
-
-            {/* Security Section */}
-            <ListSection title="Security">
-              <ListRow title="Lock Vault Now" onPress={() => lock('manual')} />
-
-              <ListRow
-                title="Biometric Unlock"
-                subtitle={
-                  accountState.biometricLabel === 'Not available on this device'
-                    ? 'Set up biometrics in Settings'
-                    : accountState.biometricLabel
-                }
-                trailing={
-                  accountState.biometricLabel === 'Loading...' ? (
-                    <></>
-                  ) : (
-                    <Switch
-                      value={accountState.biometricEnabled}
-                      onValueChange={(value) => {
-                        if (value && accountState.biometricDisabled) {
-                          accountState.setShowBiometricEnable(true);
-                        } else if (!value && accountState.biometricEnabled) {
-                          accountState.setShowBiometricDisableConfirm(true);
-                        }
-                      }}
-                      disabled={
-                        accountState.biometricLabel === 'Loading...' ||
-                        accountState.biometricLabel ===
-                          'Not available on this device'
-                      }
-                    />
-                  )
-                }
-              />
-
-              <ListRow
-                title="Auto-Lock"
-                subtitle={accountState.autoLockLabel}
-                onPress={() => accountState.setShowAutoLockMenu(true)}
-              />
-
-              <ListRow
-                title="Keep Screen Awake"
-                subtitle="During shopping trips"
-                trailing={
-                  <Switch
-                    value={accountState.keepScreenAwake}
-                    onValueChange={(value) =>
-                      accountState.handleKeepScreenAwakeChange(value)
-                    }
-                  />
-                }
-              />
-            </ListSection>
-
-            {/* Appearance Section */}
-            <ListSection title="Appearance">
-              <ListRow
-                title="Theme"
-                subtitle={accountState.appearanceLabel}
-                onPress={() => accountState.setShowAppearanceMenu(true)}
-              />
-            </ListSection>
-
-            {/* Manage on Web Section */}
-            <ListSection title="Manage">
-              <ListRow
-                title="Manage on the Web"
-                subtitle="Settings that sync across devices"
-                trailing={<Icon name="chevronRight" />}
-                onPress={() => {
-                  // TODO: Open web app
-                }}
-              />
-            </ListSection>
-
-            {/* About Section */}
-            <ListSection title="About">
-              <ListRow title="Version" subtitle="1.0.0" />
-              <ListRow title="Build" subtitle="1" />
-              <ListRow
-                title="Privacy Policy"
-                trailing={<Icon name="chevronRight" />}
-                onPress={() => {
-                  // TODO: Open privacy policy
-                }}
-              />
-              <ListRow
-                title="Terms of Service"
-                trailing={<Icon name="chevronRight" />}
-                onPress={() => {
-                  // TODO: Open terms of service
-                }}
-              />
-            </ListSection>
-
-            {/* Logout */}
-            <View style={{ paddingHorizontal: theme.spacing.md }}>
-              <Button
-                label="Log Out"
-                variant="destructive"
-                onPress={() => accountState.setShowLogoutConfirm(true)}
-              />
+            <View style={styles.identity}>
+              {name.length > 0 && (
+                <Text variant="title" numberOfLines={1}>
+                  {name}
+                </Text>
+              )}
+              {user?.email != null && (
+                <Text
+                  variant="bodySm"
+                  color="mutedForeground"
+                  numberOfLines={1}
+                >
+                  {user.email}
+                </Text>
+              )}
             </View>
           </View>
+
+          <InlineNotice
+            variant="card"
+            tone="info"
+            icon="phone"
+            message="Settings on this tab belong to this phone. They don’t sync to your other devices or to the web."
+            style={{
+              marginHorizontal: theme.spacing.md,
+              // The sheet's 12 falls between two steps; a tie rounds up.
+              marginTop: theme.spacing.md,
+            }}
+          />
+
+          <ListSection title="Security" meta={<ThisPhone />} inset>
+            <ListRow
+              title="Lock Vault now"
+              leadingIcon="lock"
+              leadingIconColor="brand"
+              onPress={() => lock('manual')}
+            />
+            <ListRow
+              title="Biometric Unlock"
+              subtitle={biometricRow.subtitle ?? undefined}
+              leadingIcon={biometricRow.icon}
+              toggle={{
+                value: biometricRow.on,
+                disabled: biometricUnavailable || biometricLoading,
+              }}
+              onPress={
+                biometricUnavailable || biometricLoading
+                  ? undefined
+                  : () => accountState.handleBiometricToggle(!biometricRow.on)
+              }
+              style={biometricUnavailable && styles.unavailable}
+              trailing={
+                <RowSwitch
+                  label="Biometric Unlock"
+                  value={biometricRow.on}
+                  disabled={biometricUnavailable}
+                  placeholder={biometricLoading}
+                  onValueChange={accountState.handleBiometricToggle}
+                />
+              }
+            />
+            <ListRow
+              title="Auto-lock"
+              leadingIcon="timer"
+              accessibilityLabel={`Auto-lock, ${
+                AUTO_LOCK_CHOICES[accountState.autoLockDelay].option
+              }`}
+              onPress={() => accountState.openSheet('autoLock')}
+              trailing={
+                <Text variant="body" color="mutedForeground" numberOfLines={1}>
+                  {AUTO_LOCK_CHOICES[accountState.autoLockDelay].row}
+                </Text>
+              }
+              chevron
+            />
+            <ListRow
+              title="Keep screen awake on a trip"
+              subtitle="While a Grocery List is open."
+              leadingIcon="sun"
+              toggle={{ value: accountState.keepScreenAwake }}
+              onPress={() =>
+                accountState.handleKeepScreenAwakeChange(
+                  !accountState.keepScreenAwake,
+                )
+              }
+              trailing={
+                <RowSwitch
+                  label="Keep screen awake on a trip"
+                  value={accountState.keepScreenAwake}
+                  onValueChange={accountState.handleKeepScreenAwakeChange}
+                />
+              }
+            />
+          </ListSection>
+
+          <ListSection title="Appearance" meta={<ThisPhone />} inset>
+            {/* The sheet pads the control 12 in, halfway between two steps. */}
+            <View style={{ padding: theme.spacing.md }}>
+              <SegmentedControl
+                accessibilityLabel="Appearance"
+                segments={APPEARANCE_SEGMENTS}
+                value={accountState.appearance}
+                onChange={accountState.handleAppearanceChange}
+              />
+            </View>
+          </ListSection>
+
+          <ListSection title="Manage on the web" inset>
+            <ListRow
+              title="Open the web app"
+              subtitle="Vault export, Recovery Key, passphrase changes, and creating accounts or Vaults are managed on the web."
+              leadingIcon="globe"
+              trailing={<ExternalGlyph />}
+              onPress={() => void Linking.openURL(WEB_APP_URL)}
+            />
+          </ListSection>
+
+          <ListSection title="About" inset>
+            {appVersion != null && (
+              <ListRow
+                title="Version"
+                leadingIcon="info"
+                trailing={
+                  <Text
+                    variant="body"
+                    color="mutedForeground"
+                    numberOfLines={1}
+                    style={styles.figures}
+                  >
+                    {formatAppVersion(appVersion.version, appVersion.build)}
+                  </Text>
+                }
+              />
+            )}
+            <ListRow
+              title="Privacy"
+              leadingIcon="shield"
+              trailing={<ExternalGlyph />}
+              onPress={() => void Linking.openURL(webAppPath('/privacy'))}
+            />
+            <ListRow
+              title="Terms"
+              leadingIcon="document"
+              trailing={<ExternalGlyph />}
+              onPress={() => void Linking.openURL(webAppPath('/terms'))}
+            />
+          </ListSection>
+
+          <Button
+            label="Log out"
+            variant="destructive"
+            icon="logout"
+            onPress={() => accountState.openSheet('logout')}
+            style={{
+              marginTop: theme.spacing.lg,
+              marginHorizontal: theme.spacing.md,
+            }}
+          />
         </ScrollView>
 
         <OfflineBanner />
       </Screen>
 
-      {/* Biometric Enable Sheet */}
+      {/* Not drawn on the Account page: built from the Foundation sheet
+          parts, in the Account voice. The passphrase is asked for even
+          though the Vault is unlocked (ADR 0108 decision 1). */}
       <BottomSheet
-        visible={accountState.showBiometricEnable}
-        onDismiss={() => {
-          if (!accountState.biometricBusy) closeBiometricEnable();
-        }}
+        visible={enableOpen}
+        onDismiss={closeEnable}
         title="Turn on Biometric Unlock?"
       >
-        <Text variant="body" color="mutedForeground">
-          Enter your passphrase, then pass the biometric check. Your key stays
-          on this device, and your passphrase and Recovery Key keep working.
+        <Text variant="bodySm" color="popoverForeground">
+          {describeBiometricEnable(biometric.method, PLATFORM)}
         </Text>
 
         <View style={{ marginTop: theme.spacing.md }}>
           <TextField
             label="Passphrase"
             value={enablePassphrase}
-            onChangeText={setEnablePassphrase}
+            onChangeText={(text) => {
+              setEnablePassphrase(text);
+              if (accountState.biometricError != null) {
+                accountState.setBiometricError(null);
+              }
+            }}
+            error={accountState.biometricError ?? undefined}
             secureTextEntry
             autoCapitalize="none"
             autoCorrect={false}
+            autoComplete="current-password"
             textContentType="password"
+            returnKeyType="go"
             editable={!accountState.biometricBusy}
-            onSubmitEditing={() => {
-              if (enablePassphrase.length > 0) {
-                void accountState
-                  .handleBiometricEnable(enablePassphrase)
-                  .then(() => setEnablePassphrase(''));
-              }
-            }}
+            onSubmitEditing={submitEnable}
           />
         </View>
-
-        {accountState.biometricError != null && (
-          <View
-            style={[styles.noticeContainer, { marginTop: theme.spacing.md }]}
-          >
-            <Text variant="bodySm" color="destructive">
-              {accountState.biometricError}
-            </Text>
-          </View>
-        )}
 
         <View
           style={[
@@ -262,120 +402,83 @@ export function AccountScreen(): React.JSX.Element {
           ]}
         >
           <Button
-            label="Turn On"
-            icon="biometric"
+            label="Turn on"
+            variant="brand"
             busy={accountState.biometricBusy}
-            disabled={
-              accountState.biometricBusy || enablePassphrase.length === 0
-            }
-            onPress={() =>
-              void accountState
-                .handleBiometricEnable(enablePassphrase)
-                .then(() => setEnablePassphrase(''))
-            }
+            disabled={enablePassphrase.length === 0}
+            onPress={submitEnable}
           />
           <Button
-            label="Not Now"
-            variant="ghost"
+            label="Not now"
+            variant="secondary"
             disabled={accountState.biometricBusy}
-            onPress={closeBiometricEnable}
+            onPress={closeEnable}
           />
         </View>
       </BottomSheet>
 
-      {/* Biometric Disable Confirmation */}
       <ConfirmSheet
-        visible={accountState.showBiometricDisableConfirm}
-        onCancel={() => accountState.setShowBiometricDisableConfirm(false)}
+        visible={accountState.sheet === 'biometricDisable'}
         title="Turn off Biometric Unlock?"
-        message="You'll need your passphrase to unlock your vault."
-        confirmLabel="Turn Off"
-        destructive
+        message="Your key is removed from this phone. You’ll unlock with your passphrase until you turn it back on."
+        confirmLabel="Turn off"
+        cancelLabel="Keep it on"
         busy={accountState.biometricBusy}
         onConfirm={() => void accountState.handleBiometricDisable()}
+        onCancel={accountState.closeSheet}
       />
 
-      {/* Auto-Lock Menu */}
-      <BottomSheet
-        visible={accountState.showAutoLockMenu}
-        onDismiss={() => accountState.setShowAutoLockMenu(false)}
-        title="Auto-Lock Delay"
-      >
-        <Text
-          variant="bodySm"
-          color="mutedForeground"
-          style={[{ marginBottom: theme.spacing.md }]}
-        >
-          The privacy cover goes up immediately when you leave the app, whatever
-          the delay.
-        </Text>
-        <View style={{ gap: theme.spacing.xs }}>
-          {autoLockDelayOptions.map((option) => (
-            <ListRow
-              key={option.id}
-              title={option.label}
-              onPress={() => {
-                accountState.handleAutoLockChange(option.value);
-                accountState.setShowAutoLockMenu(false);
-              }}
-            />
-          ))}
-        </View>
-      </BottomSheet>
-
-      {/* Appearance Menu */}
       <MenuSheet
-        visible={accountState.showAppearanceMenu}
-        title="Theme"
-        items={appearanceOptions.map((option) => ({
-          id: option.id,
-          label: option.label,
-          onPress: () => accountState.handleAppearanceChange(option.value),
-        }))}
-        onDismiss={() => accountState.setShowAppearanceMenu(false)}
+        visible={accountState.sheet === 'autoLock'}
+        onDismiss={accountState.closeSheet}
+        title="Auto-lock"
+        lead="How long the app can sit in the background before the Vault locks."
+        footnote="The privacy cover always goes up straight away, whatever you pick here."
+        items={autoLockItems}
       />
 
-      {/* Logout Confirmation */}
       <ConfirmSheet
-        visible={accountState.showLogoutConfirm}
-        onCancel={() => accountState.setShowLogoutConfirm(false)}
-        title="Log Out?"
-        message="You'll be logged out of this device. Biometric Unlock will be removed."
-        confirmLabel="Log Out"
+        visible={accountState.sheet === 'logout'}
+        title="Log out?"
+        message={[
+          'Logging out also removes Biometric Unlock from this device.',
+          'Your Vault stays on the server. Sign in again with your email and password.',
+        ]}
+        confirmLabel="Log out"
         destructive
         onConfirm={() => void accountState.handleLogout()}
+        onCancel={accountState.closeSheet}
       />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  content: {
-    paddingVertical: 16,
-  },
-  userHeader: {
+  inline: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
   },
   avatar: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    justifyContent: 'center',
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: AVATAR_SIZE / 2,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  userInfo: {
+  identity: {
     flex: 1,
-    gap: 4,
+    minWidth: 0,
+  },
+  unavailable: {
+    opacity: UNAVAILABLE_OPACITY,
+  },
+  placeholder: {
+    opacity: 0,
+  },
+  figures: {
+    fontVariant: ['tabular-nums'],
   },
   actions: {
     flexDirection: 'column',
-  },
-  noticeContainer: {
-    paddingVertical: 8,
   },
 });

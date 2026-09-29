@@ -1,9 +1,16 @@
 import {
+  APPEARANCE_SEGMENTS,
+  AUTO_LOCK_CHOICES,
+  autoLockOptions,
   BIOMETRIC_ENABLE_CANCELLED_MESSAGE,
   BIOMETRIC_ENABLE_FAILED_MESSAGE,
   BIOMETRIC_ENABLE_UNSUPPORTED_MESSAGE,
-  computeBiometricLabel,
-  findSettingLabel,
+  BIOMETRIC_OFF_SUBTITLE,
+  describeBiometricEnable,
+  describeBiometricRow,
+  displayName,
+  formatAppVersion,
+  initialsFor,
   performBiometricEnable,
   performBiometricDisable,
   shouldDisableBiometricOnLogout,
@@ -15,111 +22,129 @@ import {
 } from './unlockErrorClassification';
 
 describe('accountScreenLogic', () => {
-  describe('computeBiometricLabel', () => {
-    it('returns "Loading..." label when biometric state is null', () => {
-      const result = computeBiometricLabel(null);
-      expect(result.label).toBe('Loading...');
+  describe('describeBiometricRow', () => {
+    it('names Face ID in the description when it is on, never in the title', () => {
+      expect(describeBiometricRow('on', 'face-id', 'ios')).toEqual({
+        kind: 'on',
+        subtitle:
+          'Your key stays on this phone, behind Face ID. Turning it off removes it.',
+        icon: 'faceId',
+        on: true,
+      });
     });
 
-    it('returns "On" label when biometric state is "on"', () => {
-      const result = computeBiometricLabel('on');
-      expect(result.label).toBe('On');
+    it('says "your fingerprint" on an Android phone with a sensor', () => {
+      const row = describeBiometricRow('on', 'fingerprint', 'android');
+      expect(row.subtitle).toBe(
+        'Your key stays on this phone, behind your fingerprint. Turning it off removes it.',
+      );
+      expect(row.icon).toBe('fingerprint');
     });
 
-    it('returns "Off" label when biometric state is "off"', () => {
-      const result = computeBiometricLabel('off');
-      expect(result.label).toBe('Off');
+    it('falls back to the platform wording when the method is unknown', () => {
+      expect(describeBiometricRow('on', null, 'android').subtitle).toContain(
+        'behind your fingerprint',
+      );
+      expect(
+        describeBiometricRow('on', 'biometrics', 'ios').subtitle,
+      ).toContain('behind Face ID');
     });
 
-    it('sets enabled=true and disabled=false when state is "on"', () => {
-      const result = computeBiometricLabel('on');
-      expect(result.enabled).toBe(true);
-      expect(result.disabled).toBe(false);
+    it('reads as off with the passphrase line', () => {
+      expect(describeBiometricRow('off', 'face-id', 'ios')).toMatchObject({
+        kind: 'off',
+        subtitle: BIOMETRIC_OFF_SUBTITLE,
+        on: false,
+      });
     });
 
-    it('sets enabled=false and disabled=true when state is "off"', () => {
-      const result = computeBiometricLabel('off');
-      expect(result.enabled).toBe(false);
-      expect(result.disabled).toBe(true);
+    it('points to the platform settings when nothing is enrolled', () => {
+      expect(
+        describeBiometricRow('unsupported', 'face-id', 'ios'),
+      ).toMatchObject({
+        kind: 'unavailable',
+        subtitle: 'Set up Face ID in iOS Settings to use this.',
+        on: false,
+      });
+      expect(
+        describeBiometricRow('unsupported', 'biometrics', 'ios').subtitle,
+      ).toBe('Set up Face ID or Touch ID in iOS Settings to use this.');
+      expect(
+        describeBiometricRow('unsupported', 'fingerprint', 'android').subtitle,
+      ).toBe('Set up a fingerprint in Android Settings to use this.');
     });
 
-    it('sets both enabled and disabled to false when state is null', () => {
-      const result = computeBiometricLabel(null);
-      expect(result.enabled).toBe(false);
-      expect(result.disabled).toBe(false);
-    });
-
-    it('returns "Not available on this device" label when state is "unsupported"', () => {
-      const result = computeBiometricLabel('unsupported');
-      expect(result.label).toBe('Not available on this device');
-    });
-
-    it('sets enabled=false and disabled=true when state is "unsupported"', () => {
-      const result = computeBiometricLabel('unsupported');
-      expect(result.enabled).toBe(false);
-      expect(result.disabled).toBe(true);
-    });
-
-    it('treats unsupported the same as off for disabled flag', () => {
-      const offResult = computeBiometricLabel('off');
-      const unsupportedResult = computeBiometricLabel('unsupported');
-      expect(offResult.disabled).toBe(true);
-      expect(unsupportedResult.disabled).toBe(true);
+    it('holds its place without an answer while the keystore is asked', () => {
+      expect(describeBiometricRow(null, null, 'ios')).toMatchObject({
+        kind: 'loading',
+        subtitle: null,
+        on: false,
+      });
     });
   });
 
-  describe('findSettingLabel', () => {
-    const appearanceOptions = [
-      { id: 'sys', label: 'System', value: 'system' as const },
-      { id: 'light', label: 'Light', value: 'light' as const },
-      { id: 'dark', label: 'Dark', value: 'dark' as const },
-    ];
-
-    it('finds label for a valid value', () => {
-      const result = findSettingLabel('dark', appearanceOptions, 'System');
-      expect(result).toBe('Dark');
-    });
-
-    it('finds label for system when it exists', () => {
-      const result = findSettingLabel('system', appearanceOptions, 'System');
-      expect(result).toBe('System');
-    });
-
-    it('returns default label when value is not found', () => {
-      const result = findSettingLabel(
-        'unknown' as unknown,
-        appearanceOptions,
-        'System',
+  describe('describeBiometricEnable', () => {
+    it('names the check that follows the passphrase', () => {
+      expect(describeBiometricEnable('face-id', 'ios')).toBe(
+        'Enter your passphrase, then confirm with Face ID. Your key stays on this phone, and your passphrase and Recovery Key keep working.',
       );
-      expect(result).toBe('System');
+      expect(describeBiometricEnable('fingerprint', 'android')).toContain(
+        'confirm with your fingerprint',
+      );
+    });
+  });
+
+  describe('autoLockOptions', () => {
+    it('lists the four delays in order and marks the default', () => {
+      expect(autoLockOptions('5m')).toEqual([
+        { value: 'immediately', label: 'Immediately' },
+        { value: '1m', label: 'After 1 minute' },
+        { value: '5m', label: 'After 5 minutes · default' },
+        { value: '15m', label: 'After 15 minutes' },
+      ]);
     });
 
-    it('returns default label when options are empty', () => {
-      const result = findSettingLabel('light', [], 'Default');
-      expect(result).toBe('Default');
+    it('gives the Account row its short form', () => {
+      expect(AUTO_LOCK_CHOICES['5m'].row).toBe('After 5 min');
+      expect(AUTO_LOCK_CHOICES.immediately.row).toBe('Immediately');
+    });
+  });
+
+  describe('APPEARANCE_SEGMENTS', () => {
+    it('offers System, Light and Dark in that order', () => {
+      expect(APPEARANCE_SEGMENTS).toEqual([
+        { value: 'system', label: 'System' },
+        { value: 'light', label: 'Light' },
+        { value: 'dark', label: 'Dark' },
+      ]);
+    });
+  });
+
+  describe('the header', () => {
+    it('shows first and last name and their initials', () => {
+      const user = {
+        firstName: 'Sam',
+        lastName: 'Kelly',
+        email: 'sam@example.com',
+      };
+      expect(displayName(user)).toBe('Sam Kelly');
+      expect(initialsFor(user)).toBe('SK');
     });
 
-    it('works with different option types', () => {
-      const delayOptions = [
-        { id: '1', label: '1 minute', value: '1m' as const },
-        { id: '5', label: '5 minutes', value: '5m' as const },
-        { id: '15', label: '15 minutes', value: '15m' as const },
-      ];
-
-      const result = findSettingLabel('15m', delayOptions, '5 minutes');
-      expect(result).toBe('15 minutes');
+    it('falls back to the email when the account has no name', () => {
+      const user = { firstName: '', lastName: null, email: 'sam@example.com' };
+      expect(displayName(user)).toBe('');
+      expect(initialsFor(user)).toBe('S');
     });
 
-    it('distinguishes between similar values', () => {
-      const options = [
-        { id: '1', label: 'One', value: 1 },
-        { id: '10', label: 'Ten', value: 10 },
-        { id: '100', label: 'Hundred', value: 100 },
-      ];
+    it('has a placeholder with no User', () => {
+      expect(initialsFor(null)).toBe('?');
+    });
+  });
 
-      expect(findSettingLabel(1, options, 'Default')).toBe('One');
-      expect(findSettingLabel(10, options, 'Default')).toBe('Ten');
-      expect(findSettingLabel(100, options, 'Default')).toBe('Hundred');
+  describe('formatAppVersion', () => {
+    it('prints the version, then the build in brackets', () => {
+      expect(formatAppVersion('1.0', '1')).toBe('1.0 (1)');
     });
   });
 
@@ -272,28 +297,12 @@ describe('accountScreenLogic', () => {
   });
 
   describe('state consistency', () => {
-    it('computeBiometricLabel and shouldDisableBiometricOnLogout align on "on" state', () => {
-      const labelResult = computeBiometricLabel('on');
-      const shouldDisable = shouldDisableBiometricOnLogout('on');
-
-      expect(labelResult.enabled).toBe(true);
-      expect(shouldDisable).toBe(true);
-    });
-
-    it('computeBiometricLabel and shouldDisableBiometricOnLogout align on "off" state', () => {
-      const labelResult = computeBiometricLabel('off');
-      const shouldDisable = shouldDisableBiometricOnLogout('off');
-
-      expect(labelResult.enabled).toBe(false);
-      expect(shouldDisable).toBe(false);
-    });
-
-    it('computeBiometricLabel "Loading..." state implies no disable needed', () => {
-      const labelResult = computeBiometricLabel(null);
-      const shouldDisable = shouldDisableBiometricOnLogout(null);
-
-      expect(labelResult.label).toBe('Loading...');
-      expect(shouldDisable).toBe(false);
+    it('only a row drawn on removes Biometric Unlock at logout', () => {
+      for (const state of ['on', 'off', 'unsupported', null] as const) {
+        expect(describeBiometricRow(state, 'face-id', 'ios').on).toBe(
+          shouldDisableBiometricOnLogout(state),
+        );
+      }
     });
   });
 
