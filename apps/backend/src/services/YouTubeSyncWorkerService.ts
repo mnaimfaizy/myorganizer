@@ -39,14 +39,6 @@ export interface SyncWorkerOptions {
   maxUsers?: number;
 }
 
-function isRevokedTokenError(error: unknown): boolean {
-  const message = error instanceof Error ? error.message : String(error);
-  return (
-    message.includes('invalid_grant') ||
-    message.includes('Token has been expired or revoked')
-  );
-}
-
 /**
  * Metadata sync for every connected account, as a bounded resumable worker.
  *
@@ -138,11 +130,7 @@ export class YouTubeSyncWorkerService {
             error,
           );
 
-          if (isRevokedTokenError(error)) {
-            await this.prisma.youTubeIntegration.update({
-              where: { userId },
-              data: { status: 'revoked' },
-            });
+          if (await youtubeSyncService.markRevokedIfTokenError(userId, error)) {
             logger.info(`Marked integration as revoked for user ${userId}`);
           }
         }
