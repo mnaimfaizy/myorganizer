@@ -6,6 +6,11 @@ import {
   type TaskPriority,
   type TaskStatus,
 } from '@myorganizer/vault-core/portable';
+import {
+  formatCalendarDate,
+  formatCalendarDateShort,
+  toCalendarDate,
+} from './calendarDate';
 
 /**
  * What the Tasks screens read out of a decrypted Tasks Vault Blob.
@@ -256,4 +261,194 @@ export function localDateOnlyString(date: Date): string {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+/**
+ * How each status reads in the app — the detail screen's five-way selector
+ * and the list's status pills. Pinned to the status set, so a sixth status
+ * fails to compile here rather than missing from the selector (ADR 0053).
+ * The selector's order is this table's order.
+ */
+export const TASK_STATUS_LABEL = {
+  pending: 'Pending',
+  in_progress: 'In progress',
+  blocked: 'Blocked',
+  done: 'Done',
+  cancelled: 'Cancelled',
+} as const satisfies Record<TaskStatus, string>;
+
+/** How each priority reads — High / Medium / Low, in this order. */
+export const TASK_PRIORITY_LABEL = {
+  high: 'High',
+  medium: 'Medium',
+  low: 'Low',
+} as const satisfies Record<TaskPriority, string>;
+
+/** How each context reads — Personal / Work, in this order. */
+export const TASK_CONTEXT_LABEL = {
+  personal: 'Personal',
+  work: 'Work',
+} as const satisfies Record<TaskContext, string>;
+
+/** A label table's keys, in its own order, as the union it is keyed by. */
+export function labelledValues<Key extends string>(
+  table: Readonly<Record<Key, string>>,
+): Key[] {
+  return Object.keys(table) as Key[];
+}
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function startOfDay(date: Date): number {
+  return startOfLocalDay(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+/** Whole local calendar days from `from` to `to` — DST-safe. */
+function calendarDaysBetween(from: number, to: number): number {
+  return Math.round((to - from) / DAY_MS);
+}
+
+/** How a Task's due date reads on its row, and whether it is overdue. */
+export interface DueLabel {
+  text: string;
+  overdue: boolean;
+}
+
+/**
+ * A due date as the Tasks list prints it: "Today", "2 days overdue", or the
+ * date itself — "Tue 29 Sep", with the year only when it is not `now`'s.
+ * Never the stored ISO. `null` for no date or one that cannot be read.
+ */
+export function describeDue(
+  dueDate: string | undefined,
+  now: Date,
+): DueLabel | null {
+  if (dueDate == null) return null;
+  const parsed = parseDateOnly(dueDate);
+  if (parsed === null) return null;
+  const due = startOfLocalDay(parsed.y, parsed.m, parsed.d);
+  const days = calendarDaysBetween(due, startOfDay(now));
+  if (days === 0) return { text: 'Today', overdue: false };
+  if (days > 0) {
+    return {
+      text: days === 1 ? '1 day overdue' : `${days} days overdue`,
+      overdue: true,
+    };
+  }
+  return {
+    text:
+      parsed.y === now.getFullYear()
+        ? formatCalendarDateShort(dueDate)
+        : formatCalendarDate(dueDate),
+    overdue: false,
+  };
+}
+
+/**
+ * An instant's local calendar day, relative to `now`: "today", "yesterday",
+ * or "Thu 24 Sep" (with the year when it is not `now`'s). `null` when the
+ * value cannot be read.
+ */
+function describeDay(value: string, now: Date): string | null {
+  const instant = Date.parse(value);
+  if (Number.isNaN(instant)) return null;
+  const date = new Date(instant);
+  const days = calendarDaysBetween(startOfDay(date), startOfDay(now));
+  if (days === 0) return 'today';
+  if (days === 1) return 'yesterday';
+  const day = toCalendarDate(date);
+  return date.getFullYear() === now.getFullYear()
+    ? formatCalendarDateShort(day)
+    : formatCalendarDate(day);
+}
+
+/**
+ * When a Done or Cancelled Task was closed, as its row prints it: "Done
+ * today", "Done yesterday", "Cancelled Thu 24 Sep". `null` for a Task closed
+ * before #915 added `closedAt`, or an open one.
+ */
+export function describeClosed(task: DecryptedTask, now: Date): string | null {
+  const status = taskStatus(task);
+  if (!isClosedTaskStatus(status) || task.closedAt == null) return null;
+  const day = describeDay(task.closedAt, now);
+  return day === null ? null : `${TASK_STATUS_LABEL[status]} ${day}`;
+}
+
+/**
+ * When a Task was created, as the detail screen's footer prints it — "Mon 21
+ * Sep" — or `null` when the payload carries no readable `createdAt`.
+ */
+export function describeCreated(
+  createdAt: string | undefined,
+  now: Date,
+): string | null {
+  if (createdAt == null) return null;
+  const instant = Date.parse(createdAt);
+  if (Number.isNaN(instant)) return null;
+  const date = new Date(instant);
+  const day = toCalendarDate(date);
+  return date.getFullYear() === now.getFullYear()
+    ? formatCalendarDateShort(day)
+    : formatCalendarDate(day);
+}
+
+/**
+ * An estimate as the Tasks list prints it: "45 min" and "60 min" in minutes,
+ * whole hours from two up as "2 h", and "2 h 30 min" past that. `null` for
+ * no estimate or a negative or non-finite one.
+ */
+export function formatEstimate(minutes: number | undefined): string | null {
+  if (minutes == null || !Number.isFinite(minutes) || minutes < 0) return null;
+  const whole = Math.round(minutes);
+  if (whole < 120) return `${whole} min`;
+  const hours = Math.floor(whole / 60);
+  const rest = whole % 60;
+  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
+}
+
+/** Every Task the Mobile App may show — archived ones are web-only. */
+export function countVisibleTasks(records: unknown): number {
+  return readVisibleTasks(records).length;
+}
+
+/**
+ * The Done Tasks matching `contextFilter` closed since the start of `now`'s
+ * local week (Monday) — the "4 Tasks done this week" of the All clear state.
+ */
+export function countDoneThisWeek(
+  records: unknown,
+  contextFilter: TaskContextFilter,
+  now: Date,
+): number {
+  // getDay() is 0 for Sunday; the week starts on the Monday before it. Built
+  // from calendar components, not by subtracting days of milliseconds, so a
+  // daylight-saving change inside the week cannot move its start.
+  const weekStartDay = startOfLocalDay(
+    now.getFullYear(),
+    now.getMonth(),
+    now.getDate() - ((now.getDay() + 6) % 7),
+  );
+  return readVisibleTasks(records).filter((task) => {
+    if (taskStatus(task) !== 'done' || task.closedAt == null) return false;
+    if (!matchesContext(task, contextFilter)) return false;
+    const closed = Date.parse(task.closedAt);
+    return !Number.isNaN(closed) && closed >= weekStartDay;
+  }).length;
+}
+
+/**
+ * `records` with some Tasks shown as they stood before an edit — a ticked
+ * Task dwelling in its group for the Motion sheet's 600 ms before it leaves,
+ * while the edit that closed it is already on its way. Everything else is
+ * returned untouched; a non-array payload is returned as it came.
+ */
+export function withTaskOverrides(
+  records: unknown,
+  overrides: ReadonlyMap<string, DecryptedTask>,
+): unknown {
+  if (overrides.size === 0 || !Array.isArray(records)) return records;
+  return records.map((entry) => {
+    const task = toDecryptedTask(entry);
+    return task !== null ? (overrides.get(task.id) ?? entry) : entry;
+  });
 }

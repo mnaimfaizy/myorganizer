@@ -8,13 +8,19 @@ export interface TaskPriorityMarkerProps {
   priority: TaskPriority | undefined;
 }
 
-const BAR_COUNT = 3;
+/** The three bars' heights, rising left to right, as the Tasks sheet draws them. */
+const BAR_HEIGHTS = [5, 8, 11] as const;
 
 /**
- * A Task's priority as bar-count marker: filled bars out of three. Drawn in
- * `primary`, never in a destructive colour — this says how urgent a Task is,
- * where the app's one destructive colour says something is about to be
- * removed, and the two must never look like the same claim.
+ * A Task's priority as a bar-count marker: filled bars out of three, drawn
+ * inline before the title (Tasks sheet).
+ *
+ * High fills all three in `foreground`; Medium and Low fill two and one in
+ * `muted-foreground` (#908) — so High stands out by colour as well as by
+ * count. The empty bars are `muted-foreground` at 30%. Never a destructive
+ * colour: this says how urgent a Task is, where the app's one destructive
+ * colour says something is about to be removed, and the two must never look
+ * like the same claim.
  *
  * Decorative: the row it sits in carries the priority in its accessible
  * label already, so nothing here repeats it for a screen reader.
@@ -24,24 +30,29 @@ export function TaskPriorityMarker({
 }: TaskPriorityMarkerProps): React.JSX.Element {
   const theme = useTheme();
   const filled = priorityBarCount(priority);
+  const fill =
+    priority === 'high'
+      ? theme.colors.foreground
+      : theme.colors.mutedForeground;
 
   return (
     <View
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
-      style={[styles.row, { gap: theme.spacing.xs / 2 }]}
+      style={styles.row}
     >
-      {Array.from({ length: BAR_COUNT }, (_, index) => (
+      {BAR_HEIGHTS.map((height, index) => (
         <View
-          key={index}
+          key={height}
           style={[
             styles.bar,
-            {
-              height: 6 + index * 3,
-              borderRadius: theme.radii.sm,
-              backgroundColor:
-                index < filled ? theme.colors.primary : theme.colors.border,
-            },
+            { height },
+            index < filled
+              ? { backgroundColor: fill }
+              : [
+                  styles.empty,
+                  { backgroundColor: theme.colors.mutedForeground },
+                ],
           ]}
         />
       ))}
@@ -50,11 +61,22 @@ export function TaskPriorityMarker({
 }
 
 const styles = StyleSheet.create({
+  // 14 × 12, the bars 3 wide and 2 apart — the sheet's own sizes. No spacing
+  // token is below 4, and the marker is a glyph rather than a layout.
   row: {
+    width: 14,
+    height: 12,
     flexDirection: 'row',
     alignItems: 'flex-end',
+    gap: 2,
   },
   bar: {
-    width: 4,
+    width: 3,
+    // The sheet rounds each bar at 1; the radius scale starts at 4, which
+    // would draw a 3-wide bar as a capsule.
+    borderRadius: 1,
+  },
+  empty: {
+    opacity: 0.3,
   },
 });
