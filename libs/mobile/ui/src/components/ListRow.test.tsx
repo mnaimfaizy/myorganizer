@@ -503,4 +503,34 @@ describe('ListRow Component', () => {
       expect(flatStyle.minHeight).toBe(COMFORTABLE_ROW_HEIGHT);
     });
   });
+
+  describe('onLongPress', () => {
+    it('calls onLongPress when the row is long-pressed', async () => {
+      const onLongPress = jest.fn();
+      const user = userEvent.setup();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Weekly shop"
+            onPress={jest.fn()}
+            onLongPress={onLongPress}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Weekly shop' });
+      await user.longPress(row);
+      expect(onLongPress).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not require onLongPress to be set', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Weekly shop" onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      expect(
+        screen.getByRole('button', { name: 'Weekly shop' }),
+      ).toBeOnTheScreen();
+    });
+  });
 });

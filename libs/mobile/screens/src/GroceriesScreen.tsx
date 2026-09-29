@@ -12,10 +12,10 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
   newRecordId,
+  usePendingVaultEdit,
   useVaultBlob,
   useVaultSession,
-  type VaultBlobEdit,
-  type VaultBlobWriteErrorKind,
+  VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
   createGroceryList,
@@ -52,25 +52,6 @@ import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
 import { describeVaultLoadError } from './vaultLoadError';
 import { useRememberedScroll } from './useRememberedScroll';
 
-/** What a refused push says, and what it offers instead — the trip view's own. */
-const WRITE_ERROR = {
-  conflict: {
-    message: 'Changed on another device. Reload to see the latest.',
-    action: 'Reload',
-  },
-  network: {
-    message: 'Your change was not saved — check your connection and try again.',
-    action: 'Retry',
-  },
-  failed: {
-    message: 'Your change was not saved. Please try again.',
-    action: 'Retry',
-  },
-} as const satisfies Record<
-  VaultBlobWriteErrorKind,
-  { message: string; action: string }
->;
-
 /** The list a Rename, Delete, or press-and-hold menu is about. */
 interface ListTarget {
   id: string;
@@ -106,26 +87,18 @@ export function GroceriesScreen(): React.JSX.Element {
   );
 
   // The same Unconfirmed Edit shape the trip view uses for a line, one level
-  // up for an edit to a Grocery List itself: the hook runs one write at a
-  // time, so there is never a second list waiting.
-  const [pendingListId, setPendingListId] = useState<string | null>(null);
-  const [revertedListId, setRevertedListId] = useState<string | null>(null);
+  // up for an edit to a Grocery List itself.
+  const {
+    pendingId: pendingListId,
+    revertedId: revertedListId,
+    push,
+    reloadAfterConflict,
+    retryFailedEdit,
+  } = usePendingVaultEdit(apply, retry, reload);
   const [createVisible, setCreateVisible] = useState(false);
   const [renameTarget, setRenameTarget] = useState<ListTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ListTarget | null>(null);
   const [menuTarget, setMenuTarget] = useState<ListTarget | null>(null);
-
-  const push = useCallback(
-    async (id: string, edit: VaultBlobEdit): Promise<boolean> => {
-      setPendingListId(id);
-      setRevertedListId(null);
-      const confirmed = await apply(edit);
-      setPendingListId(null);
-      if (!confirmed) setRevertedListId(id);
-      return confirmed;
-    },
-    [apply],
-  );
 
   const createList = useCallback(
     (name: string): void => {
@@ -180,19 +153,6 @@ export function GroceriesScreen(): React.JSX.Element {
     setDeleteTarget(null);
   }, [pendingListId]);
 
-  const reloadAfterConflict = useCallback((): void => {
-    setRevertedListId(null);
-    void reload();
-  }, [reload]);
-
-  const retryFailedEdit = useCallback(async (): Promise<void> => {
-    const id = revertedListId;
-    setPendingListId(id);
-    const confirmed = await retry();
-    setPendingListId(null);
-    if (confirmed) setRevertedListId(null);
-  }, [retry, revertedListId]);
-
   const openCreate = useCallback((): void => setCreateVisible(true), []);
 
   useLayoutEffect(() => {
@@ -220,7 +180,8 @@ export function GroceriesScreen(): React.JSX.Element {
 
   const renderItem = useCallback(
     ({ item }: ListRenderItemInfo<GroceryListSummary>): React.JSX.Element => {
-      const notice = writeError == null ? null : WRITE_ERROR[writeError];
+      const notice =
+        writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
       const target: ListTarget = { id: item.id, name: item.name };
 
       return (
@@ -325,8 +286,8 @@ export function GroceriesScreen(): React.JSX.Element {
               {revertedOffScreen && writeError != null && (
                 <InlineNotice
                   tone="destructive"
-                  message={WRITE_ERROR[writeError].message}
-                  actionLabel={WRITE_ERROR[writeError].action}
+                  message={VAULT_WRITE_ERROR_COPY[writeError].message}
+                  actionLabel={VAULT_WRITE_ERROR_COPY[writeError].action}
                   onAction={() =>
                     void (writeError === 'conflict'
                       ? reloadAfterConflict()

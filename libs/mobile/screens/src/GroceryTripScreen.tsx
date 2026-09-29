@@ -9,9 +9,9 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
   newRecordId,
+  usePendingVaultEdit,
   useVaultBlob,
-  type VaultBlobEdit,
-  type VaultBlobWriteErrorKind,
+  VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
   createCatalogItemAndAddLine,
@@ -87,33 +87,6 @@ const CONFIRM_COPY = {
   { title: string; message: string; confirmLabel: string }
 >;
 
-/**
- * What a refused push says, and what it offers instead.
- *
- * Groceries is pinned to `promptOnConflict`, so a conflict is **not** retried:
- * re-applying this edit to a newer copy would apply it to lines this User has
- * not seen (ADR 0107 decision 4). The way forward is to look, which is why
- * the offer is Reload and not Retry — the other two are ordinary failures and
- * resend the same edit.
- */
-const WRITE_ERROR = {
-  conflict: {
-    message: 'Changed on another device. Reload to see the latest.',
-    action: 'Reload',
-  },
-  network: {
-    message: 'Your change was not saved — check your connection and try again.',
-    action: 'Retry',
-  },
-  failed: {
-    message: 'Your change was not saved. Please try again.',
-    action: 'Retry',
-  },
-} as const satisfies Record<
-  VaultBlobWriteErrorKind,
-  { message: string; action: string }
->;
-
 export function GroceryTripScreen(): React.JSX.Element {
   const theme = useTheme();
   const navigation =
@@ -145,12 +118,28 @@ export function GroceryTripScreen(): React.JSX.Element {
   );
 
   // Which line the screen is showing an Unconfirmed Edit for, and which one
-  // was put back when a push failed. One of each: the hook runs one write at
-  // a time, so there is never a second line waiting.
-  const [unconfirmedLineId, setUnconfirmedLineId] = useState<string | null>(
-    null,
-  );
-  const [revertedLineId, setRevertedLineId] = useState<string | null>(null);
+  // was put back when a push failed.
+  const {
+    pendingId: unconfirmedLineId,
+    revertedId: revertedLineId,
+    push,
+    reloadAfterConflict,
+    retryFailedEdit,
+  } = usePendingVaultEdit(apply, retry, reload);
+  // The same Unconfirmed Edit shape one level up, for an edit that is not
+  // about one line — Uncheck All, Remove Checked From List, Rename. A second,
+  // independent call rather than reusing the one above: the hook runs one
+  // write at a time, but a line edit and a list-level edit are two different
+  // id spaces and must not be told apart by comparing a line id to an action
+  // name.
+  const {
+    pendingId: bulkPending,
+    revertedId: bulkReverted,
+    push: pushBulk,
+    reloadAfterConflict: reloadAfterBulkConflict,
+    retryFailedEdit: retryBulkAction,
+  } = usePendingVaultEdit<BulkAction>(apply, retry, reload);
+
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [amountDraft, setAmountDraft] = useState('');
   // What Undo would put back. Held only while the Snackbar is up, and never
@@ -168,12 +157,6 @@ export function GroceryTripScreen(): React.JSX.Element {
   const [confirmAction, setConfirmAction] = useState<
     'uncheckAll' | 'removeChecked' | null
   >(null);
-  // The same Unconfirmed Edit shape as a line's (`unconfirmedLineId` /
-  // `revertedLineId`), one level up for an edit that is not about one line —
-  // the hook still runs one write at a time, so there is never a second
-  // list-level action waiting either.
-  const [bulkPending, setBulkPending] = useState<BulkAction | null>(null);
-  const [bulkReverted, setBulkReverted] = useState<BulkAction | null>(null);
 
   const catalog = useMemo(
     () => readCatalogEntries(snapshot?.envelope.records),
@@ -227,32 +210,6 @@ export function GroceryTripScreen(): React.JSX.Element {
       ),
     });
   }, [navigation, trip?.name, openMenu, theme.spacing.xs]);
-
-  const push = useCallback(
-    async (lineId: string, edit: VaultBlobEdit): Promise<boolean> => {
-      setUnconfirmedLineId(lineId);
-      setRevertedLineId(null);
-      const confirmed = await apply(edit);
-      setUnconfirmedLineId(null);
-      if (!confirmed) setRevertedLineId(lineId);
-      return confirmed;
-    },
-    [apply],
-  );
-
-  // The same shape as `push`, one level up for an edit that touches the whole
-  // list rather than one line — Uncheck All, Remove Checked From List, Rename.
-  const pushBulk = useCallback(
-    async (action: BulkAction, edit: VaultBlobEdit): Promise<boolean> => {
-      setBulkPending(action);
-      setBulkReverted(null);
-      const confirmed = await apply(edit);
-      setBulkPending(null);
-      if (!confirmed) setBulkReverted(action);
-      return confirmed;
-    },
-    [apply],
-  );
 
   const addExistingItem = useCallback(
     (item: CatalogEntry): void => {
@@ -324,19 +281,6 @@ export function GroceryTripScreen(): React.JSX.Element {
     if (bulkPending !== null) return;
     setRenameVisible(false);
   }, [bulkPending]);
-
-  const reloadAfterBulkConflict = useCallback((): void => {
-    setBulkReverted(null);
-    void reload();
-  }, [reload]);
-
-  const retryBulkAction = useCallback(async (): Promise<void> => {
-    const action = bulkReverted;
-    setBulkPending(action);
-    const confirmed = await retry();
-    setBulkPending(null);
-    if (confirmed) setBulkReverted(null);
-  }, [retry, bulkReverted]);
 
   const setChecked = useCallback(
     (line: TripLine): void => {
@@ -410,19 +354,6 @@ export function GroceryTripScreen(): React.JSX.Element {
     );
   }, [deletedLine, push, listId]);
 
-  const reloadAfterConflict = useCallback((): void => {
-    setRevertedLineId(null);
-    void reload();
-  }, [reload]);
-
-  const retryFailedEdit = useCallback(async (): Promise<void> => {
-    const lineId = revertedLineId;
-    setUnconfirmedLineId(lineId);
-    const confirmed = await retry();
-    setUnconfirmedLineId(null);
-    if (confirmed) setRevertedLineId(null);
-  }, [retry, revertedLineId]);
-
   // `writeError` and not `revertedLineId` alone: the hook also refuses an
   // edit while another request is in flight, and that refusal is not a
   // revert — nothing was sent, nothing came back, and there is nothing to say
@@ -436,7 +367,8 @@ export function GroceryTripScreen(): React.JSX.Element {
         : 'normal';
 
   const renderLine = (line: TripLine): React.JSX.Element => {
-    const notice = writeError == null ? null : WRITE_ERROR[writeError];
+    const notice =
+      writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
     const editing = editingLineId === line.id;
 
     return (
@@ -582,8 +514,8 @@ export function GroceryTripScreen(): React.JSX.Element {
           {revertedOffScreen && writeError != null && (
             <InlineNotice
               tone="destructive"
-              message={WRITE_ERROR[writeError].message}
-              actionLabel={WRITE_ERROR[writeError].action}
+              message={VAULT_WRITE_ERROR_COPY[writeError].message}
+              actionLabel={VAULT_WRITE_ERROR_COPY[writeError].action}
               onAction={() =>
                 void (writeError === 'conflict'
                   ? reloadAfterConflict()
@@ -595,8 +527,8 @@ export function GroceryTripScreen(): React.JSX.Element {
           {bulkReverted != null && writeError != null && (
             <InlineNotice
               tone="destructive"
-              message={WRITE_ERROR[writeError].message}
-              actionLabel={WRITE_ERROR[writeError].action}
+              message={VAULT_WRITE_ERROR_COPY[writeError].message}
+              actionLabel={VAULT_WRITE_ERROR_COPY[writeError].action}
               onAction={() =>
                 void (writeError === 'conflict'
                   ? reloadAfterBulkConflict()
