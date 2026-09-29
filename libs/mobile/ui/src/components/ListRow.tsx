@@ -86,6 +86,14 @@ export interface ListRowProps {
   trailing?: React.ReactNode;
   onPress?: () => void;
   /**
+   * A press held past the platform's long-press threshold — the row's own
+   * route to a context menu, for the User who would rather hold the row than
+   * learn which way to swipe it. Every action it opens must still be an
+   * `innerAction` or a swipe action too, because a hold is a gesture a screen
+   * reader cannot perform.
+   */
+  onLongPress?: () => void;
+  /**
    * When given, the row announces as a checkbox in this state rather than as
    * a button, and `onPress` is what toggles it. A row whose whole width is
    * the tick target has to say so: the row is one accessibility element, so a
@@ -191,6 +199,7 @@ export function ListRow({
   leading,
   trailing,
   onPress,
+  onLongPress,
   checked,
   leftActions = [],
   rightActions = [],
@@ -290,6 +299,7 @@ export function ListRow({
               }))}
               onAccessibilityAction={onAccessibilityAction}
               onPress={onPress}
+              onLongPress={onLongPress}
               style={({ pressed }) => [
                 styles.row,
                 {

@@ -45,6 +45,13 @@ export interface TripLine {
   checked: boolean;
 }
 
+/** One Catalog Item as the Add-to-list sheet's type-ahead shows it. */
+export interface CatalogEntry {
+  id: string;
+  name: string;
+  category: GroceryCategoryType;
+}
+
 /** The lines of one category, under that category's label. */
 export interface TripCategoryGroup {
   category: GroceryCategoryType;
@@ -146,6 +153,58 @@ function readTripLines(
   }
 
   return lines;
+}
+
+/**
+ * Every Catalog Item in the payload, in the order it is stored — the
+ * Add-to-list sheet does its own filtering and does not need them presorted.
+ *
+ * An entry with no usable id is dropped, the same rule `readCatalog` uses:
+ * there would be no id to reference from a new List Line.
+ */
+export function readCatalogEntries(records: unknown): CatalogEntry[] {
+  const entries: CatalogEntry[] = [];
+
+  for (const entry of readArray(records, 'catalog')) {
+    const id = readId(entry);
+    if (id === null || !isRecord(entry)) continue;
+    entries.push({
+      id,
+      name:
+        typeof entry.name === 'string' && entry.name.trim().length > 0
+          ? entry.name
+          : UNKNOWN_ITEM_NAME,
+      category: readCategory(entry.category),
+    });
+  }
+
+  return entries;
+}
+
+/**
+ * The Catalog Item ids already referenced by some line on one Grocery List —
+ * checked or not. What the Add-to-list sheet marks "On list": a Checked Item
+ * still counts, since re-adding it would put a second line on the same list
+ * for the same Catalog Item rather than surface the one already there.
+ */
+export function catalogItemIdsOnList(
+  records: unknown,
+  listId: string,
+): Set<string> {
+  const list = readArray(records, 'lists').find(
+    (entry) => readId(entry) === listId,
+  );
+  const ids = new Set<string>();
+  if (list === undefined) return ids;
+
+  for (const line of readArray(list, 'lines')) {
+    if (!isRecord(line)) continue;
+    if (typeof line.catalogItemId === 'string' && line.catalogItemId !== '') {
+      ids.add(line.catalogItemId);
+    }
+  }
+
+  return ids;
 }
 
 /**

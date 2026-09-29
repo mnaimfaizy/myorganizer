@@ -50,6 +50,7 @@ export {
 } from './components/ConfirmSheet';
 export { EmptyState, type EmptyStateProps } from './components/EmptyState';
 export { Icon, type IconName, type IconProps } from './components/Icon';
+export { IconButton, type IconButtonProps } from './components/IconButton';
 export {
   InlineNotice,
   type InlineNoticeProps,
@@ -69,6 +70,11 @@ export {
 } from './components/ListRow';
 export { ListSection, type ListSectionProps } from './components/ListSection';
 export { LockAction, type LockActionProps } from './components/LockAction';
+export {
+  MenuSheet,
+  type MenuSheetItem,
+  type MenuSheetProps,
+} from './components/MenuSheet';
 export {
   OfflineBanner,
   type OfflineBannerProps,
@@ -98,3 +104,7 @@ export { Switch, type SwitchProps } from './components/Switch';
 export { TabBar, type TabBarItem, type TabBarProps } from './components/TabBar';
 export { Text, type TextProps } from './components/Text';
 export { TextField, type TextFieldProps } from './components/TextField';
+export {
+  TextPromptSheet,
+  type TextPromptSheetProps,
+} from './components/TextPromptSheet';

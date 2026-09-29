@@ -1,7 +1,9 @@
 import {
   readGroceryListSummaries,
   buildTripView,
+  catalogItemIdsOnList,
   describeRemaining,
+  readCatalogEntries,
   type TripView,
 } from './groceryTripModel';
 
@@ -593,6 +595,98 @@ describe('groceryTripModel', () => {
       const result = tripViewFor(records, 'list1');
 
       expect(result.name).toBe('Untitled list');
+    });
+  });
+
+  describe('readCatalogEntries', () => {
+    it('returns one entry per catalog item, in storage order', () => {
+      const records = {
+        catalog: [
+          { id: 'cat1', name: 'Milk', category: 'dairy' },
+          { id: 'cat2', name: 'Bread', category: 'bakery' },
+        ],
+        lists: [],
+      };
+
+      expect(readCatalogEntries(records)).toEqual([
+        { id: 'cat1', name: 'Milk', category: 'dairy' },
+        { id: 'cat2', name: 'Bread', category: 'bakery' },
+      ]);
+    });
+
+    it('drops an entry with no usable id', () => {
+      const records = {
+        catalog: [
+          { id: '', name: 'No ID', category: 'other' },
+          { id: 'cat2', name: 'Bread', category: 'bakery' },
+        ],
+      };
+
+      expect(readCatalogEntries(records)).toEqual([
+        { id: 'cat2', name: 'Bread', category: 'bakery' },
+      ]);
+    });
+
+    it('falls back to Unknown item and other category', () => {
+      const records = {
+        catalog: [{ id: 'cat1', name: '', category: 'not-a-category' }],
+      };
+
+      expect(readCatalogEntries(records)).toEqual([
+        { id: 'cat1', name: 'Unknown item', category: 'other' },
+      ]);
+    });
+
+    it('returns empty array for non-object payload', () => {
+      expect(readCatalogEntries(null)).toEqual([]);
+      expect(readCatalogEntries([])).toEqual([]);
+    });
+  });
+
+  describe('catalogItemIdsOnList', () => {
+    it('returns the catalog item ids referenced by the list, checked or not', () => {
+      const records = {
+        catalog: [],
+        lists: [
+          {
+            id: 'list1',
+            name: 'Trip',
+            lines: [
+              { id: 'line1', catalogItemId: 'cat1', checked: false },
+              { id: 'line2', catalogItemId: 'cat2', checked: true },
+            ],
+          },
+        ],
+      };
+
+      expect(catalogItemIdsOnList(records, 'list1')).toEqual(
+        new Set(['cat1', 'cat2']),
+      );
+    });
+
+    it('does not count a blank catalogItemId', () => {
+      const records = {
+        lists: [
+          {
+            id: 'list1',
+            lines: [{ id: 'line1', catalogItemId: '', checked: false }],
+          },
+        ],
+      };
+
+      expect(catalogItemIdsOnList(records, 'list1')).toEqual(new Set());
+    });
+
+    it('returns empty set when the list is not found', () => {
+      const records = { lists: [] };
+
+      expect(catalogItemIdsOnList(records, 'nonexistent')).toEqual(new Set());
+    });
+
+    it('returns empty set for a list with no lines', () => {
+      const records = { lists: [{ id: 'list1', name: 'Trip' }] };
+
+      expect(catalogItemIdsOnList(records, 'list1')).toEqual(new Set());
     });
   });
 

@@ -20,7 +20,9 @@ export type IconName =
   | 'info'
   | 'offline'
   | 'retry'
-  | 'biometric';
+  | 'biometric'
+  | 'plus'
+  | 'more';
 
 /**
  * The glyphs, as stroked paths on a 24-unit grid.
@@ -81,6 +83,10 @@ const PATHS = {
     'M3.5 3.5 20.5 20.5',
   ],
   retry: ['M20 12a8 8 0 1 1-2.5-5.8', 'M20 4v4.5h-4.5'],
+  plus: ['M12 5v14', 'M5 12h14'],
+  // Three round-capped, zero-length strokes: the standard way to draw a dot
+  // in a stroke-only icon set without a second, fill-based drawing path.
+  more: ['M5 12h.01', 'M12 12h.01', 'M19 12h.01'],
   // The platform-neutral face-and-frame mark, not a fingerprint and not a
   // Face ID glyph: the same button raises Face ID on one device and a
   // fingerprint on another, and a button drawn as the wrong one of the two is

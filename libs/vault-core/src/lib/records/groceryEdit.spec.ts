@@ -3,10 +3,16 @@ import {
   setListLineAmount,
   deleteListLine,
   putListLine,
+  createCatalogItemAndAddLine,
+  uncheckAllListLines,
+  removeCheckedListLines,
+  createGroceryList,
+  renameGroceryList,
+  deleteGroceryList,
 } from './groceryEdit';
 import { mergeDeletionLogs, type VaultBlobEnvelope } from './vaultBlobEnvelope';
 import { VAULT_BLOB_CONVERGE_STRATEGIES } from './vaultBlobConverge';
-import type { ListLine } from './grocery';
+import type { CatalogItem, GroceryList, ListLine } from './grocery';
 
 interface TestPayload extends Record<string, unknown> {
   catalog: unknown[];
@@ -37,6 +43,16 @@ function listAt(
   listIndex: number,
 ): Record<string, unknown> {
   return payloadOf(envelope).lists[listIndex] as Record<string, unknown>;
+}
+
+/** Count of lists. */
+function listCount(envelope: VaultBlobEnvelope<unknown>): number {
+  return payloadOf(envelope).lists.length;
+}
+
+/** Count of catalog items. */
+function catalogCount(envelope: VaultBlobEnvelope<unknown>): number {
+  return payloadOf(envelope).catalog.length;
 }
 
 describe('groceryEdit', () => {
@@ -1101,6 +1117,1482 @@ describe('groceryEdit', () => {
       expect(finalLines).toHaveLength(1);
       expect(finalLines[0].id).toBe(newLine.id);
       expect(mergedDeletions['line-original']).toBe('2026-01-02T00:00:00.000Z');
+    });
+  });
+
+  describe('createCatalogItemAndAddLine', () => {
+    it('appends catalog item and line to existing catalog and list', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [
+            {
+              id: 'cat1',
+              name: 'Milk',
+              category: 'dairy',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat2',
+        name: 'Bread',
+        category: 'bakery',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line2',
+        catalogItemId: 'cat2',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line);
+
+      expect(catalogCount(result)).toBe(2);
+      expect(payloadOf(result).catalog[1]).toBe(item);
+      const list = listAt(result, 0);
+      expect(list.lines).toHaveLength(2);
+      expect((list.lines as Record<string, unknown>[])[1]).toBe(line);
+    });
+
+    it('stamps the list updatedAt to line.updatedAt', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line);
+
+      const list = listAt(result, 0);
+      expect(list.updatedAt).toBe('2026-01-02T00:00:00.000Z');
+    });
+
+    it('preserves existing catalog items by reference', () => {
+      const item1: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [item1],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const item2: CatalogItem = {
+        id: 'cat2',
+        name: 'Bread',
+        category: 'bakery',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat2',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item2, line);
+
+      expect(payloadOf(result).catalog[0]).toBe(item1);
+    });
+
+    it('preserves existing lines by reference', () => {
+      const line1 = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [line1],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat2',
+        name: 'Bread',
+        category: 'bakery',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line2: ListLine = {
+        id: 'line2',
+        catalogItemId: 'cat2',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line2);
+
+      expect((listAt(result, 0).lines as Record<string, unknown>[])[0]).toBe(
+        line1,
+      );
+    });
+
+    it('preserves other lists by reference', () => {
+      const list2 = {
+        id: 'list2',
+        name: 'Other',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+            list2,
+          ],
+        },
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line);
+
+      expect(listAt(result, 1)).toBe(list2);
+    });
+
+    it('treats missing catalog key as empty', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line);
+
+      expect(catalogCount(result)).toBe(1);
+      expect(payloadOf(result).catalog[0]).toBe(item);
+    });
+
+    it('preserves unknown keys', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              unknownListKey: 'preserved',
+            },
+          ],
+          unknownPayloadKey: 'also-preserved',
+        },
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line);
+
+      expect(listAt(result, 0).unknownListKey).toBe('preserved');
+      expect(payloadOf(result).unknownPayloadKey).toBe('also-preserved');
+    });
+
+    it('returns same envelope when listId not found', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [],
+        },
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(
+        envelope,
+        'nonexistent',
+        item,
+        line,
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('returns same envelope when payload is not a record', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: [],
+        deletions: {},
+      };
+
+      const item: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(
+        envelope,
+        'list1',
+        item,
+        line,
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('carries deletion log unchanged', () => {
+      const deletions = { oldId: '2026-01-01T00:00:00.000Z' };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions,
+      };
+
+      const item: CatalogItem = {
+        id: 'cat1',
+        name: 'Milk',
+        category: 'dairy',
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+      const line: ListLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line);
+
+      expect(result.deletions).toEqual(deletions);
+    });
+  });
+
+  describe('uncheckAllListLines', () => {
+    it('unchecks all checked lines on list', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                  id: 'line2',
+                  catalogItemId: 'cat2',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = uncheckAllListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      const list = listAt(result, 0);
+      const line1 = (list.lines as Record<string, unknown>[])[0];
+      const line2 = (list.lines as Record<string, unknown>[])[1];
+      expect(line1.checked).toBe(false);
+      expect(line2.checked).toBe(false);
+    });
+
+    it('stamps updatedAt on checked lines', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = uncheckAllListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      const line = lineAt(result, 0, 0);
+      expect(line.updatedAt).toBe('2026-01-02T00:00:00.000Z');
+    });
+
+    it('leaves already-unchecked lines untouched by reference', () => {
+      const uncheckedLine = {
+        id: 'line1',
+        catalogItemId: 'cat1',
+        checked: false,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [uncheckedLine],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = uncheckAllListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(lineAt(result, 0, 0)).toBe(uncheckedLine);
+    });
+
+    it('never removes a line', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                  id: 'line2',
+                  catalogItemId: 'cat2',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = uncheckAllListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      const list = listAt(result, 0);
+      expect(list.lines).toHaveLength(2);
+    });
+
+    it('returns same envelope when nothing is checked (no-op)', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = uncheckAllListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('returns same envelope when listId not found', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [],
+        },
+        deletions: {},
+      };
+
+      const result = uncheckAllListLines(
+        envelope,
+        'nonexistent',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('preserves other lists by reference', () => {
+      const list2 = {
+        id: 'list2',
+        name: 'Other',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+            list2,
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = uncheckAllListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(listAt(result, 1)).toBe(list2);
+    });
+  });
+
+  describe('removeCheckedListLines', () => {
+    it('removes all checked lines from list', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                  id: 'line2',
+                  catalogItemId: 'cat2',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      const list = listAt(result, 0);
+      expect(list.lines).toHaveLength(0);
+    });
+
+    it('leaves unchecked lines in place', () => {
+      const uncheckedLine = {
+        id: 'line2',
+        catalogItemId: 'cat2',
+        checked: false,
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+                uncheckedLine,
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      const list = listAt(result, 0);
+      expect(list.lines).toHaveLength(1);
+      expect((list.lines as Record<string, unknown>[])[0]).toBe(uncheckedLine);
+    });
+
+    it('writes deletion log entry for each removed line id', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+                {
+                  id: 'line2',
+                  catalogItemId: 'cat2',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result.deletions['line1']).toBe('2026-01-02T00:00:00.000Z');
+      expect(result.deletions['line2']).toBe('2026-01-02T00:00:00.000Z');
+    });
+
+    it('does not touch catalog items', () => {
+      const catalog = [
+        { id: 'cat1', name: 'Milk' },
+        { id: 'cat2', name: 'Bread' },
+      ];
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog,
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(payloadOf(result).catalog).toBe(catalog);
+      expect(catalogCount(result)).toBe(2);
+    });
+
+    it('returns same envelope when nothing is checked (no-op)', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('returns same envelope when listId not found', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'nonexistent',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('preserves other lists by reference', () => {
+      const list2 = {
+        id: 'list2',
+        name: 'Other',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+            list2,
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(listAt(result, 1)).toBe(list2);
+    });
+  });
+
+  describe('createGroceryList', () => {
+    it('appends a new list to existing lists', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const newList: GroceryList = {
+        id: 'list2',
+        name: 'Bread Run',
+        lines: [],
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createGroceryList(envelope, newList);
+
+      expect(listCount(result)).toBe(2);
+      expect(listAt(result, 1)).toBe(newList);
+    });
+
+    it('treats missing lists key as empty', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+        },
+        deletions: {},
+      };
+
+      const newList: GroceryList = {
+        id: 'list1',
+        name: 'Milk Run',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      const result = createGroceryList(envelope, newList);
+
+      expect(listCount(result)).toBe(1);
+      expect(listAt(result, 0)).toBe(newList);
+    });
+
+    it('returns same envelope when list with same id already exists (idempotent retry)', () => {
+      const list1 = {
+        id: 'list1',
+        name: 'Milk Run',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [list1],
+        },
+        deletions: {},
+      };
+
+      const duplicateList: GroceryList = {
+        id: 'list1',
+        name: 'Different Name',
+        lines: [],
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      const result = createGroceryList(envelope, duplicateList);
+
+      expect(result).toBe(envelope);
+    });
+
+    it('preserves catalog by reference', () => {
+      const catalog = [{ id: 'cat1', name: 'Milk' }];
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog,
+          lists: [],
+        },
+        deletions: {},
+      };
+
+      const newList: GroceryList = {
+        id: 'list1',
+        name: 'Milk Run',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      const result = createGroceryList(envelope, newList);
+
+      expect(payloadOf(result).catalog).toBe(catalog);
+    });
+
+    it('preserves other lists by reference', () => {
+      const list1 = {
+        id: 'list1',
+        name: 'Milk Run',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [list1],
+        },
+        deletions: {},
+      };
+
+      const newList: GroceryList = {
+        id: 'list2',
+        name: 'Bread Run',
+        lines: [],
+        updatedAt: '2026-01-02T00:00:00.000Z',
+        createdAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createGroceryList(envelope, newList);
+
+      expect(listAt(result, 0)).toBe(list1);
+    });
+
+    it('returns same envelope when payload is not a record', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: [],
+        deletions: {},
+      };
+
+      const newList: GroceryList = {
+        id: 'list1',
+        name: 'Milk Run',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+
+      const result = createGroceryList(envelope, newList);
+
+      expect(result).toBe(envelope);
+    });
+  });
+
+  describe('renameGroceryList', () => {
+    it('changes only the list name and updatedAt', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Old Name',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = renameGroceryList(
+        envelope,
+        'list1',
+        'New Name',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      const list = listAt(result, 0);
+      expect(list.name).toBe('New Name');
+      expect(list.updatedAt).toBe('2026-01-02T00:00:00.000Z');
+    });
+
+    it('preserves lines unchanged by reference', () => {
+      const lines = [
+        {
+          id: 'line1',
+          catalogItemId: 'cat1',
+          checked: false,
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ];
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Old Name',
+              lines,
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = renameGroceryList(
+        envelope,
+        'list1',
+        'New Name',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect((listAt(result, 0).lines as unknown[])).toBe(lines);
+    });
+
+    it('preserves other list fields unchanged', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Old Name',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+              unknownField: 'value',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = renameGroceryList(
+        envelope,
+        'list1',
+        'New Name',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      const list = listAt(result, 0);
+      expect(list.createdAt).toBe('2026-01-01T00:00:00.000Z');
+      expect(list.unknownField).toBe('value');
+    });
+
+    it('preserves catalog by reference', () => {
+      const catalog = [{ id: 'cat1', name: 'Milk' }];
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog,
+          lists: [
+            {
+              id: 'list1',
+              name: 'Old Name',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = renameGroceryList(
+        envelope,
+        'list1',
+        'New Name',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(payloadOf(result).catalog).toBe(catalog);
+    });
+
+    it('preserves other lists by reference', () => {
+      const list2 = {
+        id: 'list2',
+        name: 'Other',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Old Name',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+            list2,
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = renameGroceryList(
+        envelope,
+        'list1',
+        'New Name',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(listAt(result, 1)).toBe(list2);
+    });
+
+    it('returns same envelope when listId not found', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [],
+        },
+        deletions: {},
+      };
+
+      const result = renameGroceryList(
+        envelope,
+        'nonexistent',
+        'New Name',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('returns same envelope when payload has no lists key', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: { catalog: [] },
+        deletions: {},
+      };
+
+      const result = renameGroceryList(
+        envelope,
+        'list1',
+        'New Name',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+  });
+
+  describe('deleteGroceryList', () => {
+    it('removes the list from records.lists', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(listCount(result)).toBe(0);
+    });
+
+    it('writes deletion log entry for the list id only', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result.deletions['list1']).toBe('2026-01-02T00:00:00.000Z');
+      expect(result.deletions['line1']).toBeUndefined();
+    });
+
+    it('does not touch catalog', () => {
+      const catalog = [
+        { id: 'cat1', name: 'Milk' },
+        { id: 'cat2', name: 'Bread' },
+      ];
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog,
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat1',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(payloadOf(result).catalog).toBe(catalog);
+      expect(catalogCount(result)).toBe(2);
+    });
+
+    it('preserves other lists by reference', () => {
+      const list2 = {
+        id: 'list2',
+        name: 'Other',
+        lines: [],
+        updatedAt: '2026-01-01T00:00:00.000Z',
+        createdAt: '2026-01-01T00:00:00.000Z',
+      };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+            list2,
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(listAt(result, 0)).toBe(list2);
+    });
+
+    it('returns same envelope when listId not found', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [],
+        },
+        deletions: {},
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'nonexistent',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('returns same envelope when payload has no lists key', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: { catalog: [] },
+        deletions: {},
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(result).toBe(envelope);
+    });
+
+    it('preserves catalog items even when only referenced by deleted list', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [
+            { id: 'cat1', name: 'Milk' },
+            { id: 'cat-orphan', name: 'Orphan' },
+          ],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat-orphan',
+                  checked: false,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(catalogCount(result)).toBe(2);
+      expect(
+        (payloadOf(result).catalog[1] as Record<string, unknown>).name,
+      ).toBe('Orphan');
+    });
+
+    it('keeps existing deletion log entries and keeps newer instant when entry already exists', () => {
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+              createdAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {
+          existingId: '2026-01-01T00:00:00.000Z',
+          list1: '2026-01-01T00:00:00.000Z',
+        },
+      };
+
+      const result = deleteGroceryList(
+        envelope,
+        'list1',
+        '2026-01-03T00:00:00.000Z',
+      );
+
+      expect(result.deletions['existingId']).toBe('2026-01-01T00:00:00.000Z');
+      expect(result.deletions['list1']).toBe('2026-01-03T00:00:00.000Z');
     });
   });
 });

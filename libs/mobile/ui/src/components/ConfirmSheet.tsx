@@ -14,6 +14,8 @@ export interface ConfirmSheetProps {
   cancelLabel?: string;
   /** Renders the confirm button as destructive. */
   destructive?: boolean;
+  /** Shows a spinner on the confirm button and stops accepting either answer. */
+  busy?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -31,6 +33,7 @@ export function ConfirmSheet({
   confirmLabel,
   cancelLabel = 'Cancel',
   destructive = false,
+  busy = false,
   onConfirm,
   onCancel,
 }: ConfirmSheetProps): React.JSX.Element {
@@ -45,9 +48,15 @@ export function ConfirmSheet({
         <Button
           label={confirmLabel}
           variant={destructive ? 'destructive' : 'primary'}
+          busy={busy}
           onPress={onConfirm}
         />
-        <Button label={cancelLabel} variant="ghost" onPress={onCancel} />
+        <Button
+          label={cancelLabel}
+          variant="ghost"
+          disabled={busy}
+          onPress={onCancel}
+        />
       </View>
     </BottomSheet>
   );
