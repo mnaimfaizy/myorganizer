@@ -22,11 +22,6 @@ import {
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
-  putVaultRecord,
-  type AddressRecord,
-  type UsageLocationRecord,
-} from '@myorganizer/vault-core/portable';
-import {
   Button,
   EmptyState,
   InlineNotice,
@@ -42,15 +37,14 @@ import {
   addressFields,
   findVisibleAddress,
   formatAddressLine,
-  isNotified,
   mapsUrlForAddress,
   readUsageLocations,
   type CopyableField,
-  type DecryptedUsageLocation,
 } from './contactModel';
 import { DETAILS_ROUTES, type DetailsStackParamList } from './detailsStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
 import { UsageLocationSection } from './UsageLocationSection';
+import { useUsageLocationToggle } from './useUsageLocationToggle';
 import { describeVaultLoadError } from './vaultLoadError';
 
 /**
@@ -127,31 +121,7 @@ export function AddressDetailScreen(): React.JSX.Element {
     void Share.share({ message: formatAddressLine(address) });
   }, [address]);
 
-  const toggleNotified = useCallback(
-    (location: DecryptedUsageLocation): void => {
-      if (address === null) return;
-      const now = new Date().toISOString();
-      const nextChanged = !isNotified(location);
-      const nextUsageLocations = readUsageLocations(address).map((entry) => {
-        if (entry.id !== location.id) return entry;
-        const updated = { ...entry, changed: nextChanged };
-        if (nextChanged) {
-          updated.changedAt = now;
-        } else {
-          delete updated.changedAt;
-        }
-        return updated;
-      });
-      void push(location.id, (envelope) =>
-        putVaultRecord(envelope, {
-          ...(address as AddressRecord),
-          usageLocations: nextUsageLocations as UsageLocationRecord[],
-          updatedAt: now,
-        }),
-      );
-    },
-    [address, push],
-  );
+  const toggleNotified = useUsageLocationToggle(address, push);
 
   const rowState = (id: string): ListRowState =>
     pendingId === id

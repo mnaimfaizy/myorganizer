@@ -20,11 +20,6 @@ import {
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
-  putVaultRecord,
-  type MobileNumberRecord,
-  type UsageLocationRecord,
-} from '@myorganizer/vault-core/portable';
-import {
   Button,
   EmptyState,
   InlineNotice,
@@ -39,15 +34,14 @@ import { ContactFieldRow } from './ContactFieldRow';
 import {
   findVisibleMobileNumber,
   formatMobileNumber,
-  isNotified,
   mobileNumberFields,
   readUsageLocations,
   type CopyableField,
-  type DecryptedUsageLocation,
 } from './contactModel';
 import { DETAILS_ROUTES, type DetailsStackParamList } from './detailsStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
 import { UsageLocationSection } from './UsageLocationSection';
+import { useUsageLocationToggle } from './useUsageLocationToggle';
 import { describeVaultLoadError } from './vaultLoadError';
 
 /**
@@ -117,31 +111,7 @@ export function MobileNumberDetailScreen(): React.JSX.Element {
     void Share.share({ message: formatMobileNumber(mobile) });
   }, [mobile]);
 
-  const toggleNotified = useCallback(
-    (location: DecryptedUsageLocation): void => {
-      if (mobile === null) return;
-      const now = new Date().toISOString();
-      const nextChanged = !isNotified(location);
-      const nextUsageLocations = readUsageLocations(mobile).map((entry) => {
-        if (entry.id !== location.id) return entry;
-        const updated = { ...entry, changed: nextChanged };
-        if (nextChanged) {
-          updated.changedAt = now;
-        } else {
-          delete updated.changedAt;
-        }
-        return updated;
-      });
-      void push(location.id, (envelope) =>
-        putVaultRecord(envelope, {
-          ...(mobile as MobileNumberRecord),
-          usageLocations: nextUsageLocations as UsageLocationRecord[],
-          updatedAt: now,
-        }),
-      );
-    },
-    [mobile, push],
-  );
+  const toggleNotified = useUsageLocationToggle(mobile, push);
 
   const rowState = (id: string): ListRowState =>
     pendingId === id

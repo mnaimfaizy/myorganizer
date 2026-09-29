@@ -98,9 +98,9 @@ export function splitAddressesByStatus(records: unknown): SplitAddresses {
 /** The Usage Locations carried by an Address or Mobile Number, dropping any
  * entry with no usable `id` — the same defensive read as the top-level
  * records, applied one level in. */
-export function readUsageLocations(
-  contact: DecryptedAddress | DecryptedMobileNumber,
-): DecryptedUsageLocation[] {
+export function readUsageLocations(contact: {
+  usageLocations?: unknown;
+}): DecryptedUsageLocation[] {
   const raw = contact.usageLocations;
   if (!Array.isArray(raw)) return [];
   return raw.filter(hasUsableId) as DecryptedUsageLocation[];
