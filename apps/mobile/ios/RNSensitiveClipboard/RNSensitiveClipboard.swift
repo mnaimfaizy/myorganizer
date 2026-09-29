@@ -1,4 +1,5 @@
 import Foundation
+import React
 import UIKit
 
 /// The iOS half of the Details slice's Sensitive Clipboard.
