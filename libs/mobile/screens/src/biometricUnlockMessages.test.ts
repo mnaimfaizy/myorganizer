@@ -115,6 +115,14 @@ describe('biometricUnlockMessages.ts', () => {
       expect(result).toBeNull();
     });
 
+    it('says a cancelled biometric check left Biometric Unlock off', () => {
+      const enrolment: BiometricEnrolment = { outcome: 'cancelled' };
+
+      const result = describeEnrolmentFailure(enrolment);
+
+      expect(result).toContain('still off');
+    });
+
     it('returns a message for not-passphrase refusal', () => {
       const enrolment: BiometricEnrolment = {
         outcome: 'refused',

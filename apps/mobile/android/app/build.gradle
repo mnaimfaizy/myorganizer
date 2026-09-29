@@ -123,6 +123,12 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // BiometricPrompt with a CryptoObject for the Biometric Unlock keystore
+    // (com.mobile.biometrickeystore). The same version react-native-keychain
+    // already brings in, declared here because that one is not on this
+    // module's compile classpath.
+    implementation("androidx.biometric:biometric:1.1.0")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

@@ -2,10 +2,20 @@
  * Pure logic functions for AccountScreen, extracted for testability.
  * These functions contain no React hooks and run in a node environment.
  */
+import {
+  classifyUnlockFailure,
+  describeUnlockFailure,
+} from './unlockErrorClassification';
 
+/**
+ * The part of the Biometric Unlock controller the Account tab uses. It has no
+ * passphrase-free `enable`: turning Biometric Unlock on from here always asks
+ * for the passphrase again (ADR 0108 decision 1), however recently the Vault
+ * was unlocked.
+ */
 export interface BiometricState {
   state: 'on' | 'off' | 'unsupported' | null;
-  enable: () => Promise<{ outcome: 'enabled' | 'denied' | unknown }>;
+  enableWithPassphrase: (passphrase: string) => Promise<{ outcome: string }>;
   disable: () => Promise<void>;
 }
 
@@ -59,38 +69,52 @@ export function findSettingLabel<T>(
   return options.find((opt) => opt.value === value)?.label || defaultLabel;
 }
 
+/** What the enable sheet says when turning Biometric Unlock on did not work. */
+export const BIOMETRIC_ENABLE_CANCELLED_MESSAGE =
+  'The biometric check was cancelled, so Biometric Unlock is still off.';
+export const BIOMETRIC_ENABLE_UNSUPPORTED_MESSAGE =
+  'This device has no biometric set up, so Biometric Unlock is still off.';
+export const BIOMETRIC_ENABLE_FAILED_MESSAGE =
+  "Biometric Unlock couldn't be turned on. Try again.";
+
 /**
- * Handle biometric enable operation: call enable(), check outcome, update state.
- * Returns the operation result and any error message.
+ * Turn Biometric Unlock on with the passphrase the User just typed, and say
+ * what happened. A wrong passphrase, an offline device, and a server failure
+ * read exactly as they do on the Unlock screen.
  */
 export async function performBiometricEnable(
   biometric: BiometricState,
+  passphrase: string,
 ): Promise<{
   success: boolean;
   shouldCloseSheet: boolean;
   errorMessage: string | null;
 }> {
+  const failure = (errorMessage: string) => ({
+    success: false,
+    shouldCloseSheet: false,
+    errorMessage,
+  });
+
+  let outcome: string | undefined;
   try {
-    const result = await biometric.enable();
-    if (result.outcome === 'enabled') {
-      return {
-        success: true,
-        shouldCloseSheet: true,
-        errorMessage: null,
-      };
-    } else {
-      return {
-        success: false,
-        shouldCloseSheet: false,
-        errorMessage: 'Failed to enable biometric unlock',
-      };
-    }
-  } catch {
-    return {
-      success: false,
-      shouldCloseSheet: false,
-      errorMessage: 'Failed to enable biometric unlock',
-    };
+    outcome = (await biometric.enableWithPassphrase(passphrase))?.outcome;
+  } catch (error) {
+    return failure(
+      describeUnlockFailure(classifyUnlockFailure(error), 'passphrase') ||
+        BIOMETRIC_ENABLE_FAILED_MESSAGE,
+    );
+  }
+
+  switch (outcome) {
+    case 'enabled':
+      return { success: true, shouldCloseSheet: true, errorMessage: null };
+    case 'cancelled':
+      return failure(BIOMETRIC_ENABLE_CANCELLED_MESSAGE);
+    case 'refused':
+      return failure(BIOMETRIC_ENABLE_UNSUPPORTED_MESSAGE);
+    default:
+      return failure(BIOMETRIC_ENABLE_FAILED_MESSAGE);
   }
 }
 

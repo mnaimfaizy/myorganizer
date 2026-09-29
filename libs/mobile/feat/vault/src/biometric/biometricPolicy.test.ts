@@ -1,4 +1,9 @@
-import type { BiometricKeystore, BiometricKeystoreRead } from './keystore';
+import type {
+  BiometricKeystore,
+  BiometricKeystoreRead,
+  BiometricKeystoreWrite,
+  BiometricMethod,
+} from './keystore';
 import { bytesToBase64 } from '../bytes';
 import {
   mayEnableBiometricUnlock,
@@ -24,6 +29,8 @@ class FakeBiometricKeystore implements BiometricKeystore {
    * enrolment change, an unrecognised error.
    */
   private forcedRead: BiometricKeystoreRead | null = null;
+  /** What `write` reports: `written` stores the key, `cancelled` stores nothing. */
+  private writeOutcome: BiometricKeystoreWrite = 'written';
 
   setSupportedValue(value: boolean): void {
     this.supportedValue = value;
@@ -31,6 +38,14 @@ class FakeBiometricKeystore implements BiometricKeystore {
 
   forceRead(outcome: BiometricKeystoreRead): void {
     this.forcedRead = outcome;
+  }
+
+  forceWrite(outcome: BiometricKeystoreWrite): void {
+    this.writeOutcome = outcome;
+  }
+
+  async method(): Promise<BiometricMethod> {
+    return 'face-id';
   }
 
   async isSupported(): Promise<boolean> {
@@ -41,8 +56,14 @@ class FakeBiometricKeystore implements BiometricKeystore {
     return this.store.has(userId);
   }
 
-  async write(userId: string, masterKeyBase64: string): Promise<void> {
-    this.store.set(userId, masterKeyBase64);
+  async write(
+    userId: string,
+    masterKeyBase64: string,
+  ): Promise<BiometricKeystoreWrite> {
+    if (this.writeOutcome === 'written') {
+      this.store.set(userId, masterKeyBase64);
+    }
+    return this.writeOutcome;
   }
 
   async read(userId: string): Promise<BiometricKeystoreRead> {
@@ -232,6 +253,21 @@ describe('biometricPolicy.ts', () => {
       expect(result).toEqual({ outcome: 'enabled' });
     });
 
+    it('returns cancelled and stores nothing when the biometric check is dismissed', async () => {
+      keystore.forceWrite('cancelled');
+      const now = 1000000;
+
+      const result = await enableBiometricUnlock({
+        keystore,
+        userId: 'user-a',
+        masterKey: new Uint8Array([1, 2, 3, 4]),
+        authorization: { secret: 'passphrase', unlockedAt: now, now },
+      });
+
+      expect(result).toEqual({ outcome: 'cancelled' });
+      expect(keystore.getStoredKey('user-a')).toBe(undefined);
+    });
+
     it('stores master key as base64', async () => {
       keystore.setSupportedValue(true);
       const masterKey = new Uint8Array([42, 43, 44, 45]);
@@ -373,6 +409,7 @@ describe('biometricPolicy.ts', () => {
       const writeError = new Error('Write failed');
       const errorKeystore: BiometricKeystore = {
         isSupported: async () => true,
+        method: async () => 'fingerprint',
         has: async () => false,
         write: async () => {
           throw writeError;

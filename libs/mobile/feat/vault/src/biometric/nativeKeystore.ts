@@ -1,11 +1,18 @@
 // The real keystore Platform Adapter: `react-native-keychain` over the iOS
-// Keychain and the Android Keystore.
+// Keychain, and this app's own `RNBiometricKeystore` module over the Android
+// Keystore.
 //
 // Split from ./keystore.ts, which is the interface and the outcome vocabulary,
 // so the policy and its tests can import the interface without pulling a
 // native module into a Node Jest environment.
+import { NativeModules, Platform } from 'react-native';
 import * as Keychain from 'react-native-keychain';
-import type { BiometricKeystore, BiometricKeystoreRead } from './keystore';
+import type {
+  BiometricKeystore,
+  BiometricKeystoreRead,
+  BiometricKeystoreWrite,
+  BiometricMethod,
+} from './keystore';
 
 /**
  * One keychain service per User, so the item is bound to that User and a
@@ -26,10 +33,8 @@ const AUTHENTICATION_PROMPT = {
 } as const;
 
 /**
- * The write flags, and the whole of what makes this storage rather than a
- * second copy of the Master Key lying around.
- *
- * On **iOS**, where both halves of ADR 0108 decision 1 hold:
+ * The iOS write flags, and the whole of what makes this storage rather than a
+ * second copy of the Master Key lying around (ADR 0108 decision 1):
  *
  * - `BIOMETRY_CURRENT_SET` is the invalidation rule. The item dies when the
  *   device's enrolment changes, so a finger or face added afterwards does not
@@ -38,31 +43,11 @@ const AUTHENTICATION_PROMPT = {
  *   passcode and never migrates to a new one, so the key cannot ride an
  *   encrypted backup onto somebody else's phone.
  *
- * On **Android**, only the first half holds, and this comment says so rather
- * than implying the pair. `AES_GCM` is the storage whose Keystore key
- * `react-native-keychain` generates with `setUserAuthenticationRequired(true)`
- * and `AUTH_BIOMETRIC_STRONG` — far better than `AES_GCM_NO_AUTH`, which
- * would store the Master Key behind no check at all. But the library never
- * calls `setInvalidatedByBiometricEnrollment`, and it passes
- * `AUTH_BIOMETRIC_STRONG or AUTH_DEVICE_CREDENTIAL` with a five-second
- * validity window, so on Android:
- *
- * - the item is **not** destroyed when the enrolment set changes — a
- *   fingerprint added later does open it;
- * - the device credential (PIN, pattern, password) authorizes the key as well
- *   as a biometric, even though `accessControl` keeps the *prompt*
- *   biometric-only — Android reads `accessControl` to choose what the prompt
- *   offers, not to constrain the key.
- *
- * Closing that gap needs the native key spec, which this library does not
- * expose, so it is a known limitation of this slice rather than something the
- * options object above can fix. It is recorded as such instead of being
- * claimed away.
- *
- * `securityLevel` is deliberately not pinned to `SECURE_HARDWARE`: it is an
- * assertion that fails the write outright on a device without a TEE, and
- * refusing the feature there is worse than a strong-biometric software key —
- * the passphrase is still the only other way in either way.
+ * Android does not use this library: its Keystore key is generated with a
+ * five-second validity window that also accepts the device credential and is
+ * never invalidated by an enrolment change, and it exposes no way to change
+ * that. `RNBiometricKeystore` (apps/mobile/android, `biometrickeystore`) owns
+ * the key spec there instead.
  */
 const WRITE_OPTIONS: Keychain.SetOptions = {
   accessControl: Keychain.ACCESS_CONTROL.BIOMETRY_CURRENT_SET,
@@ -93,13 +78,10 @@ const CANCELLED_MARKERS = [
  * Platform error text that means the stored item can no longer be opened
  * because the device's biometric enrolment changed.
  *
- * `KeyPermanentlyInvalidatedException` is Android's name for it, and it is
- * matched here because an Android key *can* still be invalidated for reasons
- * other than enrolment — the screen lock being removed destroys every
- * auth-bound key. It is not, per the write options above, raised by an
- * enrolment change on this configuration. On iOS the invalidated item is
- * reported as missing rather than as an error, which `has` already tells
- * apart.
+ * On iOS the invalidated item is reported as missing rather than as an error,
+ * which `has` already tells apart. The Android markers stay for the one case
+ * this adapter runs there — a build without `RNBiometricKeystore` — where a
+ * `KeyPermanentlyInvalidatedException` still means the key is gone.
  */
 const INVALIDATED_MARKERS = [
   'keypermanentlyinvalidated',
@@ -135,13 +117,28 @@ function classifyReadError(error: unknown): BiometricKeystoreRead {
   return { outcome: 'failed', error };
 }
 
-class NativeBiometricKeystore implements BiometricKeystore {
+/** What iOS calls the biometric this item is gated on. */
+function iosMethod(type: Keychain.BIOMETRY_TYPE | null): BiometricMethod {
+  if (type === Keychain.BIOMETRY_TYPE.FACE_ID) return 'face-id';
+  if (type === Keychain.BIOMETRY_TYPE.TOUCH_ID) return 'touch-id';
+  return 'biometrics';
+}
+
+class KeychainBiometricKeystore implements BiometricKeystore {
   async isSupported(): Promise<boolean> {
     try {
       return (await Keychain.getSupportedBiometryType()) !== null;
     } catch {
       // A device that cannot answer the question is not offered the feature.
       return false;
+    }
+  }
+
+  async method(): Promise<BiometricMethod> {
+    try {
+      return iosMethod(await Keychain.getSupportedBiometryType());
+    } catch {
+      return 'biometrics';
     }
   }
 
@@ -155,7 +152,10 @@ class NativeBiometricKeystore implements BiometricKeystore {
     }
   }
 
-  async write(userId: string, masterKeyBase64: string): Promise<void> {
+  async write(
+    userId: string,
+    masterKeyBase64: string,
+  ): Promise<BiometricKeystoreWrite> {
     const result = await Keychain.setGenericPassword(ACCOUNT, masterKeyBase64, {
       ...WRITE_OPTIONS,
       service: serviceFor(userId),
@@ -167,6 +167,20 @@ class NativeBiometricKeystore implements BiometricKeystore {
     if (result === false) {
       throw new Error('The keystore refused to store the vault key.');
     }
+
+    // A Keychain write raises no prompt, so the biometric check is a read
+    // straight back. Anything short of the same key coming out removes the
+    // item: turning Biometric Unlock on is not done until Face ID has been
+    // passed once.
+    const check = await this.read(userId);
+    if (check.outcome === 'ok' && check.masterKeyBase64 === masterKeyBase64) {
+      return 'written';
+    }
+    await this.remove(userId);
+    if (check.outcome === 'cancelled') return 'cancelled';
+    throw check.outcome === 'failed'
+      ? check.error
+      : new Error('The stored vault key could not be read back.');
   }
 
   async read(userId: string): Promise<BiometricKeystoreRead> {
@@ -187,6 +201,112 @@ class NativeBiometricKeystore implements BiometricKeystore {
   }
 }
 
+/** The Android module's surface. See RNBiometricKeystoreModule.kt. */
+interface RNBiometricKeystoreModule {
+  isSupported(): Promise<boolean>;
+  method(): Promise<'fingerprint' | 'biometrics'>;
+  has(userId: string): Promise<boolean>;
+  write(
+    userId: string,
+    value: string,
+    title: string,
+    cancel: string,
+  ): Promise<null>;
+  read(userId: string, title: string, cancel: string): Promise<string>;
+  remove(userId: string): Promise<null>;
+}
+
+/** The rejection codes RNBiometricKeystoreModule settles with. */
+function codeOf(error: unknown): string | undefined {
+  if (typeof error !== 'object' || error === null) return undefined;
+  const code = (error as { code?: unknown }).code;
+  return typeof code === 'string' ? code : undefined;
+}
+
+/**
+ * The Android keystore: a per-User AES key that needs a strong biometric for
+ * every use and dies when the enrolment changes, so here — unlike through
+ * `react-native-keychain` — a fingerprint enrolled later does not open the
+ * Vault, and neither does the device PIN.
+ */
+class AndroidBiometricKeystore implements BiometricKeystore {
+  constructor(private readonly native: RNBiometricKeystoreModule) {}
+
+  async isSupported(): Promise<boolean> {
+    try {
+      return await this.native.isSupported();
+    } catch {
+      return false;
+    }
+  }
+
+  async method(): Promise<BiometricMethod> {
+    try {
+      return await this.native.method();
+    } catch {
+      return 'biometrics';
+    }
+  }
+
+  async has(userId: string): Promise<boolean> {
+    try {
+      return await this.native.has(userId);
+    } catch {
+      return false;
+    }
+  }
+
+  async write(
+    userId: string,
+    masterKeyBase64: string,
+  ): Promise<BiometricKeystoreWrite> {
+    try {
+      await this.native.write(
+        userId,
+        masterKeyBase64,
+        AUTHENTICATION_PROMPT.title,
+        AUTHENTICATION_PROMPT.cancel,
+      );
+      return 'written';
+    } catch (error) {
+      if (codeOf(error) === 'E_CANCELLED') return 'cancelled';
+      throw error;
+    }
+  }
+
+  async read(userId: string): Promise<BiometricKeystoreRead> {
+    try {
+      const masterKeyBase64 = await this.native.read(
+        userId,
+        AUTHENTICATION_PROMPT.title,
+        AUTHENTICATION_PROMPT.cancel,
+      );
+      return { outcome: 'ok', masterKeyBase64 };
+    } catch (error) {
+      switch (codeOf(error)) {
+        case 'E_CANCELLED':
+          return { outcome: 'cancelled' };
+        case 'E_INVALIDATED':
+          return { outcome: 'invalidated' };
+        case 'E_MISSING':
+          return { outcome: 'missing' };
+        default:
+          return { outcome: 'failed', error };
+      }
+    }
+  }
+
+  async remove(userId: string): Promise<void> {
+    await this.native.remove(userId);
+  }
+}
+
+const androidModule = (
+  NativeModules as { RNBiometricKeystore?: RNBiometricKeystoreModule }
+).RNBiometricKeystore;
+
 /** The keystore this app runs against on a device. */
 export const nativeBiometricKeystore: BiometricKeystore =
-  new NativeBiometricKeystore();
+  Platform.OS === 'android' && androidModule != null
+    ? new AndroidBiometricKeystore(androidModule)
+    : new KeychainBiometricKeystore();

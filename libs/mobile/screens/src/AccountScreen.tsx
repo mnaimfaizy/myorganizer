@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
@@ -15,6 +15,7 @@ import {
   Screen,
   Switch,
   Text,
+  TextField,
   useTheme,
 } from '@myorganizer/mobile/ui';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
@@ -25,6 +26,15 @@ export function AccountScreen(): React.JSX.Element {
   const { user } = useAuth();
   const { lock } = useVaultSession();
   const accountState = useAccountScreenState();
+  // The passphrase typed into the enable sheet. Held only while the sheet is
+  // open and dropped as it closes, so it never outlives the one check it is for.
+  const [enablePassphrase, setEnablePassphrase] = useState('');
+
+  const closeBiometricEnable = (): void => {
+    accountState.setShowBiometricEnable(false);
+    accountState.setBiometricError(null);
+    setEnablePassphrase('');
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -206,18 +216,34 @@ export function AccountScreen(): React.JSX.Element {
       <BottomSheet
         visible={accountState.showBiometricEnable}
         onDismiss={() => {
-          if (!accountState.biometricBusy) {
-            accountState.setShowBiometricEnable(false);
-            accountState.setBiometricError(null);
-          }
+          if (!accountState.biometricBusy) closeBiometricEnable();
         }}
         title="Turn on Biometric Unlock?"
       >
         <Text variant="body" color="mutedForeground">
-          Unlock your vault with a glance instead of typing your passphrase.
-          Your passphrase and recovery key keep working, the key never leaves
-          this device, and logging out removes it.
+          Enter your passphrase, then pass the biometric check. Your key stays
+          on this device, and your passphrase and Recovery Key keep working.
         </Text>
+
+        <View style={{ marginTop: theme.spacing.md }}>
+          <TextField
+            label="Passphrase"
+            value={enablePassphrase}
+            onChangeText={setEnablePassphrase}
+            secureTextEntry
+            autoCapitalize="none"
+            autoCorrect={false}
+            textContentType="password"
+            editable={!accountState.biometricBusy}
+            onSubmitEditing={() => {
+              if (enablePassphrase.length > 0) {
+                void accountState
+                  .handleBiometricEnable(enablePassphrase)
+                  .then(() => setEnablePassphrase(''));
+              }
+            }}
+          />
+        </View>
 
         {accountState.biometricError != null && (
           <View
@@ -239,17 +265,20 @@ export function AccountScreen(): React.JSX.Element {
             label="Turn On"
             icon="biometric"
             busy={accountState.biometricBusy}
-            disabled={accountState.biometricBusy}
-            onPress={() => void accountState.handleBiometricEnable()}
+            disabled={
+              accountState.biometricBusy || enablePassphrase.length === 0
+            }
+            onPress={() =>
+              void accountState
+                .handleBiometricEnable(enablePassphrase)
+                .then(() => setEnablePassphrase(''))
+            }
           />
           <Button
             label="Not Now"
             variant="ghost"
             disabled={accountState.biometricBusy}
-            onPress={() => {
-              accountState.setShowBiometricEnable(false);
-              accountState.setBiometricError(null);
-            }}
+            onPress={closeBiometricEnable}
           />
         </View>
       </BottomSheet>

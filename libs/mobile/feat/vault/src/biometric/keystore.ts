@@ -28,10 +28,29 @@ export type BiometricKeystoreRead =
   /** Anything else. Falls back to the passphrase and keeps the item. */
   | { outcome: 'failed'; error: unknown };
 
+/** How a keystore write ended. */
+export type BiometricKeystoreWrite =
+  /** The biometric check passed and the item is stored. */
+  | 'written'
+  /** The User dismissed the biometric check. Nothing is stored. */
+  | 'cancelled';
+
+/**
+ * Which biometric the device gates the item on, as copy names it: "Unlock
+ * with Face ID" on an iPhone with Face ID, "Unlock with fingerprint" on an
+ * Android phone with a sensor. `biometrics` is the fallback for a device that
+ * says it has a strong biometric without saying which.
+ */
+export type BiometricMethod =
+  | 'face-id'
+  | 'touch-id'
+  | 'fingerprint'
+  | 'biometrics';
+
 /**
  * The keystore, as the Biometric Unlock policy sees it.
  *
- * Every method takes the User id, because the item is bound to one User and
+ * Every read, write, and delete takes the User id, because the item is bound to one User and
  * another User signing in on the same device must never reach it (ADR 0108
  * decision 3). There is no "current user" on this interface to get wrong.
  */
@@ -43,6 +62,9 @@ export interface BiometricKeystore {
    */
   isSupported(): Promise<boolean>;
 
+  /** Which biometric the prompt will ask for. Asked once per User session. */
+  method(): Promise<BiometricMethod>;
+
   /**
    * Whether an item exists for this User. Deliberately does **not** raise the
    * biometric prompt: the Unlock screen asks this to decide whether to show
@@ -51,8 +73,16 @@ export interface BiometricKeystore {
    */
   has(userId: string): Promise<boolean>;
 
-  /** Store this User's Master Key behind the strong-biometric gate. */
-  write(userId: string, masterKeyBase64: string): Promise<void>;
+  /**
+   * Store this User's Master Key behind the strong-biometric gate, raising
+   * the biometric check as part of the write — turning Biometric Unlock on
+   * asks for the passphrase, *then* the biometric (#908), and a write the User
+   * cancels stores nothing. Throws when the platform refuses the item.
+   */
+  write(
+    userId: string,
+    masterKeyBase64: string,
+  ): Promise<BiometricKeystoreWrite>;
 
   /** Read it back, raising the platform's biometric prompt. */
   read(userId: string): Promise<BiometricKeystoreRead>;

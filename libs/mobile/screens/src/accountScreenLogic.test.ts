@@ -1,4 +1,7 @@
 import {
+  BIOMETRIC_ENABLE_CANCELLED_MESSAGE,
+  BIOMETRIC_ENABLE_FAILED_MESSAGE,
+  BIOMETRIC_ENABLE_UNSUPPORTED_MESSAGE,
   computeBiometricLabel,
   findSettingLabel,
   performBiometricEnable,
@@ -6,6 +9,10 @@ import {
   shouldDisableBiometricOnLogout,
   type BiometricState,
 } from './accountScreenLogic';
+import {
+  describeWrongSecret,
+  UNLOCK_NETWORK_ERROR_MESSAGE,
+} from './unlockErrorClassification';
 
 describe('accountScreenLogic', () => {
   describe('computeBiometricLabel', () => {
@@ -117,87 +124,83 @@ describe('accountScreenLogic', () => {
   });
 
   describe('performBiometricEnable', () => {
-    it('returns success when enable() resolves with outcome="enabled"', async () => {
-      const mockBiometric: BiometricState = {
-        state: 'off',
-        enable: jest.fn().mockResolvedValue({ outcome: 'enabled' }),
-        disable: jest.fn(),
-      };
-
-      const result = await performBiometricEnable(mockBiometric);
-
-      expect(result.success).toBe(true);
-      expect(result.shouldCloseSheet).toBe(true);
-      expect(result.errorMessage).toBeNull();
-      expect(mockBiometric.enable).toHaveBeenCalled();
+    const biometricWith = (
+      enableWithPassphrase: BiometricState['enableWithPassphrase'],
+    ): BiometricState => ({
+      state: 'off',
+      enableWithPassphrase,
+      disable: jest.fn(),
     });
 
-    it('returns failure when enable() resolves with outcome != "enabled"', async () => {
-      const mockBiometric: BiometricState = {
-        state: 'off',
-        enable: jest.fn().mockResolvedValue({ outcome: 'denied' }),
-        disable: jest.fn(),
-      };
+    it('passes the typed passphrase through and closes the sheet on enabled', async () => {
+      const enableWithPassphrase = jest
+        .fn()
+        .mockResolvedValue({ outcome: 'enabled' });
 
-      const result = await performBiometricEnable(mockBiometric);
+      const result = await performBiometricEnable(
+        biometricWith(enableWithPassphrase),
+        'correct horse',
+      );
+
+      expect(enableWithPassphrase).toHaveBeenCalledWith('correct horse');
+      expect(result).toEqual({
+        success: true,
+        shouldCloseSheet: true,
+        errorMessage: null,
+      });
+    });
+
+    it('says the passphrase was wrong when the Vault refuses it', async () => {
+      const result = await performBiometricEnable(
+        biometricWith(jest.fn().mockRejectedValue(new Error('auth tag'))),
+        'wrong',
+      );
 
       expect(result.success).toBe(false);
       expect(result.shouldCloseSheet).toBe(false);
-      expect(result.errorMessage).toBe('Failed to enable biometric unlock');
+      expect(result.errorMessage).toBe(describeWrongSecret('passphrase'));
     });
 
-    it('returns failure when enable() throws exception', async () => {
-      const mockBiometric: BiometricState = {
-        state: 'off',
-        enable: jest.fn().mockRejectedValue(new Error('Device error')),
-        disable: jest.fn(),
-      };
-
-      const result = await performBiometricEnable(mockBiometric);
-
-      expect(result.success).toBe(false);
-      expect(result.shouldCloseSheet).toBe(false);
-      expect(result.errorMessage).toBe('Failed to enable biometric unlock');
-    });
-
-    it('keeps sheet open when enable fails', async () => {
-      const mockBiometric: BiometricState = {
-        state: 'off',
-        enable: jest.fn().mockResolvedValue({ outcome: 'timeout' }),
-        disable: jest.fn(),
-      };
-
-      const result = await performBiometricEnable(mockBiometric);
-
-      expect(result.shouldCloseSheet).toBe(false);
-    });
-
-    it('closes sheet only on success', async () => {
-      const mockBiometric: BiometricState = {
-        state: 'off',
-        enable: jest.fn().mockResolvedValue({ outcome: 'enabled' }),
-        disable: jest.fn(),
-      };
-
-      const result = await performBiometricEnable(mockBiometric);
-
-      expect(result.shouldCloseSheet).toBe(true);
-    });
-
-    it('always sets error message on failure', async () => {
-      const failure1 = await performBiometricEnable({
-        state: 'off',
-        enable: jest.fn().mockResolvedValue({ outcome: 'denied' }),
-        disable: jest.fn(),
-      });
-      const failure2 = await performBiometricEnable({
-        state: 'off',
-        enable: jest.fn().mockRejectedValue(new Error('Unknown')),
-        disable: jest.fn(),
+    it('says the device is offline on a transport failure', async () => {
+      const offline = Object.assign(new Error('Network Error'), {
+        isAxiosError: true,
+        code: 'ERR_NETWORK',
       });
 
-      expect(failure1.errorMessage).toBe('Failed to enable biometric unlock');
-      expect(failure2.errorMessage).toBe('Failed to enable biometric unlock');
+      const result = await performBiometricEnable(
+        biometricWith(jest.fn().mockRejectedValue(offline)),
+        'passphrase',
+      );
+
+      expect(result.errorMessage).toBe(UNLOCK_NETWORK_ERROR_MESSAGE);
+    });
+
+    it('keeps the sheet open and says so when the biometric check is cancelled', async () => {
+      const result = await performBiometricEnable(
+        biometricWith(jest.fn().mockResolvedValue({ outcome: 'cancelled' })),
+        'passphrase',
+      );
+
+      expect(result.shouldCloseSheet).toBe(false);
+      expect(result.errorMessage).toBe(BIOMETRIC_ENABLE_CANCELLED_MESSAGE);
+    });
+
+    it('explains a refusal as no biometric set up', async () => {
+      const result = await performBiometricEnable(
+        biometricWith(jest.fn().mockResolvedValue({ outcome: 'refused' })),
+        'passphrase',
+      );
+
+      expect(result.errorMessage).toBe(BIOMETRIC_ENABLE_UNSUPPORTED_MESSAGE);
+    });
+
+    it('reports a generic failure for anything else', async () => {
+      const result = await performBiometricEnable(
+        biometricWith(jest.fn().mockResolvedValue({ outcome: 'failed' })),
+        'passphrase',
+      );
+
+      expect(result.errorMessage).toBe(BIOMETRIC_ENABLE_FAILED_MESSAGE);
     });
   });
 
@@ -205,7 +208,7 @@ describe('accountScreenLogic', () => {
     it('returns success when disable() resolves', async () => {
       const mockBiometric: BiometricState = {
         state: 'on',
-        enable: jest.fn(),
+        enableWithPassphrase: jest.fn(),
         disable: jest.fn().mockResolvedValue(undefined),
       };
 
@@ -219,7 +222,7 @@ describe('accountScreenLogic', () => {
     it('returns failure when disable() throws exception', async () => {
       const mockBiometric: BiometricState = {
         state: 'on',
-        enable: jest.fn(),
+        enableWithPassphrase: jest.fn(),
         disable: jest.fn().mockRejectedValue(new Error('Device error')),
       };
 
@@ -235,7 +238,7 @@ describe('accountScreenLogic', () => {
         .mockRejectedValue(new Error('Biometric unavailable'));
       const mockBiometric: BiometricState = {
         state: 'on',
-        enable: jest.fn(),
+        enableWithPassphrase: jest.fn(),
         disable: mockDisable,
       };
 
@@ -295,30 +298,20 @@ describe('accountScreenLogic', () => {
   });
 
   describe('error handling robustness', () => {
-    it('performBiometricEnable handles enable() returning non-outcome shape', async () => {
-      const mockBiometric: BiometricState = {
-        state: 'off',
-        enable: jest.fn().mockResolvedValue({}),
-        disable: jest.fn(),
-      };
+    it('performBiometricEnable treats a missing outcome as a failure', async () => {
+      for (const resolved of [{}, null]) {
+        const result = await performBiometricEnable(
+          {
+            state: 'off',
+            enableWithPassphrase: jest.fn().mockResolvedValue(resolved),
+            disable: jest.fn(),
+          },
+          'passphrase',
+        );
 
-      const result = await performBiometricEnable(mockBiometric);
-
-      expect(result.success).toBe(false);
-      expect(result.errorMessage).toBe('Failed to enable biometric unlock');
-    });
-
-    it('performBiometricEnable handles enable() returning null', async () => {
-      const mockBiometric: BiometricState = {
-        state: 'off',
-        enable: jest.fn().mockResolvedValue(null),
-        disable: jest.fn(),
-      };
-
-      const result = await performBiometricEnable(mockBiometric);
-
-      expect(result.success).toBe(false);
-      expect(result.errorMessage).toBe('Failed to enable biometric unlock');
+        expect(result.success).toBe(false);
+        expect(result.errorMessage).toBe(BIOMETRIC_ENABLE_FAILED_MESSAGE);
+      }
     });
 
     it('performBiometricDisable handles disable() throwing different error types', async () => {
@@ -331,7 +324,7 @@ describe('accountScreenLogic', () => {
       for (const error of errors) {
         const mockBiometric: BiometricState = {
           state: 'on',
-          enable: jest.fn(),
+          enableWithPassphrase: jest.fn(),
           disable: jest.fn().mockRejectedValue(error),
         };
 

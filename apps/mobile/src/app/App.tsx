@@ -8,6 +8,7 @@ import {
   useAuth,
 } from '@myorganizer/mobile/feat-auth';
 import {
+  SensitiveCopyProvider,
   VaultProvider,
   createVaultApi,
   disableBiometricUnlock,
@@ -53,7 +54,7 @@ function UserVaultBoundary({
 
   return (
     <VaultProvider vaultApi={vaultApi} userId={user?.id ?? null}>
-      {children}
+      <SensitiveCopyProvider>{children}</SensitiveCopyProvider>
     </VaultProvider>
   );
 }

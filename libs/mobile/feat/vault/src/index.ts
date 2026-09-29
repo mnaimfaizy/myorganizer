@@ -38,6 +38,7 @@ export {
 } from './clipboard/sensitiveClipboard';
 export { nativeSensitiveClipboard } from './clipboard/nativeSensitiveClipboard';
 export {
+  SensitiveCopyProvider,
   useSensitiveCopy,
   type UseSensitiveCopyResult,
 } from './useSensitiveCopy';
@@ -57,6 +58,8 @@ export type { VaultUnlockOutcome } from './unlock';
 export type {
   BiometricKeystore,
   BiometricKeystoreRead,
+  BiometricKeystoreWrite,
+  BiometricMethod,
 } from './biometric/keystore';
 export { nativeBiometricKeystore } from './biometric/nativeKeystore';
 export {

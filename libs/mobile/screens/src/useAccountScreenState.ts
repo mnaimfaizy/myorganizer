@@ -30,7 +30,7 @@ interface AccountScreenState {
   appearanceLabel: string;
   autoLockLabel: string;
   keepScreenAwake: boolean;
-  handleBiometricEnable: () => Promise<void>;
+  handleBiometricEnable: (passphrase: string) => Promise<void>;
   handleBiometricDisable: () => Promise<void>;
   handleAppearanceChange: (appearance: 'system' | 'light' | 'dark') => void;
   handleAutoLockChange: (delay: 'immediately' | '1m' | '5m' | '15m') => void;
@@ -72,21 +72,24 @@ export function useAccountScreenState(): AccountScreenState {
 
   const settings = useMemo(() => getDeviceSettings(), [refreshKey]);
 
-  const handleBiometricEnable = useCallback(async (): Promise<void> => {
-    setBiometricBusy(true);
-    setBiometricError(null);
-    try {
-      const result = await performBiometricEnable(biometric);
-      if (result.success && result.shouldCloseSheet) {
-        setShowBiometricEnable(false);
-        setRefreshKey((prev) => prev + 1);
-      } else {
-        setBiometricError(result.errorMessage);
+  const handleBiometricEnable = useCallback(
+    async (passphrase: string): Promise<void> => {
+      setBiometricBusy(true);
+      setBiometricError(null);
+      try {
+        const result = await performBiometricEnable(biometric, passphrase);
+        if (result.success && result.shouldCloseSheet) {
+          setShowBiometricEnable(false);
+          setRefreshKey((prev) => prev + 1);
+        } else {
+          setBiometricError(result.errorMessage);
+        }
+      } finally {
+        setBiometricBusy(false);
       }
-    } finally {
-      setBiometricBusy(false);
-    }
-  }, [biometric]);
+    },
+    [biometric],
+  );
 
   const handleBiometricDisable = useCallback(async (): Promise<void> => {
     setBiometricBusy(true);

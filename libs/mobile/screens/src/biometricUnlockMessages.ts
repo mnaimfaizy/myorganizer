@@ -56,7 +56,12 @@ const ENROLMENT_FAILURE_MESSAGES = {
   unsupported: 'This device has no biometric this app can use.',
   failed:
     'This device would not store the key. Your passphrase still works — nothing has changed.',
-} as const satisfies Record<BiometricRefusalReason | 'failed', string>;
+  cancelled:
+    'The biometric check was cancelled, so Biometric Unlock is still off. Try again, or choose Not now.',
+} as const satisfies Record<
+  BiometricRefusalReason | 'failed' | 'cancelled',
+  string
+>;
 
 /** What to tell the User about an enrolment that did not happen. */
 export function describeEnrolmentFailure(
@@ -69,6 +74,8 @@ export function describeEnrolmentFailure(
       return ENROLMENT_FAILURE_MESSAGES[enrolment.reason];
     case 'failed':
       return ENROLMENT_FAILURE_MESSAGES.failed;
+    case 'cancelled':
+      return ENROLMENT_FAILURE_MESSAGES.cancelled;
   }
 }
 

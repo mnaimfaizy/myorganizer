@@ -23,6 +23,8 @@ export type BiometricUnlockState =
 /** How turning Biometric Unlock on ended. */
 export type BiometricEnrolment =
   | { outcome: 'enabled' }
+  /** The User dismissed the biometric check. Nothing was stored. */
+  | { outcome: 'cancelled' }
   /**
    * Refused before anything was written.
    *
@@ -163,8 +165,13 @@ export async function enableBiometricUnlock(params: {
   }
 
   try {
-    await params.keystore.write(params.userId, bytesToBase64(params.masterKey));
-    return { outcome: 'enabled' };
+    const written = await params.keystore.write(
+      params.userId,
+      bytesToBase64(params.masterKey),
+    );
+    return written === 'written'
+      ? { outcome: 'enabled' }
+      : { outcome: 'cancelled' };
   } catch (error) {
     return { outcome: 'failed', error };
   }

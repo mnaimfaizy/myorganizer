@@ -10,7 +10,7 @@ import type { ReactNode } from 'react';
 import type { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
 import { mobileVaultCrypto } from '../crypto';
 import { nativeBiometricKeystore } from '../biometric/nativeKeystore';
-import type { BiometricKeystore } from '../biometric/keystore';
+import type { BiometricKeystore, BiometricMethod } from '../biometric/keystore';
 import {
   disableBiometricUnlock,
   enableBiometricUnlock,
@@ -43,13 +43,28 @@ export interface BiometricUnlockController {
   /** Where it stands, or `null` until the keystore has been asked. */
   state: BiometricUnlockState | null;
   /**
+   * Which biometric the prompt asks for, so copy can say "Face ID" or
+   * "fingerprint". `null` until the keystore has been asked.
+   */
+  method: BiometricMethod | null;
+  /**
    * Raise the platform prompt and unlock from the stored Master Key. On
    * `unlocked` the session is already unlocked by the time this resolves; every
    * other outcome leaves it locked and is the caller's to explain.
    */
   unlock: () => Promise<BiometricUnlockAttempt>;
-  /** Turn it on for this User, writing the in-memory Master Key once. */
+  /**
+   * Turn it on straight after a passphrase unlock — the offer. Refused unless
+   * that unlock is recent (`ENROLMENT_FRESHNESS_MS`).
+   */
   enable: () => Promise<BiometricEnrolment>;
+  /**
+   * Turn it on from Account: the passphrase is asked for again and checked
+   * against the Vault, then the biometric check runs — an unlocked session
+   * alone is never enough to add a way into the Vault (ADR 0108 decision 1).
+   * Throws, like `unlock`, on a wrong passphrase or a fetch failure.
+   */
+  enableWithPassphrase: (passphrase: string) => Promise<BiometricEnrolment>;
   /** Turn it off and delete the stored key. */
   disable: () => Promise<void>;
 }
@@ -132,6 +147,8 @@ export function VaultProvider({
   const [unlockedAt, setUnlockedAt] = useState<number | null>(null);
   const [biometricState, setBiometricState] =
     useState<BiometricUnlockState | null>(null);
+  const [biometricMethod, setBiometricMethod] =
+    useState<BiometricMethod | null>(null);
 
   const applyUnlockOutcome = useCallback(
     (outcome: { masterKey: Uint8Array; secret: VaultUnlockSecret }): void => {
@@ -208,6 +225,9 @@ export function VaultProvider({
     void readBiometricUnlockState(keystore, userId).then((state) => {
       if (current) setBiometricState(state);
     });
+    void keystore.method().then((method) => {
+      if (current) setBiometricMethod(method);
+    });
     return () => {
       current = false;
     };
@@ -259,6 +279,35 @@ export function VaultProvider({
     return enrolment;
   }, [keystore, userId, masterKey, unlockSecret, unlockedAt]);
 
+  const biometricEnableWithPassphrase = useCallback(
+    async (passphrase: string): Promise<BiometricEnrolment> => {
+      if (userId === null) {
+        return { outcome: 'refused', reason: 'not-passphrase' };
+      }
+
+      // Derived afresh rather than taken from the session: a wrong passphrase
+      // throws here, before anything is written, and the key written is the
+      // one this passphrase opens.
+      const response = await vaultApi.getVaultMeta();
+      const meta = response.data.meta as VaultMetaV1;
+      const proven = await unlockVaultWithPassphrase(
+        meta,
+        passphrase,
+        mobileVaultCrypto,
+      );
+      const now = Date.now();
+      const enrolment = await enableBiometricUnlock({
+        keystore,
+        userId,
+        masterKey: proven.masterKey,
+        authorization: { secret: proven.secret, unlockedAt: now, now },
+      });
+      if (enrolment.outcome === 'enabled') setBiometricState('on');
+      return enrolment;
+    },
+    [keystore, userId, vaultApi],
+  );
+
   const biometricDisable = useCallback(async (): Promise<void> => {
     if (userId === null) return;
     await disableBiometricUnlock(keystore, userId);
@@ -268,11 +317,20 @@ export function VaultProvider({
   const biometric = useMemo<BiometricUnlockController>(
     () => ({
       state: biometricState,
+      method: biometricMethod,
       unlock: biometricUnlock,
       enable: biometricEnable,
+      enableWithPassphrase: biometricEnableWithPassphrase,
       disable: biometricDisable,
     }),
-    [biometricState, biometricUnlock, biometricEnable, biometricDisable],
+    [
+      biometricState,
+      biometricMethod,
+      biometricUnlock,
+      biometricEnable,
+      biometricEnableWithPassphrase,
+      biometricDisable,
+    ],
   );
 
   const value = useMemo<VaultSessionValue>(
