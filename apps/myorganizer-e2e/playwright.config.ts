@@ -1,6 +1,14 @@
 import { workspaceRoot } from '@nx/devkit';
 import { nxE2EPreset } from '@nx/playwright/preset';
-import { defineConfig, devices } from '@playwright/test';
+import {
+  defineConfig,
+  devices,
+  type PlaywrightTestConfig,
+} from '@playwright/test';
+import {
+  LIVE_AUTH_EMAIL,
+  LIVE_AUTH_PASSWORD,
+} from './src/e2e/helpers/liveAuth';
 
 /** Opt out of the production build for fast local iteration (ADR 0050). */
 const useDevServer = Boolean(process.env['E2E_DEV_SERVER']);
@@ -22,6 +30,51 @@ const port = useDevServer ? 4201 : 4200;
 
 // For CI, you may want to set BASE_URL to the deployed application.
 const baseURL = process.env['BASE_URL'] || `http://localhost:${port}`;
+
+/**
+ * Issue #831: when E2E_LIVE_BACKEND=1, also boot the built API so one spec can
+ * log in and log out for real. The flag is unset for the hermetic suite, which
+ * keeps stubbing `/auth/logout`. The API listens on :3000 and is never reused —
+ * a leftover server would skip migrate and the verified-user seed.
+ */
+function liveBackendWebServers(frontend: {
+  command: string;
+  url: string;
+  reuseExistingServer: boolean;
+  cwd: string;
+  timeout: number;
+}): PlaywrightTestConfig['webServer'] {
+  if (process.env['E2E_LIVE_BACKEND'] !== '1') return frontend;
+
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value;
+  }
+  env['NODE_ENV'] = 'development';
+  env['PORT'] = '3000';
+  env['E2E_LIVE_AUTH_EMAIL'] = LIVE_AUTH_EMAIL;
+  env['E2E_LIVE_AUTH_PASSWORD'] = LIVE_AUTH_PASSWORD;
+
+  const frontendEnv: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) frontendEnv[key] = value;
+  }
+  // `next start` is the production server. The API process above is
+  // development so the refresh cookie is not Secure on http.
+  frontendEnv['NODE_ENV'] = 'production';
+
+  return [
+    {
+      command: 'node tools/scripts/e2e-live-backend.mjs',
+      url: 'http://localhost:3000/docs',
+      reuseExistingServer: false,
+      cwd: workspaceRoot,
+      timeout: 120 * 1000,
+      env,
+    },
+    { ...frontend, env: frontendEnv },
+  ];
+}
 
 /**
  * Read environment variables from file.
@@ -62,7 +115,7 @@ export default defineConfig({
    * step) hits that cache rather than paying twice. The dev branch runs `dev`,
    * which compiles on demand, so building there would be pure waste.
    */
-  webServer: {
+  webServer: liveBackendWebServers({
     command: useDevServer
       ? `corepack yarn nx run myorganizer:dev --port=${port}`
       : `corepack yarn nx run myorganizer:start --port=${port}`,
@@ -91,7 +144,7 @@ export default defineConfig({
     cwd: workspaceRoot,
     // A production build from cold costs far more than a dev boot.
     timeout: (useDevServer ? 120 : 300) * 1000,
-  },
+  }),
   projects: [
     {
       name: 'chromium',

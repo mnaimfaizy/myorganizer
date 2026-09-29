@@ -42,6 +42,14 @@ would report itself as production while testing something else. If a production 
 `http://localhost:4200 is already used`, that is this guard: stop the server holding the port and
 re-run, rather than setting `reuseExistingServer: true`.
 
+`E2E_LIVE_BACKEND=1` also starts the built API (`tools/scripts/e2e-live-backend.mjs`)
+on port 3000, migrates, and seeds one verified user so `auth-logout-live.spec.ts`
+can call `POST /auth/logout` instead of the stub in `multiUserVault.ts`. The
+blocking Chromium lane sets that flag. Without it the spec is skipped and the
+rest of the suite stays stubbed. The API process is not reused: stop anything
+already listening on 3000, and run `yarn build:backend` first. `NODE_ENV` for
+that process is `development` so `refresh_cookie` is not `Secure` on http.
+
 The `E2E_DEV_SERVER=1` loop still reuses, because there the already-running server is the point —
 but it listens on **4201**, not 4200, so the only thing it can adopt is a dev server a previous
 dev run started. Sharing the port meant a dev run would adopt a leftover _production_ server and

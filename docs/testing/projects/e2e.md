@@ -62,4 +62,17 @@ yarn nx e2e myorganizer-e2e --grep "<test name>"        # single test by name
 `e2e` is Chromium-only — the blocking lane's browser. The other browsers are
 separate targets, which is what the nightly matrix runs.
 
+## Live logout
+
+`auth-logout-live.spec.ts` is skipped unless `E2E_LIVE_BACKEND=1`. That flag
+starts `tools/scripts/e2e-live-backend.mjs` (migrate, seed a verified user,
+serve the built API on port 3000) beside the frontend. CI's Chromium lane sets
+the flag. Locally, Postgres must already match `DATABASE_URL` in `.env`, port
+3000 must be free, and the API must already be built:
+
+```bash
+yarn build:backend
+E2E_LIVE_BACKEND=1 yarn nx e2e myorganizer-e2e --grep "logs out against the real backend"
+```
+
 Do not commit traces, screenshots, videos, or other generated artifacts.

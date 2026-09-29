@@ -877,6 +877,23 @@ jobs:
       - setup
       - lint
 
+    # The live logout spec (issue #831) talks to this job's Postgres. Trust
+    # auth matches the Test job: the database is never reachable off the runner.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: myorganizer
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     strategy:
       fail-fast: false
       matrix:
@@ -886,6 +903,13 @@ jobs:
       # Playwright's webServer starts Nx as a nested child process, and the Nx
       # daemon does not survive that cleanly on hosted runners.
       NX_DAEMON: 'false'
+      # Boots tools/scripts/e2e-live-backend.mjs beside the frontend. Throwaway
+      # JWT secrets for this job's database only — not used anywhere else.
+      E2E_LIVE_BACKEND: '1'
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
+      ACCESS_JWT_SECRET: e2e-access-jwt
+      REFRESH_JWT_SECRET: e2e-refresh-jwt
+      VERIFY_JWT_SECRET: e2e-verify-jwt
 
     steps:
       - name: Checkout repository
@@ -933,6 +957,11 @@ jobs:
       # failure is attributable and starting the server is only that.
       - name: Build frontend for E2E
         run: corepack yarn nx build myorganizer
+
+      # The live logout spec serves dist/apps/backend. generate-types is a
+      # dependency of the build, so the Prisma client exists before migrate.
+      - name: Build backend for live logout
+        run: corepack yarn nx build backend
 
       - name: Run E2E shard
         run: corepack yarn nx run myorganizer-e2e:e2e --shard=${{ matrix.shard }}/3 --reporter=blob
