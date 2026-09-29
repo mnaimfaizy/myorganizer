@@ -12,10 +12,13 @@ import { getDeviceSettings, setLastTab } from '@myorganizer/mobile/core';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import { LockAction, TabBar } from '@myorganizer/mobile/ui';
 import { AccountScreen } from './AccountScreen';
+import { AddressDetailScreen } from './AddressDetailScreen';
 import { DetailsScreen } from './DetailsScreen';
+import { DETAILS_ROUTES } from './detailsStack';
 import { GroceriesScreen } from './GroceriesScreen';
 import { GroceryTripScreen } from './GroceryTripScreen';
 import { GROCERIES_ROUTES } from './groceriesStack';
+import { MobileNumberDetailScreen } from './MobileNumberDetailScreen';
 import { SubscriptionDetailScreen } from './SubscriptionDetailScreen';
 import { SubscriptionsScreen } from './SubscriptionsScreen';
 import { SUBSCRIPTIONS_ROUTES } from './subscriptionsStack';
@@ -111,7 +114,13 @@ const TAB_STACKS = {
   Subscriptions: tabStack('Subscriptions', SubscriptionsScreen, [
     { name: SUBSCRIPTIONS_ROUTES.detail, component: SubscriptionDetailScreen },
   ]),
-  Details: tabStack('Details', DetailsScreen),
+  Details: tabStack('Details', DetailsScreen, [
+    { name: DETAILS_ROUTES.addressDetail, component: AddressDetailScreen },
+    {
+      name: DETAILS_ROUTES.mobileNumberDetail,
+      component: MobileNumberDetailScreen,
+    },
+  ]),
   Account: tabStack('Account', AccountScreen),
 } as const satisfies Record<TabName, React.ComponentType>;
 

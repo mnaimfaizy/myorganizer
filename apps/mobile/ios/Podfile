@@ -17,6 +17,12 @@ end
 target 'Mobile' do
   config = use_native_modules!
 
+  # The Details slice's Sensitive Clipboard native module — a local pod, not a
+  # dependency, because no maintained clipboard library exposes iOS's
+  # local-only, expiring `UIPasteboard` item options. See
+  # RNSensitiveClipboard/RNSensitiveClipboard.swift.
+  pod 'RNSensitiveClipboard', :path => './RNSensitiveClipboard'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

@@ -28,6 +28,19 @@ export {
   VAULT_WRITE_ERROR_COPY,
 } from './usePendingVaultEdit';
 export { newRecordId } from './recordId';
+export {
+  copyConfirmationMessage,
+  IOS_CLIPBOARD_EXPIRY_SECONDS,
+  sensitiveCopyOutcomeFor,
+  type CopyPlatform,
+  type SensitiveClipboard,
+  type SensitiveCopyOutcome,
+} from './clipboard/sensitiveClipboard';
+export { nativeSensitiveClipboard } from './clipboard/nativeSensitiveClipboard';
+export {
+  useSensitiveCopy,
+  type UseSensitiveCopyResult,
+} from './useSensitiveCopy';
 export { VaultProvider, useVaultSession } from './context/VaultSessionContext';
 export type {
   BiometricUnlockController,

@@ -23,7 +23,10 @@ export type IconName =
   | 'biometric'
   | 'plus'
   | 'more'
-  | 'archive';
+  | 'archive'
+  | 'copy'
+  | 'mapPin'
+  | 'share';
 
 /**
  * The glyphs, as stroked paths on a 24-unit grid.
@@ -108,6 +111,22 @@ const PATHS = {
     'M4 7h16v3.5H4z',
     'M6 10.5v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8',
     'M10 14h4',
+  ],
+  // Two overlapping rects: the back sheet peeking out is what reads as "a copy
+  // of something" rather than as a second, unrelated square.
+  copy: ['M9.5 9.5h10v11h-10z', 'M6.5 14.5v-9a1 1 0 0 1 1-1h9'],
+  // A teardrop with a hollow centre — the map-pin silhouette every mapping app
+  // uses, so "Open in Maps" reads as a place rather than a generic marker.
+  mapPin: [
+    'M12 21c4-4.6 7-8.3 7-11.8A7 7 0 0 0 5 9.2C5 12.7 8 16.4 12 21z',
+    'M12 12a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2z',
+  ],
+  // An arrow lifting out of an open tray — the platform-neutral "send this
+  // elsewhere" glyph, distinct from `plus` and from a download-shaped arrow.
+  share: [
+    'M12 15V4.5',
+    'M8 8.5 12 4.5 16 8.5',
+    'M5.5 13v6a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-6',
   ],
 } as const satisfies Record<IconName, readonly string[]>;
 
