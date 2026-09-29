@@ -2,8 +2,14 @@ import {
   readGroceryListSummaries,
   buildTripView,
   catalogItemIdsOnList,
+  checkedFraction,
+  describeDeleteList,
+  describeLineRemoved,
+  describeListProgress,
   describeRemaining,
+  describeUncheckAll,
   readCatalogEntries,
+  removeCheckedLabel,
   type TripView,
 } from './groceryTripModel';
 
@@ -690,18 +696,123 @@ describe('groceryTripModel', () => {
     });
   });
 
-  describe('describeRemaining', () => {
-    it('returns "No items" at total 0', () => {
-      expect(describeRemaining(0, 0)).toBe('No items');
+  describe('buildTripView with settling lines', () => {
+    const records = {
+      catalog: [
+        { id: 'c1', name: 'Bananas', category: 'produce' },
+        { id: 'c2', name: 'Lemons', category: 'produce' },
+        { id: 'c3', name: 'Eggs', category: 'dairy' },
+      ],
+      lists: [
+        {
+          id: 'list1',
+          name: 'Weekly shop',
+          lines: [
+            { id: 'l1', catalogItemId: 'c1', checked: true },
+            { id: 'l2', catalogItemId: 'c2', checked: false },
+            { id: 'l3', catalogItemId: 'c3', checked: true },
+          ],
+        },
+      ],
+    };
+
+    it('keeps a settling checked line in its category, checked, and out of Checked', () => {
+      const view = buildTripView(records, 'list1', new Set(['l1']));
+      if (view === null) throw new Error('no trip view');
+
+      expect(
+        view.groups[0].lines.map((line) => [line.id, line.checked]),
+      ).toEqual([
+        ['l1', true],
+        ['l2', false],
+      ]);
+      expect(view.checkedLines.map((line) => line.id)).toEqual(['l3']);
     });
 
-    it('returns "All checked" at remaining 0 with items', () => {
-      expect(describeRemaining(0, 5)).toBe('All checked');
+    it('counts a settling line as checked', () => {
+      const view = buildTripView(records, 'list1', new Set(['l1']));
+
+      expect(view?.remaining).toBe(1);
+      expect(view?.total).toBe(3);
+    });
+
+    it('ignores a settling id for a line that is not checked', () => {
+      const view = buildTripView(records, 'list1', new Set(['l2']));
+
+      expect(view?.groups[0].lines.map((line) => line.id)).toEqual(['l2']);
+      expect(view?.checkedLines.map((line) => line.id)).toEqual(['l1', 'l3']);
+    });
+  });
+
+  describe('describeRemaining', () => {
+    it('returns "No lines yet" at total 0', () => {
+      expect(describeRemaining(0, 0)).toBe('No lines yet');
+    });
+
+    it('returns "All done" at remaining 0 with lines', () => {
+      expect(describeRemaining(0, 5)).toBe('All done');
     });
 
     it('returns "n of m left" for remaining > 0', () => {
       expect(describeRemaining(3, 5)).toBe('3 of 5 left');
       expect(describeRemaining(1, 10)).toBe('1 of 10 left');
+    });
+  });
+
+  describe('describeListProgress', () => {
+    it('says how many lines a finished list holds', () => {
+      expect(describeListProgress(0, 6)).toBe('All done · 6 checked');
+    });
+
+    it('matches the trip view otherwise', () => {
+      expect(describeListProgress(8, 12)).toBe('8 of 12 left');
+      expect(describeListProgress(0, 0)).toBe('No lines yet');
+    });
+  });
+
+  describe('checkedFraction', () => {
+    it('is the checked share of the list', () => {
+      expect(checkedFraction(8, 12)).toBeCloseTo(1 / 3);
+      expect(checkedFraction(0, 6)).toBe(1);
+      expect(checkedFraction(9, 9)).toBe(0);
+    });
+
+    it('is 0 for an empty list', () => {
+      expect(checkedFraction(0, 0)).toBe(0);
+    });
+  });
+
+  describe('confirmation copy', () => {
+    it('words Uncheck All for several lines and for one', () => {
+      expect(describeUncheckAll(4)).toBe(
+        'All 4 checked lines go back to unchecked, so you can reuse this list. No lines are removed.',
+      );
+      expect(describeUncheckAll(1)).toBe(
+        'The 1 checked line goes back to unchecked, so you can reuse this list. No lines are removed.',
+      );
+    });
+
+    it('labels Remove Checked From List with the count', () => {
+      expect(removeCheckedLabel(4)).toBe('Remove 4 checked lines');
+      expect(removeCheckedLabel(1)).toBe('Remove 1 checked line');
+    });
+
+    it('says what deleting a list takes with it', () => {
+      expect(describeDeleteList(9)).toBe(
+        'Its 9 lines go with it. Your Catalog keeps the items. This can’t be undone.',
+      );
+      expect(describeDeleteList(1)).toBe(
+        'Its 1 line goes with it. Your Catalog keeps the items. This can’t be undone.',
+      );
+      expect(describeDeleteList(0)).toBe(
+        'It has no lines. Your Catalog keeps the items. This can’t be undone.',
+      );
+    });
+
+    it('names the removed line without offering Undo in the text', () => {
+      expect(describeLineRemoved('Bananas')).toBe(
+        'Bananas removed from this list',
+      );
     });
   });
 });

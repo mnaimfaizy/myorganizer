@@ -74,6 +74,9 @@ export interface TripView {
   checkedLines: TripLine[];
 }
 
+/** The empty set `buildTripView` defaults to: no line is settling. */
+const NO_LINES: ReadonlySet<string> = new Set<string>();
+
 /** The category a line falls under when the Catalog cannot say. */
 const FALLBACK_CATEGORY: GroceryCategoryType = 'other';
 
@@ -257,10 +260,18 @@ export function readGroceryListSummaries(
  *
  * Checked Items leave their category and collect in one list of their own, so
  * that what is left to pick up is the whole of what the trip view shows.
+ *
+ * `settlingLineIds` are lines ticked a moment ago whose rows are still playing
+ * the tick sequence — the strike, the dwell in which an untick cancels, and the
+ * leave. The edit has already checked them (it is applied at once, ADR 0107),
+ * but moving them to Checked straight away would pull the row out from under
+ * the User's thumb, so they stay in their category until the row says it has
+ * left. The counts are the list's own either way.
  */
 export function buildTripView(
   records: unknown,
   listId: string,
+  settlingLineIds: ReadonlySet<string> = NO_LINES,
 ): TripView | null {
   const list = readArray(records, 'lists').find(
     (entry) => readId(entry) === listId,
@@ -268,11 +279,16 @@ export function buildTripView(
   if (list === undefined || !isRecord(list)) return null;
 
   const lines = readTripLines(list, readCatalog(records));
-  const checkedLines = lines.filter((line) => line.checked);
+  const checkedCount = lines.filter((line) => line.checked).length;
+  // A line still settling stays under its category, drawn checked, until its
+  // row has left — so it is not in Checked yet either.
+  const stays = (line: TripLine): boolean =>
+    !line.checked || settlingLineIds.has(line.id);
+  const checkedLines = lines.filter((line) => !stays(line));
   const byCategory = new Map<GroceryCategoryType, TripLine[]>();
 
   for (const line of lines) {
-    if (line.checked) continue;
+    if (!stays(line)) continue;
     const group = byCategory.get(line.category);
     if (group === undefined) byCategory.set(line.category, [line]);
     else group.push(line);
@@ -296,21 +312,72 @@ export function buildTripView(
         ? list.name
         : 'Untitled list',
     total: lines.length,
-    remaining: lines.length - checkedLines.length,
+    remaining: lines.length - checkedCount,
     groups,
     checkedLines,
   };
 }
 
 /**
- * How far through a Grocery List the User is, in words.
+ * How far through a Grocery List the User is, in words — the trip view's
+ * progress label.
  *
  * `n of m left` counts what is **still to pick up**, not what is done: the
  * question in a shop is how much further, and a progress count answers the
  * opposite one.
  */
 export function describeRemaining(remaining: number, total: number): string {
-  if (total === 0) return 'No items';
-  if (remaining === 0) return 'All checked';
+  if (total === 0) return 'No lines yet';
+  if (remaining === 0) return 'All done';
   return `${remaining} of ${total} left`;
+}
+
+/**
+ * The same, as the Grocery Lists screen words it under a list's name: a
+ * finished list says how much it holds, since "All done" alone reads the same
+ * for a list of two and a list of twenty.
+ */
+export function describeListProgress(remaining: number, total: number): string {
+  if (total > 0 && remaining === 0) return `All done · ${total} checked`;
+  return describeRemaining(remaining, total);
+}
+
+/** How much of a list is checked, from 0 to 1 — what its progress bar fills. */
+export function checkedFraction(remaining: number, total: number): number {
+  if (total <= 0) return 0;
+  return Math.min(Math.max((total - remaining) / total, 0), 1);
+}
+
+/** `1 line`, `4 lines` — a count of List Lines in running copy. */
+function formatLineCount(count: number): string {
+  return count === 1 ? '1 line' : `${count} lines`;
+}
+
+/** What the Uncheck All confirmation says it will do. */
+export function describeUncheckAll(checkedCount: number): string {
+  const which =
+    checkedCount === 1
+      ? 'The 1 checked line goes'
+      : `All ${checkedCount} checked lines go`;
+  return `${which} back to unchecked, so you can reuse this list. No lines are removed.`;
+}
+
+/** The Remove Checked From List confirmation's button: "Remove 4 checked lines". */
+export function removeCheckedLabel(checkedCount: number): string {
+  return checkedCount === 1
+    ? 'Remove 1 checked line'
+    : `Remove ${checkedCount} checked lines`;
+}
+
+/** What deleting a Grocery List takes with it, for its confirmation. */
+export function describeDeleteList(lineCount: number): string {
+  const keeps = 'Your Catalog keeps the items. This can’t be undone.';
+  if (lineCount === 0) return `It has no lines. ${keeps}`;
+  const go = lineCount === 1 ? 'goes' : 'go';
+  return `Its ${formatLineCount(lineCount)} ${go} with it. ${keeps}`;
+}
+
+/** The Snackbar after Delete List Line — the Undo is its action, not its text. */
+export function describeLineRemoved(name: string): string {
+  return `${name} removed from this list`;
 }

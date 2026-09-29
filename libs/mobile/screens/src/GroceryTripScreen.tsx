@@ -1,6 +1,16 @@
 import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import {
+  ActivityIndicator,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
+} from 'react-native';
+import {
+  useIsFocused,
   useNavigation,
   useRoute,
   type RouteProp,
@@ -8,9 +18,15 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
+  setKeepScreenAwake,
+  useKeepAwake,
+  useKeepScreenAwakeSetting,
+} from '@myorganizer/mobile/core';
+import {
   newRecordId,
   usePendingVaultEdit,
   useVaultBlob,
+  useVaultSession,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
@@ -31,10 +47,14 @@ import {
   Checkbox,
   ConfirmSheet,
   EmptyState,
+  Icon,
   IconButton,
   InlineNotice,
   ListRow,
   ListSection,
+  ListSectionRows,
+  LockAction,
+  MIN_TOUCH_TARGET,
   MenuSheet,
   OfflineBanner,
   Screen,
@@ -43,10 +63,16 @@ import {
   TextField,
   TextPromptSheet,
   haptics,
+  useFocusRing,
+  useLargeTitleCollapse,
+  usePressFeedback,
   useTheme,
   type ListRowState,
+  type MenuSheetItem,
 } from '@myorganizer/mobile/ui';
-import { AddToListSheet } from './AddToListSheet';
+import { AddToListSheet, type JustAddedLine } from './AddToListSheet';
+import { GroceryFooterButton } from './GroceryFooterButton';
+import { GroceryProgressBar } from './GroceryProgressBar';
 import {
   GROCERIES_ROUTES,
   type GroceriesStackParamList,
@@ -54,38 +80,56 @@ import {
 import {
   buildTripView,
   catalogItemIdsOnList,
+  checkedFraction,
+  describeLineRemoved,
   describeRemaining,
+  describeUncheckAll,
   readCatalogEntries,
+  removeCheckedLabel,
+  type CatalogEntry,
   type TripLine,
 } from './groceryTripModel';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
 import { describeVaultLoadError } from './vaultLoadError';
 import { useRememberedScroll } from './useRememberedScroll';
-import type { CatalogEntry } from './groceryTripModel';
 
 /** Which list-level menu action, if any, is mid-flight or reverted. */
 type BulkAction = 'uncheckAll' | 'removeChecked' | 'rename';
 
+/** The ConfirmSheet-gated menu actions. Rename opens a TextPromptSheet. */
+type ConfirmAction = 'uncheckAll' | 'removeChecked';
+
 /**
- * What each ConfirmSheet-gated menu action says it will do. Rename opens its
- * own `TextPromptSheet` instead and carries no entry here.
+ * What each ConfirmSheet-gated menu action says it will do, for a list with
+ * `checked` Checked lines (Groc-Trip-ConfirmUncheck, -ConfirmRemove). Both
+ * are `primary`, not destructive: neither deletes anything the Catalog does
+ * not keep, and red is reserved for what cannot be undone.
  */
 const CONFIRM_COPY = {
-  uncheckAll: {
-    title: 'Uncheck All',
-    message: 'Unchecks every checked item on this list. Nothing is removed.',
+  uncheckAll: (checked: number) => ({
+    title: 'Uncheck All?',
+    message: describeUncheckAll(checked),
     confirmLabel: 'Uncheck All',
-  },
-  removeChecked: {
-    title: 'Remove Checked From List',
-    message:
-      "Removes every checked item from this list. It stays in the Catalog and can be added to a list again — it isn't deleted.",
-    confirmLabel: 'Remove',
-  },
+  }),
+  removeChecked: (checked: number) => ({
+    title: 'Remove Checked From List?',
+    message: 'Checked lines leave this list. Your Catalog keeps the items.',
+    confirmLabel: removeCheckedLabel(checked),
+  }),
 } as const satisfies Record<
-  'uncheckAll' | 'removeChecked',
-  { title: string; message: string; confirmLabel: string }
+  ConfirmAction,
+  (checked: number) => { title: string; message: string; confirmLabel: string }
 >;
+
+/** The inline amount field's width in the row's amount slot (Groc-Trip-Amount). */
+const AMOUNT_FIELD_WIDTH = 112;
+
+/** The line the Add sheet last added, by the id its Vault Push runs under. */
+interface AddedLine {
+  lineId: string;
+  name: string;
+  category: GroceryCategoryType;
+}
 
 export function GroceryTripScreen(): React.JSX.Element {
   const theme = useTheme();
@@ -99,7 +143,9 @@ export function GroceryTripScreen(): React.JSX.Element {
   const { listId } =
     useRoute<RouteProp<GroceriesStackParamList, typeof GROCERIES_ROUTES.trip>>()
       .params;
+  const { lock } = useVaultSession();
   const rememberedScroll = useRememberedScroll(`GroceryTrip:${listId}`);
+  const titleCollapse = useLargeTitleCollapse();
 
   const {
     snapshot,
@@ -112,10 +158,25 @@ export function GroceryTripScreen(): React.JSX.Element {
     retry,
   } = useVaultBlob(VaultBlobType.Groceries);
 
-  const trip = useMemo(
-    () => buildTripView(snapshot?.envelope.records, listId),
-    [snapshot, listId],
+  // Lines ticked a moment ago whose rows are still playing the tick sequence.
+  // They stay under their category until the row reports it has left.
+  const [settlingIds, setSettlingIds] = useState<ReadonlySet<string>>(
+    () => new Set(),
   );
+  // The line that has just arrived in Checked, which plays the enter beat.
+  const [enteredId, setEnteredId] = useState<string | null>(null);
+
+  const trip = useMemo(
+    () => buildTripView(snapshot?.envelope.records, listId, settlingIds),
+    [snapshot, listId, settlingIds],
+  );
+  const checkedCount = trip === null ? 0 : trip.total - trip.remaining;
+
+  // "Keep screen on" (#908 story 36): held while this list is the screen in
+  // front and the Device Setting is on, and let go the moment either stops.
+  const isFocused = useIsFocused();
+  const keepScreenOn = useKeepScreenAwakeSetting();
+  useKeepAwake(isFocused && keepScreenOn && trip !== null);
 
   // Which line the screen is showing an Unconfirmed Edit for, and which one
   // was put back when a push failed.
@@ -150,13 +211,13 @@ export function GroceryTripScreen(): React.JSX.Element {
   // The Add-to-list sheet, the trip view's own "⋯" menu, and the sheets that
   // menu opens.
   const [addVisible, setAddVisible] = useState(false);
+  const [addedLine, setAddedLine] = useState<AddedLine | null>(null);
   const [menuVisible, setMenuVisible] = useState(false);
   const [renameVisible, setRenameVisible] = useState(false);
-  // The ConfirmSheet-gated action being asked about — Rename has no
-  // confirmation step, so it is not one of these.
-  const [confirmAction, setConfirmAction] = useState<
-    'uncheckAll' | 'removeChecked' | null
-  >(null);
+  const [confirmAction, setConfirmAction] = useState<ConfirmAction | null>(
+    null,
+  );
+  const [checkedOpen, setCheckedOpen] = useState(false);
 
   const catalog = useMemo(
     () => readCatalogEntries(snapshot?.envelope.records),
@@ -169,47 +230,83 @@ export function GroceryTripScreen(): React.JSX.Element {
 
   const openMenu = useCallback((): void => setMenuVisible(true), []);
 
-  const menuItems = useMemo(
-    () => [
-      {
-        id: 'uncheckAll',
-        label: 'Uncheck All',
-        onPress: () => setConfirmAction('uncheckAll'),
-      },
-      {
-        id: 'removeChecked',
-        label: 'Remove Checked From List',
-        destructive: true,
-        onPress: () => setConfirmAction('removeChecked'),
-      },
-      {
-        id: 'rename',
-        label: 'Rename list',
-        onPress: () => setRenameVisible(true),
-      },
-    ],
-    [],
+  // One scroll view feeds two listeners: where to reopen after a lock, and
+  // whether the Android large title has scrolled away. (iOS's native large
+  // title collapses itself.)
+  const { onScroll: rememberScroll } = rememberedScroll;
+  const { onScroll: collapseTitle } = titleCollapse;
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+      rememberScroll(event);
+      collapseTitle(event);
+    },
+    [rememberScroll, collapseTitle],
   );
 
+  // The header: back to Groceries, the list's name as a large title that
+  // collapses into the bar on scroll, and "⋯ List actions" beside Lock. iOS
+  // draws the large title natively; Android's native stack has none, so the
+  // screen draws it at the top of its content and the bar takes the name only
+  // once that has scrolled away.
+  const inlineTitle =
+    Platform.OS === 'ios' || titleCollapse.collapsed ? (trip?.name ?? '') : '';
   useLayoutEffect(() => {
     navigation.setOptions({
-      title: trip?.name ?? 'Trip',
+      title: inlineTitle,
+      headerLargeTitle: Platform.OS === 'ios',
       headerRight: () => (
-        <View style={[styles.headerActions, { gap: theme.spacing.xs }]}>
-          <IconButton
-            icon="plus"
-            accessibilityLabel="Add to list"
-            onPress={() => setAddVisible(true)}
-          />
+        <View style={styles.headerActions}>
           <IconButton
             icon="more"
-            accessibilityLabel="List menu"
+            accessibilityLabel="List actions"
             onPress={openMenu}
           />
+          <LockAction onPress={() => lock('manual')} />
         </View>
       ),
     });
-  }, [navigation, trip?.name, openMenu, theme.spacing.xs]);
+  }, [navigation, inlineTitle, openMenu, lock]);
+
+  const menuItems = useMemo((): MenuSheetItem[] => {
+    // Uncheck All and Remove Checked From List have nothing to act on until
+    // something is checked, so they are offered only once it is.
+    const bulk: MenuSheetItem[] =
+      checkedCount === 0
+        ? []
+        : [
+            {
+              id: 'uncheckAll',
+              label: 'Uncheck All',
+              icon: 'undo',
+              onPress: () => setConfirmAction('uncheckAll'),
+            },
+            {
+              id: 'removeChecked',
+              label: 'Remove Checked From List',
+              icon: 'listRemove',
+              onPress: () => setConfirmAction('removeChecked'),
+            },
+          ];
+    return [
+      ...bulk,
+      {
+        id: 'rename',
+        label: 'Rename list',
+        icon: 'pencil',
+        onPress: () => setRenameVisible(true),
+      },
+      {
+        id: 'keepScreenOn',
+        label: 'Keep screen on',
+        icon: 'sun',
+        role: 'switch',
+        selected: keepScreenOn,
+        value: keepScreenOn ? 'On' : 'Off',
+        keepOpen: true,
+        onPress: () => setKeepScreenAwake(!keepScreenOn),
+      },
+    ];
+  }, [checkedCount, keepScreenOn]);
 
   const addExistingItem = useCallback(
     (item: CatalogEntry): void => {
@@ -221,6 +318,11 @@ export function GroceryTripScreen(): React.JSX.Element {
         createdAt: now,
         updatedAt: now,
       };
+      setAddedLine({
+        lineId: line.id,
+        name: item.name,
+        category: item.category,
+      });
       void push(line.id, (envelope) => putListLine(envelope, listId, line));
     },
     [push, listId],
@@ -243,12 +345,18 @@ export function GroceryTripScreen(): React.JSX.Element {
         createdAt: now,
         updatedAt: now,
       };
+      setAddedLine({ lineId: line.id, name, category });
       void push(line.id, (envelope) =>
         createCatalogItemAndAddLine(envelope, listId, item, line),
       );
     },
     [push, listId],
   );
+
+  const openAdd = useCallback((): void => {
+    setAddedLine(null);
+    setAddVisible(true);
+  }, []);
 
   const confirmBulkAction = useCallback((): void => {
     if (confirmAction === null) return;
@@ -284,13 +392,33 @@ export function GroceryTripScreen(): React.JSX.Element {
 
   const setChecked = useCallback(
     (line: TripLine): void => {
+      const next = !line.checked;
+      // A tick keeps the row where it is for the tick sequence; an untick —
+      // including one inside the dwell — lets go of it.
+      setSettlingIds((current) => {
+        const updated = new Set(current);
+        if (next) updated.add(line.id);
+        else updated.delete(line.id);
+        return updated;
+      });
       const now = new Date().toISOString();
       void push(line.id, (envelope) =>
-        setListLineChecked(envelope, listId, line.id, !line.checked, now),
+        setListLineChecked(envelope, listId, line.id, next, now),
       );
     },
     [push, listId],
   );
+
+  // The row has struck, dwelt, and left: move the line to Checked.
+  const settleTick = useCallback((lineId: string): void => {
+    setSettlingIds((current) => {
+      if (!current.has(lineId)) return current;
+      const updated = new Set(current);
+      updated.delete(lineId);
+      return updated;
+    });
+    setEnteredId(lineId);
+  }, []);
 
   // The whole row is the tick target, and a tap on it has to feel like a tap
   // on the box — the Checkbox fires its own haptic, so only the row's needs
@@ -366,17 +494,28 @@ export function GroceryTripScreen(): React.JSX.Element {
         ? 'reverted'
         : 'normal';
 
-  const renderLine = (line: TripLine): React.JSX.Element => {
-    const notice =
-      writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
+  const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
+  const retryLineEdit =
+    writeError === 'conflict' ? reloadAfterConflict : retryFailedEdit;
+
+  const renderLine = (
+    line: TripLine,
+    inChecked: boolean,
+  ): React.JSX.Element => {
     const editing = editingLineId === line.id;
+    // An amount is edited on a line still to pick up; in Checked it is plain
+    // text, and a tap there unchecks (Groc-Trip-CheckedOpen).
+    const amountEditable = !line.checked;
 
     return (
       <View key={line.id}>
         <ListRow
           title={line.name}
+          titleWeight="medium"
           size="comfortable"
           checked={line.checked}
+          onTickSettled={inChecked ? undefined : () => settleTick(line.id)}
+          entering={inChecked && enteredId === line.id}
           accessibilityLabel={
             line.amount == null ? line.name : `${line.name}, ${line.amount}`
           }
@@ -393,30 +532,36 @@ export function GroceryTripScreen(): React.JSX.Element {
               onChange={() => setChecked(line)}
             />
           }
+          value={amountEditable ? undefined : line.amount}
           trailing={
-            <Button
-              label={line.amount ?? 'Amount'}
-              variant="ghost"
-              disabled={writing}
-              accessibilityLabel={`Edit amount for ${line.name}`}
-              onPress={() => beginAmountEdit(line)}
-            />
+            amountEditable ? (
+              <AmountButton
+                amount={line.amount}
+                disabled={writing}
+                onPress={() => beginAmountEdit(line)}
+              />
+            ) : null
           }
           // The amount button is drawn inside the row, and a row is one
           // accessibility element — so the button is not reachable on its own
           // and the row offers it as an action instead.
-          innerActions={[
-            {
-              id: 'amount',
-              label: 'Edit amount',
-              onPress: () => beginAmountEdit(line),
-            },
-          ]}
+          innerActions={
+            amountEditable
+              ? [
+                  {
+                    id: 'amount',
+                    label:
+                      line.amount == null ? 'Add an amount' : 'Edit amount',
+                    onPress: () => beginAmountEdit(line),
+                  },
+                ]
+              : []
+          }
           rightActions={[
             {
               id: 'delete',
               label: 'Delete',
-              icon: 'close',
+              icon: 'trash',
               // Neutral, not destructive: a Delete List Line drops one line
               // from one trip and leaves the Catalog Item alone, and Undo is
               // right there. A red panel promises something worse than it does.
@@ -427,29 +572,31 @@ export function GroceryTripScreen(): React.JSX.Element {
           state={rowState(line.id)}
           revertedReason={notice?.message}
           retryLabel={notice?.action}
-          onRetry={
-            writeError === 'conflict' ? reloadAfterConflict : retryFailedEdit
-          }
-          style={[styles.row, { borderRadius: theme.radii.md }]}
+          onRetry={retryLineEdit}
         />
 
-        {/* Under the row rather than in it. The row is one accessibility
-            element, so a field drawn inside it is one a screen reader cannot
-            move into — it would be an amount only a sighted User could edit.
-            Full width rather than a fixed one, so it still holds a value at
-            200% text size. */}
+        {/* The amount is edited in the row's own amount slot, as drawn — but
+            laid over the row as its sibling rather than inside it. The row is
+            one accessibility element, so a field drawn inside it is one a
+            screen reader cannot move into; beside it, the field is reachable
+            and still sits where the amount was. */}
         {editing && (
-          <TextField
-            label={`Amount for ${line.name}`}
-            value={amountDraft}
-            onChangeText={setAmountDraft}
-            onBlur={() => commitAmount(line)}
-            onSubmitEditing={() => commitAmount(line)}
-            returnKeyType="done"
-            autoFocus
-            placeholder="e.g. 2, 500g, 1 dozen"
-            containerStyle={{ marginTop: theme.spacing.xs }}
-          />
+          <View
+            style={[styles.amountSlot, { right: theme.spacing.md }]}
+            pointerEvents="box-none"
+          >
+            <TextField
+              accessibilityLabel={`Amount for ${line.name}`}
+              value={amountDraft}
+              onChangeText={setAmountDraft}
+              onBlur={() => commitAmount(line)}
+              onSubmitEditing={() => commitAmount(line)}
+              returnKeyType="done"
+              autoFocus
+              selectTextOnFocus
+              containerStyle={styles.amountField}
+            />
+          </View>
         )}
       </View>
     );
@@ -458,24 +605,203 @@ export function GroceryTripScreen(): React.JSX.Element {
   // An Undo re-adds under a *fresh* line id, so a refused Undo reverts to a
   // copy that holds no line with that id and there is no row to put the
   // reason under. Without this the Undo simply vanishes and the User is never
-  // told it failed.
+  // told it failed. (A refused add is told in the Add sheet, while it is up.)
   const revertedOffScreen =
     writeError != null &&
     revertedLineId !== null &&
     trip !== null &&
+    !(addVisible && addedLine?.lineId === revertedLineId) &&
     ![
       ...trip.groups.flatMap((group) => group.lines),
       ...trip.checkedLines,
     ].some((line) => line.id === revertedLineId);
 
+  const justAdded: JustAddedLine | null =
+    addedLine === null
+      ? null
+      : {
+          name: addedLine.name,
+          category: addedLine.category,
+          state: rowState(addedLine.lineId),
+        };
+
+  // The scroll view's children, built as a list so the category headers can
+  // be named as its sticky headers: a header sticks only as a direct child.
+  const content: React.ReactNode[] = [];
+  const stickyIndices: number[] = [];
+  if (trip !== null) {
+    // The offline strip stays pinned under the header (Groc-Trip-Reverted).
+    stickyIndices.push(content.length);
+    content.push(
+      <View key="banner">
+        <OfflineBanner />
+      </View>,
+    );
+
+    if (Platform.OS === 'android') {
+      content.push(
+        <Text
+          key="title"
+          variant="display"
+          accessibilityRole="header"
+          style={{ paddingHorizontal: theme.spacing.md }}
+        >
+          {trip.name}
+        </Text>,
+      );
+    }
+
+    content.push(
+      <View
+        key="progress"
+        style={[
+          styles.progress,
+          {
+            // The sheet's 48pt row with 12 between its parts; 12 falls
+            // exactly between two steps and a tie rounds up.
+            minHeight: 48,
+            gap: theme.spacing.md,
+            paddingHorizontal: theme.spacing.md,
+          },
+        ]}
+      >
+        <Text
+          variant="bodySm"
+          weight={trip.total === 0 ? undefined : 'bold'}
+          color={trip.total === 0 ? 'mutedForeground' : 'foreground'}
+          style={styles.figures}
+        >
+          {describeRemaining(trip.remaining, trip.total)}
+        </Text>
+        {trip.total > 0 ? (
+          <GroceryProgressBar
+            size="trip"
+            fraction={checkedFraction(trip.remaining, trip.total)}
+          />
+        ) : (
+          <View style={styles.grow} />
+        )}
+        {keepScreenOn && <ScreenOnPill />}
+      </View>,
+    );
+
+    if (revertedOffScreen && notice != null) {
+      content.push(
+        <InlineNotice
+          key="revertedOffScreen"
+          tone="destructive"
+          message={notice.message}
+          actionLabel={notice.action}
+          onAction={() => void retryLineEdit()}
+          style={{
+            marginHorizontal: theme.spacing.md,
+            marginBottom: theme.spacing.sm,
+          }}
+        />,
+      );
+    }
+
+    if (bulkReverted != null && notice != null) {
+      content.push(
+        <InlineNotice
+          key="bulkReverted"
+          tone="destructive"
+          message={notice.message}
+          actionLabel={notice.action}
+          onAction={() =>
+            void (writeError === 'conflict'
+              ? reloadAfterBulkConflict()
+              : retryBulkAction())
+          }
+          style={{
+            marginHorizontal: theme.spacing.md,
+            marginBottom: theme.spacing.sm,
+          }}
+        />,
+      );
+    }
+
+    if (trip.total === 0) {
+      content.push(
+        <EmptyState
+          key="empty"
+          icon="groceries"
+          title="Nothing on this list yet"
+          description="Add what you need for this trip."
+        />,
+      );
+    }
+
+    for (const group of trip.groups) {
+      stickyIndices.push(content.length);
+      content.push(
+        <ListSection
+          key={`${group.category}-header`}
+          title={group.label}
+          count={group.lines.length}
+          style={{ backgroundColor: theme.colors.background }}
+        />,
+      );
+      content.push(
+        <ListSectionRows key={`${group.category}-rows`}>
+          {group.lines.map((line) => renderLine(line, false))}
+        </ListSectionRows>,
+      );
+    }
+
+    if (trip.total > 0 && trip.groups.length === 0) {
+      content.push(
+        <AllDone
+          key="allDone"
+          onUncheckAll={() => setConfirmAction('uncheckAll')}
+        />,
+      );
+    }
+
+    if (trip.checkedLines.length > 0) {
+      content.push(
+        <View
+          key="checked"
+          style={trip.groups.length > 0 && { marginTop: theme.spacing.md }}
+        >
+          <ListSection
+            title="Checked"
+            count={trip.checkedLines.length}
+            collapsible
+            collapsed={!checkedOpen}
+            onCollapsedChange={(collapsed) => setCheckedOpen(!collapsed)}
+          >
+            {trip.checkedLines.map((line) => renderLine(line, true))}
+          </ListSection>
+          {checkedOpen && (
+            <Text
+              variant="caption"
+              style={{
+                paddingVertical: theme.spacing.sm,
+                paddingHorizontal: theme.spacing.md,
+              }}
+            >
+              Tap a checked line to uncheck it.
+            </Text>
+          )}
+        </View>,
+      );
+    }
+  }
+
   return (
-    <Screen edges={STACK_SCREEN_EDGES}>
+    <Screen edges={STACK_SCREEN_EDGES} noPadding>
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.colors.primary} />
         </View>
       ) : loadError != null ? (
-        <View style={[styles.centered, { gap: theme.spacing.md }]}>
+        <View
+          style={[
+            styles.centered,
+            { gap: theme.spacing.md, paddingHorizontal: theme.spacing.gutter },
+          ]}
+        >
           <OfflineBanner />
           <InlineNotice
             tone="destructive"
@@ -496,82 +822,32 @@ export function GroceryTripScreen(): React.JSX.Element {
           />
         </View>
       ) : (
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          keyboardShouldPersistTaps="handled"
-          contentContainerStyle={[
-            styles.content,
-            { gap: theme.spacing.md, paddingBottom: theme.spacing.xl },
-          ]}
-          showsVerticalScrollIndicator={false}
-          {...rememberedScroll}
-        >
-          <OfflineBanner />
-          <Text variant="labelCaps">
-            {describeRemaining(trip.remaining, trip.total)}
-          </Text>
+        <>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            keyboardShouldPersistTaps="handled"
+            contentContainerStyle={[
+              styles.content,
+              { paddingBottom: theme.spacing.lg },
+            ]}
+            stickyHeaderIndices={stickyIndices}
+            showsVerticalScrollIndicator={false}
+            contentOffset={rememberedScroll.contentOffset}
+            scrollEventThrottle={rememberedScroll.scrollEventThrottle}
+            onScroll={onScroll}
+          >
+            {content}
+          </ScrollView>
 
-          {revertedOffScreen && writeError != null && (
-            <InlineNotice
-              tone="destructive"
-              message={VAULT_WRITE_ERROR_COPY[writeError].message}
-              actionLabel={VAULT_WRITE_ERROR_COPY[writeError].action}
-              onAction={() =>
-                void (writeError === 'conflict'
-                  ? reloadAfterConflict()
-                  : retryFailedEdit())
-              }
-            />
-          )}
-
-          {bulkReverted != null && writeError != null && (
-            <InlineNotice
-              tone="destructive"
-              message={VAULT_WRITE_ERROR_COPY[writeError].message}
-              actionLabel={VAULT_WRITE_ERROR_COPY[writeError].action}
-              onAction={() =>
-                void (writeError === 'conflict'
-                  ? reloadAfterBulkConflict()
-                  : retryBulkAction())
-              }
-            />
-          )}
-
-          {trip.total === 0 && (
-            <EmptyState
-              icon="groceries"
-              title="Nothing on this list"
-              description="Add items to it on the web, then shop them here."
-            />
-          )}
-
-          {trip.groups.map((group) => (
-            <ListSection
-              key={group.category}
-              title={group.label}
-              meta={`${group.lines.length}`}
-              style={{ gap: theme.spacing.sm }}
-            >
-              {group.lines.map(renderLine)}
-            </ListSection>
-          ))}
-
-          {trip.checkedLines.length > 0 && (
-            <ListSection
-              title={`Checked (${trip.checkedLines.length})`}
-              collapsible
-              defaultCollapsed
-              style={{ gap: theme.spacing.sm }}
-            >
-              {trip.checkedLines.map(renderLine)}
-            </ListSection>
-          )}
-        </ScrollView>
+          <GroceryFooterButton label="Add item" onPress={openAdd} />
+        </>
       )}
 
       <Snackbar
         visible={deletedLine !== null}
-        message={deletedLine === null ? '' : `Removed ${deletedLine.name}`}
+        message={
+          deletedLine === null ? '' : describeLineRemoved(deletedLine.name)
+        }
         actionLabel="Undo"
         onAction={undoRemove}
         onDismiss={() => setDeletedLine(null)}
@@ -580,8 +856,14 @@ export function GroceryTripScreen(): React.JSX.Element {
       <AddToListSheet
         visible={addVisible}
         onDismiss={() => setAddVisible(false)}
+        listName={trip?.name ?? ''}
         catalog={catalog}
         onListItemIds={onListItemIds}
+        justAdded={justAdded}
+        revertedReason={notice?.message}
+        retryLabel={notice?.action}
+        onRetry={retryLineEdit}
+        busy={writing}
         onAddExisting={addExistingItem}
         onCreate={createItemAndAdd}
       />
@@ -589,20 +871,16 @@ export function GroceryTripScreen(): React.JSX.Element {
       <MenuSheet
         visible={menuVisible}
         onDismiss={() => setMenuVisible(false)}
-        title="List menu"
+        title={trip?.name}
         items={menuItems}
+        footnote="The screen stays on only while this list is open."
       />
 
       <ConfirmSheet
         visible={confirmAction !== null}
-        title={confirmAction === null ? '' : CONFIRM_COPY[confirmAction].title}
-        message={
-          confirmAction === null ? '' : CONFIRM_COPY[confirmAction].message
-        }
-        confirmLabel={
-          confirmAction === null ? '' : CONFIRM_COPY[confirmAction].confirmLabel
-        }
-        destructive={confirmAction === 'removeChecked'}
+        {...(confirmAction === null
+          ? { title: '', message: '', confirmLabel: '' }
+          : CONFIRM_COPY[confirmAction](checkedCount))}
         busy={confirmAction !== null && bulkPending === confirmAction}
         onConfirm={confirmBulkAction}
         onCancel={cancelBulkConfirm}
@@ -613,12 +891,159 @@ export function GroceryTripScreen(): React.JSX.Element {
         title="Rename list"
         label="List name"
         initialValue={trip?.name ?? ''}
-        confirmLabel="Rename"
+        confirmLabel="Save"
         busy={bulkPending === 'rename'}
         onSubmit={submitRename}
         onCancel={cancelRename}
       />
     </Screen>
+  );
+}
+
+/**
+ * A line's amount, in its row's amount slot: an outlined control holding the
+ * amount, or a dashed "Amount" when there is none (Groc-Trip). A separate
+ * control from the row, so editing an amount never checks the line (#913).
+ *
+ * The row is one accessibility element, so this is drawn for sight and touch;
+ * the row offers the same thing as its "Edit amount" / "Add an amount" action.
+ */
+function AmountButton({
+  amount,
+  disabled,
+  onPress,
+}: {
+  amount: string | undefined;
+  disabled: boolean;
+  onPress: () => void;
+}): React.JSX.Element {
+  const theme = useTheme();
+  const press = usePressFeedback();
+  const focus = useFocusRing();
+  const empty = amount == null;
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={empty ? 'Add an amount' : `Amount ${amount}, edit`}
+      disabled={disabled}
+      onPress={onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
+      android_ripple={press.android_ripple}
+      style={({ pressed }) => [
+        styles.amount,
+        empty ? styles.amountEmpty : null,
+        {
+          minHeight: MIN_TOUCH_TARGET,
+          // The sheet pads the amount 12 each side, exactly between two
+          // steps; a tie rounds up.
+          paddingHorizontal: theme.spacing.md,
+          borderRadius: theme.radii.md,
+          borderColor: theme.colors.controlEdge,
+          backgroundColor: empty ? 'transparent' : theme.colors.card,
+        },
+        press.pressedStyle(pressed),
+        focus.ringStyle,
+        disabled && styles.disabled,
+      ]}
+    >
+      <Text
+        variant="bodySm"
+        weight={empty ? 'medium' : 'semibold'}
+        color={empty ? 'mutedForeground' : 'foreground'}
+        numberOfLines={1}
+        style={styles.figures}
+      >
+        {empty ? 'Amount' : amount}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** "Screen on" under the title while Keep screen on holds the screen awake. */
+function ScreenOnPill(): React.JSX.Element {
+  const theme = useTheme();
+  // In dark the pill's `muted` fill sits almost on the page, so the design
+  // edges it with `border` there, as it does every raised surface in dark.
+  const edged = theme.mode === 'dark';
+
+  return (
+    <View
+      style={[
+        styles.pill,
+        {
+          // The sheet's 28pt pill, padded 8 before its glyph and 10 after
+          // its label; 10 falls between two steps and takes the nearer.
+          minHeight: 28,
+          gap: theme.spacing.xs,
+          paddingLeft: theme.spacing.sm,
+          paddingRight: theme.spacing.sm,
+          borderRadius: theme.radii.full,
+          backgroundColor: theme.colors.muted,
+        },
+        edged && { borderWidth: 1, borderColor: theme.colors.border },
+      ]}
+    >
+      <Icon name="sun" size={14} />
+      <Text variant="caption" weight="semibold" color="foreground">
+        Screen on
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * Every line checked (Groc-Trip-AllDone): a done mark and the way to reuse
+ * the list. Uncheck All still asks first, exactly as it does from the menu.
+ */
+function AllDone({
+  onUncheckAll,
+}: {
+  onUncheckAll: () => void;
+}): React.JSX.Element {
+  const theme = useTheme();
+
+  return (
+    <View
+      style={[
+        styles.allDone,
+        {
+          gap: theme.spacing.md,
+          paddingTop: theme.spacing.xl + theme.spacing.md,
+          paddingBottom: theme.spacing.xl,
+          paddingHorizontal: theme.spacing.lg,
+        },
+      ]}
+    >
+      <View style={[styles.doneTile, { borderRadius: theme.radii.xl }]}>
+        {/* `success` at 12% — no role carries the tint, so the role is laid
+            under the glyph at that opacity rather than mixed into a colour. */}
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            styles.doneWash,
+            {
+              borderRadius: theme.radii.xl,
+              backgroundColor: theme.colors.success,
+            },
+          ]}
+        />
+        <Icon name="check" size={30} color="success" />
+      </View>
+      <Text variant="title" accessibilityRole="header" style={styles.centred}>
+        All done
+      </Text>
+      <Text variant="bodySm" color="mutedForeground" style={styles.centred}>
+        Uncheck All to reuse this list.
+      </Text>
+      <Button
+        label="Uncheck All"
+        variant="secondary"
+        onPress={onUncheckAll}
+        style={styles.hug}
+      />
+    </View>
   );
 }
 
@@ -628,15 +1053,64 @@ const styles = StyleSheet.create({
   },
   headerActions: {
     flexDirection: 'row',
-  },
-  // Clips the swipe panels to the row's own corners; the radius itself is a
-  // theme value and is merged in per render.
-  row: {
-    overflow: 'hidden',
+    alignItems: 'center',
   },
   centered: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  progress: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  grow: {
+    flexGrow: 1,
+  },
+  figures: {
+    fontVariant: ['tabular-nums'],
+  },
+  amount: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+  },
+  amountEmpty: {
+    borderStyle: 'dashed',
+  },
+  amountSlot: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  amountField: {
+    width: AMOUNT_FIELD_WIDTH,
+  },
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  allDone: {
+    alignItems: 'center',
+  },
+  // The sheet's 56pt done tile, the same size as the empty state's.
+  doneTile: {
+    width: 56,
+    height: 56,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  doneWash: {
+    opacity: 0.12,
+  },
+  centred: {
+    textAlign: 'center',
+  },
+  hug: {
+    alignSelf: 'center',
+  },
+  disabled: {
+    opacity: 0.4,
   },
 });

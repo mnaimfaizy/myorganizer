@@ -1,11 +1,12 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Platform,
+  RefreshControl,
+  ScrollView,
   StyleSheet,
   View,
-  type ListRenderItemInfo,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -14,7 +15,6 @@ import {
   newRecordId,
   usePendingVaultEdit,
   useVaultBlob,
-  useVaultSession,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
@@ -27,24 +27,28 @@ import {
   Button,
   ConfirmSheet,
   EmptyState,
-  Icon,
-  IconButton,
   InlineNotice,
   ListRow,
-  LockAction,
+  ListSection,
   MenuSheet,
   OfflineBanner,
   Screen,
+  Text,
   TextPromptSheet,
+  useLargeTitleCollapse,
   useTheme,
   type ListRowState,
 } from '@myorganizer/mobile/ui';
+import { GroceryFooterButton } from './GroceryFooterButton';
+import { GroceryProgressBar } from './GroceryProgressBar';
 import {
   GROCERIES_ROUTES,
   type GroceriesStackParamList,
 } from './groceriesStack';
 import {
-  describeRemaining,
+  checkedFraction,
+  describeDeleteList,
+  describeListProgress,
   readGroceryListSummaries,
   type GroceryListSummary,
 } from './groceryTripModel';
@@ -56,6 +60,8 @@ import { useRememberedScroll } from './useRememberedScroll';
 interface ListTarget {
   id: string;
   name: string;
+  /** Every line on it — what its Delete confirmation says goes with it. */
+  lines: number;
 }
 
 /**
@@ -68,8 +74,8 @@ export function GroceriesScreen(): React.JSX.Element {
   const theme = useTheme();
   const navigation =
     useNavigation<NativeStackNavigationProp<GroceriesStackParamList>>();
-  const { lock } = useVaultSession();
   const rememberedScroll = useRememberedScroll('Groceries');
+  const titleCollapse = useLargeTitleCollapse();
   const {
     snapshot,
     loading,
@@ -99,6 +105,19 @@ export function GroceriesScreen(): React.JSX.Element {
   const [renameTarget, setRenameTarget] = useState<ListTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ListTarget | null>(null);
   const [menuTarget, setMenuTarget] = useState<ListTarget | null>(null);
+
+  // One scroll view feeds two listeners: where to reopen after a lock, and
+  // whether the Android large title has scrolled away. (iOS's native large
+  // title collapses itself.)
+  const { onScroll: rememberScroll } = rememberedScroll;
+  const { onScroll: collapseTitle } = titleCollapse;
+  const onScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>): void => {
+      rememberScroll(event);
+      collapseTitle(event);
+    },
+    [rememberScroll, collapseTitle],
+  );
 
   const createList = useCallback(
     (name: string): void => {
@@ -155,22 +174,6 @@ export function GroceriesScreen(): React.JSX.Element {
 
   const openCreate = useCallback((): void => setCreateVisible(true), []);
 
-  useLayoutEffect(() => {
-    if (Platform.OS !== 'ios') return;
-    navigation.setOptions({
-      headerRight: () => (
-        <View style={[styles.headerActions, { gap: theme.spacing.xs }]}>
-          <IconButton
-            icon="plus"
-            accessibilityLabel="New list"
-            onPress={openCreate}
-          />
-          <LockAction onPress={() => lock('manual')} />
-        </View>
-      ),
-    });
-  }, [navigation, openCreate, lock, theme.spacing.xs]);
-
   const rowState = (id: string): ListRowState =>
     pendingListId === id
       ? 'unconfirmed'
@@ -178,59 +181,58 @@ export function GroceriesScreen(): React.JSX.Element {
         ? 'reverted'
         : 'normal';
 
-  const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<GroceryListSummary>): React.JSX.Element => {
-      const notice =
-        writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
-      const target: ListTarget = { id: item.id, name: item.name };
+  const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
 
-      return (
-        <ListRow
-          title={item.name}
-          subtitle={describeRemaining(item.remaining, item.total)}
-          onPress={() =>
-            navigation.navigate(GROCERIES_ROUTES.trip, { listId: item.id })
-          }
-          onLongPress={() => setMenuTarget(target)}
-          trailing={
-            <Icon name="chevronRight" size={20} color="mutedForeground" />
-          }
-          innerActions={[
-            {
-              id: 'rename',
-              label: 'Rename list',
-              onPress: () => setRenameTarget(target),
-            },
-          ]}
-          rightActions={[
-            {
-              id: 'delete',
-              label: 'Delete list',
-              icon: 'close',
-              tone: 'destructive',
-              onPress: () => setDeleteTarget(target),
-            },
-          ]}
-          state={rowState(item.id)}
-          revertedReason={notice?.message}
-          retryLabel={notice?.action}
-          onRetry={
-            writeError === 'conflict' ? reloadAfterConflict : retryFailedEdit
-          }
-          style={[styles.row, { borderRadius: theme.radii.md }]}
-        />
-      );
-    },
-    [
-      navigation,
-      theme,
-      writeError,
-      pendingListId,
-      revertedListId,
-      reloadAfterConflict,
-      retryFailedEdit,
-    ],
-  );
+  const renderRow = (item: GroceryListSummary): React.JSX.Element => {
+    const target: ListTarget = {
+      id: item.id,
+      name: item.name,
+      lines: item.total,
+    };
+    const progress = describeListProgress(item.remaining, item.total);
+
+    return (
+      <ListRow
+        key={item.id}
+        title={item.name}
+        titleWeight="semibold"
+        subtitle={progress}
+        subtitleAccessory={
+          <GroceryProgressBar
+            size="mini"
+            fraction={checkedFraction(item.remaining, item.total)}
+          />
+        }
+        chevron
+        onPress={() =>
+          navigation.navigate(GROCERIES_ROUTES.trip, { listId: item.id })
+        }
+        onLongPress={() => setMenuTarget(target)}
+        innerActions={[
+          {
+            id: 'rename',
+            label: 'Rename list',
+            onPress: () => setRenameTarget(target),
+          },
+        ]}
+        rightActions={[
+          {
+            id: 'delete',
+            label: 'Delete',
+            icon: 'trash',
+            tone: 'destructive',
+            onPress: () => setDeleteTarget(target),
+          },
+        ]}
+        state={rowState(item.id)}
+        revertedReason={notice?.message}
+        retryLabel={notice?.action}
+        onRetry={
+          writeError === 'conflict' ? reloadAfterConflict : retryFailedEdit
+        }
+      />
+    );
+  };
 
   // A created list that never reached the server was only ever shown
   // optimistically, so a failed push leaves no row to put the reason under —
@@ -241,24 +243,20 @@ export function GroceriesScreen(): React.JSX.Element {
     !lists.some((list) => list.id === revertedListId);
 
   return (
-    <Screen edges={TAB_SCREEN_EDGES}>
-      <TabScreenHeader
-        title="Groceries"
-        trailing={
-          <IconButton
-            icon="plus"
-            accessibilityLabel="New list"
-            onPress={openCreate}
-          />
-        }
-      />
+    <Screen edges={TAB_SCREEN_EDGES} noPadding>
+      <TabScreenHeader title="Groceries" collapsed={titleCollapse.collapsed} />
 
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.colors.primary} />
         </View>
       ) : loadError != null ? (
-        <View style={[styles.centered, { gap: theme.spacing.md }]}>
+        <View
+          style={[
+            styles.centered,
+            { gap: theme.spacing.md, paddingHorizontal: theme.spacing.gutter },
+          ]}
+        >
           <OfflineBanner />
           <InlineNotice
             tone="destructive"
@@ -271,54 +269,80 @@ export function GroceriesScreen(): React.JSX.Element {
           />
         </View>
       ) : (
-        <FlatList
-          data={lists}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          refreshing={refreshing}
-          onRefresh={() => void reload()}
-          contentInsetAdjustmentBehavior="automatic"
-          ListHeaderComponent={
-            <View
-              style={{ gap: theme.spacing.sm, marginBottom: theme.spacing.sm }}
-            >
+        <>
+          <ScrollView
+            contentInsetAdjustmentBehavior="automatic"
+            contentContainerStyle={styles.content}
+            showsVerticalScrollIndicator={false}
+            // The strip stays under the header while the lists scroll.
+            stickyHeaderIndices={[0]}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={() => void reload()}
+                tintColor={theme.colors.mutedForeground}
+                colors={[theme.colors.primary]}
+              />
+            }
+            contentOffset={rememberedScroll.contentOffset}
+            scrollEventThrottle={rememberedScroll.scrollEventThrottle}
+            onScroll={onScroll}
+          >
+            <View>
               <OfflineBanner />
-              {revertedOffScreen && writeError != null && (
+              {revertedOffScreen && notice != null && (
                 <InlineNotice
                   tone="destructive"
-                  message={VAULT_WRITE_ERROR_COPY[writeError].message}
-                  actionLabel={VAULT_WRITE_ERROR_COPY[writeError].action}
+                  message={notice.message}
+                  actionLabel={notice.action}
                   onAction={() =>
                     void (writeError === 'conflict'
                       ? reloadAfterConflict()
                       : retryFailedEdit())
                   }
+                  style={{
+                    marginHorizontal: theme.spacing.md,
+                    marginTop: theme.spacing.sm,
+                  }}
                 />
               )}
             </View>
-          }
-          ListEmptyComponent={
-            <EmptyState
-              icon="groceries"
-              title="No grocery lists yet"
-              description="Create one to start shopping."
-            />
-          }
-          contentContainerStyle={[
-            styles.listContent,
-            { gap: theme.spacing.sm, paddingBottom: theme.spacing.xl },
-          ]}
-          showsVerticalScrollIndicator={false}
-          {...rememberedScroll}
-        />
+
+            {lists.length === 0 ? (
+              <EmptyState
+                icon="groceries"
+                title="No Grocery Lists yet"
+                description="Make one for your next shop."
+              />
+            ) : (
+              <View>
+                <ListSection title="Your lists" count={lists.length}>
+                  {lists.map(renderRow)}
+                </ListSection>
+                <Text
+                  variant="caption"
+                  style={{
+                    // The sheet pads the hint 10 by 16; 10 falls between the
+                    // `sm` and `md` steps and takes the nearer, `sm`.
+                    paddingVertical: theme.spacing.sm,
+                    paddingHorizontal: theme.spacing.md,
+                  }}
+                >
+                  Press and hold a list to rename or delete it.
+                </Text>
+              </View>
+            )}
+          </ScrollView>
+
+          <GroceryFooterButton label="New list" onPress={openCreate} />
+        </>
       )}
 
       <TextPromptSheet
         visible={createVisible}
         title="New list"
         label="List name"
-        placeholder="e.g. Weekly shop"
-        confirmLabel="Create"
+        confirmLabel="Create list"
         busy={createVisible && pendingListId !== null}
         onSubmit={createList}
         onCancel={cancelCreate}
@@ -332,6 +356,7 @@ export function GroceriesScreen(): React.JSX.Element {
           {
             id: 'rename',
             label: 'Rename list',
+            icon: 'pencil',
             onPress: () => {
               if (menuTarget !== null) setRenameTarget(menuTarget);
             },
@@ -339,6 +364,7 @@ export function GroceriesScreen(): React.JSX.Element {
           {
             id: 'delete',
             label: 'Delete list',
+            icon: 'trash',
             destructive: true,
             onPress: () => {
               if (menuTarget !== null) setDeleteTarget(menuTarget);
@@ -352,7 +378,7 @@ export function GroceriesScreen(): React.JSX.Element {
         title="Rename list"
         label="List name"
         initialValue={renameTarget?.name ?? ''}
-        confirmLabel="Rename"
+        confirmLabel="Save"
         busy={renameTarget !== null && pendingListId === renameTarget.id}
         onSubmit={submitRename}
         onCancel={cancelRename}
@@ -360,13 +386,11 @@ export function GroceriesScreen(): React.JSX.Element {
 
       <ConfirmSheet
         visible={deleteTarget !== null}
-        title="Delete list"
+        title={deleteTarget === null ? '' : `Delete “${deleteTarget.name}”?`}
         message={
-          deleteTarget === null
-            ? ''
-            : `Delete "${deleteTarget.name}"? This can't be undone. Its Catalog Items are not deleted.`
+          deleteTarget === null ? '' : describeDeleteList(deleteTarget.lines)
         }
-        confirmLabel="Delete"
+        confirmLabel="Delete list"
         destructive
         busy={deleteTarget !== null && pendingListId === deleteTarget.id}
         onConfirm={confirmDelete}
@@ -377,15 +401,7 @@ export function GroceriesScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  headerActions: {
-    flexDirection: 'row',
-  },
-  // Clips the swipe panels to the row's own corners; the radius itself is a
-  // theme value and is merged in per render.
-  row: {
-    overflow: 'hidden',
-  },
-  listContent: {
+  content: {
     flexGrow: 1,
   },
   centered: {
