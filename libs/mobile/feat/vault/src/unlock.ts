@@ -5,14 +5,44 @@ import { PBKDF2_ITERATIONS } from './constants';
 
 /**
  * Which secret produced the current in-memory Vault Unlock (CONTEXT.md,
- * "Vault Unlock Secret"). Biometric Unlock is a third value the next slice
- * adds; this slice only ever produces the first two.
+ * "Vault Unlock Secret"). All three are Vault Unlock Secrets for the same
+ * Vault; which one was used is what decides what the session may go on to
+ * authorize.
  */
-export type VaultUnlockSecret = 'passphrase' | 'recovery-key';
+export type VaultUnlockSecret = 'passphrase' | 'recovery-key' | 'biometric';
 
 export interface VaultUnlockOutcome {
   masterKey: Uint8Array;
   secret: VaultUnlockSecret;
+}
+
+/**
+ * What each Vault Unlock Secret authorizes beyond reading the Vault, pinned to
+ * the secret set so a fourth one cannot be added without an answer (ADR 0053).
+ * An if-chain or a lone `=== 'recovery-key'` compiles while saying nothing
+ * about a secret it has never heard of, and the answer it would default to is
+ * the permissive one.
+ */
+const UNLOCK_SECRET_AUTHORITY = {
+  // Knowing the passphrase is not grounds for replacing it without knowing
+  // it: that path is a passphrase *change*, and it asks for the current one.
+  passphrase: { passphraseReset: false },
+  // The Recovery Key is the way back into a Vault whose passphrase is
+  // forgotten, so it is the only secret a reset can be asked from.
+  'recovery-key': { passphraseReset: true },
+  // A Biometric Unlock authorizes nothing a passphrase unlock does not
+  // (ADR 0108 decision 4), and it proves less: that some enrolled face or
+  // finger is present, not that its holder knows anything. Mobile offers no
+  // reset at all, and this is what keeps that true if it ever does.
+  biometric: { passphraseReset: false },
+} as const satisfies Record<VaultUnlockSecret, { passphraseReset: boolean }>;
+
+/**
+ * Whether a session unlocked with this secret may set a new passphrase
+ * *without* producing the current one (CONTEXT.md, "Vault Unlock Secret").
+ */
+export function authorizesPassphraseReset(secret: VaultUnlockSecret): boolean {
+  return UNLOCK_SECRET_AUTHORITY[secret].passphraseReset;
 }
 
 interface WrappedKeyBlob {

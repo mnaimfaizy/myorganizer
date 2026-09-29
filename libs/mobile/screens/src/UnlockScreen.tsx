@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
+import { describeAutoLock, useAutoLockDelay } from '@myorganizer/mobile/core';
 import { useAuth, WEB_APP_URL } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import {
@@ -14,6 +15,7 @@ import {
   useIsOffline,
   useTheme,
 } from '@myorganizer/mobile/ui';
+import { describeBiometricAttempt } from './biometricUnlockMessages';
 import {
   classifyUnlockFailure,
   describeUnlockFailure,
@@ -30,17 +32,23 @@ const LOGOUT_CONFIRM_MESSAGE =
 type UnlockScreenMode = UnlockSecretMode | 'no-vault';
 
 /**
- * Prompts an authenticated User to unlock their Vault, by passphrase or by
- * Recovery Key, and — on a 404 from either — offers the No Vault Yet
- * screen instead of an inline error. Room for the Biometric Unlock button
- * the next slice adds sits beside the passphrase form, where a returning
- * User would reach for it first.
+ * Prompts an authenticated User to unlock their Vault — by Biometric Unlock,
+ * by passphrase, or by Recovery Key — and, on a 404 from either typed secret,
+ * offers the No Vault Yet screen instead of an inline error.
+ *
+ * Biometric Unlock is additive and never a gate (ADR 0108 decision 2): where
+ * it is on, the prompt is raised once the moment this screen appears — on a
+ * cold start and again after an Auto-Lock — and a User who dismisses it is
+ * left on exactly the screen they would have seen otherwise, with both typed
+ * secrets in front of them and the button still there to try again.
  */
 export function UnlockScreen(): React.JSX.Element {
-  const { unlock, unlockWithRecoveryKey } = useVaultSession();
+  const { unlock, unlockWithRecoveryKey, biometric, lockReason } =
+    useVaultSession();
   const { logout } = useAuth();
   const theme = useTheme();
   const offline = useIsOffline();
+  const autoLockDelay = useAutoLockDelay();
 
   const [mode, setMode] = useState<UnlockScreenMode>('passphrase');
   const [lastAttempt, setLastAttempt] =
@@ -49,14 +57,47 @@ export function UnlockScreen(): React.JSX.Element {
   const [recoveryKey, setRecoveryKey] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [checkingBiometrics, setCheckingBiometrics] = useState(false);
   const [confirmLogoutVisible, setConfirmLogoutVisible] = useState(false);
 
   const canSubmitPassphrase = passphrase.length > 0 && !submitting;
   const canSubmitRecoveryKey = recoveryKey.length > 0 && !submitting;
 
   /**
-   * The one shape a fresh unlock attempt takes, whichever secret it uses:
-   * mark which one, run it, and on failure either switch to the No Vault
+   * Raise the platform prompt and unlock from the stored Master Key.
+   *
+   * It has a busy flag of its own rather than sharing `submitting`, because
+   * `submitting` is what puts "Deriving your key…" on the passphrase button —
+   * and a Biometric Unlock derives nothing. It reads a key that already
+   * exists, which is the entire point of it, and a deriving state shown here
+   * would be the interface claiming work that never happened.
+   */
+  const attemptBiometricUnlock = useCallback(async (): Promise<void> => {
+    setCheckingBiometrics(true);
+    setError(null);
+    try {
+      const attempt = await biometric.unlock();
+      // `null` for a cancellation: the screen simply waits.
+      setError(describeBiometricAttempt(attempt));
+    } finally {
+      setCheckingBiometrics(false);
+    }
+  }, [biometric]);
+
+  // Once per appearance of this screen, and only once the keystore has
+  // answered. A ref rather than state because re-rendering on it would be a
+  // render caused by something the User cannot see.
+  const promptRaised = useRef(false);
+  useEffect(() => {
+    if (promptRaised.current) return;
+    if (biometric.state !== 'on') return;
+    promptRaised.current = true;
+    void attemptBiometricUnlock();
+  }, [biometric.state, attemptBiometricUnlock]);
+
+  /**
+   * The one shape a fresh unlock attempt takes, whichever typed secret it
+   * uses: mark which one, run it, and on failure either switch to the No Vault
    * Yet screen or show the classified message inline.
    */
   async function attemptUnlock(
@@ -176,6 +217,16 @@ export function UnlockScreen(): React.JSX.Element {
       <View style={[styles.content, { gap: theme.spacing.md }]}>
         <Text variant="titleLg">Unlock your vault</Text>
 
+        {/* Why the User is here, when it was not their doing. A User who
+            pressed Lock is told nothing, because they already know. */}
+        {lockReason === 'auto-lock' && (
+          <InlineNotice
+            tone="neutral"
+            icon="lock"
+            message={describeAutoLock(autoLockDelay)}
+          />
+        )}
+
         <SegmentedControl
           segments={[
             { value: 'passphrase', label: 'Passphrase' },
@@ -222,7 +273,16 @@ export function UnlockScreen(): React.JSX.Element {
               <InlineNotice tone="destructive" message={error} />
             )}
 
-            {/* Room for the Biometric Unlock button the next slice adds. */}
+            {biometric.state === 'on' && (
+              <Button
+                label="Unlock with biometrics"
+                icon="biometric"
+                variant="secondary"
+                busy={checkingBiometrics}
+                onPress={() => void attemptBiometricUnlock()}
+              />
+            )}
+
             <Button
               label={submitting ? 'Deriving your key…' : 'Unlock'}
               onPress={() => void handlePassphraseSubmit()}

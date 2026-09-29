@@ -52,7 +52,7 @@ function tabStack(
           headerShown: Platform.OS === 'ios',
           headerLargeTitle: true,
           title: TAB_META[name].label,
-          headerRight: () => <LockAction onPress={lock} />,
+          headerRight: () => <LockAction onPress={() => lock('manual')} />,
         }}
       >
         <Stack.Screen name={`${name}Home`} component={Screen} />

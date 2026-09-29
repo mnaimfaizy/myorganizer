@@ -32,6 +32,7 @@ import {
   useTheme,
 } from '@myorganizer/mobile/ui';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
+import { useRememberedScroll } from './useRememberedScroll';
 
 /**
  * A decrypted task as this screen reads it. The payload is decrypted JSON, so
@@ -81,6 +82,7 @@ function toVisibleTasks(records: unknown): DecryptedTask[] {
 export function TasksScreen(): React.JSX.Element {
   const { logout } = useAuth();
   const theme = useTheme();
+  const rememberedScroll = useRememberedScroll('Tasks');
   const {
     snapshot,
     loading,
@@ -284,6 +286,7 @@ export function TasksScreen(): React.JSX.Element {
             { gap: theme.spacing.sm, paddingBottom: theme.spacing.xl },
           ]}
           showsVerticalScrollIndicator={false}
+          {...rememberedScroll}
         />
       )}
 

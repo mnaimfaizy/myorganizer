@@ -1,4 +1,13 @@
 // @myorganizer/mobile/screens — navigation root + screen composition.
+export { AppLockGate } from './AppLockGate';
+export { BiometricOfferSheet } from './BiometricOfferSheet';
+export {
+  BIOMETRIC_FAILED_MESSAGE,
+  describeBiometricAttempt,
+  describeEnrolmentFailure,
+  type BiometricRefusalReason,
+  type BiometricUnavailableReason,
+} from './biometricUnlockMessages';
 export { RootNavigator } from './RootNavigator';
 export type { RootStackParamList } from './RootNavigator';
 export { MainTabs } from './MainTabs';

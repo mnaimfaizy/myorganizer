@@ -19,7 +19,8 @@ export type IconName =
   | 'warning'
   | 'info'
   | 'offline'
-  | 'retry';
+  | 'retry'
+  | 'biometric';
 
 /**
  * The glyphs, as stroked paths on a 24-unit grid.
@@ -80,6 +81,19 @@ const PATHS = {
     'M3.5 3.5 20.5 20.5',
   ],
   retry: ['M20 12a8 8 0 1 1-2.5-5.8', 'M20 4v4.5h-4.5'],
+  // The platform-neutral face-and-frame mark, not a fingerprint and not a
+  // Face ID glyph: the same button raises Face ID on one device and a
+  // fingerprint on another, and a button drawn as the wrong one of the two is
+  // read as the wrong control rather than as a generic one.
+  biometric: [
+    'M3.5 8.5v-2a3 3 0 0 1 3-3h2',
+    'M15.5 3.5h2a3 3 0 0 1 3 3v2',
+    'M20.5 15.5v2a3 3 0 0 1-3 3h-2',
+    'M8.5 20.5h-2a3 3 0 0 1-3-3v-2',
+    'M9 10v1.5',
+    'M15 10v1.5',
+    'M9 15.2c.8.8 1.8 1.3 3 1.3s2.2-.5 3-1.3',
+  ],
 } as const satisfies Record<IconName, readonly string[]>;
 
 export interface IconProps {

@@ -292,11 +292,21 @@ _Avoid_: neutral barrel, mobile barrel, platform-agnostic export, secondary entr
 
 **Device Setting**:
 A choice belonging to one installation of the Mobile App — the appearance choice (System, Light,
-or Dark) and the last used tab. Plaintext and client-only, and _deliberately_ not vault data: it is
-never encrypted, never pushed, and never reconciled, because it describes this device rather than the
-User. Two devices disagreeing about it is the correct outcome, not a conflict. Read synchronously,
-which is what lets the app resolve its colour mode before the first frame.
+or Dark), the last used tab, and the Auto-Lock Delay. Plaintext and client-only, and _deliberately_
+not vault data: it is never encrypted, never pushed, and never reconciled, because it describes this
+device rather than the User. Two devices disagreeing about it is the correct outcome, not a
+conflict. Read synchronously, which is what lets the app resolve its colour mode before the first
+frame.
 _Avoid_: preference, user setting, local storage, app config, profile setting
+
+**Privacy Cover**:
+The opaque panel the Mobile App draws over itself whenever it is not the frontmost app, so that the
+app switcher, a screen recording, or a glance over a shoulder shows the app's own mark instead of a
+Vault. It is not a lock and never withholds anything: the session behind it is untouched, and
+returning to the app takes it away with no credential. It goes up on the app merely stopping taking
+input — a system prompt, the switcher being raised — because that is when the OS takes the snapshot
+it will show later, which is earlier than the app going to the background ([ADR 0108](docs/adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md)).
+_Avoid_: blur screen, screen shield, app switcher mask, lock screen
 
 **Unconfirmed Edit**:
 An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. It is plaintext and client-only: it lives only in memory, never outlives the screen that made it, and reaches the server solely as the Ciphertext its Vault Push sends.
@@ -427,6 +437,24 @@ _Avoid_: backup key, recovery code, reset code, escrow key, second passphrase
 **Biometric Unlock**:
 A Vault Unlock on a mobile device that reads the Master Key from the platform keystore after a biometric check, instead of deriving it from the passphrase. The User opts in after a passphrase unlock on that device, and turning it on later asks for the passphrase again — an unlocked session alone is never enough to add one. It belongs to that User on that device, ends at logout, when the device's enrolled biometrics change, or when the stored key no longer decrypts the server's Ciphertext, and never replaces the passphrase or the Recovery Key — it is a shortcut to the same Vault, and it authorizes nothing a passphrase unlock does not. What the keystore holds is the plaintext Master Key, and it is client-only: it never leaves that device and is never sent to the server, which keeps holding only Ciphertext ([ADR 0108](docs/adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md)).
 _Avoid_: Face ID login, fingerprint login, biometric login, quick unlock
+
+**Auto-Lock**:
+The Mobile App locking its own Vault after the Auto-Lock Delay has passed with the app in the
+background. It is an ordinary lock — the in-memory Master Key is dropped and nothing else is — so
+Biometric Unlock survives it and is usually what answers it. It is decided once, on the way back to
+the foreground, rather than by a timer: an app the OS has suspended is an app whose timers do not
+fire, and a lock that depends on one is a lock that does not happen. The User is told an Auto-Lock
+is why they are being asked, because a lock nobody asked for otherwise reads as a lost session
+([ADR 0108](docs/adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md)).
+_Avoid_: idle timeout, session timeout, inactivity lock, auto sign-out
+
+**Auto-Lock Delay**:
+How long the Mobile App may stay in the background before an Auto-Lock — immediately, 1, 5, or 15
+minutes, and 5 by default. A Device Setting, not vault data: it describes how exposed this
+particular phone is, so two devices of the same User disagreeing about it is the point rather than a
+conflict. It is measured from the app going to the background and never from the last interaction:
+an app in the foreground is an app somebody is holding.
+_Avoid_: lock timeout, idle timeout, session length, inactivity period
 
 **Recovery Key Rotation**:
 Minting a new Recovery Key for a Vault and retiring the old one, from a session that is already unlocked. Authorized by the passphrase and never by the key being replaced: a User rotating because the old key is lost cannot produce it, and an unattended unlocked session must not be enough to mint a credential that opens the Vault. It is the one Vault change with a step the User can fail — the new key has to be recorded before the old one stops working — so it is minted and shown before anything is written, and abandoning it leaves the old key working. Retirement is not instant everywhere, and copy that claims otherwise is wrong: it holds on this device and on any device signing in afterwards, while a device already holding the old wrapping keeps honouring the old key until the User confirms the change there, and a Vault Export taken beforehand is opened by the retired key for as long as that file exists.

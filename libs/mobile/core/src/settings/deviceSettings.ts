@@ -3,6 +3,12 @@
 // anywhere — which is exactly why it can be read synchronously and written
 // without a network round trip.
 import { toAppearance, type Appearance } from './appearance';
+import {
+  serializeOfferedUserIds,
+  toOfferedUserIds,
+  withOfferedUserId,
+} from './biometricOffer';
+import { toAutoLockDelay, type AutoLockDelay } from '../lock/autoLockDelay';
 import { readSetting, writeSetting } from './settingsStorage';
 
 /**
@@ -13,14 +19,22 @@ import { readSetting, writeSetting } from './settingsStorage';
  * string: the tab vocabulary belongs to the navigator that owns the tabs, and
  * a name this store accepted before a tab was renamed must not crash the app
  * it is read back into. The navigator validates it.
+ *
+ * `biometricOfferedUserIds` is the one entry that is not a choice the User
+ * made. It records which Users this installation has already offered Biometric
+ * Unlock to, so the offer happens once (ADR 0108 decision 1).
  */
 export interface DeviceSettings {
   appearance: Appearance;
   lastTab: string | null;
+  autoLockDelay: AutoLockDelay;
+  biometricOfferedUserIds: readonly string[];
 }
 
 const APPEARANCE_KEY = 'appearance';
 const LAST_TAB_KEY = 'lastTab';
+const AUTO_LOCK_DELAY_KEY = 'autoLockDelay';
+const BIOMETRIC_OFFERED_KEY = 'biometricOfferedUserIds';
 
 const listeners = new Set<() => void>();
 
@@ -39,6 +53,10 @@ export function getDeviceSettings(): DeviceSettings {
   snapshot ??= {
     appearance: toAppearance(readSetting(APPEARANCE_KEY)),
     lastTab: readSetting(LAST_TAB_KEY) ?? null,
+    autoLockDelay: toAutoLockDelay(readSetting(AUTO_LOCK_DELAY_KEY)),
+    biometricOfferedUserIds: toOfferedUserIds(
+      readSetting(BIOMETRIC_OFFERED_KEY),
+    ),
   };
   return snapshot;
 }
@@ -54,6 +72,30 @@ export function setLastTab(lastTab: string): void {
   if (getDeviceSettings().lastTab === lastTab) return;
   writeSetting(LAST_TAB_KEY, lastTab);
   publish({ ...getDeviceSettings(), lastTab });
+}
+
+/** Record how long this device may sit in the background before it locks. */
+export function setAutoLockDelay(autoLockDelay: AutoLockDelay): void {
+  writeSetting(AUTO_LOCK_DELAY_KEY, autoLockDelay);
+  publish({ ...getDeviceSettings(), autoLockDelay });
+}
+
+/** Whether this installation has already offered this User Biometric Unlock. */
+export function hasOfferedBiometricUnlock(userId: string): boolean {
+  return getDeviceSettings().biometricOfferedUserIds.includes(userId);
+}
+
+/**
+ * Record that the offer has been made to this User, whichever way they
+ * answered it. Declining and accepting both end the offer: accepting leaves a
+ * keystore item that Account turns off, and declining is an answer.
+ */
+export function markBiometricUnlockOffered(userId: string): void {
+  const current = getDeviceSettings().biometricOfferedUserIds;
+  const next = withOfferedUserId(current, userId);
+  if (next === current) return;
+  writeSetting(BIOMETRIC_OFFERED_KEY, serializeOfferedUserIds(next));
+  publish({ ...getDeviceSettings(), biometricOfferedUserIds: next });
 }
 
 /** Subscribe to Device Setting changes. Returns the unsubscribe. */

@@ -43,5 +43,5 @@ export function TabScreenHeader({
 
   if (Platform.OS === 'ios') return null;
 
-  return <LargeTitleHeader title={title} onLock={lock} />;
+  return <LargeTitleHeader title={title} onLock={() => lock('manual')} />;
 }

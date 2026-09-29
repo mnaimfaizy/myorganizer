@@ -2,6 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
 import { EmptyState, OfflineBanner, Screen } from '@myorganizer/mobile/ui';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
+import { useRememberedScroll } from './useRememberedScroll';
 
 export interface PlaceholderScreenProps {
   title: string;
@@ -22,6 +23,8 @@ export function PlaceholderScreen({
   title,
   description,
 }: PlaceholderScreenProps): React.JSX.Element {
+  const rememberedScroll = useRememberedScroll(title);
+
   return (
     <Screen edges={TAB_SCREEN_EDGES}>
       <TabScreenHeader title={title} />
@@ -29,6 +32,7 @@ export function PlaceholderScreen({
         contentInsetAdjustmentBehavior="automatic"
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
+        {...rememberedScroll}
       >
         <OfflineBanner />
         <EmptyState title="Coming soon" description={description} />

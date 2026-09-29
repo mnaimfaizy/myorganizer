@@ -29,6 +29,7 @@ export { haptics } from './haptics';
 export { useReduceMotion } from './hooks/useReduceMotion';
 export { useIsOffline } from './hooks/useIsOffline';
 export { useKeyboardVisible } from './hooks/useKeyboardVisible';
+export { useAppState } from './hooks/useAppState';
 
 export { BottomSheet, type BottomSheetProps } from './components/BottomSheet';
 export {
@@ -69,6 +70,10 @@ export {
   OfflineBanner,
   type OfflineBannerProps,
 } from './components/OfflineBanner';
+export {
+  PrivacyCover,
+  type PrivacyCoverProps,
+} from './components/PrivacyCover';
 export {
   ProgressMeter,
   type ProgressMeterProps,

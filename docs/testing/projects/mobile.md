@@ -7,16 +7,17 @@
 
 ## Current state
 
-Three mobile libraries have a Jest project:
+Four mobile libraries have a Jest project:
 
-| Project          | Config                               | Environment              | Covers                                                                                              |
-| ---------------- | ------------------------------------ | ------------------------ | --------------------------------------------------------------------------------------------------- |
-| `mobile-ui`      | `libs/mobile/ui/jest.config.ts`      | `preset: 'react-native'` | the UI Primitives, the theme, the Type Scale conversion, the shadow conversion                      |
-| `mobile-core`    | `libs/mobile/core/jest.config.ts`    | `node`                   | the appearance Device Setting read back out of storage                                              |
-| `mobile-screens` | `libs/mobile/screens/jest.config.ts` | `node`                   | the tab vocabulary, the stored last used tab, and the projection of the theme onto React Navigation |
+| Project             | Config                                  | Environment              | Covers                                                                                                                             |
+| ------------------- | --------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `mobile-ui`         | `libs/mobile/ui/jest.config.ts`         | `preset: 'react-native'` | the UI Primitives, the theme, the Type Scale conversion, the shadow conversion                                                     |
+| `mobile-core`       | `libs/mobile/core/jest.config.ts`       | `node`                   | the Device Settings read back out of storage, and the Auto-Lock decision                                                           |
+| `mobile-screens`    | `libs/mobile/screens/jest.config.ts`    | `node`                   | the tab vocabulary, the stored last used tab, the projection of the theme onto React Navigation, and the entry screens' error copy |
+| `mobile-feat-vault` | `libs/mobile/feat/vault/jest.config.ts` | `node`                   | the pure halves of Vault Unlock: unwrapping a Master Key, and the Biometric Unlock policy over a fake keystore                     |
 
 `@nx/jest` infers a `test` target from each config, so `yarn nx test mobile-core` resolves without
-a declared target and CI's `nx affected -t test` runs all three.
+a declared target and CI's `nx affected -t test` runs all four.
 
 `apps/mobile/jest.config.ts` also exists, wired to `yarn nx test mobile`, and still holds no test
 files. Its `passWithNoTests: true` means that target reports success by finding nothing, which is
@@ -56,6 +57,16 @@ Jest sees it. That is how `libs/mobile/ui/src/typeScale.ts` and
 The practical consequence is a design one: keep the logic worth asserting reachable without a
 renderer and the cheapest lane stays open. Theme resolution, the Type Scale conversion, the shadow
 conversion, and the Device Settings parsing are all pure for that reason.
+
+`mobile-feat-vault` is the sharpest case, because the alternative there is a device. Both halves of
+the Biometric Unlock feature are written to be reachable from this environment:
+`libs/mobile/feat/vault/src/biometric/keystore.ts` is the interface and the outcome vocabulary and
+imports nothing, while `nativeKeystore.ts` beside it is the only file that names
+`react-native-keychain`. The policy imports the first and never the second, so every rule about
+when the stored key is deleted is exercised against a fake
+([ADR 0108](../../adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md)
+decision 7). A spec here must still import the modules it tests by relative path: the library barrel
+reaches `react-native-quick-crypto` and stops the suite.
 
 ## Running one
 

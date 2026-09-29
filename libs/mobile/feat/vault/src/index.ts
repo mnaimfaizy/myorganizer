@@ -26,11 +26,38 @@ export type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
 export { newRecordId } from './recordId';
 export { VaultProvider, useVaultSession } from './context/VaultSessionContext';
 export type {
+  BiometricUnlockController,
+  LockReason,
   VaultStatus,
   VaultUnlockSecret,
 } from './context/VaultSessionContext';
 export {
+  authorizesPassphraseReset,
   unlockVaultWithPassphrase,
   unlockVaultWithRecoveryKey,
 } from './unlock';
 export type { VaultUnlockOutcome } from './unlock';
+export type {
+  BiometricKeystore,
+  BiometricKeystoreRead,
+} from './biometric/keystore';
+export { nativeBiometricKeystore } from './biometric/nativeKeystore';
+export {
+  disableBiometricUnlock,
+  enableBiometricUnlock,
+  ENROLMENT_FRESHNESS_MS,
+  mayEnableBiometricUnlock,
+  readBiometricUnlockState,
+  unlockWithBiometrics,
+} from './biometric/biometricPolicy';
+export type {
+  BiometricEnrolment,
+  BiometricUnlockAttempt,
+  BiometricUnlockState,
+  EnrolmentAuthorization,
+  StoredMasterKeyCheck,
+} from './biometric/biometricPolicy';
+export {
+  NoCiphertextToCheckError,
+  storedKeyOpensVault,
+} from './biometric/keyCheck';

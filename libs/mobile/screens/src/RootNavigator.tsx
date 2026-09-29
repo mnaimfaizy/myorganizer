@@ -11,6 +11,7 @@ import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import { Screen, useTheme } from '@myorganizer/mobile/ui';
 import { navigationTheme } from './navigationTheme';
+import { BiometricOfferSheet } from './BiometricOfferSheet';
 import { LoginScreen } from './LoginScreen';
 import { UnlockScreen } from './UnlockScreen';
 import { MainTabs } from './MainTabs';
@@ -93,6 +94,11 @@ export function RootNavigator(): React.JSX.Element {
           </Stack.Navigator>
         </NavigationContainer>
       )}
+      {/* Outside the navigator, because the offer is about the session rather
+          than about any screen: it is raised over whichever tab the unlock
+          landed on, and it decides for itself whether there is anything to
+          offer. */}
+      <BiometricOfferSheet />
     </>
   );
 }
