@@ -257,7 +257,11 @@ export function createCatalogItemAndAddLine(
       catalog: [...catalog, item],
       lists: lists.map((entry, i) =>
         i === index
-          ? { ...list, lines: [...existingLines, line], updatedAt: line.updatedAt }
+          ? {
+              ...list,
+              lines: [...existingLines, line],
+              updatedAt: line.updatedAt,
+            }
           : entry,
       ),
     },

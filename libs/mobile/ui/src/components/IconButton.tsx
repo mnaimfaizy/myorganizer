@@ -47,7 +47,11 @@ export function IconButton({
         style,
       ]}
     >
-      <Icon name={icon} size={24} color={disabled ? 'mutedForeground' : 'foreground'} />
+      <Icon
+        name={icon}
+        size={24}
+        color={disabled ? 'mutedForeground' : 'foreground'}
+      />
     </Pressable>
   );
 }

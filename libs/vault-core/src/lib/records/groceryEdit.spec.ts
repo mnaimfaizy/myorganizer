@@ -1251,7 +1251,12 @@ describe('groceryEdit', () => {
         createdAt: '2026-01-02T00:00:00.000Z',
       };
 
-      const result = createCatalogItemAndAddLine(envelope, 'list1', item2, line);
+      const result = createCatalogItemAndAddLine(
+        envelope,
+        'list1',
+        item2,
+        line,
+      );
 
       expect(payloadOf(result).catalog[0]).toBe(item1);
     });
@@ -1293,7 +1298,12 @@ describe('groceryEdit', () => {
         createdAt: '2026-01-02T00:00:00.000Z',
       };
 
-      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line2);
+      const result = createCatalogItemAndAddLine(
+        envelope,
+        'list1',
+        item,
+        line2,
+      );
 
       expect((listAt(result, 0).lines as Record<string, unknown>[])[0]).toBe(
         line1,
@@ -1473,12 +1483,7 @@ describe('groceryEdit', () => {
         createdAt: '2026-01-02T00:00:00.000Z',
       };
 
-      const result = createCatalogItemAndAddLine(
-        envelope,
-        'list1',
-        item,
-        line,
-      );
+      const result = createCatalogItemAndAddLine(envelope, 'list1', item, line);
 
       expect(result).toBe(envelope);
     });
@@ -1914,6 +1919,42 @@ describe('groceryEdit', () => {
       expect(catalogCount(result)).toBe(2);
     });
 
+    it('preserves catalog item referenced by removed line', () => {
+      const catalogItem = { id: 'cat-orphan', name: 'Orphan Item' };
+      const envelope: VaultBlobEnvelope<unknown> = {
+        records: {
+          catalog: [{ id: 'cat1', name: 'Milk' }, catalogItem],
+          lists: [
+            {
+              id: 'list1',
+              name: 'Milk Run',
+              lines: [
+                {
+                  id: 'line1',
+                  catalogItemId: 'cat-orphan',
+                  checked: true,
+                  updatedAt: '2026-01-01T00:00:00.000Z',
+                },
+              ],
+              updatedAt: '2026-01-01T00:00:00.000Z',
+            },
+          ],
+        },
+        deletions: {},
+      };
+
+      const result = removeCheckedListLines(
+        envelope,
+        'list1',
+        '2026-01-02T00:00:00.000Z',
+      );
+
+      expect(catalogCount(result)).toBe(2);
+      expect(
+        (payloadOf(result).catalog[1] as Record<string, unknown>).name,
+      ).toBe('Orphan Item');
+    });
+
     it('returns same envelope when nothing is checked (no-op)', () => {
       const envelope: VaultBlobEnvelope<unknown> = {
         records: {
@@ -2228,7 +2269,7 @@ describe('groceryEdit', () => {
         '2026-01-02T00:00:00.000Z',
       );
 
-      expect((listAt(result, 0).lines as unknown[])).toBe(lines);
+      expect(listAt(result, 0).lines as unknown[]).toBe(lines);
     });
 
     it('preserves other list fields unchanged', () => {

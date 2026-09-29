@@ -14,40 +14,78 @@ import {
   type VaultBlobWriteErrorKind,
 } from '@myorganizer/mobile/feat-vault';
 import {
+  createCatalogItemAndAddLine,
   deleteListLine,
   putListLine,
+  renameGroceryList,
+  removeCheckedListLines,
   setListLineAmount,
   setListLineChecked,
+  uncheckAllListLines,
+  type CatalogItem,
+  type GroceryCategoryType,
   type ListLine,
 } from '@myorganizer/vault-core/portable';
 import {
   Button,
   Checkbox,
+  ConfirmSheet,
   EmptyState,
+  IconButton,
   InlineNotice,
   ListRow,
   ListSection,
+  MenuSheet,
   OfflineBanner,
   Screen,
   Snackbar,
   Text,
   TextField,
+  TextPromptSheet,
   haptics,
   useTheme,
   type ListRowState,
 } from '@myorganizer/mobile/ui';
+import { AddToListSheet } from './AddToListSheet';
 import {
   GROCERIES_ROUTES,
   type GroceriesStackParamList,
 } from './groceriesStack';
 import {
   buildTripView,
+  catalogItemIdsOnList,
   describeRemaining,
+  readCatalogEntries,
   type TripLine,
 } from './groceryTripModel';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
 import { describeVaultLoadError } from './vaultLoadError';
 import { useRememberedScroll } from './useRememberedScroll';
+import type { CatalogEntry } from './groceryTripModel';
+
+/** Which list-level menu action, if any, is mid-flight or reverted. */
+type BulkAction = 'uncheckAll' | 'removeChecked' | 'rename';
+
+/**
+ * What each ConfirmSheet-gated menu action says it will do. Rename opens its
+ * own `TextPromptSheet` instead and carries no entry here.
+ */
+const CONFIRM_COPY = {
+  uncheckAll: {
+    title: 'Uncheck All',
+    message: 'Unchecks every checked item on this list. Nothing is removed.',
+    confirmLabel: 'Uncheck All',
+  },
+  removeChecked: {
+    title: 'Remove Checked From List',
+    message:
+      "Removes every checked item from this list. It stays in the Catalog and can be added to a list again — it isn't deleted.",
+    confirmLabel: 'Remove',
+  },
+} as const satisfies Record<
+  'uncheckAll' | 'removeChecked',
+  { title: string; message: string; confirmLabel: string }
+>;
 
 /**
  * What a refused push says, and what it offers instead.
@@ -120,9 +158,75 @@ export function GroceryTripScreen(): React.JSX.Element {
   // which mobile does not keep (ADR 0107).
   const [deletedLine, setDeletedLine] = useState<TripLine | null>(null);
 
+  // The Add-to-list sheet, the trip view's own "⋯" menu, and the sheets that
+  // menu opens.
+  const [addVisible, setAddVisible] = useState(false);
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [renameVisible, setRenameVisible] = useState(false);
+  // The ConfirmSheet-gated action being asked about — Rename has no
+  // confirmation step, so it is not one of these.
+  const [confirmAction, setConfirmAction] = useState<
+    'uncheckAll' | 'removeChecked' | null
+  >(null);
+  // The same Unconfirmed Edit shape as a line's (`unconfirmedLineId` /
+  // `revertedLineId`), one level up for an edit that is not about one line —
+  // the hook still runs one write at a time, so there is never a second
+  // list-level action waiting either.
+  const [bulkPending, setBulkPending] = useState<BulkAction | null>(null);
+  const [bulkReverted, setBulkReverted] = useState<BulkAction | null>(null);
+
+  const catalog = useMemo(
+    () => readCatalogEntries(snapshot?.envelope.records),
+    [snapshot],
+  );
+  const onListItemIds = useMemo(
+    () => catalogItemIdsOnList(snapshot?.envelope.records, listId),
+    [snapshot, listId],
+  );
+
+  const openMenu = useCallback((): void => setMenuVisible(true), []);
+
+  const menuItems = useMemo(
+    () => [
+      {
+        id: 'uncheckAll',
+        label: 'Uncheck All',
+        onPress: () => setConfirmAction('uncheckAll'),
+      },
+      {
+        id: 'removeChecked',
+        label: 'Remove Checked From List',
+        destructive: true,
+        onPress: () => setConfirmAction('removeChecked'),
+      },
+      {
+        id: 'rename',
+        label: 'Rename list',
+        onPress: () => setRenameVisible(true),
+      },
+    ],
+    [],
+  );
+
   useLayoutEffect(() => {
-    navigation.setOptions({ title: trip?.name ?? 'Trip' });
-  }, [navigation, trip?.name]);
+    navigation.setOptions({
+      title: trip?.name ?? 'Trip',
+      headerRight: () => (
+        <View style={[styles.headerActions, { gap: theme.spacing.xs }]}>
+          <IconButton
+            icon="plus"
+            accessibilityLabel="Add to list"
+            onPress={() => setAddVisible(true)}
+          />
+          <IconButton
+            icon="more"
+            accessibilityLabel="List menu"
+            onPress={openMenu}
+          />
+        </View>
+      ),
+    });
+  }, [navigation, trip?.name, openMenu, theme.spacing.xs]);
 
   const push = useCallback(
     async (lineId: string, edit: VaultBlobEdit): Promise<boolean> => {
@@ -135,6 +239,104 @@ export function GroceryTripScreen(): React.JSX.Element {
     },
     [apply],
   );
+
+  // The same shape as `push`, one level up for an edit that touches the whole
+  // list rather than one line — Uncheck All, Remove Checked From List, Rename.
+  const pushBulk = useCallback(
+    async (action: BulkAction, edit: VaultBlobEdit): Promise<boolean> => {
+      setBulkPending(action);
+      setBulkReverted(null);
+      const confirmed = await apply(edit);
+      setBulkPending(null);
+      if (!confirmed) setBulkReverted(action);
+      return confirmed;
+    },
+    [apply],
+  );
+
+  const addExistingItem = useCallback(
+    (item: CatalogEntry): void => {
+      const now = new Date().toISOString();
+      const line: ListLine = {
+        id: newRecordId(),
+        catalogItemId: item.id,
+        checked: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      void push(line.id, (envelope) => putListLine(envelope, listId, line));
+    },
+    [push, listId],
+  );
+
+  const createItemAndAdd = useCallback(
+    (name: string, category: GroceryCategoryType): void => {
+      const now = new Date().toISOString();
+      const item: CatalogItem = {
+        id: newRecordId(),
+        name,
+        category,
+        createdAt: now,
+        updatedAt: now,
+      };
+      const line: ListLine = {
+        id: newRecordId(),
+        catalogItemId: item.id,
+        checked: false,
+        createdAt: now,
+        updatedAt: now,
+      };
+      void push(line.id, (envelope) =>
+        createCatalogItemAndAddLine(envelope, listId, item, line),
+      );
+    },
+    [push, listId],
+  );
+
+  const confirmBulkAction = useCallback((): void => {
+    if (confirmAction === null) return;
+    const action = confirmAction;
+    const now = new Date().toISOString();
+    void pushBulk(
+      action,
+      action === 'uncheckAll'
+        ? (envelope) => uncheckAllListLines(envelope, listId, now)
+        : (envelope) => removeCheckedListLines(envelope, listId, now),
+    ).then(() => setConfirmAction(null));
+  }, [confirmAction, pushBulk, listId]);
+
+  const cancelBulkConfirm = useCallback((): void => {
+    if (bulkPending !== null) return;
+    setConfirmAction(null);
+  }, [bulkPending]);
+
+  const submitRename = useCallback(
+    (name: string): void => {
+      const now = new Date().toISOString();
+      void pushBulk('rename', (envelope) =>
+        renameGroceryList(envelope, listId, name, now),
+      ).then(() => setRenameVisible(false));
+    },
+    [pushBulk, listId],
+  );
+
+  const cancelRename = useCallback((): void => {
+    if (bulkPending !== null) return;
+    setRenameVisible(false);
+  }, [bulkPending]);
+
+  const reloadAfterBulkConflict = useCallback((): void => {
+    setBulkReverted(null);
+    void reload();
+  }, [reload]);
+
+  const retryBulkAction = useCallback(async (): Promise<void> => {
+    const action = bulkReverted;
+    setBulkPending(action);
+    const confirmed = await retry();
+    setBulkPending(null);
+    if (confirmed) setBulkReverted(null);
+  }, [retry, bulkReverted]);
 
   const setChecked = useCallback(
     (line: TripLine): void => {
@@ -390,6 +592,19 @@ export function GroceryTripScreen(): React.JSX.Element {
             />
           )}
 
+          {bulkReverted != null && writeError != null && (
+            <InlineNotice
+              tone="destructive"
+              message={WRITE_ERROR[writeError].message}
+              actionLabel={WRITE_ERROR[writeError].action}
+              onAction={() =>
+                void (writeError === 'conflict'
+                  ? reloadAfterBulkConflict()
+                  : retryBulkAction())
+              }
+            />
+          )}
+
           {trip.total === 0 && (
             <EmptyState
               icon="groceries"
@@ -429,6 +644,48 @@ export function GroceryTripScreen(): React.JSX.Element {
         onAction={undoRemove}
         onDismiss={() => setDeletedLine(null)}
       />
+
+      <AddToListSheet
+        visible={addVisible}
+        onDismiss={() => setAddVisible(false)}
+        catalog={catalog}
+        onListItemIds={onListItemIds}
+        onAddExisting={addExistingItem}
+        onCreate={createItemAndAdd}
+      />
+
+      <MenuSheet
+        visible={menuVisible}
+        onDismiss={() => setMenuVisible(false)}
+        title="List menu"
+        items={menuItems}
+      />
+
+      <ConfirmSheet
+        visible={confirmAction !== null}
+        title={confirmAction === null ? '' : CONFIRM_COPY[confirmAction].title}
+        message={
+          confirmAction === null ? '' : CONFIRM_COPY[confirmAction].message
+        }
+        confirmLabel={
+          confirmAction === null ? '' : CONFIRM_COPY[confirmAction].confirmLabel
+        }
+        destructive={confirmAction === 'removeChecked'}
+        busy={confirmAction !== null && bulkPending === confirmAction}
+        onConfirm={confirmBulkAction}
+        onCancel={cancelBulkConfirm}
+      />
+
+      <TextPromptSheet
+        visible={renameVisible}
+        title="Rename list"
+        label="List name"
+        initialValue={trip?.name ?? ''}
+        confirmLabel="Rename"
+        busy={bulkPending === 'rename'}
+        onSubmit={submitRename}
+        onCancel={cancelRename}
+      />
     </Screen>
   );
 }
@@ -436,6 +693,9 @@ export function GroceryTripScreen(): React.JSX.Element {
 const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
+  },
+  headerActions: {
+    flexDirection: 'row',
   },
   // Clips the swipe panels to the row's own corners; the radius itself is a
   // theme value and is merged in per render.

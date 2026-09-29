@@ -31,6 +31,8 @@ export const STACK_SCREEN_EDGES = ['left', 'right'] as const;
 
 export interface TabScreenHeaderProps {
   title: string;
+  /** An extra control before Lock — a tab's own header action, e.g. Groceries' "New list". */
+  trailing?: React.ReactNode;
 }
 
 /**
@@ -47,10 +49,17 @@ export interface TabScreenHeaderProps {
  */
 export function TabScreenHeader({
   title,
+  trailing,
 }: TabScreenHeaderProps): React.JSX.Element | null {
   const { lock } = useVaultSession();
 
   if (Platform.OS === 'ios') return null;
 
-  return <LargeTitleHeader title={title} onLock={() => lock('manual')} />;
+  return (
+    <LargeTitleHeader
+      title={title}
+      trailing={trailing}
+      onLock={() => lock('manual')}
+    />
+  );
 }
