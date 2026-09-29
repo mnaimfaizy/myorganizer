@@ -163,8 +163,8 @@ export function setListLineAmount(
   return overListLines(envelope, listId, updatedAt, (lines) =>
     withLine(lines, lineId, (line) => {
       const next: Record<string, unknown> = { ...line, updatedAt };
-      if (trimmed.length > 0) next.amount = trimmed;
-      else delete next.amount;
+      if (trimmed.length > 0) next['amount'] = trimmed;
+      else delete next['amount'];
       return next;
     }),
   );
@@ -249,7 +249,7 @@ export function createCatalogItemAndAddLine(
 
   const list = lists[index] as { lines?: unknown };
   const existingLines = Array.isArray(list.lines) ? list.lines : [];
-  const catalog = Array.isArray(records.catalog) ? records.catalog : [];
+  const catalog = Array.isArray(records['catalog']) ? records['catalog'] : [];
 
   return {
     records: {
@@ -286,7 +286,7 @@ export function uncheckAllListLines(
   return overListLines(envelope, listId, updatedAt, (lines) => {
     let changed = false;
     const next = lines.map((entry) => {
-      if (!isRecord(entry) || entry.checked !== true) return entry;
+      if (!isRecord(entry) || entry['checked'] !== true) return entry;
       changed = true;
       return { ...entry, checked: false, updatedAt };
     });
@@ -314,8 +314,8 @@ export function removeCheckedListLines(
 
   const removed = overListLines(envelope, listId, deletedAt, (lines) => {
     const next = lines.filter((entry) => {
-      if (!isRecord(entry) || entry.checked !== true) return true;
-      if (typeof entry.id === 'string') removedIds.push(entry.id);
+      if (!isRecord(entry) || entry['checked'] !== true) return true;
+      if (typeof entry['id'] === 'string') removedIds.push(entry['id']);
       return false;
     });
     return next.length === lines.length ? null : next;
