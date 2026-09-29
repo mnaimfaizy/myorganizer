@@ -17,7 +17,9 @@ import { GroceriesScreen } from './GroceriesScreen';
 import { GroceryTripScreen } from './GroceryTripScreen';
 import { GROCERIES_ROUTES } from './groceriesStack';
 import { SubscriptionsScreen } from './SubscriptionsScreen';
+import { TaskDetailScreen } from './TaskDetailScreen';
 import { TasksScreen } from './TasksScreen';
+import { TASKS_ROUTES } from './tasksStack';
 import {
   DEFAULT_TAB,
   isTabName,
@@ -101,7 +103,9 @@ const TAB_STACKS = {
   Groceries: tabStack('Groceries', GroceriesScreen, [
     { name: GROCERIES_ROUTES.trip, component: GroceryTripScreen },
   ]),
-  Tasks: tabStack('Tasks', TasksScreen),
+  Tasks: tabStack('Tasks', TasksScreen, [
+    { name: TASKS_ROUTES.detail, component: TaskDetailScreen },
+  ]),
   Subscriptions: tabStack('Subscriptions', SubscriptionsScreen),
   Details: tabStack('Details', DetailsScreen),
   Account: tabStack('Account', AccountScreen),

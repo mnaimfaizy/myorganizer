@@ -14,6 +14,14 @@ export interface ConfirmSheetProps {
   cancelLabel?: string;
   /** Renders the confirm button as destructive. */
   destructive?: boolean;
+  /**
+   * A third way out, offered beside Confirm and Cancel — a Task's Delete
+   * confirmation offers "Archive instead" here rather than asking the User to
+   * cancel and find the archive action elsewhere. Omitting it leaves the
+   * sheet exactly as it was: two buttons, not a blank third one.
+   */
+  secondaryLabel?: string;
+  onSecondary?: () => void;
   /** Shows a spinner on the confirm button and stops accepting either answer. */
   busy?: boolean;
   onConfirm: () => void;
@@ -33,6 +41,8 @@ export function ConfirmSheet({
   confirmLabel,
   cancelLabel = 'Cancel',
   destructive = false,
+  secondaryLabel,
+  onSecondary,
   busy = false,
   onConfirm,
   onCancel,
@@ -51,6 +61,14 @@ export function ConfirmSheet({
           busy={busy}
           onPress={onConfirm}
         />
+        {secondaryLabel != null && onSecondary != null && (
+          <Button
+            label={secondaryLabel}
+            variant="secondary"
+            disabled={busy}
+            onPress={onSecondary}
+          />
+        )}
         <Button
           label={cancelLabel}
           variant="ghost"

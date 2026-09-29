@@ -9,6 +9,8 @@ export * from './subscriptionRecordMerge';
 export * from './subscriptionRecords';
 export * from './task';
 export * from './taskMerge';
+export * from './taskOrder';
+export * from './taskTransition';
 export * from './vaultBlobConverge';
 export * from './vaultBlobEdit';
 export * from './vaultBlobEnvelope';

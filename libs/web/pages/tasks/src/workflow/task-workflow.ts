@@ -1,4 +1,5 @@
 import type { Task } from '@myorganizer/vault-core';
+import { transitionTaskStatus } from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
 import { normalizeTasks } from '@myorganizer/web-vault';
 
@@ -89,13 +90,18 @@ export async function updateTaskInWorkflow(
   taskId: string,
   values: TaskUpdateInput,
 ): Promise<{ tasks: Task[]; result: TaskWorkflowMutationResult }> {
+  const now = new Date().toISOString();
+  // `transitionTaskStatus` reads `status` as the *previous* status, so the
+  // other fields from `values` are applied first and the task's own status
+  // is carried over until the transition itself decides `closedAt`
+  // (CONTEXT.md) — the same shared function mobile's status changes use.
   const next = tasks.map((t) =>
     t.id === taskId
-      ? {
-          ...t,
-          ...values,
-          updatedAt: new Date().toISOString(),
-        }
+      ? transitionTaskStatus(
+          { ...t, ...values, status: t.status },
+          values.status,
+          now,
+        )
       : t,
   );
 

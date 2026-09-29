@@ -21,4 +21,10 @@ export interface Task {
   archived: boolean;
   createdAt: string;
   updatedAt?: string;
+  /**
+   * When this Task last entered `done` or `cancelled` — set and cleared by
+   * `transitionTaskStatus`, never written directly. Absent on a Task that has
+   * never been closed, and on one closed before this field existed.
+   */
+  closedAt?: string;
 }

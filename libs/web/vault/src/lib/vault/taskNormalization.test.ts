@@ -598,6 +598,83 @@ describe('taskNormalization', () => {
       expect(result.changed).toBe(false);
     });
 
+    it('includes closedAt when provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'With Closed At',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          closedAt: '2024-12-25T10:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0].closedAt).toBe('2024-12-25T10:00:00.000Z');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits closedAt when not provided', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'No Closed At',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('closedAt');
+      expect(result.changed).toBe(false);
+    });
+
+    it('omits closedAt when empty string', () => {
+      const input = [
+        {
+          id: '1',
+          title: 'Empty Closed At',
+          status: 'pending',
+          archived: false,
+          priority: 'medium',
+          createdAt: '2024-01-01T00:00:00.000Z',
+          closedAt: '',
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).not.toHaveProperty('closedAt');
+      expect(result.changed).toBe(false);
+    });
+
+    it('preserves closedAt with other valid fields without marking changed', () => {
+      const createdAtISO = '2024-01-01T00:00:00.000Z';
+      const closedAtISO = '2024-12-25T10:00:00.000Z';
+      const input = [
+        {
+          id: '1',
+          title: 'Task with Closed At',
+          status: 'done',
+          archived: false,
+          priority: 'high',
+          createdAt: createdAtISO,
+          closedAt: closedAtISO,
+        },
+      ];
+      const result = normalizeTasks(input);
+      expect(result.value[0]).toEqual({
+        id: '1',
+        title: 'Task with Closed At',
+        status: 'done',
+        archived: false,
+        priority: 'high',
+        createdAt: createdAtISO,
+        closedAt: closedAtISO,
+      });
+      expect(result.changed).toBe(false);
+    });
+
     // --- Task filtering and multiple-task scenarios ---
 
     it('skips tasks with null/falsy item in array', () => {

@@ -22,7 +22,8 @@ export type IconName =
   | 'retry'
   | 'biometric'
   | 'plus'
-  | 'more';
+  | 'more'
+  | 'archive';
 
 /**
  * The glyphs, as stroked paths on a 24-unit grid.
@@ -99,6 +100,14 @@ const PATHS = {
     'M9 10v1.5',
     'M15 10v1.5',
     'M9 15.2c.8.8 1.8 1.3 3 1.3s2.2-.5 3-1.3',
+  ],
+  // A storage box: the lid as a separate stroke from the box it sits on, so
+  // the glyph reads as "put away" rather than as the plain box `subscriptions`
+  // already draws.
+  archive: [
+    'M4 7h16v3.5H4z',
+    'M6 10.5v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8',
+    'M10 14h4',
   ],
 } as const satisfies Record<IconName, readonly string[]>;
 

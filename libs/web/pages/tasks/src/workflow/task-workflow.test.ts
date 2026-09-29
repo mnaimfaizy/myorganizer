@@ -305,6 +305,91 @@ describe('task-workflow', () => {
       expect(tasks[0].title).toBe('Updated title');
       expect(adapter.getSavedTasks()).toEqual([task]);
     });
+
+    it('sets closedAt when transitioning a pending task to done', async () => {
+      const task = makeTask({ id: 'task-1', status: 'pending' });
+      const adapter = new InMemoryTasksVaultAdapter({ tasks: [task] });
+
+      const { tasks, result } = await updateTaskInWorkflow(
+        adapter,
+        [task],
+        'task-1',
+        {
+          title: task.title,
+          priority: task.priority,
+          status: 'done',
+        },
+      );
+
+      expect(result).toEqual({ ok: true, kind: 'updated' });
+      expect(tasks[0]).toMatchObject({
+        id: 'task-1',
+        status: 'done',
+        closedAt: FIXED_NOW,
+        updatedAt: FIXED_NOW,
+      });
+      expect(adapter.getSavedTasks()).toEqual(tasks);
+    });
+
+    it('preserves closedAt when updating a done task without changing status', async () => {
+      const priorClosedAt = '2024-06-14T10:00:00.000Z';
+      const task = makeTask({
+        id: 'task-1',
+        status: 'done',
+        closedAt: priorClosedAt,
+        title: 'Original title',
+      });
+      const adapter = new InMemoryTasksVaultAdapter({ tasks: [task] });
+
+      const { tasks, result } = await updateTaskInWorkflow(
+        adapter,
+        [task],
+        'task-1',
+        {
+          title: 'Updated title',
+          priority: task.priority,
+          status: 'done',
+        },
+      );
+
+      expect(result).toEqual({ ok: true, kind: 'updated' });
+      expect(tasks[0]).toMatchObject({
+        id: 'task-1',
+        status: 'done',
+        closedAt: priorClosedAt,
+        updatedAt: FIXED_NOW,
+      });
+      expect(adapter.getSavedTasks()).toEqual(tasks);
+    });
+
+    it('clears closedAt when reopening a done task to pending', async () => {
+      const task = makeTask({
+        id: 'task-1',
+        status: 'done',
+        closedAt: '2024-06-14T10:00:00.000Z',
+      });
+      const adapter = new InMemoryTasksVaultAdapter({ tasks: [task] });
+
+      const { tasks, result } = await updateTaskInWorkflow(
+        adapter,
+        [task],
+        'task-1',
+        {
+          title: task.title,
+          priority: task.priority,
+          status: 'pending',
+        },
+      );
+
+      expect(result).toEqual({ ok: true, kind: 'updated' });
+      expect(tasks[0]).toMatchObject({
+        id: 'task-1',
+        status: 'pending',
+        updatedAt: FIXED_NOW,
+      });
+      expect(tasks[0]).not.toHaveProperty('closedAt');
+      expect(adapter.getSavedTasks()).toEqual(tasks);
+    });
   });
 
   describe('deleteTaskFromWorkflow', () => {
