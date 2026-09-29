@@ -362,16 +362,20 @@ export function DetailsScreen(): React.JSX.Element {
       </ScrollView>
 
       {/* The sheet pads this 10 × 16; `sm` is the nearest step to 10. */}
-      <Text
-        variant="caption"
-        color="mutedForeground"
-        style={{
-          paddingVertical: theme.spacing.sm,
-          paddingHorizontal: theme.spacing.md,
-        }}
-      >
-        Details are added and edited on the web.
-      </Text>
+      {/* The empty state already says where Details are added, with a
+          link; the lists say it here instead (Det-List vs Det-List-Empty). */}
+      {!segmentIsEmpty && (
+        <Text
+          variant="caption"
+          color="mutedForeground"
+          style={{
+            paddingVertical: theme.spacing.sm,
+            paddingHorizontal: theme.spacing.md,
+          }}
+        >
+          Details are added and edited on the web.
+        </Text>
+      )}
     </Screen>
   );
 }

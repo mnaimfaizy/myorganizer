@@ -61,14 +61,17 @@ const PUSHED_SCREEN_OPTIONS: NativeStackNavigationOptions = {
 };
 
 /**
- * The native header themed from the token theme, for both colour modes.
+ * The native header's type and colour from the token theme, for both colour
+ * modes.
  *
- * The Navigation and Platform sheets draw the bar on `background` in
- * `foreground`, with a hairline once the content scrolls under it: the native
- * stack draws that hairline itself when the large title collapses, so it is
- * hidden only while the large title is showing. The inline title is 17/600 on
- * iOS and 22/28/700 on Android; the type scale has neither, so iOS takes the
- * `body` size in the 600 cut and Android the `title` step.
+ * Only type and colour: the Navigation and Platform sheets draw the bar on
+ * `background` with no hairline under the large title and a hairline once it
+ * collapses, which is the platform's own default bar — and on iOS 26 setting
+ * the bar background or the shadow options (`headerStyle`, `headerLargeStyle`,
+ * `header*ShadowVisible`) stops the large title drawing at all, so they are
+ * deliberately left to the platform. The inline title is 17/600 on iOS and
+ * 22/28/700 on Android; the type scale has neither, so iOS takes the `body`
+ * size in the 600 cut and Android the `title` step.
  */
 function headerChrome(theme: Theme): NativeStackNavigationOptions {
   const inline =
@@ -82,8 +85,6 @@ function headerChrome(theme: Theme): NativeStackNavigationOptions {
           fontSize: theme.type.title.fontSize,
         };
   return {
-    headerStyle: { backgroundColor: theme.colors.background },
-    headerLargeStyle: { backgroundColor: theme.colors.background },
     headerTintColor: theme.colors.foreground,
     headerTitleStyle: { ...inline, color: theme.colors.foreground },
     headerLargeTitleStyle: {
@@ -91,8 +92,6 @@ function headerChrome(theme: Theme): NativeStackNavigationOptions {
       fontSize: theme.type.display.fontSize,
       color: theme.colors.foreground,
     },
-    headerShadowVisible: true,
-    headerLargeTitleShadowVisible: false,
     contentStyle: { backgroundColor: theme.colors.background },
   };
 }
