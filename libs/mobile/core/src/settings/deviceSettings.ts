@@ -29,12 +29,14 @@ export interface DeviceSettings {
   lastTab: string | null;
   autoLockDelay: AutoLockDelay;
   biometricOfferedUserIds: readonly string[];
+  keepScreenAwake: boolean;
 }
 
 const APPEARANCE_KEY = 'appearance';
 const LAST_TAB_KEY = 'lastTab';
 const AUTO_LOCK_DELAY_KEY = 'autoLockDelay';
 const BIOMETRIC_OFFERED_KEY = 'biometricOfferedUserIds';
+const KEEP_SCREEN_AWAKE_KEY = 'keepScreenAwake';
 
 const listeners = new Set<() => void>();
 
@@ -57,6 +59,8 @@ export function getDeviceSettings(): DeviceSettings {
     biometricOfferedUserIds: toOfferedUserIds(
       readSetting(BIOMETRIC_OFFERED_KEY),
     ),
+    keepScreenAwake:
+      readSetting(KEEP_SCREEN_AWAKE_KEY) !== 'false' ? true : false,
   };
   return snapshot;
 }
@@ -78,6 +82,12 @@ export function setLastTab(lastTab: string): void {
 export function setAutoLockDelay(autoLockDelay: AutoLockDelay): void {
   writeSetting(AUTO_LOCK_DELAY_KEY, autoLockDelay);
   publish({ ...getDeviceSettings(), autoLockDelay });
+}
+
+/** Record whether to keep the screen awake during a trip (shopping). */
+export function setKeepScreenAwake(keepScreenAwake: boolean): void {
+  writeSetting(KEEP_SCREEN_AWAKE_KEY, keepScreenAwake ? 'true' : 'false');
+  publish({ ...getDeviceSettings(), keepScreenAwake });
 }
 
 /** Whether this installation has already offered this User Biometric Unlock. */

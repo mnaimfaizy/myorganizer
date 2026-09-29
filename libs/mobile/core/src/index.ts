@@ -10,6 +10,7 @@ export {
   markBiometricUnlockOffered,
   setAppearance,
   setAutoLockDelay,
+  setKeepScreenAwake,
   setLastTab,
   subscribeToDeviceSettings,
 } from './settings/deviceSettings';
