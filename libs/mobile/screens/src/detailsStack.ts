@@ -1,3 +1,4 @@
+import type { ContactKind } from './contactModel';
 import type { TabName } from './tabs';
 
 /**
@@ -7,18 +8,22 @@ import type { TabName } from './tabs';
 type DetailsTab = Extract<TabName, 'Details'>;
 
 /**
- * The Details tab's own navigation stack: its list, one Address's detail, and
- * one Mobile Number's detail. Creating or editing any of the three stays
- * web-only for this slice — nothing here pushes a create or edit screen.
+ * The Details tab's own navigation stack: its list, one Address's detail, one
+ * Mobile Number's detail, and the Usage Locations of either. Creating or
+ * editing any of them stays web-only — nothing here pushes a create or edit
+ * screen.
  */
 export type DetailsStackParamList = {
   [Home in `${DetailsTab}Home`]: undefined;
 } & {
-  /** One Address's detail — every field, Usage Locations, and the explicit
-   * Copy / Open in Maps / Share actions. */
+  /** One Address's detail — every field, the explicit Copy all / Open in
+   * Maps / Share actions, and a preview of who is still to notify. */
   AddressDetail: { addressId: string };
   /** One Mobile Number's detail. See `AddressDetail`. */
   MobileNumberDetail: { mobileNumberId: string };
+  /** Every Usage Location of one Address or Mobile Number, to notify and
+   * notified (Det-UL). */
+  UsageLocations: { kind: ContactKind; contactId: string };
 };
 
 /** The route names, in one place — see `GROCERIES_ROUTES` for why. */
@@ -26,4 +31,5 @@ export const DETAILS_ROUTES = {
   home: 'DetailsHome',
   addressDetail: 'AddressDetail',
   mobileNumberDetail: 'MobileNumberDetail',
+  usageLocations: 'UsageLocations',
 } as const satisfies Record<string, keyof DetailsStackParamList>;

@@ -31,6 +31,7 @@ import { SUBSCRIPTIONS_ROUTES } from './subscriptionsStack';
 import { TaskDetailScreen } from './TaskDetailScreen';
 import { TasksScreen } from './TasksScreen';
 import { TASKS_ROUTES } from './tasksStack';
+import { UsageLocationsScreen } from './UsageLocationsScreen';
 import {
   DEFAULT_TAB,
   isTabName,
@@ -165,6 +166,7 @@ const TAB_STACKS = {
       name: DETAILS_ROUTES.mobileNumberDetail,
       component: MobileNumberDetailScreen,
     },
+    { name: DETAILS_ROUTES.usageLocations, component: UsageLocationsScreen },
   ]),
   Account: tabStack('Account', AccountScreen),
 } as const satisfies Record<TabName, React.ComponentType>;

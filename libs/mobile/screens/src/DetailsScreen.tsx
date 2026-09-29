@@ -1,8 +1,15 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Linking,
+  ScrollView,
+  StyleSheet,
+  View,
+} from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
+import { webAppPath } from '@myorganizer/mobile/feat-auth';
 import { useVaultBlob } from '@myorganizer/mobile/feat-vault';
 import {
   Button,
@@ -13,11 +20,14 @@ import {
   OfflineBanner,
   Screen,
   SegmentedControl,
+  Text,
+  useLargeTitleCollapse,
   useTheme,
+  type IconName,
 } from '@myorganizer/mobile/ui';
 import {
-  describeToNotify,
-  formatAddressLine,
+  countUnnotified,
+  formatAddressSummary,
   formatMobileNumber,
   readUsageLocations,
   readVisibleMobileNumbers,
@@ -38,6 +48,29 @@ const SEGMENTS = [
 ] as const satisfies readonly { value: DetailsSegment; label: string }[];
 
 /**
+ * What each segment says and draws, pinned to the segment set: the glyph its
+ * rows and empty state carry, its empty state's title, the web page that
+ * adds one, and the noun a failed load names.
+ */
+const SEGMENT_COPY = {
+  addresses: {
+    icon: 'home',
+    emptyTitle: 'No Addresses yet',
+    webPath: '/dashboard/addresses',
+    loadSubject: 'your addresses',
+  },
+  mobileNumbers: {
+    icon: 'phone',
+    emptyTitle: 'No Mobile Numbers yet',
+    webPath: '/dashboard/mobile-numbers',
+    loadSubject: 'your mobile numbers',
+  },
+} as const satisfies Record<
+  DetailsSegment,
+  { icon: IconName; emptyTitle: string; webPath: string; loadSubject: string }
+>;
+
+/**
  * Which Vault Blob Type each Details segment reads, pinned against the whole
  * enum so a sixth Vault Blob Type fails to compile here rather than silently
  * being left out of this screen (ADR 0053) — the shape that let a hand-rolled
@@ -53,39 +86,97 @@ const DETAILS_VAULT_BLOB_TYPE = {
   tasks: null,
 } as const satisfies Record<VaultBlobType, VaultBlobType | null>;
 
-/** The amber dot a row shows beside its name when it has at least one
- * unnotified Usage Location. Purely decorative: the row's own accessibility
- * label already carries "n to notify" through its subtitle. */
-function UnnotifiedDot(): React.JSX.Element {
+/**
+ * The trailing "● 3 to notify" on a row with someone still to tell: an amber
+ * dot and the count. The dot is decorative — the row's accessibility label
+ * already carries the count.
+ */
+function ToNotify({ count }: { count: number }): React.JSX.Element {
   const theme = useTheme();
   return (
-    <View
-      accessibilityElementsHidden
-      importantForAccessibility="no-hide-descendants"
-      style={[
-        styles.dot,
-        {
-          borderRadius: theme.radii.full,
-          backgroundColor: theme.colors.warning,
-        },
-      ]}
+    <View style={[styles.inline, { gap: theme.spacing.xs }]}>
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[
+          styles.dot,
+          {
+            borderRadius: theme.radii.full,
+            backgroundColor: theme.colors.warning,
+          },
+        ]}
+      />
+      <Text variant="caption" weight="semibold" color="foreground">
+        {`${count} to notify`}
+      </Text>
+    </View>
+  );
+}
+
+/** One Address or Mobile Number in the list: its tile, its name, the line it
+ * is recognised by, who is still to be told, and the way into its detail. */
+function ContactRow({
+  icon,
+  title,
+  summary,
+  numeric,
+  toNotify,
+  onPress,
+}: {
+  icon: IconName;
+  title: string;
+  summary: string;
+  numeric: boolean;
+  toNotify: number;
+  onPress: () => void;
+}): React.JSX.Element {
+  const toNotifyText = toNotify > 0 ? `${toNotify} to notify` : null;
+  return (
+    <ListRow
+      title={title}
+      titleWeight="semibold"
+      size="tall"
+      subtitle={summary.length > 0 ? summary : undefined}
+      subtitleContent={
+        summary.length > 0 ? (
+          // The sheet sets the summary at 15/20 — `bodySm`, not the row's
+          // default caption line.
+          <Text
+            variant="bodySm"
+            color="mutedForeground"
+            numberOfLines={1}
+            style={numeric ? styles.figures : undefined}
+          >
+            {summary}
+          </Text>
+        ) : undefined
+      }
+      leadingIcon={icon}
+      leadingIconSize="large"
+      trailing={toNotify > 0 ? <ToNotify count={toNotify} /> : undefined}
+      chevron
+      onPress={onPress}
+      accessibilityLabel={[title, summary, toNotifyText]
+        .filter((part): part is string => part != null && part.length > 0)
+        .join(', ')}
     />
   );
 }
 
 /**
- * The Details tab: Addresses and Mobile Numbers, read-first. Addresses shows
- * current ones first and old ones in a collapsed section; Mobile Numbers has
- * no such split. A row with an unnotified Usage Location carries the amber
- * dot and its "n to notify" count; tapping any row opens that record's
- * detail, where tap-to-copy, Copy all, Open in Maps / Share, and Usage
- * Location ticking live.
+ * The Details tab (Det-List): Addresses and Mobile Numbers, read-first.
+ * Addresses shows current ones first and old ones in a collapsed section;
+ * Mobile Numbers has no such split. A row with an unnotified Usage Location
+ * carries the amber dot and its "n to notify" count; tapping any row opens
+ * that record's detail. Details are added and edited on the web, which the
+ * screen says at its foot and its empty state links to.
  */
 export function DetailsScreen(): React.JSX.Element {
   const theme = useTheme();
   const navigation =
     useNavigation<NativeStackNavigationProp<DetailsStackParamList>>();
   const rememberedScroll = useRememberedScroll('Details');
+  const titleCollapse = useLargeTitleCollapse();
   const [segment, setSegment] = useState<DetailsSegment>('addresses');
 
   const addressesBlob = useVaultBlob(DETAILS_VAULT_BLOB_TYPE.addresses);
@@ -118,19 +209,16 @@ export function DetailsScreen(): React.JSX.Element {
   );
 
   const renderAddressRow = (address: DecryptedAddress): React.JSX.Element => {
-    const usageLocations = readUsageLocations(address);
-    const toNotify = describeToNotify(usageLocations);
-    const summary = formatAddressLine(address);
-    const title = address.label ?? (summary.length > 0 ? summary : 'Address');
-
+    const summary = formatAddressSummary(address);
     return (
-      <ListRow
+      <ContactRow
         key={address.id}
-        title={title}
-        subtitle={toNotify}
-        leading={toNotify != null ? <UnnotifiedDot /> : undefined}
+        icon={SEGMENT_COPY.addresses.icon}
+        title={address.label?.trim() || summary || 'Address'}
+        summary={summary}
+        numeric={false}
+        toNotify={countUnnotified(readUsageLocations(address))}
         onPress={() => openAddress(address.id)}
-        style={[styles.row, { borderRadius: theme.radii.md }]}
       />
     );
   };
@@ -138,128 +226,152 @@ export function DetailsScreen(): React.JSX.Element {
   const renderMobileNumberRow = (
     mobile: DecryptedMobileNumber,
   ): React.JSX.Element => {
-    const usageLocations = readUsageLocations(mobile);
-    const toNotify = describeToNotify(usageLocations);
     const summary = formatMobileNumber(mobile);
-    const title =
-      mobile.label ?? (summary.length > 0 ? summary : 'Mobile Number');
-
     return (
-      <ListRow
+      <ContactRow
         key={mobile.id}
-        title={title}
-        subtitle={toNotify}
-        leading={toNotify != null ? <UnnotifiedDot /> : undefined}
+        icon={SEGMENT_COPY.mobileNumbers.icon}
+        title={mobile.label?.trim() || summary || 'Mobile Number'}
+        summary={summary}
+        numeric
+        toNotify={countUnnotified(readUsageLocations(mobile))}
         onPress={() => openMobileNumber(mobile.id)}
-        style={[styles.row, { borderRadius: theme.radii.md }]}
       />
     );
   };
 
   const activeBlob =
     segment === 'addresses' ? addressesBlob : mobileNumbersBlob;
-  const nothingToShow =
-    segment === 'addresses'
-      ? current.length === 0 && old.length === 0
-      : mobileNumbers.length === 0;
+  const copy = SEGMENT_COPY[segment];
+  const addressCount = current.length + old.length;
+  const segmentIsEmpty =
+    segment === 'addresses' ? addressCount === 0 : mobileNumbers.length === 0;
+  // With nothing in either segment there is nothing to switch between, so
+  // the control goes and the empty state stands alone (Det-List-Empty).
+  const nothingAnywhere =
+    !addressesBlob.loading &&
+    !mobileNumbersBlob.loading &&
+    addressesBlob.loadError == null &&
+    mobileNumbersBlob.loadError == null &&
+    addressCount === 0 &&
+    mobileNumbers.length === 0;
 
   return (
-    <Screen edges={TAB_SCREEN_EDGES}>
-      <TabScreenHeader title="Details" />
+    <Screen edges={TAB_SCREEN_EDGES} noPadding>
+      <TabScreenHeader title="Details" collapsed={titleCollapse.collapsed} />
 
-      {activeBlob.loading ? (
-        <View style={styles.centered}>
-          <ActivityIndicator color={theme.colors.primary} />
-        </View>
-      ) : activeBlob.loadError != null ? (
-        <View style={[styles.centered, { gap: theme.spacing.md }]}>
-          <OfflineBanner />
-          <InlineNotice
-            tone="destructive"
-            message={describeVaultLoadError(
-              activeBlob.loadError,
-              segment === 'addresses'
-                ? 'your addresses'
-                : 'your mobile numbers',
-            )}
-          />
-          <Button
-            label="Try again"
-            variant="secondary"
-            onPress={() => void activeBlob.reload()}
-          />
-        </View>
-      ) : (
-        <ScrollView
-          contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            styles.content,
-            {
-              gap: theme.spacing.md,
-              padding: theme.spacing.md,
-              paddingBottom: theme.spacing.xl,
-            },
-          ]}
-          showsVerticalScrollIndicator={false}
-          {...rememberedScroll}
-        >
-          <OfflineBanner />
+      <ScrollView
+        contentInsetAdjustmentBehavior="automatic"
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+        contentOffset={rememberedScroll.contentOffset}
+        onScroll={(event) => {
+          rememberedScroll.onScroll(event);
+          titleCollapse.onScroll(event);
+        }}
+        scrollEventThrottle={rememberedScroll.scrollEventThrottle}
+      >
+        <OfflineBanner />
 
-          <SegmentedControl
-            segments={SEGMENTS}
-            value={segment}
-            onChange={setSegment}
-            accessibilityLabel="Addresses or Mobile Numbers"
-          />
-
-          {nothingToShow && (
-            <EmptyState
-              icon="details"
-              title={
-                segment === 'addresses'
-                  ? 'No addresses yet'
-                  : 'No mobile numbers yet'
-              }
-              description="Add one on the web."
+        {!nothingAnywhere && (
+          <View
+            style={{
+              paddingHorizontal: theme.spacing.md,
+              // The sheet leaves 12 under the control, exactly between `sm`
+              // and `md`; a tie rounds up.
+              paddingBottom: theme.spacing.md,
+            }}
+          >
+            <SegmentedControl
+              segments={SEGMENTS}
+              value={segment}
+              onChange={setSegment}
+              accessibilityLabel="Addresses or Mobile Numbers"
             />
-          )}
+          </View>
+        )}
 
-          {segment === 'addresses' ? (
-            <>
-              {current.length > 0 && (
-                <ListSection
-                  title="Current"
-                  meta={`${current.length}`}
-                  style={{ gap: theme.spacing.sm }}
-                >
-                  {current.map(renderAddressRow)}
-                </ListSection>
+        {activeBlob.loading ? (
+          <View style={styles.centered}>
+            <ActivityIndicator color={theme.colors.primary} />
+          </View>
+        ) : activeBlob.loadError != null ? (
+          <View
+            style={[
+              styles.centered,
+              {
+                gap: theme.spacing.md,
+                paddingHorizontal: theme.spacing.gutter,
+              },
+            ]}
+          >
+            <InlineNotice
+              tone="destructive"
+              message={describeVaultLoadError(
+                activeBlob.loadError,
+                copy.loadSubject,
               )}
-              {old.length > 0 && (
-                <ListSection
-                  title="Old"
-                  meta={`${old.length}`}
-                  collapsible
-                  defaultCollapsed
-                  style={{ gap: theme.spacing.sm }}
-                >
-                  {old.map(renderAddressRow)}
-                </ListSection>
-              )}
-            </>
-          ) : (
-            mobileNumbers.length > 0 && (
-              <ListSection
-                title="Mobile Numbers"
-                meta={`${mobileNumbers.length}`}
-                style={{ gap: theme.spacing.sm }}
-              >
-                {mobileNumbers.map(renderMobileNumberRow)}
+            />
+            <Button
+              label="Try again"
+              variant="secondary"
+              onPress={() => void activeBlob.reload()}
+            />
+          </View>
+        ) : segmentIsEmpty ? (
+          <View style={styles.centered}>
+            <EmptyState
+              icon={copy.icon}
+              title={copy.emptyTitle}
+              description="Add them on the web and they show up here."
+              actionLabel="Open the web app"
+              actionIcon="external"
+              actionIconPosition="trailing"
+              actionVariant="secondary"
+              onAction={() => void Linking.openURL(webAppPath(copy.webPath))}
+            />
+          </View>
+        ) : segment === 'addresses' ? (
+          <>
+            {current.length > 0 && (
+              <ListSection title="Current" count={current.length}>
+                {current.map(renderAddressRow)}
               </ListSection>
-            )
-          )}
-        </ScrollView>
-      )}
+            )}
+            {old.length > 0 && (
+              <ListSection
+                title="Old"
+                count={old.length}
+                collapsible
+                defaultCollapsed
+                style={
+                  current.length > 0
+                    ? { marginTop: theme.spacing.md }
+                    : undefined
+                }
+              >
+                {old.map(renderAddressRow)}
+              </ListSection>
+            )}
+          </>
+        ) : (
+          <ListSection title="Mobile Numbers" count={mobileNumbers.length}>
+            {mobileNumbers.map(renderMobileNumberRow)}
+          </ListSection>
+        )}
+      </ScrollView>
+
+      {/* The sheet pads this 10 × 16; `sm` is the nearest step to 10. */}
+      <Text
+        variant="caption"
+        color="mutedForeground"
+        style={{
+          paddingVertical: theme.spacing.sm,
+          paddingHorizontal: theme.spacing.md,
+        }}
+      >
+        Details are added and edited on the web.
+      </Text>
     </Screen>
   );
 }
@@ -268,15 +380,19 @@ const styles = StyleSheet.create({
   content: {
     flexGrow: 1,
   },
-  row: {
-    overflow: 'hidden',
+  inline: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   dot: {
     width: 8,
     height: 8,
   },
+  figures: {
+    fontVariant: ['tabular-nums'],
+  },
   centered: {
-    flex: 1,
+    flexGrow: 1,
     alignItems: 'center',
     justifyContent: 'center',
   },

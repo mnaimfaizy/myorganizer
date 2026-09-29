@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -14,44 +14,48 @@ import {
   type RouteProp,
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import {
-  usePendingVaultEdit,
-  useSensitiveCopy,
-  useVaultBlob,
-  VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
+import { useSensitiveCopy } from '@myorganizer/mobile/feat-vault';
 import {
   Button,
   EmptyState,
   InlineNotice,
-  ListSection,
   OfflineBanner,
   Screen,
   Snackbar,
+  StatusPill,
+  Text,
+  useLargeTitleCollapse,
   useTheme,
-  type ListRowState,
 } from '@myorganizer/mobile/ui';
 import { ContactFieldRow } from './ContactFieldRow';
 import {
   addressFields,
-  findVisibleAddress,
+  addressStatus,
+  describeCopiedAll,
   formatAddressLine,
+  isLegacyAddress,
   mapsUrlForAddress,
-  readUsageLocations,
   type CopyableField,
 } from './contactModel';
+import { DetailTitle, useDetailNavigationTitle } from './DetailTitle';
 import { DETAILS_ROUTES, type DetailsStackParamList } from './detailsStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
 import { UsageLocationSection } from './UsageLocationSection';
-import { useUsageLocationToggle } from './useUsageLocationToggle';
+import { useContactRecord } from './useContactRecord';
 import { describeVaultLoadError } from './vaultLoadError';
 
+/** The pill beside an Address's name, pinned to the status set. */
+const STATUS_LABEL = {
+  current: 'Current',
+  old: 'Old',
+} as const satisfies Record<ReturnType<typeof addressStatus>, string>;
+
 /**
- * One Address's detail: every field with its own tap-to-copy, Copy all, Open
- * in Maps and Share as the only two things that leave the app, and this
- * Address's Usage Locations with notified-ticking. Creating or editing an
- * Address stays web-only for this slice.
+ * One Address's detail (Det-Address): its name large, Current or Old, and
+ * every field as one tap-to-copy row; Copy all, then Open in Maps and Share —
+ * the only ways an Address leaves the app; and who is still to be told it
+ * moved, with the way to the whole Usage Locations list. Creating or editing
+ * an Address stays web-only.
  */
 export function AddressDetailScreen(): React.JSX.Element {
   const theme = useTheme();
@@ -68,34 +72,29 @@ export function AddressDetailScreen(): React.JSX.Element {
     >().params;
 
   const {
-    snapshot,
     loading,
     loadError,
-    writing,
-    writeError,
     reload,
-    apply,
-    retry,
-  } = useVaultBlob(VaultBlobType.Addresses);
-
-  const address = useMemo(
-    () => findVisibleAddress(snapshot?.envelope.records, addressId),
-    [snapshot, addressId],
-  );
-
-  const { pendingId, revertedId, push, reloadAfterConflict, retryFailedEdit } =
-    usePendingVaultEdit(apply, retry, reload);
+    contact: address,
+    usageLocations,
+    edits,
+  } = useContactRecord('address', addressId);
 
   const { copy } = useSensitiveCopy();
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
+  const titleCollapse = useLargeTitleCollapse();
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: address?.label ?? 'Address' });
-  }, [navigation, address?.label]);
+  const title = address?.label?.trim() || 'Address';
+  useDetailNavigationTitle(title, titleCollapse.collapsed);
+
+  const fields = useMemo(
+    () => (address === null ? [] : addressFields(address)),
+    [address],
+  );
 
   const copyField = useCallback(
     (field: CopyableField): void => {
-      void copy(field.value).then((message) => {
+      void copy(field.copyValue ?? field.value).then((message) => {
         if (message != null) setCopiedMessage(message);
       });
     },
@@ -105,7 +104,8 @@ export function AddressDetailScreen(): React.JSX.Element {
   const copyAll = useCallback((): void => {
     if (address === null) return;
     void copy(formatAddressLine(address)).then((message) => {
-      if (message != null) setCopiedMessage(message);
+      const confirmation = describeCopiedAll(message, 'Address');
+      if (confirmation != null) setCopiedMessage(confirmation);
     });
   }, [address, copy]);
 
@@ -121,26 +121,28 @@ export function AddressDetailScreen(): React.JSX.Element {
     void Share.share({ message: formatAddressLine(address) });
   }, [address]);
 
-  const toggleNotified = useUsageLocationToggle(address, push);
-
-  const rowState = (id: string): ListRowState =>
-    pendingId === id
-      ? 'unconfirmed'
-      : revertedId === id && writeError != null
-        ? 'reverted'
-        : 'normal';
-
-  const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
+  const seeAllUsageLocations = useCallback((): void => {
+    navigation.navigate(DETAILS_ROUTES.usageLocations, {
+      kind: 'address',
+      contactId: addressId,
+    });
+  }, [navigation, addressId]);
 
   return (
-    <Screen edges={STACK_SCREEN_EDGES}>
+    <Screen edges={STACK_SCREEN_EDGES} noPadding>
+      <OfflineBanner />
+
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.colors.primary} />
         </View>
       ) : loadError != null ? (
-        <View style={[styles.centered, { gap: theme.spacing.md }]}>
-          <OfflineBanner />
+        <View
+          style={[
+            styles.centered,
+            { gap: theme.spacing.md, paddingHorizontal: theme.spacing.gutter },
+          ]}
+        >
           <InlineNotice
             tone="destructive"
             message={describeVaultLoadError(loadError, 'this address')}
@@ -154,7 +156,7 @@ export function AddressDetailScreen(): React.JSX.Element {
       ) : address === null ? (
         <View style={styles.centered}>
           <EmptyState
-            icon="details"
+            icon="home"
             title="Address not found"
             description="It may have been deleted on another device."
           />
@@ -162,61 +164,94 @@ export function AddressDetailScreen(): React.JSX.Element {
       ) : (
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            styles.content,
-            { gap: theme.spacing.lg, padding: theme.spacing.md },
-          ]}
+          contentContainerStyle={{ paddingBottom: theme.spacing.lg }}
           showsVerticalScrollIndicator={false}
+          onScroll={titleCollapse.onScroll}
+          scrollEventThrottle={titleCollapse.scrollEventThrottle}
         >
-          <OfflineBanner />
+          <DetailTitle
+            title={title}
+            accessory={
+              <StatusPill label={STATUS_LABEL[addressStatus(address)]} />
+            }
+            hint="Tap a line to copy it"
+          />
 
-          {revertedId != null && notice != null && (
-            <InlineNotice
-              tone="destructive"
-              message={notice.message}
-              actionLabel={notice.action}
-              onAction={() =>
-                void (writeError === 'conflict'
-                  ? reloadAfterConflict()
-                  : retryFailedEdit())
-              }
-            />
+          {fields.length > 0 && (
+            <View
+              style={[
+                styles.card,
+                {
+                  marginHorizontal: theme.spacing.md,
+                  borderRadius: theme.radii.lg,
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.card,
+                },
+              ]}
+            >
+              {fields.map((field) => (
+                <ContactFieldRow
+                  key={field.id}
+                  field={field}
+                  onCopy={copyField}
+                />
+              ))}
+            </View>
           )}
 
-          <ListSection title="Address" style={{ gap: theme.spacing.md }}>
-            {addressFields(address).map((field) => (
-              <ContactFieldRow
-                key={field.id}
-                field={field}
-                onCopy={copyField}
-              />
-            ))}
-            <Button label="Copy all" variant="secondary" onPress={copyAll} />
-          </ListSection>
+          {isLegacyAddress(address) && (
+            // The sheet sets this 10 below the card; `sm` is the nearest step.
+            <Text
+              variant="caption"
+              color="mutedForeground"
+              style={{
+                marginTop: theme.spacing.sm,
+                marginHorizontal: theme.spacing.md,
+              }}
+            >
+              Saved as a single line. Split it into fields on the web.
+            </Text>
+          )}
 
-          <View style={[styles.actions, { gap: theme.spacing.sm }]}>
+          <View
+            style={{
+              gap: theme.spacing.sm,
+              paddingTop: theme.spacing.md,
+              paddingHorizontal: theme.spacing.md,
+            }}
+          >
             <Button
-              label="Open in Maps"
+              label="Copy all"
               variant="secondary"
-              onPress={openInMaps}
+              icon="copy"
+              onPress={copyAll}
             />
-            <Button label="Share" variant="secondary" onPress={shareAddress} />
+            <View style={[styles.pair, { gap: theme.spacing.sm }]}>
+              <Button
+                label="Open in Maps"
+                variant="secondary"
+                icon="mapPin"
+                onPress={openInMaps}
+                style={styles.half}
+              />
+              <Button
+                label="Share"
+                variant="secondary"
+                icon="share"
+                onPress={shareAddress}
+                style={styles.half}
+              />
+            </View>
           </View>
 
-          <UsageLocationSection
-            usageLocations={readUsageLocations(address)}
-            writing={writing}
-            rowState={rowState}
-            writeError={writeError}
-            onToggleNotified={toggleNotified}
-            onRetry={() =>
-              void (writeError === 'conflict'
-                ? reloadAfterConflict()
-                : retryFailedEdit())
-            }
-            retryLabel={notice?.action ?? 'Retry'}
-            revertedReason={notice?.message}
-          />
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <UsageLocationSection
+              kind="address"
+              usageLocations={usageLocations}
+              edits={edits}
+              onSeeAll={seeAllUsageLocations}
+            />
+          </View>
         </ScrollView>
       )}
 
@@ -230,11 +265,16 @@ export function AddressDetailScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  content: {
-    flexGrow: 1,
+  card: {
+    borderWidth: 1,
+    overflow: 'hidden',
   },
-  actions: {
+  pair: {
     flexDirection: 'row',
+  },
+  half: {
+    flexGrow: 1,
+    flexBasis: 0,
   },
   centered: {
     flex: 1,

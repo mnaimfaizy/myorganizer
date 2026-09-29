@@ -1,4 +1,4 @@
-import React, { useCallback, useLayoutEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -12,43 +12,38 @@ import {
   type RouteProp,
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import {
-  usePendingVaultEdit,
-  useSensitiveCopy,
-  useVaultBlob,
-  VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
+import { useSensitiveCopy } from '@myorganizer/mobile/feat-vault';
 import {
   Button,
   EmptyState,
   InlineNotice,
-  ListSection,
   OfflineBanner,
   Screen,
   Snackbar,
+  Text,
+  useLargeTitleCollapse,
   useTheme,
-  type ListRowState,
 } from '@myorganizer/mobile/ui';
 import { ContactFieldRow } from './ContactFieldRow';
 import {
-  findVisibleMobileNumber,
   formatMobileNumber,
+  isLegacyMobileNumber,
   mobileNumberFields,
-  readUsageLocations,
   type CopyableField,
 } from './contactModel';
+import { DetailTitle, useDetailNavigationTitle } from './DetailTitle';
 import { DETAILS_ROUTES, type DetailsStackParamList } from './detailsStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
 import { UsageLocationSection } from './UsageLocationSection';
-import { useUsageLocationToggle } from './useUsageLocationToggle';
+import { useContactRecord } from './useContactRecord';
 import { describeVaultLoadError } from './vaultLoadError';
 
 /**
- * One Mobile Number's detail: its fields with their own tap-to-copy, Copy
- * all and Share as the only thing that leaves the app, and this Mobile
- * Number's Usage Locations with notified-ticking. Creating or editing a
- * Mobile Number stays web-only for this slice.
+ * One Mobile Number's detail (Det-Mobile): its name, the whole number set
+ * large with its country code and number beneath, each one tap-to-copy; Copy
+ * number and Share — the only ways a Mobile Number leaves the app; and who is
+ * still to be told it changed, with the way to the whole Usage Locations
+ * list. Creating or editing a Mobile Number stays web-only.
  */
 export function MobileNumberDetailScreen(): React.JSX.Element {
   const theme = useTheme();
@@ -65,72 +60,72 @@ export function MobileNumberDetailScreen(): React.JSX.Element {
     >().params;
 
   const {
-    snapshot,
     loading,
     loadError,
-    writing,
-    writeError,
     reload,
-    apply,
-    retry,
-  } = useVaultBlob(VaultBlobType.MobileNumbers);
-
-  const mobile = useMemo(
-    () => findVisibleMobileNumber(snapshot?.envelope.records, mobileNumberId),
-    [snapshot, mobileNumberId],
-  );
-
-  const { pendingId, revertedId, push, reloadAfterConflict, retryFailedEdit } =
-    usePendingVaultEdit(apply, retry, reload);
+    contact: mobile,
+    usageLocations,
+    edits,
+  } = useContactRecord('mobileNumber', mobileNumberId);
 
   const { copy } = useSensitiveCopy();
   const [copiedMessage, setCopiedMessage] = useState<string | null>(null);
+  const titleCollapse = useLargeTitleCollapse();
 
-  useLayoutEffect(() => {
-    navigation.setOptions({ title: mobile?.label ?? 'Mobile Number' });
-  }, [navigation, mobile?.label]);
+  const title = mobile?.label?.trim() || 'Mobile Number';
+  useDetailNavigationTitle(title, titleCollapse.collapsed);
 
-  const copyField = useCallback(
-    (field: CopyableField): void => {
-      void copy(field.value).then((message) => {
+  const fields = useMemo(
+    () => (mobile === null ? [] : mobileNumberFields(mobile)),
+    [mobile],
+  );
+
+  const copyValue = useCallback(
+    (value: string): void => {
+      void copy(value).then((message) => {
         if (message != null) setCopiedMessage(message);
       });
     },
     [copy],
   );
 
-  const copyAll = useCallback((): void => {
+  const copyField = useCallback(
+    (field: CopyableField): void => copyValue(field.copyValue ?? field.value),
+    [copyValue],
+  );
+
+  const copyNumber = useCallback((): void => {
     if (mobile === null) return;
-    void copy(formatMobileNumber(mobile)).then((message) => {
-      if (message != null) setCopiedMessage(message);
-    });
-  }, [mobile, copy]);
+    copyValue(formatMobileNumber(mobile));
+  }, [mobile, copyValue]);
 
   const shareMobileNumber = useCallback((): void => {
     if (mobile === null) return;
     void Share.share({ message: formatMobileNumber(mobile) });
   }, [mobile]);
 
-  const toggleNotified = useUsageLocationToggle(mobile, push);
-
-  const rowState = (id: string): ListRowState =>
-    pendingId === id
-      ? 'unconfirmed'
-      : revertedId === id && writeError != null
-        ? 'reverted'
-        : 'normal';
-
-  const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
+  const seeAllUsageLocations = useCallback((): void => {
+    navigation.navigate(DETAILS_ROUTES.usageLocations, {
+      kind: 'mobileNumber',
+      contactId: mobileNumberId,
+    });
+  }, [navigation, mobileNumberId]);
 
   return (
-    <Screen edges={STACK_SCREEN_EDGES}>
+    <Screen edges={STACK_SCREEN_EDGES} noPadding>
+      <OfflineBanner />
+
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator color={theme.colors.primary} />
         </View>
       ) : loadError != null ? (
-        <View style={[styles.centered, { gap: theme.spacing.md }]}>
-          <OfflineBanner />
+        <View
+          style={[
+            styles.centered,
+            { gap: theme.spacing.md, paddingHorizontal: theme.spacing.gutter },
+          ]}
+        >
           <InlineNotice
             tone="destructive"
             message={describeVaultLoadError(loadError, 'this mobile number')}
@@ -144,7 +139,7 @@ export function MobileNumberDetailScreen(): React.JSX.Element {
       ) : mobile === null ? (
         <View style={styles.centered}>
           <EmptyState
-            icon="details"
+            icon="phone"
             title="Mobile Number not found"
             description="It may have been deleted on another device."
           />
@@ -152,58 +147,83 @@ export function MobileNumberDetailScreen(): React.JSX.Element {
       ) : (
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
-          contentContainerStyle={[
-            styles.content,
-            { gap: theme.spacing.lg, padding: theme.spacing.md },
-          ]}
+          contentContainerStyle={{ paddingBottom: theme.spacing.lg }}
           showsVerticalScrollIndicator={false}
+          onScroll={titleCollapse.onScroll}
+          scrollEventThrottle={titleCollapse.scrollEventThrottle}
         >
-          <OfflineBanner />
+          <DetailTitle title={title} hint="Tap the number to copy it" />
 
-          {revertedId != null && notice != null && (
-            <InlineNotice
-              tone="destructive"
-              message={notice.message}
-              actionLabel={notice.action}
-              onAction={() =>
-                void (writeError === 'conflict'
-                  ? reloadAfterConflict()
-                  : retryFailedEdit())
-              }
-            />
+          {fields.length > 0 && (
+            <View
+              style={[
+                styles.card,
+                {
+                  marginHorizontal: theme.spacing.md,
+                  borderRadius: theme.radii.lg,
+                  borderColor: theme.colors.border,
+                  backgroundColor: theme.colors.card,
+                },
+              ]}
+            >
+              {fields.map((field) => (
+                <ContactFieldRow
+                  key={field.id}
+                  field={field}
+                  onCopy={copyField}
+                />
+              ))}
+            </View>
           )}
 
-          <ListSection title="Mobile Number" style={{ gap: theme.spacing.md }}>
-            {mobileNumberFields(mobile).map((field) => (
-              <ContactFieldRow
-                key={field.id}
-                field={field}
-                onCopy={copyField}
-              />
-            ))}
-            <Button label="Copy all" variant="secondary" onPress={copyAll} />
-          </ListSection>
+          {isLegacyMobileNumber(mobile) && (
+            // The sheet sets this 10 below the card; `sm` is the nearest step.
+            <Text
+              variant="caption"
+              color="mutedForeground"
+              style={{
+                marginTop: theme.spacing.sm,
+                marginHorizontal: theme.spacing.md,
+              }}
+            >
+              Saved without a country code. Add one on the web.
+            </Text>
+          )}
 
-          <Button
-            label="Share"
-            variant="secondary"
-            onPress={shareMobileNumber}
-          />
+          <View
+            style={[
+              styles.pair,
+              {
+                gap: theme.spacing.sm,
+                paddingTop: theme.spacing.md,
+                paddingHorizontal: theme.spacing.md,
+              },
+            ]}
+          >
+            <Button
+              label="Copy number"
+              variant="secondary"
+              icon="copy"
+              onPress={copyNumber}
+              style={styles.half}
+            />
+            <Button
+              label="Share"
+              variant="secondary"
+              icon="share"
+              onPress={shareMobileNumber}
+              style={styles.half}
+            />
+          </View>
 
-          <UsageLocationSection
-            usageLocations={readUsageLocations(mobile)}
-            writing={writing}
-            rowState={rowState}
-            writeError={writeError}
-            onToggleNotified={toggleNotified}
-            onRetry={() =>
-              void (writeError === 'conflict'
-                ? reloadAfterConflict()
-                : retryFailedEdit())
-            }
-            retryLabel={notice?.action ?? 'Retry'}
-            revertedReason={notice?.message}
-          />
+          <View style={{ marginTop: theme.spacing.lg }}>
+            <UsageLocationSection
+              kind="mobileNumber"
+              usageLocations={usageLocations}
+              edits={edits}
+              onSeeAll={seeAllUsageLocations}
+            />
+          </View>
         </ScrollView>
       )}
 
@@ -217,8 +237,16 @@ export function MobileNumberDetailScreen(): React.JSX.Element {
 }
 
 const styles = StyleSheet.create({
-  content: {
+  card: {
+    borderWidth: 1,
+    overflow: 'hidden',
+  },
+  pair: {
+    flexDirection: 'row',
+  },
+  half: {
     flexGrow: 1,
+    flexBasis: 0,
   },
   centered: {
     flex: 1,

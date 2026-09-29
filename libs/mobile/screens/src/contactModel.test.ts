@@ -20,6 +20,17 @@ import {
   ORGANISATION_TYPE_LABEL,
   UPDATE_METHOD_LABEL,
   PRIORITY_LABEL,
+  describeCopiedAll,
+  describeCountryCode,
+  describeNotifiedOn,
+  describeNotifiedProgress,
+  describeSeeAllUsageLocations,
+  formatAddressSummary,
+  formatStreetLine,
+  groupUsageLocations,
+  isLegacyAddress,
+  isLegacyMobileNumber,
+  USAGE_LOCATIONS_COPY,
   type DecryptedAddress,
   type DecryptedMobileNumber,
   type DecryptedUsageLocation,
@@ -481,18 +492,56 @@ describe('contactModel', () => {
       expect(result[2].id).toBe('low');
     });
 
-    it('sorts notified by priority (high > medium > normal > low)', () => {
+    it('sorts notified most recently notified first (Det-UL)', () => {
       const locations: DecryptedUsageLocation[] = [
-        { id: 'notif-low', changed: true, priority: 'low' as const },
-        { id: 'notif-high', changed: true, priority: 'high' as const },
-        { id: 'notif-medium', changed: true, priority: 'medium' as const },
+        {
+          id: 'notif-18',
+          changed: true,
+          priority: 'high' as const,
+          changedAt: '2026-09-18T09:00:00Z',
+        },
+        {
+          id: 'notif-24',
+          changed: true,
+          priority: 'low' as const,
+          changedAt: '2026-09-24T09:00:00Z',
+        },
+        {
+          id: 'notif-22',
+          changed: true,
+          priority: 'medium' as const,
+          changedAt: '2026-09-22T09:00:00Z',
+        },
       ];
 
       const result = selectUsageLocationsForDetail(locations);
 
-      expect(result[0].id).toBe('notif-high');
-      expect(result[1].id).toBe('notif-medium');
-      expect(result[2].id).toBe('notif-low');
+      expect(result.map((l) => l.id)).toEqual([
+        'notif-24',
+        'notif-22',
+        'notif-18',
+      ]);
+    });
+
+    it('puts notified ones with no changedAt last, by priority', () => {
+      const locations: DecryptedUsageLocation[] = [
+        { id: 'undated-low', changed: true, priority: 'low' as const },
+        {
+          id: 'dated',
+          changed: true,
+          priority: 'low' as const,
+          changedAt: '2026-09-01T00:00:00Z',
+        },
+        { id: 'undated-high', changed: true, priority: 'high' as const },
+      ];
+
+      const result = selectUsageLocationsForDetail(locations);
+
+      expect(result.map((l) => l.id)).toEqual([
+        'dated',
+        'undated-high',
+        'undated-low',
+      ]);
     });
 
     it('uses createdAt as tiebreaker within priority', () => {
@@ -534,7 +583,7 @@ describe('contactModel', () => {
 
       const line = formatAddressLine(address);
 
-      expect(line).toBe('123, Main St, Springfield, IL, 62701, USA');
+      expect(line).toBe('123 Main St, Springfield IL 62701, USA');
     });
 
     it('skips missing structured fields', () => {
@@ -617,8 +666,9 @@ describe('contactModel', () => {
       expect(fields).toHaveLength(6);
       expect(fields[0]).toEqual({
         id: 'propertyNumber',
-        label: 'Property / unit number',
+        label: 'Property number',
         value: '123',
+        numeric: true,
       });
       expect(fields[5]).toEqual({
         id: 'country',
@@ -755,82 +805,84 @@ describe('contactModel', () => {
   });
 
   describe('mobileNumberFields', () => {
-    it('returns structured fields when present', () => {
+    it('leads with the whole number, then its country code and number (Det-Mobile)', () => {
+      const mobile: DecryptedMobileNumber = {
+        id: 'm1',
+        countryCode: '+61',
+        phoneNumber: '491 570 156',
+      };
+
+      expect(mobileNumberFields(mobile)).toEqual([
+        {
+          id: 'mobileNumber',
+          label: 'Mobile number',
+          value: '+61 491 570 156',
+          numeric: true,
+          headline: true,
+        },
+        {
+          id: 'countryCode',
+          label: 'Country code',
+          value: '+61 · Australia',
+          copyValue: '+61',
+          numeric: true,
+        },
+        {
+          id: 'phoneNumber',
+          label: 'Number',
+          value: '491 570 156',
+          numeric: true,
+        },
+      ]);
+    });
+
+    it('prints a country code no one country owns without a name', () => {
       const mobile: DecryptedMobileNumber = {
         id: 'm1',
         countryCode: '+1',
         phoneNumber: '5551234567',
       };
 
-      const fields = mobileNumberFields(mobile);
+      const code = mobileNumberFields(mobile).find(
+        (f) => f.id === 'countryCode',
+      );
 
-      expect(fields).toHaveLength(2);
-      expect(fields[0]).toEqual({
-        id: 'countryCode',
-        label: 'Country code',
-        value: '+1',
-      });
-      expect(fields[1]).toEqual({
-        id: 'phoneNumber',
-        label: 'Phone number',
-        value: '5551234567',
-      });
+      expect(code?.value).toBe('+1');
     });
 
     it('skips empty and whitespace-only fields', () => {
       const mobile: DecryptedMobileNumber = {
         id: 'm1',
-        countryCode: '+1',
+        countryCode: '+61',
         phoneNumber: '   ',
       };
 
-      const fields = mobileNumberFields(mobile);
-
-      expect(fields).toHaveLength(1);
-      expect(fields[0].id).toBe('countryCode');
+      expect(mobileNumberFields(mobile).map((f) => f.id)).toEqual([
+        'mobileNumber',
+        'countryCode',
+      ]);
     });
 
-    it('includes legacy mobileNumber only when no structured fields present', () => {
+    it('shows a legacy record as its whole number only (Det-Mobile-Legacy)', () => {
       const mobile: DecryptedMobileNumber = {
         id: 'm1',
-        mobileNumber: '1234567890',
+        mobileNumber: '0491 570 158',
       };
 
       const fields = mobileNumberFields(mobile);
 
       expect(fields).toHaveLength(1);
-      expect(fields[0].id).toBe('mobileNumber');
-    });
-
-    it('excludes legacy mobileNumber when structured fields are present', () => {
-      const mobile: DecryptedMobileNumber = {
-        id: 'm1',
-        countryCode: '+1',
-        mobileNumber: 'legacy',
-      };
-
-      const fields = mobileNumberFields(mobile);
-
-      expect(fields).toHaveLength(1);
-      expect(fields[0].id).toBe('countryCode');
+      expect(fields[0]).toMatchObject({
+        id: 'mobileNumber',
+        value: '0491 570 158',
+        headline: true,
+      });
     });
 
     it('returns empty array when nothing present', () => {
       const mobile: DecryptedMobileNumber = { id: 'm1' };
 
       expect(mobileNumberFields(mobile)).toEqual([]);
-    });
-
-    it('preserves field order: countryCode, phoneNumber, legacy mobileNumber', () => {
-      const mobile: DecryptedMobileNumber = {
-        id: 'm1',
-        phoneNumber: '5551234567',
-        countryCode: '+1',
-      };
-
-      const fields = mobileNumberFields(mobile);
-
-      expect(fields.map((f) => f.id)).toEqual(['countryCode', 'phoneNumber']);
     });
   });
 
@@ -876,7 +928,7 @@ describe('contactModel', () => {
 
       const meta = describeUsageLocationMeta(location);
 
-      expect(meta).toBe('University · Phone · Low');
+      expect(meta).toBe('University · By phone · Low');
     });
   });
 
@@ -890,7 +942,7 @@ describe('contactModel', () => {
 
       const url = mapsUrlForAddress(address, 'ios');
 
-      expect(url).toBe('https://maps.apple.com/?q=123%2C%20Main%20St');
+      expect(url).toBe('https://maps.apple.com/?q=123%20Main%20St');
     });
 
     it('returns Google Maps URL for Android', () => {
@@ -903,7 +955,7 @@ describe('contactModel', () => {
       const url = mapsUrlForAddress(address, 'android');
 
       expect(url).toBe(
-        'https://www.google.com/maps/search/?api=1&query=123%2C%20Main%20St',
+        'https://www.google.com/maps/search/?api=1&query=123%20Main%20St',
       );
     });
 
@@ -945,7 +997,7 @@ describe('contactModel', () => {
 
     it('UPDATE_METHOD_LABEL has all expected keys', () => {
       expect(UPDATE_METHOD_LABEL.online).toBe('Online');
-      expect(UPDATE_METHOD_LABEL.phone).toBe('Phone');
+      expect(UPDATE_METHOD_LABEL.phone).toBe('By phone');
       expect(UPDATE_METHOD_LABEL.inPerson).toBe('In person');
     });
 
@@ -954,6 +1006,168 @@ describe('contactModel', () => {
       expect(PRIORITY_LABEL.medium).toBe('Medium');
       expect(PRIORITY_LABEL.normal).toBe('Normal');
       expect(PRIORITY_LABEL.low).toBe('Low');
+    });
+  });
+
+  describe('Details design helpers', () => {
+    const home: DecryptedAddress = {
+      id: 'a1',
+      label: 'Home',
+      propertyNumber: '12',
+      street: 'Wattlebird Lane',
+      suburb: 'Paddington',
+      state: 'QLD',
+      zipCode: '4064',
+      country: 'Australia',
+    };
+
+    it('summarises an Address without its country (Det-List)', () => {
+      expect(formatAddressSummary(home)).toBe(
+        '12 Wattlebird Lane, Paddington QLD 4064',
+      );
+      expect(formatAddressLine(home)).toBe(
+        '12 Wattlebird Lane, Paddington QLD 4064, Australia',
+      );
+    });
+
+    it('recognises an Address by its street line (Det-UL subtitle)', () => {
+      expect(formatStreetLine(home)).toBe('12 Wattlebird Lane');
+      expect(
+        formatStreetLine({ id: 'a2', address: '7 Butcherbird Rd Toowong' }),
+      ).toBe('7 Butcherbird Rd Toowong');
+    });
+
+    it('tells a legacy single-line Address and Mobile Number apart', () => {
+      expect(isLegacyAddress({ id: 'a2', address: '7 Butcherbird Rd' })).toBe(
+        true,
+      );
+      expect(isLegacyAddress(home)).toBe(false);
+      expect(isLegacyAddress({ id: 'a3' })).toBe(false);
+      expect(
+        isLegacyMobileNumber({ id: 'm1', mobileNumber: '0491 570 158' }),
+      ).toBe(true);
+      expect(
+        isLegacyMobileNumber({
+          id: 'm2',
+          countryCode: '+61',
+          phoneNumber: '491 570 156',
+          mobileNumber: 'old',
+        }),
+      ).toBe(false);
+    });
+
+    it('names the country of a calling code it knows', () => {
+      expect(describeCountryCode('+61')).toBe('+61 · Australia');
+      expect(describeCountryCode(' +44 ')).toBe('+44 · United Kingdom');
+      expect(describeCountryCode('+999')).toBe('+999');
+    });
+
+    it('names what Copy all copied, and stays silent where the system confirms', () => {
+      expect(describeCopiedAll('Copied — clears in 60 s', 'Address')).toBe(
+        'Address copied — clears in 60 s',
+      );
+      expect(describeCopiedAll('Copied', 'Address')).toBe('Address copied');
+      expect(describeCopiedAll(null, 'Address')).toBeNull();
+    });
+
+    it('holds a pending tick in the group it was ticked in (Det-UL-Unconfirmed)', () => {
+      const locations: DecryptedUsageLocation[] = [
+        { id: 'ato', priority: 'high' as const },
+        // Ticked optimistically; the server has not confirmed it yet.
+        { id: 'medibank', priority: 'medium' as const, changed: true },
+        {
+          id: 'cba',
+          priority: 'normal' as const,
+          changed: true,
+          changedAt: '2026-09-24T00:00:00Z',
+        },
+      ];
+
+      const pending = groupUsageLocations(locations, 'medibank');
+      expect(pending.toNotify.map((l) => l.id)).toEqual(['ato', 'medibank']);
+      expect(pending.notified.map((l) => l.id)).toEqual(['cba']);
+
+      const confirmed = groupUsageLocations(locations);
+      expect(confirmed.toNotify.map((l) => l.id)).toEqual(['ato']);
+      expect(confirmed.notified.map((l) => l.id)).toEqual(['cba', 'medibank']);
+    });
+
+    it('holds a pending untick in Notified until it is confirmed', () => {
+      const locations: DecryptedUsageLocation[] = [
+        { id: 'cba', priority: 'normal' as const, changed: false },
+      ];
+
+      expect(groupUsageLocations(locations, 'cba')).toEqual({
+        toNotify: [],
+        notified: [locations[0]],
+      });
+    });
+
+    it('describes progress as the design words it', () => {
+      const partial: DecryptedUsageLocation[] = [
+        ...Array.from({ length: 5 }, (_, i) => ({
+          id: `n${i}`,
+          changed: true,
+        })),
+        ...Array.from({ length: 3 }, (_, i) => ({ id: `u${i}` })),
+      ];
+
+      expect(describeNotifiedProgress(partial)).toEqual({
+        label: '5 of 8 notified',
+        meta: '3 to go',
+        complete: false,
+        fraction: 5 / 8,
+      });
+      expect(
+        describeNotifiedProgress(
+          partial.map((location) => ({ ...location, changed: true })),
+        ),
+      ).toMatchObject({
+        label: '8 of 8 notified',
+        meta: 'All done',
+        complete: true,
+      });
+      expect(describeNotifiedProgress([])).toBeNull();
+    });
+
+    it('says when a Usage Location was notified, never inventing a day', () => {
+      const now = new Date(2026, 8, 29, 15, 0);
+      const at = (date: Date): DecryptedUsageLocation => ({
+        id: 'x',
+        changed: true,
+        changedAt: date.toISOString(),
+      });
+
+      expect(describeNotifiedOn(at(new Date(2026, 8, 29, 8, 0)), now)).toBe(
+        'Notified today',
+      );
+      expect(describeNotifiedOn(at(new Date(2026, 8, 24, 12, 0)), now)).toBe(
+        'Notified 24 Sep',
+      );
+      expect(describeNotifiedOn(at(new Date(2025, 2, 3, 12, 0)), now)).toBe(
+        'Notified 3 Mar 2025',
+      );
+      expect(describeNotifiedOn({ id: 'y', changed: true }, now)).toBe(
+        'Notified',
+      );
+      expect(
+        describeNotifiedOn({ id: 'z', changed: true, changedAt: 'soon' }, now),
+      ).toBe('Notified');
+    });
+
+    it('words the Usage Locations screen for each kind of record', () => {
+      expect(
+        USAGE_LOCATIONS_COPY.address.subtitle('Home', '12 Wattlebird Lane'),
+      ).toBe('Who to tell that Home moved · 12 Wattlebird Lane');
+      expect(USAGE_LOCATIONS_COPY.address.subtitle('Home', '')).toBe(
+        'Who to tell that Home moved',
+      );
+      expect(USAGE_LOCATIONS_COPY.address.allDone).toBe(
+        'Everyone on this list knows about the move.',
+      );
+      expect(describeSeeAllUsageLocations(8)).toBe(
+        'See all 8, including notified',
+      );
     });
   });
 });
