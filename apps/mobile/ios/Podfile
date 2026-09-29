@@ -23,6 +23,10 @@ target 'Mobile' do
   # RNSensitiveClipboard/RNSensitiveClipboard.swift.
   pod 'RNSensitiveClipboard', :path => './RNSensitiveClipboard'
 
+  # Keeps the screen on while a Grocery List is open on a trip — a local pod
+  # for the one flag it sets. See RNKeepAwake/RNKeepAwake.swift.
+  pod 'RNKeepAwake', :path => './RNKeepAwake'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

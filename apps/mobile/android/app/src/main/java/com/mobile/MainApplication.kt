@@ -12,6 +12,7 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
 import com.mobile.biometrickeystore.RNBiometricKeystorePackage
+import com.mobile.keepawake.RNKeepAwakePackage
 import com.mobile.sensitiveclipboard.RNSensitiveClipboardPackage
 
 class MainApplication : Application(), ReactApplication {
@@ -24,6 +25,7 @@ class MainApplication : Application(), ReactApplication {
               // add(MyReactNativePackage())
               add(RNSensitiveClipboardPackage())
               add(RNBiometricKeystorePackage())
+              add(RNKeepAwakePackage())
             }
 
         override fun getJSMainModuleName(): String = "src/main"

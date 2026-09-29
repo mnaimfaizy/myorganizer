@@ -23,6 +23,10 @@ export {
 export { useAppearance } from './settings/useAppearance';
 export { useAutoLockDelay } from './settings/useAutoLockDelay';
 export {
+  useKeepAwake,
+  useKeepScreenAwakeSetting,
+} from './keepAwake/useKeepAwake';
+export {
   autoLockDelayMs,
   DEFAULT_AUTO_LOCK_DELAY,
   describeAutoLock,
