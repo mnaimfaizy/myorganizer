@@ -129,6 +129,12 @@ dependencies {
     // module's compile classpath.
     implementation("androidx.biometric:biometric:1.1.0")
 
+    // The Material 3 app theme (res/values/styles.xml) that the Material date
+    // dialog reads its calendar theme from. The same version
+    // @react-native-community/datetimepicker already brings in, declared here
+    // because that one is not on this module's compile classpath.
+    implementation("com.google.android.material:material:1.12.0")
+
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")
     } else {

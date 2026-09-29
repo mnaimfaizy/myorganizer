@@ -1,0 +1,12 @@
+<resources>
+    <!-- Dark-mode Semantic Roles, copied from
+         libs/design-tokens/src/generated/roles.ts (see values/colors.xml). -->
+    <color name="background">#030711</color>
+    <color name="primary">#F8FAFC</color>
+    <color name="primary_foreground">#020205</color>
+    <!-- muted: dark sheets sit on it (P6) -->
+    <color name="sheet_surface">#0F172A</color>
+    <color name="foreground">#E2E8F0</color>
+    <color name="muted_foreground">#7F8EA3</color>
+    <color name="border">#1D283A</color>
+</resources>

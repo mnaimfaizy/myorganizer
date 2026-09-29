@@ -64,7 +64,7 @@ const PUSHED_SCREEN_OPTIONS: NativeStackNavigationOptions = {
  * The native header's type and colour from the token theme, for both colour
  * modes.
  *
- * Only type and colour: the Navigation and Platform sheets draw the bar on
+ * Only type and colour on iOS: the Navigation and Platform sheets draw the bar on
  * `background` with no hairline under the large title and a hairline once it
  * collapses, which is the platform's own default bar — and on iOS 26 setting
  * the bar background or the shadow options (`headerStyle`, `headerLargeStyle`,
@@ -85,6 +85,15 @@ function headerChrome(theme: Theme): NativeStackNavigationOptions {
           fontSize: theme.type.title.fontSize,
         };
   return {
+    // Android has no platform bar to defer to: without a colour its native
+    // header takes React Navigation's `card`, a white bar over a `background`
+    // page, where the Platform sheet draws it on `background` with a rule.
+    ...(Platform.OS === 'android'
+      ? {
+          headerStyle: { backgroundColor: theme.colors.background },
+          headerShadowVisible: true,
+        }
+      : {}),
     headerTintColor: theme.colors.foreground,
     headerTitleStyle: { ...inline, color: theme.colors.foreground },
     headerLargeTitleStyle: {

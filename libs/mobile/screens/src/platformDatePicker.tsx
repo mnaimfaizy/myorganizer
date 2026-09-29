@@ -40,8 +40,15 @@ export function InlineDatePicker({
 }
 
 /**
- * Opens the Material date dialog (Android). `onPicked` receives the chosen day,
- * or `null` when the dialog was dismissed; `onClose` runs either way.
+ * Opens the Material 3 date dialog (Android) — "Select date", Cancel and OK,
+ * and typing a date by hand from its pencil (Platform notes). `onPicked`
+ * receives the chosen day at local midnight; `onClose` runs however the
+ * dialog closed.
+ *
+ * Material's picker selects a UTC day, and the library hands it the local
+ * instant as it is: east of UTC the calendar opened on yesterday, and west
+ * of UTC the day picked came back as the day before. So the day goes in as
+ * UTC midnight, in UTC, and comes back out of the UTC fields.
  */
 export function openDialogDatePicker(options: {
   value: Date;
@@ -50,12 +57,33 @@ export function openDialogDatePicker(options: {
   onClose?: () => void;
 }): void {
   DateTimePickerAndroid.open({
-    value: options.value,
+    value: utcMidnightOf(options.value),
     mode: 'date',
-    minimumDate: options.minimumDate,
+    design: 'material',
+    title: 'Select date',
+    timeZoneName: 'UTC',
+    minimumDate:
+      options.minimumDate != null
+        ? utcMidnightOf(options.minimumDate)
+        : undefined,
     onChange: (event, picked) => {
-      if (event.type === 'set' && picked != null) options.onPicked(picked);
+      if (event.type === 'set' && picked != null) {
+        options.onPicked(
+          new Date(
+            picked.getUTCFullYear(),
+            picked.getUTCMonth(),
+            picked.getUTCDate(),
+          ),
+        );
+      }
       options.onClose?.();
     },
   });
+}
+
+/** The local calendar day of `date`, as that day's midnight in UTC. */
+function utcMidnightOf(date: Date): Date {
+  return new Date(
+    Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()),
+  );
 }
