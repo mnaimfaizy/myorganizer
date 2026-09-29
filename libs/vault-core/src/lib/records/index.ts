@@ -2,6 +2,8 @@ export * from './contactRecordMerge';
 export * from './contactRecords';
 export * from './currencyCode';
 export * from './grocery';
+export * from './groceryCategories';
+export * from './groceryEdit';
 export * from './mergeVaultRecords';
 export * from './subscriptionRecordMerge';
 export * from './subscriptionRecords';

@@ -4,6 +4,7 @@ import {
   StyleSheet,
   View,
   type AccessibilityActionEvent,
+  type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
@@ -13,7 +14,7 @@ import Animated, {
   withSpring,
 } from 'react-native-reanimated';
 import { useTheme } from '../useTheme';
-import { MIN_TOUCH_TARGET } from '../metrics';
+import { COMFORTABLE_ROW_HEIGHT, MIN_TOUCH_TARGET } from '../metrics';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import type { ThemeColors } from '../theme';
 import { Icon, type IconName } from './Icon';
@@ -21,16 +22,27 @@ import { InlineNotice } from './InlineNotice';
 import { StatusPill } from './StatusPill';
 import { Text } from './Text';
 
-/** One thing a row can be swiped to do. */
-export interface SwipeAction {
+/** One thing a row can be asked to do, however it is reached. */
+export interface RowAction {
   /** Stable within a row. It is the accessibility action's name. */
   id: string;
   /** What the action does, in one or two words. Read out as-is. */
   label: string;
-  icon: IconName;
-  tone?: 'neutral' | 'destructive';
   onPress: () => void;
 }
+
+/** One thing a row can be swiped to do. */
+export interface SwipeAction extends RowAction {
+  icon: IconName;
+  tone?: 'neutral' | 'destructive';
+}
+
+/**
+ * How tall a row is at minimum. `comfortable` is the grocery trip view's: a
+ * row ticked one-handed while walking round a shop, drawn well clear of the
+ * touch-target floor rather than at it.
+ */
+export type ListRowSize = 'standard' | 'comfortable';
 
 /**
  * Where a row's edit has got to. `unconfirmed` and `reverted` are the two
@@ -45,6 +57,12 @@ const ACTION_WIDTH = 72;
 
 /** How far past a panel's own width a swipe must go before it stays open. */
 const OPEN_FRACTION = 0.5;
+
+/** The two row heights, pinned to the size set. */
+const ROW_MIN_HEIGHT = {
+  standard: MIN_TOUCH_TARGET,
+  comfortable: COMFORTABLE_ROW_HEIGHT,
+} as const satisfies Record<ListRowSize, number>;
 
 /** The one spring in this library, so every row settles the same way. */
 const SPRING = { damping: 20, stiffness: 220 } as const;
@@ -67,10 +85,33 @@ export interface ListRowProps {
   /** Rendered after the title — a StatusPill, an amount, a chevron. */
   trailing?: React.ReactNode;
   onPress?: () => void;
+  /**
+   * When given, the row announces as a checkbox in this state rather than as
+   * a button, and `onPress` is what toggles it. A row whose whole width is
+   * the tick target has to say so: the row is one accessibility element, so a
+   * `Checkbox` drawn inside `leading` is not reachable on its own and its
+   * role does not reach the screen reader.
+   */
+  checked?: boolean;
   /** Revealed by a swipe from the left edge. */
   leftActions?: readonly SwipeAction[];
   /** Revealed by a swipe from the right edge. */
   rightActions?: readonly SwipeAction[];
+  /**
+   * Actions on controls drawn inside the row — a trailing amount button, say.
+   * Nothing is drawn for these and no gesture reveals them; they are here
+   * because the row is one accessibility element, so a `Pressable` in
+   * `leading` or `trailing` is invisible to a screen reader unless the row
+   * offers it as an action of its own.
+   */
+  innerActions?: readonly RowAction[];
+  size?: ListRowSize;
+  /**
+   * Read out instead of the title and subtitle. For a row whose meaning is
+   * partly in a control it draws — the trip view's amount — rather than in
+   * its two strings.
+   */
+  accessibilityLabel?: string;
   state?: ListRowState;
   /** The badge on an unconfirmed row. */
   unconfirmedLabel?: string;
@@ -78,7 +119,19 @@ export interface ListRowProps {
   revertedReason?: string;
   /** Offered beside the reason. Omitting it hides the retry. */
   onRetry?: () => void;
-  style?: ViewStyle;
+  /**
+   * What that offer is called. `Reload` for a conflict, where the way
+   * forward is to see the other device's copy rather than to send this edit
+   * again — calling that button `Retry` promises the opposite of what it does.
+   */
+  retryLabel?: string;
+  /**
+   * `StyleProp` rather than a bare `ViewStyle`, so a caller can merge a
+   * `StyleSheet.create` entry with the per-render theme value the row needs —
+   * `[styles.row, { borderRadius: theme.radii.md }]` — which is the styling
+   * pattern the mobile Agent Guide asks for and a bare `ViewStyle` refuses.
+   */
+  style?: StyleProp<ViewStyle>;
 }
 
 function ActionPanel({
@@ -138,12 +191,17 @@ export function ListRow({
   leading,
   trailing,
   onPress,
+  checked,
   leftActions = [],
   rightActions = [],
+  innerActions = [],
+  size = 'standard',
+  accessibilityLabel,
   state = 'normal',
   unconfirmedLabel = 'Unconfirmed',
   revertedReason,
   onRetry,
+  retryLabel = 'Retry',
   style,
 }: ListRowProps): React.JSX.Element {
   const theme = useTheme();
@@ -187,9 +245,13 @@ export function ListRow({
     transform: [{ translateX: offsetX.value }],
   }));
 
+  // The swipe actions and the accessibility actions are built from one list,
+  // so an action cannot be added to the drag and forgotten in the other. The
+  // inner ones join it here only: nothing draws them and no gesture reveals
+  // them, but the row still offers them.
   const actions = useMemo(
-    () => [...leftActions, ...rightActions],
-    [leftActions, rightActions],
+    () => [...leftActions, ...rightActions, ...innerActions],
+    [leftActions, rightActions, innerActions],
   );
 
   const onAccessibilityAction = (event: AccessibilityActionEvent): void => {
@@ -210,9 +272,17 @@ export function ListRow({
         <GestureDetector gesture={pan}>
           <Animated.View style={sheet}>
             <Pressable
-              accessibilityRole={onPress == null ? undefined : 'button'}
+              accessibilityRole={
+                checked != null
+                  ? 'checkbox'
+                  : onPress == null
+                    ? undefined
+                    : 'button'
+              }
+              accessibilityState={checked == null ? undefined : { checked }}
               accessibilityLabel={
-                subtitle == null ? title : `${title}, ${subtitle}`
+                accessibilityLabel ??
+                (subtitle == null ? title : `${title}, ${subtitle}`)
               }
               accessibilityActions={actions.map((action) => ({
                 name: action.id,
@@ -224,7 +294,7 @@ export function ListRow({
                 styles.row,
                 {
                   gap: theme.spacing.md,
-                  minHeight: MIN_TOUCH_TARGET,
+                  minHeight: ROW_MIN_HEIGHT[size],
                   paddingVertical: theme.spacing.sm,
                   paddingHorizontal: theme.spacing.md,
                   backgroundColor: theme.colors.card,
@@ -256,7 +326,7 @@ export function ListRow({
         <InlineNotice
           tone="destructive"
           message={revertedReason}
-          actionLabel={onRetry == null ? undefined : 'Retry'}
+          actionLabel={onRetry == null ? undefined : retryLabel}
           onAction={onRetry}
         />
       )}

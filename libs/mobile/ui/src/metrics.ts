@@ -28,3 +28,14 @@ export const TEXT_SCALE_CAP = 2;
  * the full name stays reachable through the tab's accessibility label.
  */
 export const TAB_LABEL_SCALE_CAP = 1.3;
+
+/**
+ * How tall a row is when it is the thing the screen is for.
+ *
+ * The grocery trip view's rows are tapped one-handed, at arm's length, while
+ * walking — so they are drawn well above the touch-target floor rather than
+ * at it. 64 is the design sheet's figure and comfortably clears the 56 the
+ * slice asks for at the default text size; above that the row grows with the
+ * text like any other.
+ */
+export const COMFORTABLE_ROW_HEIGHT = 64;

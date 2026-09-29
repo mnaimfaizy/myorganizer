@@ -20,6 +20,15 @@ export const TAB_SCREEN_EDGES =
     ? (['left', 'right'] as const)
     : (['top', 'left', 'right'] as const);
 
+/**
+ * The safe-area edges a screen pushed inside a tab takes.
+ *
+ * It has a native header on both platforms — the stack draws one with a back
+ * affordance, which is the way back out of it — so it never insets its own
+ * top, and the tab bar still owns the bottom.
+ */
+export const STACK_SCREEN_EDGES = ['left', 'right'] as const;
+
 export interface TabScreenHeaderProps {
   title: string;
 }

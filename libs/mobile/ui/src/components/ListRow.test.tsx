@@ -1,7 +1,9 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
+import { COMFORTABLE_ROW_HEIGHT, MIN_TOUCH_TARGET } from '../metrics';
 import { ListRow } from './ListRow';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -240,6 +242,265 @@ describe('ListRow Component', () => {
         nativeEvent: { actionName: 'unknown' },
       });
       expect(leftPress).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('Checkbox and accessibility roles', () => {
+    it('announces row as checkbox when checked prop is true', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Milk" checked={true} onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('checkbox');
+      expect(row.props.accessibilityState.checked).toBe(true);
+    });
+
+    it('announces row as checkbox when checked prop is false', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Milk" checked={false} onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('checkbox');
+      expect(row.props.accessibilityState.checked).toBe(false);
+    });
+
+    it('announces row as button when checked is not given but onPress is', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Milk" onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Milk' });
+      expect(row.props.accessibilityState?.checked).toBeUndefined();
+    });
+  });
+
+  describe('accessibilityLabel', () => {
+    it('uses accessibilityLabel when provided', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            subtitle="2 liters"
+            accessibilityLabel="Milk, 2 liters, amount button"
+          />
+        </TestWrapper>,
+      );
+      expect(
+        await screen.findByLabelText('Milk, 2 liters, amount button'),
+      ).toBeOnTheScreen();
+    });
+
+    it('overrides title and subtitle label with accessibilityLabel', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            subtitle="2 liters"
+            accessibilityLabel="Custom label"
+            onPress={jest.fn()}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button');
+      expect(row.props.accessibilityLabel).toBe('Custom label');
+    });
+  });
+
+  describe('innerActions', () => {
+    it('adds innerActions to accessibilityActions', async () => {
+      const amountPress = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            innerActions={[
+              {
+                id: 'set-amount',
+                label: 'Set amount',
+                onPress: amountPress,
+              },
+            ]}
+            onPress={jest.fn()}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Milk' });
+      expect(row.props.accessibilityActions).toContainEqual({
+        name: 'set-amount',
+        label: 'Set amount',
+      });
+    });
+
+    it('calls innerAction onPress when accessibility action is fired', async () => {
+      const amountPress = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            innerActions={[
+              {
+                id: 'set-amount',
+                label: 'Set amount',
+                onPress: amountPress,
+              },
+            ]}
+            onPress={jest.fn()}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Milk' });
+      fireEvent(row, 'accessibilityAction', {
+        nativeEvent: { actionName: 'set-amount' },
+      });
+      expect(amountPress).toHaveBeenCalledTimes(1);
+    });
+
+    it('combines left, right, and innerActions in accessibilityActions', async () => {
+      const leftPress = jest.fn();
+      const rightPress = jest.fn();
+      const innerPress = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            leftActions={[
+              {
+                id: 'left',
+                label: 'Left',
+                icon: 'info',
+                onPress: leftPress,
+              },
+            ]}
+            rightActions={[
+              {
+                id: 'right',
+                label: 'Right',
+                icon: 'error',
+                onPress: rightPress,
+              },
+            ]}
+            innerActions={[
+              {
+                id: 'inner',
+                label: 'Inner',
+                onPress: innerPress,
+              },
+            ]}
+            onPress={jest.fn()}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Milk' });
+      expect(row.props.accessibilityActions).toEqual([
+        { name: 'left', label: 'Left' },
+        { name: 'right', label: 'Right' },
+        { name: 'inner', label: 'Inner' },
+      ]);
+    });
+
+    it('draws nothing for innerActions (no visible label)', async () => {
+      const innerPress = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            innerActions={[
+              {
+                id: 'set-amount',
+                label: 'Set amount',
+                onPress: innerPress,
+              },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      // The action label should not appear as a rendered element (only in accessibility metadata)
+      expect(screen.queryByText('Set amount')).not.toBeOnTheScreen();
+    });
+  });
+
+  describe('retryLabel', () => {
+    it('uses default "Retry" label when retryLabel is not provided', async () => {
+      const onRetry = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Task"
+            state="reverted"
+            revertedReason="Error occurred"
+            onRetry={onRetry}
+          />
+        </TestWrapper>,
+      );
+      const retryButton = await screen.findByLabelText('Retry');
+      expect(retryButton).toBeOnTheScreen();
+    });
+
+    it('uses custom retryLabel when provided', async () => {
+      const onRetry = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Task"
+            state="reverted"
+            revertedReason="Conflict: reload to see the other device's copy"
+            onRetry={onRetry}
+            retryLabel="Reload"
+          />
+        </TestWrapper>,
+      );
+      const reloadButton = await screen.findByLabelText('Reload');
+      expect(reloadButton).toBeOnTheScreen();
+    });
+
+    it('calls onRetry with custom retryLabel', async () => {
+      const onRetry = jest.fn();
+      const user = userEvent.setup();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Task"
+            state="reverted"
+            revertedReason="Error"
+            onRetry={onRetry}
+            retryLabel="Reload"
+          />
+        </TestWrapper>,
+      );
+      const reloadButton = await screen.findByLabelText('Reload');
+      await user.press(reloadButton);
+      expect(onRetry).toHaveBeenCalled();
+    });
+  });
+
+  describe('size prop', () => {
+    it('renders with MIN_TOUCH_TARGET minHeight when size is not specified', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Standard row" onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Standard row' });
+      const flatStyle = StyleSheet.flatten(row.props.style);
+      expect(flatStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+    });
+
+    it('renders with COMFORTABLE_ROW_HEIGHT minHeight when size is "comfortable"', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Comfortable row"
+            size="comfortable"
+            onPress={jest.fn()}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Comfortable row' });
+      const flatStyle = StyleSheet.flatten(row.props.style);
+      expect(flatStyle.minHeight).toBe(COMFORTABLE_ROW_HEIGHT);
     });
   });
 });

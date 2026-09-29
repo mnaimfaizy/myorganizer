@@ -1,5 +1,11 @@
 import React, { useState } from 'react';
-import { Pressable, StyleSheet, View, type ViewStyle } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import { Icon } from './Icon';
@@ -14,7 +20,8 @@ export interface ListSectionProps {
   /** Whether a collapsible section starts closed. */
   defaultCollapsed?: boolean;
   children?: React.ReactNode;
-  style?: ViewStyle;
+  /** `StyleProp` so a caller can merge a static entry with a theme value. */
+  style?: StyleProp<ViewStyle>;
 }
 
 /**

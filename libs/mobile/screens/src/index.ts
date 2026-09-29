@@ -28,6 +28,7 @@ export { TasksScreen } from './TasksScreen';
 export { AccountScreen } from './AccountScreen';
 export { DetailsScreen } from './DetailsScreen';
 export { GroceriesScreen } from './GroceriesScreen';
+export { GroceryTripScreen } from './GroceryTripScreen';
 export { SubscriptionsScreen } from './SubscriptionsScreen';
 export {
   PlaceholderScreen,

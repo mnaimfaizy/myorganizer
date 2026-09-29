@@ -19,6 +19,7 @@ export {
 } from './typeScale';
 export { shadows, toRnShadow, type Shadow, type ShadowName } from './shadows';
 export {
+  COMFORTABLE_ROW_HEIGHT,
   MIN_TOUCH_TARGET,
   TAB_LABEL_SCALE_CAP,
   TEXT_SCALE_CAP,
@@ -61,7 +62,9 @@ export {
 export {
   ListRow,
   type ListRowProps,
+  type ListRowSize,
   type ListRowState,
+  type RowAction,
   type SwipeAction,
 } from './components/ListRow';
 export { ListSection, type ListSectionProps } from './components/ListSection';

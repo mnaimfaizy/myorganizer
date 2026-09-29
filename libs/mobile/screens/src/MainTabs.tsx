@@ -4,13 +4,18 @@ import {
   createBottomTabNavigator,
   type BottomTabBarProps,
 } from '@react-navigation/bottom-tabs';
-import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import {
+  createNativeStackNavigator,
+  type NativeStackNavigationOptions,
+} from '@react-navigation/native-stack';
 import { getDeviceSettings, setLastTab } from '@myorganizer/mobile/core';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import { LockAction, TabBar } from '@myorganizer/mobile/ui';
 import { AccountScreen } from './AccountScreen';
 import { DetailsScreen } from './DetailsScreen';
 import { GroceriesScreen } from './GroceriesScreen';
+import { GroceryTripScreen } from './GroceryTripScreen';
+import { GROCERIES_ROUTES } from './groceriesStack';
 import { SubscriptionsScreen } from './SubscriptionsScreen';
 import { TasksScreen } from './TasksScreen';
 import {
@@ -24,6 +29,23 @@ import {
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
+/** One screen pushed inside a tab, above that tab's home screen. */
+interface PushedScreen {
+  name: string;
+  component: React.ComponentType;
+  options?: NativeStackNavigationOptions;
+}
+
+/**
+ * What a pushed screen's header looks like: drawn on both platforms, because
+ * the back affordance is the way out of it, and without the large title,
+ * which belongs to a tab's root and not to a screen inside it.
+ */
+const PUSHED_SCREEN_OPTIONS: NativeStackNavigationOptions = {
+  headerShown: true,
+  headerLargeTitle: false,
+};
+
 /**
  * Wraps a tab's screen in its own native stack, so each tab keeps a
  * navigation history of its own: pushing inside Groceries and switching to
@@ -35,13 +57,16 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
  *
  * The header options here are the iOS half of the title rule: the native large
  * title, with Lock trailing it. On Android `headerShown` is false and the
- * screen draws `TabScreenHeader` instead.
+ * screen draws `TabScreenHeader` instead — but a *pushed* screen shows the
+ * native header on both, which is where its back affordance comes from.
  */
 function tabStack(
   name: TabName,
   Screen: React.ComponentType,
+  pushed: readonly PushedScreen[] = [],
 ): React.ComponentType {
-  const Stack = createNativeStackNavigator<Record<string, undefined>>();
+  const Stack =
+    createNativeStackNavigator<Record<string, object | undefined>>();
 
   function TabStack(): React.JSX.Element {
     const { lock } = useVaultSession();
@@ -56,6 +81,14 @@ function tabStack(
         }}
       >
         <Stack.Screen name={`${name}Home`} component={Screen} />
+        {pushed.map((screen) => (
+          <Stack.Screen
+            key={screen.name}
+            name={screen.name}
+            component={screen.component}
+            options={{ ...PUSHED_SCREEN_OPTIONS, ...screen.options }}
+          />
+        ))}
       </Stack.Navigator>
     );
   }
@@ -65,7 +98,9 @@ function tabStack(
 
 /** One stack per tab, pinned to the tab list so neither side can drift. */
 const TAB_STACKS = {
-  Groceries: tabStack('Groceries', GroceriesScreen),
+  Groceries: tabStack('Groceries', GroceriesScreen, [
+    { name: GROCERIES_ROUTES.trip, component: GroceryTripScreen },
+  ]),
   Tasks: tabStack('Tasks', TasksScreen),
   Subscriptions: tabStack('Subscriptions', SubscriptionsScreen),
   Details: tabStack('Details', DetailsScreen),
