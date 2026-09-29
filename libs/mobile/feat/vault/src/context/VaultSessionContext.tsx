@@ -6,16 +6,26 @@ import React, {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import type { VaultApi } from '@myorganizer/app-api-client';
-import { mobileVaultCrypto, base64ToBytes } from '../crypto';
-import { PBKDF2_ITERATIONS } from '../constants';
+import type { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import { mobileVaultCrypto } from '../crypto';
+import {
+  unlockVaultWithPassphrase,
+  unlockVaultWithRecoveryKey,
+  type VaultUnlockSecret,
+} from '../unlock';
 
 export type VaultStatus = 'locked' | 'unlocked';
+export type { VaultUnlockSecret };
 
 interface VaultSessionValue {
   status: VaultStatus;
   /** The decrypted Master Key bytes, held in memory only while unlocked. */
   masterKey: Uint8Array | null;
+  /**
+   * Which secret produced the current Vault Unlock (CONTEXT.md, "Vault
+   * Unlock Secret"). `null` while locked; a later lock clears it.
+   */
+  unlockSecret: VaultUnlockSecret | null;
   /** Vault API client (shares the auth Axios instance) for downstream fetches. */
   vaultApi: VaultApi;
   /**
@@ -24,6 +34,12 @@ interface VaultSessionValue {
    * failure) or on a fetch failure — the caller maps the error to UI copy.
    */
   unlock: (passphrase: string) => Promise<void>;
+  /**
+   * Unwraps the Master Key with a Recovery Key instead of a passphrase.
+   * Throws on a wrong key (AES-GCM auth-tag failure) or on a fetch failure —
+   * same contract as `unlock`, and the same 404 means the same "no vault yet".
+   */
+  unlockWithRecoveryKey: (recoveryKey: string) => Promise<void>;
   /** Drops the in-memory Master Key and returns to the locked state. */
   lock: () => void;
 }
@@ -41,49 +57,72 @@ export function VaultProvider({
 }: VaultProviderProps): React.JSX.Element {
   const [status, setStatus] = useState<VaultStatus>('locked');
   const [masterKey, setMasterKey] = useState<Uint8Array | null>(null);
+  const [unlockSecret, setUnlockSecret] = useState<VaultUnlockSecret | null>(
+    null,
+  );
+
+  const applyUnlockOutcome = useCallback(
+    (outcome: { masterKey: Uint8Array; secret: VaultUnlockSecret }): void => {
+      setMasterKey(outcome.masterKey);
+      setUnlockSecret(outcome.secret);
+      setStatus('unlocked');
+    },
+    [],
+  );
 
   const unlock = useCallback(
     async (passphrase: string): Promise<void> => {
       const response = await vaultApi.getVaultMeta();
-      const meta = response.data.meta;
-
-      const salt = base64ToBytes(meta.kdf_salt);
-      const params = meta.kdf_params as Record<string, unknown>;
-      const iterations = Number(params?.['iterations']) || PBKDF2_ITERATIONS;
-
-      const wrappingKey = await mobileVaultCrypto.deriveKeyFromPassphrase({
+      const meta = response.data.meta as VaultMetaV1;
+      const outcome = await unlockVaultWithPassphrase(
+        meta,
         passphrase,
-        salt,
-        iterations,
-      });
-
-      const wrapped = meta.wrapped_mk_passphrase as {
-        iv: string;
-        ciphertext: string;
-      };
-
-      // A wrong passphrase yields a wrong wrapping key, so the GCM auth tag
-      // fails to verify and this rejects — no plaintext key is ever produced.
-      const masterKeyBytes = await mobileVaultCrypto.aesGcmDecrypt({
-        key: wrappingKey,
-        ciphertext: base64ToBytes(wrapped.ciphertext),
-        iv: base64ToBytes(wrapped.iv),
-      });
-
-      setMasterKey(masterKeyBytes);
-      setStatus('unlocked');
+        mobileVaultCrypto,
+      );
+      applyUnlockOutcome(outcome);
     },
-    [vaultApi],
+    [vaultApi, applyUnlockOutcome],
+  );
+
+  const unlockWithRecoveryKey = useCallback(
+    async (recoveryKey: string): Promise<void> => {
+      const response = await vaultApi.getVaultMeta();
+      const meta = response.data.meta as VaultMetaV1;
+      const outcome = await unlockVaultWithRecoveryKey(
+        meta,
+        recoveryKey,
+        mobileVaultCrypto,
+      );
+      applyUnlockOutcome(outcome);
+    },
+    [vaultApi, applyUnlockOutcome],
   );
 
   const lock = useCallback((): void => {
     setMasterKey(null);
+    setUnlockSecret(null);
     setStatus('locked');
   }, []);
 
   const value = useMemo<VaultSessionValue>(
-    () => ({ status, masterKey, vaultApi, unlock, lock }),
-    [status, masterKey, vaultApi, unlock, lock],
+    () => ({
+      status,
+      masterKey,
+      unlockSecret,
+      vaultApi,
+      unlock,
+      unlockWithRecoveryKey,
+      lock,
+    }),
+    [
+      status,
+      masterKey,
+      unlockSecret,
+      vaultApi,
+      unlock,
+      unlockWithRecoveryKey,
+      lock,
+    ],
   );
 
   return (

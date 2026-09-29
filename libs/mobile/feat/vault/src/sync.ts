@@ -61,21 +61,10 @@ function httpStatus(error: unknown): number | undefined {
   return typeof status === 'number' ? status : undefined;
 }
 
-/**
- * True when a vault request never got an answer from the server — the device
- * is offline or the host is unreachable — as against the server answering
- * with an error, or the answer failing to decrypt.
- */
-export function isNetworkError(error: unknown): boolean {
-  const e = error as {
-    response?: unknown;
-    isAxiosError?: boolean;
-    code?: string;
-  };
-  return (
-    !e?.response && (e?.isAxiosError === true || e?.code === 'ERR_NETWORK')
-  );
-}
+// Re-exported for existing callers. `networkError.ts` is the module without a
+// react-native-quick-crypto import, so a caller outside this feature can
+// depend on it and stay loadable in a plain Node Jest environment.
+export { isNetworkError } from './networkError';
 
 /**
  * Reads one Vault Blob and decrypts it on device with the Master Key.

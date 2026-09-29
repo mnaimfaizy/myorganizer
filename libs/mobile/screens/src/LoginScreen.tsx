@@ -1,43 +1,54 @@
 import React, { useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { useAuth } from '@myorganizer/mobile/feat-auth';
+import { Linking, StyleSheet, View } from 'react-native';
+import {
+  requestPasswordReset,
+  useAuth,
+  webAppPath,
+} from '@myorganizer/mobile/feat-auth';
 import {
   Button,
   InlineNotice,
   Screen,
   Text,
   TextField,
+  useIsOffline,
   useTheme,
 } from '@myorganizer/mobile/ui';
+import { describeLoginError } from './loginErrorClassification';
 
-/**
- * Maps a thrown login error to user-facing copy. An error carrying an HTTP
- * `response` means the server rejected the request (bad credentials); the
- * absence of a response means the request never completed (network/offline).
- */
-function describeLoginError(err: unknown): string {
-  const status = (err as { response?: { status?: number } })?.response?.status;
-  if (status != null) {
-    if (status === 400 || status === 401 || status === 422) {
-      return 'Incorrect email or password.';
-    }
-    return 'Sign in failed. Please try again.';
-  }
-  return 'Network error — check your connection and try again.';
-}
+const OFFLINE_NOTICE_MESSAGE = "You're offline — check your connection.";
+const RESET_CONFIRMATION_MESSAGE =
+  "If an account exists for that email, we've sent instructions to reset the password. Finish resetting it on the web.";
+const RESET_REQUEST_FAILED_MESSAGE =
+  'Could not send the request. Check your connection and try again.';
+
+type LoginScreenMode = 'sign-in' | 'forgot-password';
 
 /**
  * Collects email + password and authenticates via the mobile auth module.
  * On success the AuthProvider flips `status` to `authenticated` and the root
  * navigator swaps this screen out — no manual navigation needed here.
+ *
+ * Also carries Forgot password as a view mode rather than a separate route:
+ * both screens are reached only while `status !== 'authenticated'`, and
+ * there is nothing on either side that outlives leaving this screen.
  */
 export function LoginScreen(): React.JSX.Element {
   const { login } = useAuth();
   const theme = useTheme();
+  const offline = useIsOffline();
+
+  const [mode, setMode] = useState<LoginScreenMode>('sign-in');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetSubmitting, setResetSubmitting] = useState(false);
+  const [resetError, setResetError] = useState<string | null>(null);
+  const [resetSent, setResetSent] = useState(false);
 
   const canSubmit =
     email.trim().length > 0 && password.length > 0 && !submitting;
@@ -55,11 +66,107 @@ export function LoginScreen(): React.JSX.Element {
     }
   }
 
+  function openForgotPassword(): void {
+    setResetEmail(email.trim());
+    setResetError(null);
+    setResetSent(false);
+    setMode('forgot-password');
+  }
+
+  function backToSignIn(): void {
+    setMode('sign-in');
+  }
+
+  const canSubmitReset = resetEmail.trim().length > 0 && !resetSubmitting;
+
+  async function handleRequestReset(): Promise<void> {
+    if (!canSubmitReset) return;
+    setResetError(null);
+    setResetSubmitting(true);
+    try {
+      await requestPasswordReset(resetEmail.trim());
+      setResetSent(true);
+    } catch {
+      // Never surfaced more specifically than this: distinguishing a
+      // transport failure from anything else here would risk leaking
+      // whether the email exists, which the confirmation must never do.
+      setResetError(RESET_REQUEST_FAILED_MESSAGE);
+    } finally {
+      setResetSubmitting(false);
+    }
+  }
+
+  if (mode === 'forgot-password') {
+    return (
+      <Screen>
+        <View style={[styles.content, { gap: theme.spacing.md }]}>
+          <Text variant="titleLg">Reset your password</Text>
+          <Text variant="caption">
+            Enter your email and we&apos;ll send instructions. Finishing the
+            reset happens on the web.
+          </Text>
+
+          {offline && (
+            <InlineNotice
+              tone="warning"
+              icon="offline"
+              message={OFFLINE_NOTICE_MESSAGE}
+            />
+          )}
+
+          {resetSent ? (
+            <InlineNotice tone="neutral" message={RESET_CONFIRMATION_MESSAGE} />
+          ) : (
+            <>
+              <TextField
+                label="Email"
+                value={resetEmail}
+                onChangeText={setResetEmail}
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="email-address"
+                textContentType="emailAddress"
+                editable={!resetSubmitting}
+                placeholder="you@example.com"
+                returnKeyType="go"
+                onSubmitEditing={() => void handleRequestReset()}
+              />
+
+              {resetError != null && (
+                <InlineNotice tone="destructive" message={resetError} />
+              )}
+
+              <Button
+                label={resetSubmitting ? 'Sending…' : 'Send reset link'}
+                onPress={() => void handleRequestReset()}
+                disabled={!canSubmitReset}
+              />
+            </>
+          )}
+
+          <Button
+            label="Back to sign in"
+            variant="ghost"
+            onPress={backToSignIn}
+          />
+        </View>
+      </Screen>
+    );
+  }
+
   return (
     <Screen>
       <View style={[styles.content, { gap: theme.spacing.md }]}>
         <Text variant="titleLg">Sign in</Text>
         <Text variant="caption">Access your MyOrganizer account.</Text>
+
+        {offline && (
+          <InlineNotice
+            tone="warning"
+            icon="offline"
+            message={OFFLINE_NOTICE_MESSAGE}
+          />
+        )}
 
         <TextField
           label="Email"
@@ -78,6 +185,7 @@ export function LoginScreen(): React.JSX.Element {
           value={password}
           onChangeText={setPassword}
           secureTextEntry
+          revealable
           autoCapitalize="none"
           textContentType="password"
           editable={!submitting}
@@ -93,6 +201,19 @@ export function LoginScreen(): React.JSX.Element {
           onPress={() => void handleSubmit()}
           disabled={!canSubmit}
           style={{ marginTop: theme.spacing.sm }}
+        />
+
+        <Button
+          label="Forgot password?"
+          variant="ghost"
+          onPress={openForgotPassword}
+          disabled={submitting}
+        />
+
+        <Button
+          label="Create your account on the web"
+          variant="ghost"
+          onPress={() => void Linking.openURL(webAppPath('/signup'))}
         />
       </View>
     </Screen>

@@ -26,8 +26,10 @@ Change one and you must change the other.
 
 ## Commands
 
-- Test: none yet — this project has no Jest target, and the mobile test toolchain is unresolved
-  (`TECH_STACK.md`). The pure merge and edit helpers it calls are tested in `vault-core`.
+- Test: `yarn nx test mobile-feat-vault` (or the direct Jest invocation in the harness's own
+  instructions). Runs in a plain Node environment, not React Native — it covers `unlock.ts`, which
+  is deliberately split from `crypto.ts` so it carries no `react-native-quick-crypto` import. Most
+  merge and edit helpers this lib calls are still tested in `vault-core`.
 - Lint: `yarn nx lint mobile-feat-vault`.
 
 ## Do

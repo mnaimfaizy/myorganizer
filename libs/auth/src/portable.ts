@@ -11,3 +11,5 @@
 // fails a mobile import of `@myorganizer/auth` while this entry exists
 // (ADR 0103). Anything re-exported here must not reach a browser global.
 export * from './lib/refresh-client-contract';
+export * from './lib/auth-error-mapping';
+export * from './lib/auth-session-types';

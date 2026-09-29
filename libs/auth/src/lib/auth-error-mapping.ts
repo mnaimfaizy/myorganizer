@@ -21,6 +21,14 @@ function classifyMessage(message: string): AuthErrorCode {
     return 'email_already_registered';
   }
 
+  // The backend's Disabled User guard (AuthGuard.ts, AuthController.ts,
+  // utils/passport.ts) rejects with 'Account disabled' — distinct from a
+  // credential failure, so a Disabled User is told why rather than shown the
+  // same message as a wrong password.
+  if (normalized.includes('account disabled')) {
+    return 'account_disabled';
+  }
+
   // The backend rejects a bad password with 'Incorrect email or password!'
   // (apps/backend/src/utils/passport.ts). Matching only on the word 'invalid'
   // meant that message — the most common login failure there is — fell through

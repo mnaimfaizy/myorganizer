@@ -25,4 +25,12 @@ export { useVaultBlob } from './useVaultBlob';
 export type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
 export { newRecordId } from './recordId';
 export { VaultProvider, useVaultSession } from './context/VaultSessionContext';
-export type { VaultStatus } from './context/VaultSessionContext';
+export type {
+  VaultStatus,
+  VaultUnlockSecret,
+} from './context/VaultSessionContext';
+export {
+  unlockVaultWithPassphrase,
+  unlockVaultWithRecoveryKey,
+} from './unlock';
+export type { VaultUnlockOutcome } from './unlock';

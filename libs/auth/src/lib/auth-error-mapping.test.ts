@@ -11,6 +11,7 @@ const BACKEND_MESSAGES = {
   alreadyRegistered: 'Email already registered. Please log in.', // AuthController
   resent:
     "Email already registered but isn't verified yet. We've resent the verification email.",
+  accountDisabled: 'Account disabled', // AuthGuard, AuthController, utils/passport.ts
 } as const;
 
 describe('auth error mapping', () => {
@@ -58,6 +59,18 @@ describe('auth error mapping', () => {
     it('should classify a verification resend', () => {
       expect(toAuthErrorFromMessage(BACKEND_MESSAGES.resent).code).toBe(
         'verification_resent',
+      );
+    });
+
+    it('should classify a disabled account', () => {
+      expect(
+        toAuthErrorFromMessage(BACKEND_MESSAGES.accountDisabled).code,
+      ).toBe('account_disabled');
+    });
+
+    it('should classify a disabled-account message regardless of case', () => {
+      expect(toAuthErrorFromMessage('ACCOUNT DISABLED').code).toBe(
+        'account_disabled',
       );
     });
 

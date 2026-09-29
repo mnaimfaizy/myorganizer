@@ -12508,6 +12508,7 @@
               "email_not_verified",
               "email_already_registered",
               "verification_resent",
+              "account_disabled",
               "network_error",
               "unknown"
             ],
@@ -12677,7 +12678,7 @@
       "start": "    });",
       "end": "    });"
     },
-    "auth-session-types.ts:5-11": {
+    "auth-session-types.ts:5-12": {
       "file": "libs/auth/src/lib/auth-session-types.ts",
       "start": "export type AuthErrorCode =",
       "end": "  | 'unknown';"
@@ -14464,9 +14465,9 @@ data:  { password: hash, reset_password_token: null }
                   storage keys, <code>SaltRounds</code> and the global
                   rate-limit defaults were each searched repo-wide. Only
                   <code>600_000</code> returned conflicting definitions.
-                  <code>AuthErrorCode</code> (6) and
+                  <code>AuthErrorCode</code> (7) and
                   <code>AdminAuditAction</code> (6) match
-                  <code>auth-session-types.ts:5-11</code> and
+                  <code>auth-session-types.ts:5-12</code> and
                   <code>user.prisma</code>, and are cited complete.
                 </p>
               </div>

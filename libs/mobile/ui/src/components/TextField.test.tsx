@@ -1,8 +1,13 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
 import { ThemeProvider } from '../useTheme';
-import { TEXT_SCALE_CAP } from '../metrics';
+import { TEXT_SCALE_CAP, MIN_TOUCH_TARGET } from '../metrics';
 import { TextField } from './TextField';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -169,6 +174,168 @@ describe('TextField Component', () => {
       );
       const input = screen.getByTestId('enabled-input');
       expect(input.props.accessibilityState.disabled).toBe(false);
+    });
+  });
+
+  describe('Reveal toggle', () => {
+    it('should not render reveal toggle when revealable is not set, and pass through secureTextEntry unchanged', async () => {
+      await render(
+        <TestWrapper>
+          <TextField testID="secure-input" secureTextEntry={true} />
+        </TestWrapper>,
+      );
+      const input = screen.getByTestId('secure-input');
+      // secureTextEntry should pass through from caller unchanged
+      expect(input.props.secureTextEntry).toBe(true);
+      // No button with "password" in accessible name should exist
+      expect(
+        screen.queryByRole('button', {
+          name: /password/i,
+        }),
+      ).toBeNull();
+    });
+
+    it('should render reveal toggle with default "password" label when revealable is true', async () => {
+      await render(
+        <TestWrapper>
+          <TextField testID="reveal-input" revealable={true} />
+        </TestWrapper>,
+      );
+      const input = screen.getByTestId('reveal-input');
+      // Initial state: revealed = false, so secureTextEntry should be true
+      expect(input.props.secureTextEntry).toBe(true);
+      // Reveal button should have "Show password" accessible name
+      const revealButton = screen.getByRole('button', {
+        name: 'Show password',
+      });
+      expect(revealButton).toBeOnTheScreen();
+    });
+
+    it('should toggle secureTextEntry and accessible label when reveal button is pressed', async () => {
+      await render(
+        <TestWrapper>
+          <TextField testID="toggle-input" revealable={true} />
+        </TestWrapper>,
+      );
+      const input = screen.getByTestId('toggle-input');
+      const revealButton = screen.getByRole('button', {
+        name: 'Show password',
+      });
+
+      // Initial state: secureTextEntry true
+      expect(input.props.secureTextEntry).toBe(true);
+
+      // Press the button to reveal
+      fireEvent.press(revealButton);
+
+      // Wait for state update and re-render
+      await waitFor(() => {
+        const updatedInput = screen.getByTestId('toggle-input');
+        expect(updatedInput.props.secureTextEntry).toBe(false);
+      });
+
+      // Button label should change to "Hide password"
+      const hideButton = screen.getByRole('button', { name: 'Hide password' });
+      expect(hideButton).toBeOnTheScreen();
+
+      // Press again to hide
+      fireEvent.press(hideButton);
+
+      // Wait for state update back to hidden
+      await waitFor(() => {
+        const updatedInput = screen.getByTestId('toggle-input');
+        expect(updatedInput.props.secureTextEntry).toBe(true);
+      });
+
+      // Button should be back to "Show password"
+      expect(
+        screen.getByRole('button', { name: 'Show password' }),
+      ).toBeOnTheScreen();
+    });
+
+    it('should use custom revealLabel in accessible names when provided', async () => {
+      await render(
+        <TestWrapper>
+          <TextField
+            testID="passphrase-input"
+            revealable={true}
+            revealLabel="passphrase"
+          />
+        </TestWrapper>,
+      );
+      const input = screen.getByTestId('passphrase-input');
+      // Initial: should show "Show passphrase"
+      const revealButton = screen.getByRole('button', {
+        name: 'Show passphrase',
+      });
+      expect(revealButton).toBeOnTheScreen();
+      expect(input.props.secureTextEntry).toBe(true);
+
+      // Press to reveal
+      fireEvent.press(revealButton);
+
+      // Wait for state update
+      await waitFor(() => {
+        const hideButton = screen.getByRole('button', {
+          name: 'Hide passphrase',
+        });
+        expect(hideButton).toBeOnTheScreen();
+      });
+
+      // Verify the input's secureTextEntry was toggled
+      const updatedInput = screen.getByTestId('passphrase-input');
+      expect(updatedInput.props.secureTextEntry).toBe(false);
+
+      // Verify "password" is not in any button name
+      expect(screen.queryByRole('button', { name: /password/i })).toBeNull();
+    });
+
+    it('should render reveal toggle with minimum touch target dimensions', async () => {
+      await render(
+        <TestWrapper>
+          <TextField testID="touch-target-input" revealable={true} />
+        </TestWrapper>,
+      );
+      const revealButton = screen.getByRole('button', {
+        name: 'Show password',
+      });
+      // The button's style should have minHeight and minWidth >= MIN_TOUCH_TARGET
+      const buttonStyle = revealButton.props.style;
+      // buttonStyle can be an array, so we need to find the one with minHeight/minWidth
+      let foundMinHeight = false;
+      let foundMinWidth = false;
+
+      if (Array.isArray(buttonStyle)) {
+        for (const style of buttonStyle) {
+          if (style != null && typeof style === 'object') {
+            if (
+              style.minHeight != null &&
+              style.minHeight >= MIN_TOUCH_TARGET
+            ) {
+              foundMinHeight = true;
+            }
+            if (style.minWidth != null && style.minWidth >= MIN_TOUCH_TARGET) {
+              foundMinWidth = true;
+            }
+          }
+        }
+      } else if (buttonStyle != null && typeof buttonStyle === 'object') {
+        if (
+          buttonStyle.minHeight != null &&
+          buttonStyle.minHeight >= MIN_TOUCH_TARGET
+        ) {
+          foundMinHeight = true;
+        }
+        if (
+          buttonStyle.minWidth != null &&
+          buttonStyle.minWidth >= MIN_TOUCH_TARGET
+        ) {
+          foundMinWidth = true;
+        }
+      }
+
+      expect(foundMinHeight).toBe(true);
+      expect(foundMinWidth).toBe(true);
     });
   });
 });
