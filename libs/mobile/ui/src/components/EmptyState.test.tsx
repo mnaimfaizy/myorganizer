@@ -61,4 +61,15 @@ describe('EmptyState Component', () => {
     );
     expect(screen.queryByLabelText('Create')).toBeNull();
   });
+
+  it('announces its title as a header', async () => {
+    await render(
+      <TestWrapper>
+        <EmptyState icon="tasks" title="No tasks yet" />
+      </TestWrapper>,
+    );
+    expect(
+      screen.getByRole('header', { name: 'No tasks yet' }),
+    ).toBeOnTheScreen();
+  });
 });

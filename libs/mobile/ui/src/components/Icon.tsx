@@ -20,6 +20,7 @@ export type IconName =
   | 'info'
   | 'offline'
   | 'retry'
+  | 'saving'
   | 'biometric'
   | 'plus'
   | 'more'
@@ -29,53 +30,85 @@ export type IconName =
   | 'share';
 
 /**
- * The glyphs, as stroked paths on a 24-unit grid.
+ * A rounded rectangle as a path, so the glyph table stays one shape: every
+ * glyph is a list of stroked paths, and a design drawn with `<rect>` and
+ * `<circle>` is converted here rather than growing a second drawing path.
+ */
+function rect(x: number, y: number, w: number, h: number, r: number): string {
+  return [
+    `M${x + r} ${y}`,
+    `H${x + w - r}`,
+    `A${r} ${r} 0 0 1 ${x + w} ${y + r}`,
+    `V${y + h - r}`,
+    `A${r} ${r} 0 0 1 ${x + w - r} ${y + h}`,
+    `H${x + r}`,
+    `A${r} ${r} 0 0 1 ${x} ${y + h - r}`,
+    `V${y + r}`,
+    `A${r} ${r} 0 0 1 ${x + r} ${y}`,
+    'Z',
+  ].join(' ');
+}
+
+/** A circle as a path, drawn as two half-arcs. */
+function circle(cx: number, cy: number, r: number): string {
+  return `M${cx - r} ${cy} A${r} ${r} 0 1 0 ${cx + r} ${cy} A${r} ${r} 0 1 0 ${cx - r} ${cy} Z`;
+}
+
+/** One stroke of a glyph. A faded stroke is the track under a spinner arc. */
+type Stroke = string | { d: string; opacity: number };
+
+/**
+ * The glyphs, as stroked paths on a 24-unit grid — traced from the approved
+ * design sheets wherever a sheet draws the glyph, so an icon on a device is
+ * the icon the design shows rather than a look-alike.
  *
  * Drawn here rather than pulled from an icon package: the web app's icon
  * library is a DOM component set and does not render on a device, and one more
- * native dependency for fifteen outlines is a worse trade than the outlines.
- * Every glyph is stroke-only and inherits the caller's colour, so an icon is
- * themed by the same Semantic Roles as the text beside it.
+ * native dependency for a few dozen outlines is a worse trade than the
+ * outlines. Every glyph is stroke-only and inherits the caller's colour, so an
+ * icon is themed by the same Semantic Roles as the text beside it.
  *
  * Pinned to the name set: a name with no drawing fails here rather than
  * rendering as an empty square on a device.
  */
 const PATHS = {
+  // A trolley, as the Navigation sheet's Groceries tab draws it.
   groceries: [
-    'M4 9h16l-1.6 10.6a2 2 0 0 1-2 1.4H7.6a2 2 0 0 1-2-1.4L4 9z',
-    'M8.5 9 11 3.5',
-    'M15.5 9 13 3.5',
+    'M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L20.5 8H6.2',
+    circle(10, 20, 1.3),
+    circle(17, 20, 1.3),
   ],
-  tasks: ['M4 7h10', 'M4 12h7', 'M4 17h5', 'M14.5 16 17 18.5 21.5 13'],
+  tasks: [rect(4, 4, 16, 16, 3), 'M8.5 12l2.5 2.5 4.5-5'],
+  // Two arrows chasing each other: something that comes round again.
   subscriptions: [
-    'M3 6.5h18v11H3z',
-    'M3 10.5h18',
-    'M6.5 14.5h4',
-    'M17 3.5l2 2-2 2',
+    'M4 12a8 8 0 0 1 13.7-5.6L20 8.5',
+    'M20 4v4.5h-4.5',
+    'M20 12a8 8 0 0 1-13.7 5.6L4 15.5',
+    'M4 20v-4.5h4.5',
   ],
   details: [
-    'M3 5h18v14H3z',
-    'M8.5 11.5a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
-    'M5.8 16c.7-1.7 1.9-2.6 2.7-2.6s2 .9 2.7 2.6',
-    'M14 9.5h4.5',
-    'M14 13.5h4.5',
+    rect(3, 5, 18, 14, 2),
+    circle(9, 11, 2),
+    'M6 16c.6-1.5 1.7-2.2 3-2.2s2.4.7 3 2.2',
+    'M15 10h3',
+    'M15 14h3',
   ],
   account: [
-    'M12 21.5a9.5 9.5 0 1 1 0-19 9.5 9.5 0 0 1 0 19z',
-    'M12 12.5a3 3 0 1 0 0-6 3 3 0 0 0 0 6z',
-    'M6.2 19c1.1-2.3 3.3-3.6 5.8-3.6s4.7 1.3 5.8 3.6',
+    circle(12, 12, 9),
+    circle(12, 10, 3),
+    'M6.5 18.2c1.3-2 3.2-3 5.5-3s4.2 1 5.5 3',
   ],
-  lock: ['M5.5 10.5h13v10h-13z', 'M8.5 10.5V7.5a3.5 3.5 0 0 1 7 0v3'],
-  chevronDown: ['M6 9.5 12 15.5 18 9.5'],
-  chevronRight: ['M9.5 6 15.5 12 9.5 18'],
-  check: ['M5 12.5 10 17.5 19 7'],
+  lock: [rect(5, 11, 14, 10, 2), 'M8 11V7a4 4 0 0 1 8 0v4'],
+  chevronDown: ['M6 9l6 6 6-6'],
+  chevronRight: ['M9 6l6 6-6 6'],
+  check: ['M5 12.5l4.5 4.5L19 7.5'],
   close: ['M6 6 18 18', 'M18 6 6 18'],
   error: [
     'M12 21.5a9.5 9.5 0 1 1 0-19 9.5 9.5 0 0 1 0 19z',
     'M12 7.5v5.5',
     'M12 16.3v.2',
   ],
-  warning: ['M12 3.5 22.5 20.5h-21z', 'M12 10v4.5', 'M12 17.6v.2'],
+  warning: ['M12 3.5L2.5 20h19L12 3.5z', 'M12 10v4.5', 'M12 17.5v.01'],
   info: [
     'M12 21.5a9.5 9.5 0 1 1 0-19 9.5 9.5 0 0 1 0 19z',
     'M12 11v5.5',
@@ -86,7 +119,10 @@ const PATHS = {
     'M6.4 10.2A3.9 3.9 0 0 0 7 18.5',
     'M3.5 3.5 20.5 20.5',
   ],
-  retry: ['M20 12a8 8 0 1 1-2.5-5.8', 'M20 4v4.5h-4.5'],
+  // Counter-clockwise, as the Lists sheet's Retry and Reload draw it.
+  retry: ['M4 12a8 8 0 1 0 2.4-5.7L4 8.5', 'M4 4v4.5h4.5'],
+  // A quarter arc over a faded track — the Unconfirmed row's "Saving…".
+  saving: [{ d: circle(12, 12, 9), opacity: 0.25 }, 'M21 12a9 9 0 0 0-9-9'],
   plus: ['M12 5v14', 'M5 12h14'],
   // Three round-capped, zero-length strokes: the standard way to draw a dot
   // in a stroke-only icon set without a second, fill-based drawing path.
@@ -104,13 +140,11 @@ const PATHS = {
     'M15 10v1.5',
     'M9 15.2c.8.8 1.8 1.3 3 1.3s2.2-.5 3-1.3',
   ],
-  // A storage box: the lid as a separate stroke from the box it sits on, so
-  // the glyph reads as "put away" rather than as the plain box `subscriptions`
-  // already draws.
+  // A storage box, as the Lists sheet's Archive swipe action draws it.
   archive: [
-    'M4 7h16v3.5H4z',
-    'M6 10.5v8a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-8',
-    'M10 14h4',
+    'M3 4h18v4H3z',
+    'M5 8v11a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8',
+    'M10 12h4',
   ],
   // Two overlapping rects: the back sheet peeking out is what reads as "a copy
   // of something" rather than as a second, unrelated square.
@@ -128,7 +162,10 @@ const PATHS = {
     'M8 8.5 12 4.5 16 8.5',
     'M5.5 13v6a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-6',
   ],
-} as const satisfies Record<IconName, readonly string[]>;
+} as const satisfies Record<IconName, readonly Stroke[]>;
+
+/** The stroke weight the design sheets draw nearly every glyph at. */
+const DEFAULT_STROKE_WIDTH = 2;
 
 export interface IconProps {
   name: IconName;
@@ -136,6 +173,11 @@ export interface IconProps {
   size?: number;
   /** A Semantic Role to draw this glyph in. Defaults to the body colour. */
   color?: keyof ThemeColors;
+  /**
+   * Stroke weight on the 24-unit grid. 2 by default, as the sheets draw it;
+   * the active tab draws 2.4 and a checkbox tick 3.
+   */
+  strokeWidth?: number;
 }
 
 /**
@@ -147,8 +189,10 @@ export function Icon({
   name,
   size = 24,
   color = 'foreground',
+  strokeWidth = DEFAULT_STROKE_WIDTH,
 }: IconProps): React.JSX.Element {
   const theme = useTheme();
+  const strokes: readonly Stroke[] = PATHS[name];
 
   return (
     <Svg
@@ -159,16 +203,20 @@ export function Icon({
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      {PATHS[name].map((d) => (
-        <Path
-          key={d}
-          d={d}
-          stroke={theme.colors[color]}
-          strokeWidth={1.8}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      ))}
+      {strokes.map((stroke) => {
+        const d = typeof stroke === 'string' ? stroke : stroke.d;
+        return (
+          <Path
+            key={d}
+            d={d}
+            stroke={theme.colors[color]}
+            strokeOpacity={typeof stroke === 'string' ? 1 : stroke.opacity}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        );
+      })}
     </Svg>
   );
 }

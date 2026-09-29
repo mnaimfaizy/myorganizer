@@ -1,9 +1,11 @@
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
-import { COMFORTABLE_ROW_HEIGHT, MIN_TOUCH_TARGET } from '../metrics';
+import { COMFORTABLE_ROW_HEIGHT } from '../metrics';
+import { lightTheme } from '../theme';
+import { ListSection } from './ListSection';
 import { ListRow } from './ListRow';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -39,7 +41,7 @@ describe('ListRow Component', () => {
           <ListRow title="Pending" state="unconfirmed" />
         </TestWrapper>,
       );
-      expect(await screen.findByText('Unconfirmed')).toBeOnTheScreen();
+      expect(await screen.findByText('Saving…')).toBeOnTheScreen();
     });
 
     it('should render unconfirmed badge with custom label', async () => {
@@ -61,7 +63,7 @@ describe('ListRow Component', () => {
           <ListRow title="Task" state="normal" />
         </TestWrapper>,
       );
-      expect(screen.queryByText('Unconfirmed')).not.toBeOnTheScreen();
+      expect(screen.queryByText('Saving…')).not.toBeOnTheScreen();
     });
   });
 
@@ -477,7 +479,7 @@ describe('ListRow Component', () => {
   });
 
   describe('size prop', () => {
-    it('renders with MIN_TOUCH_TARGET minHeight when size is not specified', async () => {
+    it('renders a single-line row at the 56pt minimum height', async () => {
       await render(
         <TestWrapper>
           <ListRow title="Standard row" onPress={jest.fn()} />
@@ -485,7 +487,17 @@ describe('ListRow Component', () => {
       );
       const row = screen.getByRole('button', { name: 'Standard row' });
       const flatStyle = StyleSheet.flatten(row.props.style);
-      expect(flatStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+      expect(flatStyle.minHeight).toBe(56);
+    });
+
+    it('renders a row with a subtitle at the 64pt minimum height', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Two lines" subtitle="Due Fri" onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Two lines, Due Fri' });
+      expect(StyleSheet.flatten(row.props.style).minHeight).toBe(64);
     });
 
     it('renders with COMFORTABLE_ROW_HEIGHT minHeight when size is "comfortable"', async () => {
@@ -531,6 +543,204 @@ describe('ListRow Component', () => {
       expect(
         screen.getByRole('button', { name: 'Weekly shop' }),
       ).toBeOnTheScreen();
+    });
+  });
+
+  describe('design states', () => {
+    it('keeps an unconfirmed row at full opacity with the note in the warning colour', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Oat milk" state="unconfirmed" onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Oat milk' });
+      expect(StyleSheet.flatten(row.props.style).opacity).toBeUndefined();
+      expect(
+        StyleSheet.flatten(screen.getByText('Saving…').props.style).color,
+      ).toBe(lightTheme.colors.warning);
+    });
+
+    it('draws a checked title muted with a strikethrough', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Oat milk" checked onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const struck = screen
+        .getAllByText('Oat milk', { includeHiddenElements: true })
+        .map((node) => StyleSheet.flatten(node.props.style))
+        .find((style) => style.textDecorationLine === 'line-through');
+      expect(struck?.color).toBe(lightTheme.colors.mutedForeground);
+    });
+
+    it('dims a disabled row, takes it off the focus path, and ignores presses', async () => {
+      const onPress = jest.fn();
+      const user = userEvent.setup();
+      await render(
+        <TestWrapper>
+          <ListRow title="Passport" onPress={onPress} disabled />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('button', { name: 'Passport' });
+      expect(row.props.focusable).toBe(false);
+      await user.press(row);
+      expect(onPress).not.toHaveBeenCalled();
+    });
+
+    it('draws the reverted note with the reason and a Reload action for a conflict', async () => {
+      const onRetry = jest.fn();
+      const user = userEvent.setup();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Oat milk"
+            state="reverted"
+            revertedReason="Changed on another device. Reload to see the latest."
+            retryLabel="Reload"
+            onRetry={onRetry}
+          />
+        </TestWrapper>,
+      );
+      expect(
+        screen.getByText(
+          'Changed on another device. Reload to see the latest.',
+        ),
+      ).toBeOnTheScreen();
+      await user.press(screen.getByRole('button', { name: 'Reload' }));
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    });
+
+    it('fills a primary swipe action with the primary role', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Renew passport"
+            leftActions={[
+              {
+                id: 'done',
+                label: 'Done',
+                icon: 'check',
+                tone: 'primary',
+                onPress: jest.fn(),
+              },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      const action = screen.getByRole('button', { name: 'Done' });
+      const style = StyleSheet.flatten(action.props.style);
+      expect(style.backgroundColor).toBe(lightTheme.colors.primary);
+      expect(style.width).toBe(88);
+    });
+  });
+
+  describe('dividers inside a ListSection', () => {
+    it('draws a divider under every row but the last', async () => {
+      await render(
+        <TestWrapper>
+          <ListSection title="To buy" count={3}>
+            <ListRow title="Oat milk" />
+            <ListRow title="Sourdough loaf" />
+            <ListRow title="Free-range eggs" />
+          </ListSection>
+        </TestWrapper>,
+      );
+      expect(
+        screen.getAllByTestId('list-row-divider', {
+          includeHiddenElements: true,
+        }),
+      ).toHaveLength(2);
+    });
+
+    it('draws no divider for a row outside a section', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Passport" />
+        </TestWrapper>,
+      );
+      expect(
+        screen.queryByTestId('list-row-divider', {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+  });
+
+  describe('tick sequence', () => {
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => jest.useRealTimers());
+
+    it('calls onTickSettled once the dwell after a tick has passed', async () => {
+      const onTickSettled = jest.fn();
+      const { rerender } = await render(
+        <TestWrapper>
+          <ListRow
+            title="Oat milk"
+            checked={false}
+            onTickSettled={onTickSettled}
+          />
+        </TestWrapper>,
+      );
+      await rerender(
+        <TestWrapper>
+          <ListRow title="Oat milk" checked onTickSettled={onTickSettled} />
+        </TestWrapper>,
+      );
+      await act(() => jest.advanceTimersByTime(500));
+      expect(onTickSettled).not.toHaveBeenCalled();
+      await act(() => jest.advanceTimersByTime(300));
+      expect(onTickSettled).toHaveBeenCalledTimes(1);
+    });
+
+    it('cancels the move when the row is unticked during the dwell', async () => {
+      const onTickSettled = jest.fn();
+      const row = (checked: boolean) => (
+        <TestWrapper>
+          <ListRow
+            title="Oat milk"
+            checked={checked}
+            onTickSettled={onTickSettled}
+          />
+        </TestWrapper>
+      );
+      const { rerender } = await render(row(false));
+      await rerender(row(true));
+      await act(() => jest.advanceTimersByTime(300));
+      await rerender(row(false));
+      await act(() => jest.advanceTimersByTime(2000));
+      expect(onTickSettled).not.toHaveBeenCalled();
+    });
+
+    it('does not settle a row that mounts already checked', async () => {
+      const onTickSettled = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow title="Oat milk" checked onTickSettled={onTickSettled} />
+        </TestWrapper>,
+      );
+      await act(() => jest.advanceTimersByTime(2000));
+      expect(onTickSettled).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('revert haptic', () => {
+    it('fires the warning haptic when an unconfirmed row is reverted', async () => {
+      const trigger = jest.requireMock<{ default: { trigger: jest.Mock } }>(
+        'react-native-haptic-feedback',
+      ).default.trigger;
+      trigger.mockClear();
+      const row = (state: 'unconfirmed' | 'reverted') => (
+        <TestWrapper>
+          <ListRow title="Oat milk" state={state} revertedReason="Not saved." />
+        </TestWrapper>
+      );
+      const { rerender } = await render(row('unconfirmed'));
+      expect(trigger).not.toHaveBeenCalled();
+      await rerender(row('reverted'));
+      expect(trigger).toHaveBeenCalledWith(
+        'notificationWarning',
+        expect.any(Object),
+      );
     });
   });
 });

@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
+import { lightTheme } from '../theme';
 import { ThemeProvider } from '../useTheme';
 import { TabBar, type TabBarItem } from './TabBar';
 import * as useKeyboardVisibleModule from '../hooks/useKeyboardVisible';
@@ -130,6 +131,39 @@ describe('TabBar Component', () => {
       );
 
       expect(await screen.findByLabelText('Home')).toBeOnTheScreen();
+    });
+  });
+
+  describe('Navigation sheet states', () => {
+    const indicator = (key: string) =>
+      StyleSheet.flatten(
+        screen.getByTestId(`tab-indicator-${key}`, {
+          includeHiddenElements: true,
+        }).props.style,
+      );
+
+    it('fills the active tab indicator with cyan and leaves the rest clear', async () => {
+      await render(
+        <TestWrapper>
+          <TabBar items={defaultItems} activeKey="home" onSelect={jest.fn()} />
+        </TestWrapper>,
+      );
+      expect(indicator('home').backgroundColor).toBe(lightTheme.colors.cyan);
+      expect(indicator('home').width).toBe(56);
+      expect(indicator('home').height).toBe(30);
+      expect(indicator('tasks').backgroundColor).toBe('transparent');
+    });
+
+    it('sits the bar on the card surface', async () => {
+      await render(
+        <TestWrapper>
+          <TabBar items={defaultItems} activeKey="home" onSelect={jest.fn()} />
+        </TestWrapper>,
+      );
+      const bar = screen.getByTestId('tab-bar');
+      expect(StyleSheet.flatten(bar.props.style).backgroundColor).toBe(
+        lightTheme.colors.card,
+      );
     });
   });
 });

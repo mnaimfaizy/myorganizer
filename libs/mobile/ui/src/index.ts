@@ -31,11 +31,31 @@ export { useReduceMotion } from './hooks/useReduceMotion';
 export { useIsOffline } from './hooks/useIsOffline';
 export { useKeyboardVisible } from './hooks/useKeyboardVisible';
 export { useAppState } from './hooks/useAppState';
+export { useFocusRing, type FocusRingPlacement } from './hooks/useFocusRing';
+export {
+  usePressFeedback,
+  type PressFeedbackShape,
+} from './hooks/usePressFeedback';
+export {
+  LARGE_TITLE_COLLAPSE_OFFSET,
+  useLargeTitleCollapse,
+} from './hooks/useLargeTitleCollapse';
+export { EASING, ENTER_OFFSET_Y, MOTION, PRESS_SCALE } from './motion';
 
-export { BottomSheet, type BottomSheetProps } from './components/BottomSheet';
+export {
+  BottomSheet,
+  type BottomSheetNavBar,
+  type BottomSheetProps,
+} from './components/BottomSheet';
+export {
+  BrandMark,
+  type BrandLockup,
+  type BrandMarkProps,
+} from './components/BrandMark';
 export {
   Button,
   type ButtonProps,
+  type ButtonSize,
   type ButtonVariant,
 } from './components/Button';
 export {
@@ -43,7 +63,7 @@ export {
   type CheckboxProps,
   type CheckboxSize,
 } from './components/Checkbox';
-export { Chip, type ChipProps } from './components/Chip';
+export { Chip, type ChipProps, type ChipRole } from './components/Chip';
 export {
   ConfirmSheet,
   type ConfirmSheetProps,
@@ -55,6 +75,7 @@ export {
   InlineNotice,
   type InlineNoticeProps,
   type NoticeTone,
+  type NoticeVariant,
 } from './components/InlineNotice';
 export {
   LargeTitleHeader,
@@ -67,8 +88,13 @@ export {
   type ListRowState,
   type RowAction,
   type SwipeAction,
+  type SwipeActionTone,
 } from './components/ListRow';
-export { ListSection, type ListSectionProps } from './components/ListSection';
+export {
+  ListSection,
+  type ListRowPosition,
+  type ListSectionProps,
+} from './components/ListSection';
 export { LockAction, type LockActionProps } from './components/LockAction';
 export {
   MenuSheet,
@@ -102,7 +128,7 @@ export {
 } from './components/StatusPill';
 export { Switch, type SwitchProps } from './components/Switch';
 export { TabBar, type TabBarItem, type TabBarProps } from './components/TabBar';
-export { Text, type TextProps } from './components/Text';
+export { Text, type TextProps, type TextWeight } from './components/Text';
 export { TextField, type TextFieldProps } from './components/TextField';
 export {
   TextPromptSheet,

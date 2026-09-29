@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { ConfirmSheet } from './ConfirmSheet';
 
@@ -107,5 +108,73 @@ describe('ConfirmSheet Component', () => {
       screen.getByRole('button', { name: 'Archive instead' }).props
         .accessibilityState?.disabled,
     ).toBe(true);
+  });
+
+  it('should render each paragraph of a multi-part message', async () => {
+    await render(
+      <TestWrapper>
+        <ConfirmSheet
+          visible
+          title="Log out?"
+          message={[
+            'Logging out also removes Biometric Unlock from this device.',
+            'Your Vault stays on the server.',
+          ]}
+          confirmLabel="Log out"
+          destructive
+          onConfirm={jest.fn()}
+          onCancel={jest.fn()}
+        />
+      </TestWrapper>,
+    );
+    expect(
+      screen.getByText(
+        'Logging out also removes Biometric Unlock from this device.',
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText('Your Vault stays on the server.'),
+    ).toBeOnTheScreen();
+  });
+
+  it('should fill Cancel as a secondary button, and step it down to ghost beside a third way out', async () => {
+    const { rerender } = await render(
+      <TestWrapper>
+        <ConfirmSheet
+          visible
+          title="Turn off Biometric Unlock?"
+          message="You’ll unlock with your passphrase."
+          confirmLabel="Turn off"
+          cancelLabel="Keep it on"
+          onConfirm={jest.fn()}
+          onCancel={jest.fn()}
+        />
+      </TestWrapper>,
+    );
+    const filled = screen.getByRole('button', { name: 'Keep it on' });
+    expect(StyleSheet.flatten(filled.props.style).backgroundColor).not.toBe(
+      'transparent',
+    );
+
+    await rerender(
+      <TestWrapper>
+        <ConfirmSheet
+          visible
+          title="Delete this task?"
+          message="This can’t be undone. Archive keeps it instead."
+          confirmLabel="Delete task"
+          destructive
+          secondaryLabel="Archive instead"
+          secondaryIcon="archive"
+          onSecondary={jest.fn()}
+          onConfirm={jest.fn()}
+          onCancel={jest.fn()}
+        />
+      </TestWrapper>,
+    );
+    const ghost = screen.getByRole('button', { name: 'Cancel' });
+    expect(StyleSheet.flatten(ghost.props.style).backgroundColor).toBe(
+      'transparent',
+    );
   });
 });

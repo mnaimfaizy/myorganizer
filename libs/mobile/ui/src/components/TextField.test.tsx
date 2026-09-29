@@ -6,6 +6,7 @@ import {
   waitFor,
 } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { TEXT_SCALE_CAP, MIN_TOUCH_TARGET } from '../metrics';
 import { TextField } from './TextField';
@@ -336,6 +337,83 @@ describe('TextField Component', () => {
 
       expect(foundMinHeight).toBe(true);
       expect(foundMinWidth).toBe(true);
+    });
+  });
+
+  describe('Design fidelity', () => {
+    it('should set the label in sentence case at 600, not as a caps label', async () => {
+      await render(
+        <TestWrapper>
+          <TextField label="Task title" />
+        </TestWrapper>,
+      );
+      const style = StyleSheet.flatten(
+        screen.getByText('Task title').props.style,
+      );
+      expect(style.textTransform).toBeUndefined();
+      expect(style.fontSize).toBe(15);
+    });
+
+    it('should draw the reveal toggle as an in-field glyph, not a Show/Hide text button', async () => {
+      await render(
+        <TestWrapper>
+          <TextField label="Passphrase" revealable revealLabel="passphrase" />
+        </TestWrapper>,
+      );
+      expect(
+        screen.getByRole('button', { name: 'Show passphrase' }),
+      ).toBeOnTheScreen();
+      expect(screen.queryByText('Show')).toBeNull();
+      expect(screen.queryByText('Hide')).toBeNull();
+    });
+
+    it('should render the error as a line under the field with no boxed notice', async () => {
+      await render(
+        <TestWrapper>
+          <TextField label="Task title" error="Give the task a title" />
+        </TestWrapper>,
+      );
+      const alert = screen.getByRole('alert');
+      expect(StyleSheet.flatten(alert.props.style).borderWidth).toBeUndefined();
+      expect(screen.getByText('Give the task a title')).toBeOnTheScreen();
+    });
+
+    it('should render a prefix inside the field and name it with the label', async () => {
+      await render(
+        <TestWrapper>
+          <TextField label="Amount" prefix="A$" value="22.99" />
+        </TestWrapper>,
+      );
+      expect(
+        screen.getByText('A$', { includeHiddenElements: true }),
+      ).toBeTruthy();
+      expect(screen.getByLabelText('Amount, A$').props.value).toBe('22.99');
+    });
+
+    it('should offer a clear accessory only while the field holds a value', async () => {
+      const onClear = jest.fn();
+      const { rerender } = await render(
+        <TestWrapper>
+          <TextField label="Next billing date" value="" onClear={onClear} />
+        </TestWrapper>,
+      );
+      expect(
+        screen.queryByRole('button', { name: 'Clear next billing date' }),
+      ).toBeNull();
+
+      await rerender(
+        <TestWrapper>
+          <TextField
+            label="Next billing date"
+            value="2026-09-29"
+            onClear={onClear}
+          />
+        </TestWrapper>,
+      );
+      fireEvent.press(
+        screen.getByRole('button', { name: 'Clear next billing date' }),
+      );
+      expect(onClear).toHaveBeenCalledTimes(1);
     });
   });
 });

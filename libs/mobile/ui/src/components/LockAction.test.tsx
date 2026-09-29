@@ -125,4 +125,16 @@ describe('LockAction Component', () => {
       expect(flatStyle.minHeight).toBe(MIN_TOUCH_TARGET);
     });
   });
+
+  describe('Press feedback', () => {
+    it('does not fade when pressed', async () => {
+      await render(
+        <TestWrapper>
+          <LockAction onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      const style = StyleSheet.flatten(screen.getByRole('button').props.style);
+      expect(style.opacity).toBeUndefined();
+    });
+  });
 });

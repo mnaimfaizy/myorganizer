@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { useTheme } from '../useTheme';
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
 import { TextField } from './TextField';
@@ -13,19 +11,24 @@ export interface TextPromptSheetProps {
   /** Prefilled and selected-in-place — a rename opens on the current name. */
   initialValue?: string;
   confirmLabel?: string;
-  cancelLabel?: string;
   /** Shows a spinner on the confirm button and stops accepting input. */
   busy?: boolean;
   /** Given the trimmed value. Never called with an empty one. */
   onSubmit: (value: string) => void;
+  /** The sheet's dismissal — the scrim, or the hardware back button. */
   onCancel: () => void;
 }
 
 /**
  * The one shape every "name this" prompt in the app takes — a single line of
- * text, confirmed or cancelled. A Grocery List's Create and Rename are the
- * same sheet with a different title and a different `initialValue`: creating
- * opens on nothing, renaming opens on what the list is already called.
+ * text and the one button that confirms it. A Grocery List's Create and
+ * Rename are the same sheet with a different title and a different
+ * `initialValue`: creating opens on nothing, renaming opens on what the list
+ * is already called.
+ *
+ * There is no Cancel button, as drawn (Groceries · Create and Rename): the
+ * sheet sits on the keyboard, and dismissing it — the scrim, or back — is the
+ * way out, as it is for every sheet.
  *
  * The draft is this sheet's own state rather than the caller's, so a caller
  * only ever hands it a starting value and reads back a finished one.
@@ -37,12 +40,10 @@ export function TextPromptSheet({
   placeholder,
   initialValue = '',
   confirmLabel = 'Save',
-  cancelLabel = 'Cancel',
   busy = false,
   onSubmit,
   onCancel,
 }: TextPromptSheetProps): React.JSX.Element {
-  const theme = useTheme();
   const [value, setValue] = useState(initialValue);
 
   // Re-seeds the draft every time the sheet opens, so a Rename opened twice
@@ -57,7 +58,11 @@ export function TextPromptSheet({
   };
 
   return (
-    <BottomSheet visible={visible} onDismiss={onCancel} title={title}>
+    <BottomSheet
+      visible={visible}
+      onDismiss={busy ? () => undefined : onCancel}
+      title={title}
+    >
       <TextField
         label={label}
         placeholder={placeholder}
@@ -68,26 +73,12 @@ export function TextPromptSheet({
         returnKeyType="done"
         onSubmitEditing={submit}
       />
-      <View style={[styles.actions, { gap: theme.spacing.sm }]}>
-        <Button
-          label={confirmLabel}
-          busy={busy}
-          disabled={trimmed.length === 0}
-          onPress={submit}
-        />
-        <Button
-          label={cancelLabel}
-          variant="ghost"
-          disabled={busy}
-          onPress={onCancel}
-        />
-      </View>
+      <Button
+        label={confirmLabel}
+        busy={busy}
+        disabled={trimmed.length === 0}
+        onPress={submit}
+      />
     </BottomSheet>
   );
 }
-
-const styles = StyleSheet.create({
-  actions: {
-    flexDirection: 'column',
-  },
-});

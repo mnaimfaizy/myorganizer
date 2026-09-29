@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
 import { ThemeProvider } from '../useTheme';
 import { Snackbar } from './Snackbar';
@@ -36,16 +36,53 @@ describe('Snackbar Component', () => {
     expect(await screen.findByText('Saved')).toBeOnTheScreen();
   });
 
-  it('should call onDismiss after default duration', async () => {
+  it('should call onDismiss after the default six seconds, and not before', async () => {
     const onDismiss = jest.fn();
     await render(
       <TestWrapper>
         <Snackbar visible={true} message="Saved" onDismiss={onDismiss} />
       </TestWrapper>,
     );
+    jest.advanceTimersByTime(5999);
     expect(onDismiss).not.toHaveBeenCalled();
-    jest.advanceTimersByTime(5000);
+    jest.advanceTimersByTime(1);
     expect(onDismiss).toHaveBeenCalled();
+  });
+
+  it('should hold while a finger is on the action', async () => {
+    const onDismiss = jest.fn();
+    await render(
+      <TestWrapper>
+        <Snackbar
+          visible={true}
+          message="Task archived"
+          actionLabel="Undo"
+          onAction={jest.fn()}
+          onDismiss={onDismiss}
+        />
+      </TestWrapper>,
+    );
+    await act(async () => {
+      fireEvent(screen.getByRole('button', { name: 'Undo' }), 'pressIn');
+    });
+    jest.advanceTimersByTime(10000);
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
+
+  it('should render the message once and the action once', async () => {
+    await render(
+      <TestWrapper>
+        <Snackbar
+          visible={true}
+          message="Task archived"
+          actionLabel="Undo"
+          onAction={jest.fn()}
+          onDismiss={jest.fn()}
+        />
+      </TestWrapper>,
+    );
+    expect(screen.getAllByText('Task archived')).toHaveLength(1);
+    expect(screen.getAllByText('Undo')).toHaveLength(1);
   });
 
   it('should call onDismiss after custom duration', async () => {

@@ -3,14 +3,22 @@ import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
 
 /**
  * What a refused Vault Push says, and what it offers instead — the one copy
- * every mobile screen's Unconfirmed Edit banner shows, so the wording cannot
+ * every mobile screen's Unconfirmed Edit note shows, so the wording cannot
  * drift between a screen tracking one line and a screen tracking one list.
+ *
+ * The wording is the approved design's (Lists, Groc-Trip-Reverted,
+ * Det-UL-Reverted, Groc-Trip-Conflict): a revert says it was not saved, why,
+ * and that the row is back on the last saved copy — never that the edit is
+ * held anywhere to send later, because the app is online-only and nothing is
+ * ([ADR 0107](../../../../../docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md)).
+ * The design draws only the offline revert; `failed` follows its shape
+ * without the cause, which nothing on the device can name.
  *
  * Groceries is pinned to `promptOnConflict`, so a conflict is never retried:
  * re-applying an edit to a newer copy would apply it to state the User has
- * not seen ([ADR 0107](../../../../../docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md)
- * decision 4). The way forward is to look, which is why the offer is Reload
- * and not Retry — the other two are ordinary failures and resend the edit.
+ * not seen (ADR 0107 decision 4). The way forward is to look, which is why the
+ * offer is Reload and not Retry — the other two are ordinary failures and
+ * resend the edit.
  */
 export const VAULT_WRITE_ERROR_COPY = {
   conflict: {
@@ -18,11 +26,11 @@ export const VAULT_WRITE_ERROR_COPY = {
     action: 'Reload',
   },
   network: {
-    message: 'Your change was not saved — check your connection and try again.',
+    message: 'Not saved — you’re offline. Showing the last saved copy.',
     action: 'Retry',
   },
   failed: {
-    message: 'Your change was not saved. Please try again.',
+    message: 'Not saved. Showing the last saved copy.',
     action: 'Retry',
   },
 } as const satisfies Record<

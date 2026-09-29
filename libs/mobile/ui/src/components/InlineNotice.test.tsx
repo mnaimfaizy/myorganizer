@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { InlineNotice } from './InlineNotice';
 
@@ -165,6 +166,32 @@ describe('InlineNotice Component', () => {
       const button = await screen.findByLabelText('Retry');
       await user.press(button);
       expect(onAction).toHaveBeenCalled();
+    });
+  });
+
+  describe('Variants', () => {
+    it('should set an inline notice unboxed, and a card on the muted panel', async () => {
+      await render(
+        <TestWrapper>
+          <InlineNotice message="Inline line" tone="warning" style={{}} />
+          <InlineNotice
+            message="Settings on this tab belong to this phone."
+            tone="info"
+            variant="card"
+          />
+        </TestWrapper>,
+      );
+      const [inline, card] = screen.getAllByRole('alert');
+      expect(
+        StyleSheet.flatten(inline.parent?.props.style).backgroundColor,
+      ).toBeUndefined();
+      let node = card.parent;
+      let fill: unknown;
+      while (node != null && fill === undefined) {
+        fill = StyleSheet.flatten(node.props.style)?.backgroundColor;
+        node = node.parent;
+      }
+      expect(fill).toBe('#eceef0');
     });
   });
 });

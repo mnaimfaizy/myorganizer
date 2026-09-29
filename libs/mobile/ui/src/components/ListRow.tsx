@@ -1,25 +1,34 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   StyleSheet,
   View,
   type AccessibilityActionEvent,
+  type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  Easing,
+  runOnJS,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
   withSpring,
+  withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '../useTheme';
 import { COMFORTABLE_ROW_HEIGHT, MIN_TOUCH_TARGET } from '../metrics';
+import { haptics } from '../haptics';
+import { EASING, ENTER_OFFSET_Y, MOTION } from '../motion';
+import { useFocusRing } from '../hooks/useFocusRing';
+import { usePressFeedback } from '../hooks/usePressFeedback';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import type { ThemeColors } from '../theme';
+import { CHECKBOX_BOX, Checkbox, type CheckboxProps } from './Checkbox';
 import { Icon, type IconName } from './Icon';
-import { InlineNotice } from './InlineNotice';
-import { StatusPill } from './StatusPill';
+import { useListRowPosition } from './ListSection';
 import { Text } from './Text';
 
 /** One thing a row can be asked to do, however it is reached. */
@@ -31,10 +40,17 @@ export interface RowAction {
   onPress: () => void;
 }
 
+/**
+ * How a swipe action is filled. `primary` is the dark fill the Lists sheet
+ * draws for a completing action (Done); `neutral` a reversible one (Archive);
+ * `destructive` one that removes something.
+ */
+export type SwipeActionTone = 'primary' | 'neutral' | 'destructive';
+
 /** One thing a row can be swiped to do. */
 export interface SwipeAction extends RowAction {
   icon: IconName;
-  tone?: 'neutral' | 'destructive';
+  tone?: SwipeActionTone;
 }
 
 /**
@@ -52,38 +68,68 @@ export type ListRowSize = 'standard' | 'comfortable';
  */
 export type ListRowState = 'normal' | 'unconfirmed' | 'reverted';
 
-/** How wide one swipe action's panel is. Big enough to be a touch target. */
-const ACTION_WIDTH = 72;
+/** How wide one swipe action's panel is (Lists sheet). */
+const ACTION_WIDTH = 88;
 
 /** How far past a panel's own width a swipe must go before it stays open. */
 const OPEN_FRACTION = 0.5;
 
-/** The two row heights, pinned to the size set. */
+/**
+ * The Lists sheet's row heights: 56 for one line, 64 with a subtitle, and the
+ * trip view's comfortable row at 64 whatever it carries.
+ */
 const ROW_MIN_HEIGHT = {
-  standard: MIN_TOUCH_TARGET,
-  comfortable: COMFORTABLE_ROW_HEIGHT,
-} as const satisfies Record<ListRowSize, number>;
+  standard: { single: 56, double: 64 },
+  comfortable: {
+    single: COMFORTABLE_ROW_HEIGHT,
+    double: COMFORTABLE_ROW_HEIGHT,
+  },
+} as const satisfies Record<ListRowSize, { single: number; double: number }>;
+
+/** The leading icon tile, 32 or 36 as the sheets draw it, with its glyph. */
+const ICON_TILE = {
+  standard: { tile: 32, glyph: 18 },
+  large: { tile: 36, glyph: 20 },
+} as const satisfies Record<
+  'standard' | 'large',
+  { tile: number; glyph: number }
+>;
 
 /** The one spring in this library, so every row settles the same way. */
 const SPRING = { damping: 20, stiffness: 220 } as const;
 
-const TONE_FILL = {
-  neutral: 'secondary',
-  destructive: 'destructive',
-} as const satisfies Record<'neutral' | 'destructive', keyof ThemeColors>;
-
-const TONE_TEXT = {
-  neutral: 'secondaryForeground',
-  destructive: 'destructiveForeground',
-} as const satisfies Record<'neutral' | 'destructive', keyof ThemeColors>;
+const TONE = {
+  primary: { fill: 'primary', text: 'primaryForeground', stroke: 2.5 },
+  neutral: { fill: 'secondary', text: 'secondaryForeground', stroke: 2 },
+  destructive: {
+    fill: 'destructive',
+    text: 'destructiveForeground',
+    stroke: 2,
+  },
+} as const satisfies Record<
+  SwipeActionTone,
+  { fill: keyof ThemeColors; text: keyof ThemeColors; stroke: number }
+>;
 
 export interface ListRowProps {
   title: string;
   subtitle?: string;
-  /** Rendered before the title — a Checkbox, an avatar, a colour dot. */
+  /**
+   * Rendered before the title — a Checkbox, an avatar, a colour dot. A bare
+   * `Checkbox` is pulled out to the row's edge so its box, not its 44pt
+   * target, sits on the 16pt inset, as the Lists sheet draws it.
+   */
   leading?: React.ReactNode;
+  /** A glyph in the sheet's muted leading tile — used instead of `leading`. */
+  leadingIcon?: IconName;
+  /** The tile's size: 32 (`standard`) or 36 (`large`). */
+  leadingIconSize?: 'standard' | 'large';
   /** Rendered after the title — a StatusPill, an amount, a chevron. */
   trailing?: React.ReactNode;
+  /** A trailing value in muted tabular figures — an amount, a count. */
+  value?: string;
+  /** Ends the row in a chevron: it navigates somewhere. */
+  chevron?: boolean;
   onPress?: () => void;
   /**
    * A press held past the platform's long-press threshold — the row's own
@@ -99,8 +145,28 @@ export interface ListRowProps {
    * the tick target has to say so: the row is one accessibility element, so a
    * `Checkbox` drawn inside `leading` is not reachable on its own and its
    * role does not reach the screen reader.
+   *
+   * A checked row draws its title in `muted-foreground` with a strikethrough.
    */
   checked?: boolean;
+  /**
+   * Opts the row into the rest of the Motion sheet's tick sequence. When
+   * `checked` turns true, the title mutes and strikes (160 ms), the row
+   * holds still for the 600 ms dwell — an untick in that window cancels and
+   * the row stays — and then leaves: height and opacity to 0 over 220 ms
+   * (opacity only, 150 ms, under Reduce Motion). This is called when it has
+   * left; the screen moves the line to Checked here, and until then keeps
+   * rendering it where it was.
+   */
+  onTickSettled?: () => void;
+  /**
+   * Plays the "enter Checked" beat when the row mounts: fade in and drop from
+   * −8 pt over 220 ms ease-out (opacity only, 150 ms, under Reduce Motion).
+   * Also the way back for a reverted move — the same motion in reverse.
+   */
+  entering?: boolean;
+  /** Dims the row to 40% and takes it off the focus path. */
+  disabled?: boolean;
   /** Revealed by a swipe from the left edge. */
   leftActions?: readonly SwipeAction[];
   /** Revealed by a swipe from the right edge. */
@@ -121,7 +187,7 @@ export interface ListRowProps {
    */
   accessibilityLabel?: string;
   state?: ListRowState;
-  /** The badge on an unconfirmed row. */
+  /** The inline note on an unconfirmed row. */
   unconfirmedLabel?: string;
   /** Why the edit was reverted. Shown only in the `reverted` state. */
   revertedReason?: string;
@@ -154,7 +220,7 @@ function ActionPanel({
   return (
     <View style={[styles.panel, side === 'left' ? styles.left : styles.right]}>
       {actions.map((action) => {
-        const tone = action.tone ?? 'neutral';
+        const tone = TONE[action.tone ?? 'neutral'];
         return (
           <Pressable
             key={action.id}
@@ -166,12 +232,25 @@ function ActionPanel({
               {
                 width: ACTION_WIDTH,
                 gap: theme.spacing.xs,
-                backgroundColor: theme.colors[TONE_FILL[tone]],
+                backgroundColor: theme.colors[tone.fill],
               },
             ]}
           >
-            <Icon name={action.icon} size={20} color={TONE_TEXT[tone]} />
-            <Text variant="caption" color={TONE_TEXT[tone]} numberOfLines={1}>
+            <Icon
+              name={action.icon}
+              size={20}
+              color={tone.text}
+              strokeWidth={tone.stroke}
+            />
+            {/* The sheet sets this at 12/16/600 — `label-caps` without its
+                capitals. It takes `caption` at 600, the nearest step that
+                keeps the case. */}
+            <Text
+              variant="caption"
+              weight="semibold"
+              color={tone.text}
+              numberOfLines={1}
+            >
               {action.label}
             </Text>
           </Pressable>
@@ -179,6 +258,128 @@ function ActionPanel({
       })}
     </View>
   );
+}
+
+/** The Unconfirmed row's inline "Saving…": a turning arc and the words. */
+function SavingNote({ label }: { label: string }): React.JSX.Element {
+  const theme = useTheme();
+  const reduceMotion = useReduceMotion();
+  const turn = useSharedValue(0);
+
+  useEffect(() => {
+    if (reduceMotion) {
+      turn.value = 0;
+      return;
+    }
+    turn.value = withRepeat(
+      withTiming(360, { duration: 1000, easing: Easing.linear }),
+      -1,
+    );
+  }, [reduceMotion, turn]);
+
+  const spin = useAnimatedStyle(() => ({
+    transform: [{ rotate: `${turn.value}deg` }],
+  }));
+
+  return (
+    <View style={[styles.inline, { gap: theme.spacing.xs }]}>
+      <Animated.View style={spin}>
+        <Icon name="saving" size={14} color="warning" strokeWidth={2.5} />
+      </Animated.View>
+      {/* 13/18/600 on the sheet: `caption` at 600. */}
+      <Text
+        variant="caption"
+        weight="semibold"
+        color="warning"
+        numberOfLines={1}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * The reverted row's note: why the edit was put back, and the way forward.
+ * Indented to the title, on the row's own surface, per the Lists sheet.
+ */
+function RevertedNote({
+  reason,
+  actionLabel,
+  onAction,
+  inset,
+}: {
+  reason: string;
+  actionLabel: string;
+  onAction?: () => void;
+  inset: number;
+}): React.JSX.Element {
+  const theme = useTheme();
+  const press = usePressFeedback();
+  const focus = useFocusRing();
+
+  return (
+    <View
+      style={[
+        styles.inline,
+        {
+          gap: theme.spacing.sm,
+          paddingLeft: inset,
+          paddingRight: theme.spacing.sm,
+          paddingBottom: theme.spacing.sm,
+          backgroundColor: theme.colors.card,
+        },
+      ]}
+    >
+      <Icon name="warning" size={16} color="warning" />
+      <Text
+        variant="caption"
+        color="foreground"
+        accessibilityRole="alert"
+        style={styles.grow}
+      >
+        {reason}
+      </Text>
+      {onAction != null && (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+          onPress={onAction}
+          onFocus={focus.onFocus}
+          onBlur={focus.onBlur}
+          android_ripple={press.android_ripple}
+          style={({ pressed }) => [
+            styles.inline,
+            styles.retry,
+            {
+              minHeight: MIN_TOUCH_TARGET,
+              // The sheet's 12 and 6 each fall exactly between two spacing
+              // steps; a tie rounds up.
+              paddingHorizontal: theme.spacing.md,
+              gap: theme.spacing.sm,
+              borderRadius: theme.radii.md,
+              borderColor: theme.colors.controlEdge,
+            },
+            press.pressedStyle(pressed),
+            focus.ringStyle,
+          ]}
+        >
+          <Icon name="retry" size={16} />
+          <Text variant="bodySm" weight="semibold">
+            {actionLabel}
+          </Text>
+        </Pressable>
+      )}
+    </View>
+  );
+}
+
+/** How far a bare Checkbox is pulled out, so its box sits on the inset. */
+function checkboxBleed(leading: React.ReactNode): number {
+  if (!React.isValidElement<CheckboxProps>(leading)) return 0;
+  if (leading.type !== Checkbox || leading.props.label != null) return 0;
+  const { box } = CHECKBOX_BOX[leading.props.size ?? 'standard'];
+  return (MIN_TOUCH_TARGET - box) / 2;
 }
 
 /**
@@ -192,22 +393,34 @@ function ActionPanel({
  *
  * **Reduce Motion takes the travel, not the behaviour.** The row still opens
  * and closes and the actions are still there; it arrives without the spring.
+ * The tick sequence keeps its dwell and swaps every travelling beat for a
+ * cross-fade.
+ *
+ * Inside a `ListSection` every row but the last draws a hairline divider,
+ * inset to where its title starts.
  */
 export function ListRow({
   title,
   subtitle,
   leading,
+  leadingIcon,
+  leadingIconSize = 'standard',
   trailing,
+  value,
+  chevron = false,
   onPress,
   onLongPress,
   checked,
+  onTickSettled,
+  entering = false,
+  disabled = false,
   leftActions = [],
   rightActions = [],
   innerActions = [],
   size = 'standard',
   accessibilityLabel,
   state = 'normal',
-  unconfirmedLabel = 'Unconfirmed',
+  unconfirmedLabel = 'Saving…',
   revertedReason,
   onRetry,
   retryLabel = 'Retry',
@@ -215,9 +428,20 @@ export function ListRow({
 }: ListRowProps): React.JSX.Element {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
+  const press = usePressFeedback();
+  const focus = useFocusRing('inset');
+  const position = useListRowPosition();
 
-  const leftWidth = leftActions.length * ACTION_WIDTH;
-  const rightWidth = rightActions.length * ACTION_WIDTH;
+  // Where the title starts, measured, so the divider and a reverted note line
+  // up with it whatever the leading slot holds.
+  const [titleInset, setTitleInset] = useState<number>(theme.spacing.md);
+  const onLabelsLayout = (event: LayoutChangeEvent): void => {
+    const { x } = event.nativeEvent.layout;
+    setTitleInset((current) => (current === x ? current : x));
+  };
+
+  const leftWidth = disabled ? 0 : leftActions.length * ACTION_WIDTH;
+  const rightWidth = disabled ? 0 : rightActions.length * ACTION_WIDTH;
 
   const offsetX = useSharedValue(0);
   const startX = useSharedValue(0);
@@ -254,13 +478,103 @@ export function ListRow({
     transform: [{ translateX: offsetX.value }],
   }));
 
+  // --- The tick sequence: strike and mute, dwell, leave; enter. -----------
+
+  const struck = useSharedValue(checked === true ? 1 : 0);
+  const leave = useSharedValue(0);
+  const leaving = useSharedValue(false);
+  const measuredHeight = useSharedValue(0);
+  const enter = useSharedValue(entering ? 0 : 1);
+  const previousChecked = useRef(checked);
+  const [dwelling, setDwelling] = useState(false);
+  const settled = useRef(onTickSettled);
+  settled.current = onTickSettled;
+
+  useEffect(() => {
+    const was = previousChecked.current;
+    previousChecked.current = checked;
+    if (was === checked) return;
+    const to = checked === true ? 1 : 0;
+    struck.value = reduceMotion
+      ? to
+      : withTiming(to, { duration: MOTION.settle });
+    // Any change puts a leaving row back: a revert runs the move in reverse.
+    leaving.value = false;
+    leave.value = 0;
+    setDwelling(was === false && checked === true);
+  }, [checked, reduceMotion, struck, leave, leaving]);
+
+  useEffect(() => {
+    if (!dwelling || settled.current == null) return;
+    const finish = (): void => {
+      setDwelling(false);
+      settled.current?.();
+    };
+    const timer = setTimeout(() => {
+      leaving.value = !reduceMotion;
+      leave.value = withTiming(
+        1,
+        reduceMotion
+          ? { duration: MOTION.reducedFade }
+          : { duration: MOTION.leave, easing: EASING.standard },
+        (finished) => {
+          if (finished) runOnJS(finish)();
+        },
+      );
+    }, MOTION.settle + MOTION.dwell);
+    return () => clearTimeout(timer);
+  }, [dwelling, reduceMotion, leave, leaving]);
+
+  useEffect(() => {
+    if (!entering) return;
+    enter.value = withTiming(
+      1,
+      reduceMotion
+        ? { duration: MOTION.reducedFade }
+        : { duration: MOTION.enter, easing: EASING.out },
+    );
+    // Mount-only on purpose: `entering` describes how the row arrived, not a
+    // state it can move into later.
+  }, []);
+
+  const lifecycle = useAnimatedStyle(() => {
+    const rise = reduceMotion ? 0 : ENTER_OFFSET_Y * (1 - enter.value);
+    return {
+      opacity: enter.value * (1 - leave.value),
+      transform: [{ translateY: rise }],
+      ...(leaving.value
+        ? {
+            height: measuredHeight.value * (1 - leave.value),
+            overflow: 'hidden',
+          }
+        : {}),
+    };
+  });
+
+  const titleUnstruck = useAnimatedStyle(() => ({ opacity: 1 - struck.value }));
+  const titleStruck = useAnimatedStyle(() => ({ opacity: struck.value }));
+
+  const onRowLayout = (event: LayoutChangeEvent): void => {
+    if (!leaving.value) measuredHeight.value = event.nativeEvent.layout.height;
+  };
+
+  // Fired on the transition, never on mount: a row scrolled into view already
+  // reverted is not a new revert.
+  const previousState = useRef(state);
+  useEffect(() => {
+    if (previousState.current !== state && state === 'reverted') {
+      haptics.revert();
+    }
+    previousState.current = state;
+  }, [state]);
+
   // The swipe actions and the accessibility actions are built from one list,
   // so an action cannot be added to the drag and forgotten in the other. The
   // inner ones join it here only: nothing draws them and no gesture reveals
   // them, but the row still offers them.
   const actions = useMemo(
-    () => [...leftActions, ...rightActions, ...innerActions],
-    [leftActions, rightActions, innerActions],
+    () => (disabled ? [] : [...leftActions, ...rightActions, ...innerActions]),
+    [disabled, leftActions, rightActions, innerActions],
   );
 
   const onAccessibilityAction = (event: AccessibilityActionEvent): void => {
@@ -269,13 +583,22 @@ export function ListRow({
       ?.onPress();
   };
 
+  const bleed = checkboxBleed(leading);
+  const tile = ICON_TILE[leadingIconSize];
+  const height = ROW_MIN_HEIGHT[size][subtitle == null ? 'single' : 'double'];
+  const showDivider = position != null && !position.last;
+  const showReverted = state === 'reverted' && revertedReason != null;
+
   return (
-    <View style={style}>
-      <View style={styles.track}>
-        {leftActions.length > 0 && (
+    <Animated.View
+      onLayout={onRowLayout}
+      style={[style, disabled && styles.disabled, lifecycle]}
+    >
+      <View style={[styles.track, { backgroundColor: theme.colors.card }]}>
+        {leftActions.length > 0 && !disabled && (
           <ActionPanel actions={leftActions} side="left" />
         )}
-        {rightActions.length > 0 && (
+        {rightActions.length > 0 && !disabled && (
           <ActionPanel actions={rightActions} side="right" />
         )}
         <GestureDetector gesture={pan}>
@@ -288,7 +611,11 @@ export function ListRow({
                     ? undefined
                     : 'button'
               }
-              accessibilityState={checked == null ? undefined : { checked }}
+              accessibilityState={{
+                checked: checked ?? undefined,
+                disabled,
+                busy: state === 'unconfirmed' || undefined,
+              }}
               accessibilityLabel={
                 accessibilityLabel ??
                 (subtitle == null ? title : `${title}, ${subtitle}`)
@@ -298,26 +625,71 @@ export function ListRow({
                 label: action.label,
               }))}
               onAccessibilityAction={onAccessibilityAction}
+              disabled={disabled}
+              focusable={!disabled && (onPress != null || checked != null)}
               onPress={onPress}
               onLongPress={onLongPress}
+              onFocus={focus.onFocus}
+              onBlur={focus.onBlur}
+              android_ripple={
+                onPress == null ? undefined : press.android_ripple
+              }
               style={({ pressed }) => [
                 styles.row,
                 {
                   gap: theme.spacing.md,
-                  minHeight: ROW_MIN_HEIGHT[size],
+                  minHeight: height,
                   paddingVertical: theme.spacing.sm,
                   paddingHorizontal: theme.spacing.md,
                   backgroundColor: theme.colors.card,
                 },
-                state === 'unconfirmed' && styles.unconfirmed,
-                pressed && styles.pressed,
+                onPress != null && press.pressedStyle(pressed),
+                focus.ringStyle,
               ]}
             >
-              {leading}
-              <View style={styles.labels}>
-                <Text variant="body" numberOfLines={2}>
-                  {title}
-                </Text>
+              {leadingIcon != null ? (
+                <View
+                  style={[
+                    styles.tile,
+                    {
+                      width: tile.tile,
+                      height: tile.tile,
+                      borderRadius: theme.radii.md,
+                      backgroundColor: theme.colors.muted,
+                    },
+                  ]}
+                >
+                  <Icon name={leadingIcon} size={tile.glyph} />
+                </View>
+              ) : bleed > 0 ? (
+                <View style={{ marginHorizontal: -bleed }}>{leading}</View>
+              ) : (
+                leading
+              )}
+              <View style={styles.labels} onLayout={onLabelsLayout}>
+                <View>
+                  <Animated.View style={titleUnstruck}>
+                    <Text variant="body" numberOfLines={2}>
+                      {title}
+                    </Text>
+                  </Animated.View>
+                  {checked != null && (
+                    <Animated.View
+                      style={[StyleSheet.absoluteFill, titleStruck]}
+                      accessibilityElementsHidden
+                      importantForAccessibility="no-hide-descendants"
+                    >
+                      <Text
+                        variant="body"
+                        color="mutedForeground"
+                        numberOfLines={2}
+                        style={styles.struck}
+                      >
+                        {title}
+                      </Text>
+                    </Animated.View>
+                  )}
+                </View>
                 {subtitle != null && (
                   <Text variant="caption" numberOfLines={2}>
                     {subtitle}
@@ -325,22 +697,45 @@ export function ListRow({
                 )}
               </View>
               {state === 'unconfirmed' && (
-                <StatusPill label={unconfirmedLabel} />
+                <SavingNote label={unconfirmedLabel} />
+              )}
+              {value != null && (
+                // 15/20 muted in tabular figures, as the sheet's trailing value.
+                <Text
+                  variant="bodySm"
+                  color="mutedForeground"
+                  numberOfLines={1}
+                  style={styles.figures}
+                >
+                  {value}
+                </Text>
               )}
               {trailing}
+              {chevron && (
+                <Icon name="chevronRight" size={18} color="mutedForeground" />
+              )}
             </Pressable>
           </Animated.View>
         </GestureDetector>
       </View>
-      {state === 'reverted' && revertedReason != null && (
-        <InlineNotice
-          tone="destructive"
-          message={revertedReason}
-          actionLabel={onRetry == null ? undefined : retryLabel}
+      {showReverted && (
+        <RevertedNote
+          reason={revertedReason}
+          actionLabel={retryLabel}
           onAction={onRetry}
+          inset={titleInset}
         />
       )}
-    </View>
+      {showDivider && (
+        <View
+          testID="list-row-divider"
+          style={[
+            styles.divider,
+            { left: titleInset, backgroundColor: theme.colors.border },
+          ]}
+        />
+      )}
+    </Animated.View>
   );
 }
 
@@ -369,14 +764,38 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  tile: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   labels: {
     flexShrink: 1,
     flexGrow: 1,
   },
-  unconfirmed: {
-    opacity: 0.6,
+  struck: {
+    textDecorationLine: 'line-through',
   },
-  pressed: {
-    opacity: 0.75,
+  figures: {
+    fontVariant: ['tabular-nums'],
+  },
+  inline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  grow: {
+    flexGrow: 1,
+    flexShrink: 1,
+  },
+  retry: {
+    borderWidth: 1,
+  },
+  divider: {
+    position: 'absolute',
+    right: 0,
+    bottom: 0,
+    height: StyleSheet.hairlineWidth,
+  },
+  disabled: {
+    opacity: 0.4,
   },
 });

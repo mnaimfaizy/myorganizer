@@ -2,6 +2,8 @@ import React from 'react';
 import { Pressable, StyleSheet, type ViewStyle } from 'react-native';
 import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
+import { useFocusRing } from '../hooks/useFocusRing';
+import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Icon, type IconName } from './Icon';
 
 export interface IconButtonProps {
@@ -27,6 +29,8 @@ export function IconButton({
   style,
 }: IconButtonProps): React.JSX.Element {
   const theme = useTheme();
+  const press = usePressFeedback('borderless');
+  const focus = useFocusRing();
 
   return (
     <Pressable
@@ -34,7 +38,12 @@ export function IconButton({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled }}
       disabled={disabled}
+      // A disabled control is not a stop on the focus path (Lists sheet).
+      focusable={!disabled}
       onPress={onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
+      android_ripple={disabled ? undefined : press.android_ripple}
       style={({ pressed }) => [
         styles.button,
         {
@@ -42,16 +51,13 @@ export function IconButton({
           minHeight: MIN_TOUCH_TARGET,
           borderRadius: theme.radii.full,
         },
-        pressed && styles.pressed,
+        press.pressedStyle(pressed),
+        focus.ringStyle,
         disabled && styles.disabled,
         style,
       ]}
     >
-      <Icon
-        name={icon}
-        size={24}
-        color={disabled ? 'mutedForeground' : 'foreground'}
-      />
+      <Icon name={icon} size={22} color="foreground" />
     </Pressable>
   );
 }
@@ -60,9 +66,6 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.6,
   },
   disabled: {
     opacity: 0.4,

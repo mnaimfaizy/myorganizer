@@ -1,8 +1,7 @@
 import React from 'react';
 import { Modal, StyleSheet, View } from 'react-native';
 import { useTheme } from '../useTheme';
-import { Icon } from './Icon';
-import { Text } from './Text';
+import { BrandMark } from './BrandMark';
 
 export interface PrivacyCoverProps {
   visible: boolean;
@@ -11,7 +10,8 @@ export interface PrivacyCoverProps {
 /**
  * The opaque panel the app puts over itself whenever it leaves the foreground,
  * so the app switcher and any screen recording show the app's own mark instead
- * of a Vault (ADR 0108 decision 6).
+ * of a Vault (ADR 0108 decision 6). As drawn (Entry · Cover): the stacked brand
+ * lockup, centred on the page background, and nothing else.
  *
  * A `Modal` rather than an absolutely positioned view, because on iOS a modal
  * is presented in its own window above the root view: a cover drawn inside the
@@ -39,18 +39,9 @@ export function PrivacyCover({
       <View
         accessibilityViewIsModal
         accessibilityLabel="MyOrganizer is hidden"
-        style={[
-          styles.cover,
-          {
-            backgroundColor: theme.colors.background,
-            gap: theme.spacing.md,
-          },
-        ]}
+        style={[styles.cover, { backgroundColor: theme.colors.background }]}
       >
-        <Icon name="lock" size={40} color="mutedForeground" />
-        <Text variant="body" color="mutedForeground">
-          MyOrganizer
-        </Text>
+        <BrandMark lockup="stacked" />
       </View>
     </Modal>
   );

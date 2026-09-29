@@ -63,4 +63,81 @@ describe('MenuSheet Component', () => {
     // Icon and Text are the only two possible children; no icon means one.
     expect(item.children).toHaveLength(1);
   });
+
+  it('should render a picker as radios with a check on the selected one, a lead and a footnote', async () => {
+    await render(
+      <TestWrapper>
+        <MenuSheet
+          visible
+          onDismiss={jest.fn()}
+          title="Auto-lock"
+          lead="How long the app can sit in the background before the Vault locks."
+          footnote="The privacy cover always goes up straight away, whatever you pick here."
+          items={[
+            {
+              id: '1m',
+              label: 'After 1 minute',
+              selected: false,
+              onPress: jest.fn(),
+            },
+            {
+              id: '5m',
+              label: 'After 5 minutes',
+              selected: true,
+              onPress: jest.fn(),
+            },
+          ]}
+        />
+      </TestWrapper>,
+    );
+    expect(
+      screen.getByRole('radio', { name: 'After 5 minutes' }).props
+        .accessibilityState.checked,
+    ).toBe(true);
+    expect(
+      screen.getByRole('radio', { name: 'After 1 minute' }).props
+        .accessibilityState.checked,
+    ).toBe(false);
+    expect(
+      screen.getByText(
+        'How long the app can sit in the background before the Vault locks.',
+      ),
+    ).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'The privacy cover always goes up straight away, whatever you pick here.',
+      ),
+    ).toBeOnTheScreen();
+  });
+
+  it('should keep the sheet up for a setting flipped in place, and read its value', async () => {
+    const onDismiss = jest.fn();
+    const onPress = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <TestWrapper>
+        <MenuSheet
+          visible
+          onDismiss={onDismiss}
+          title="Weekly shop"
+          items={[
+            {
+              id: 'awake',
+              label: 'Keep screen on',
+              role: 'switch',
+              selected: true,
+              value: 'On',
+              keepOpen: true,
+              onPress,
+            },
+          ]}
+        />
+      </TestWrapper>,
+    );
+    await user.press(
+      screen.getByRole('switch', { name: 'Keep screen on, On' }),
+    );
+    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(onDismiss).not.toHaveBeenCalled();
+  });
 });

@@ -9,12 +9,12 @@ import Animated, {
 import { useTheme } from '../useTheme';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 
-/** How long one half of the pulse takes. */
-const PULSE_MS = 900;
+/** How long one half of the pulse takes: 1 → 0.5 over 1 s (Lists sheet). */
+const PULSE_MS = 1000;
 
 /** The two ends of the pulse. The low end still reads as a filled shape. */
-const DIM = 0.4;
-const BRIGHT = 0.9;
+const DIM = 0.5;
+const BRIGHT = 1;
 
 export interface SkeletonProps {
   width?: DimensionValue;
@@ -28,8 +28,9 @@ export interface SkeletonProps {
  * The shape of something that has not arrived yet.
  *
  * It holds the space the real content will take, so the screen does not jump
- * when it arrives. Under Reduce Motion it stops pulsing and sits at the bright
- * end — still visible, still the right shape, just still.
+ * when it arrives. It pulses from full opacity to half and back, a second each
+ * way; under Reduce Motion it stops pulsing and sits at full opacity — still
+ * visible, still the right shape, just still.
  */
 export function Skeleton({
   width = '100%',

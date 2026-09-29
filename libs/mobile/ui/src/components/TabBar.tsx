@@ -5,6 +5,7 @@ import { useTheme } from '../useTheme';
 import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
 import { MIN_TOUCH_TARGET, TAB_LABEL_SCALE_CAP } from '../metrics';
 import { fontCutFor } from '../typeScale';
+import { useFocusRing } from '../hooks/useFocusRing';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
 
@@ -65,74 +66,142 @@ export function TabBar({
 
   return (
     <View
+      testID="tab-bar"
       accessibilityRole="tablist"
       style={[
         styles.bar,
         {
           paddingBottom: insets.bottom,
-          paddingTop: theme.spacing.sm,
-          paddingHorizontal: theme.spacing.sm,
-          backgroundColor: theme.colors.raisedSurface,
+          paddingHorizontal: theme.spacing.xs,
+          backgroundColor: theme.colors.card,
           borderTopColor: theme.colors.border,
         },
       ]}
     >
-      {items.map((item) => {
-        const active = item.key === activeKey;
-        return (
-          <Pressable
-            key={item.key}
-            accessibilityRole="tab"
-            accessibilityLabel={item.accessibilityLabel ?? item.label}
-            accessibilityState={{ selected: active }}
-            onPress={() => onSelect(item.key)}
-            style={({ pressed }) => [
-              styles.tab,
-              {
-                minHeight: MIN_TOUCH_TARGET,
-                gap: theme.spacing.xs,
-                paddingVertical: theme.spacing.xs,
-                // The design sheet draws the tab button at 10, which falls
-                // exactly between the `md` and `lg` radius steps; a tie rounds
-                // up.
-                borderRadius: theme.radii.lg,
-              },
-              pressed && styles.pressed,
-            ]}
-          >
-            <Icon
-              name={item.icon}
-              size={24}
-              color={active ? 'foreground' : 'mutedForeground'}
-            />
-            <Text
-              color={active ? 'foreground' : 'mutedForeground'}
-              maxFontSizeMultiplier={TAB_LABEL_SCALE_CAP}
-              numberOfLines={1}
-              style={[
-                styles.label,
-                {
-                  fontFamily: fontCutFor('body', active ? '700' : '500'),
-                },
-              ]}
-            >
-              {item.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {items.map((item) => (
+        <Tab
+          key={item.key}
+          item={item}
+          active={item.key === activeKey}
+          onSelect={onSelect}
+        />
+      ))}
     </View>
   );
 }
 
+/**
+ * One tab: the indicator slot with its glyph, and the name under it.
+ *
+ * State is carried three ways, so it never depends on colour alone: the
+ * active tab fills its indicator with `cyan` and draws its glyph in
+ * `cyan-foreground` at a heavier stroke, and its label turns bold. A pressed
+ * tab fills the same slot with `accent` instead of fading — the slot is the
+ * tab's state layer, on both platforms.
+ */
+function Tab({
+  item,
+  active,
+  onSelect,
+}: {
+  item: TabBarItem;
+  active: boolean;
+  onSelect: (key: string) => void;
+}): React.JSX.Element {
+  const theme = useTheme();
+  const focus = useFocusRing('inset');
+
+  return (
+    <Pressable
+      accessibilityRole="tab"
+      accessibilityLabel={item.accessibilityLabel ?? item.label}
+      accessibilityState={{ selected: active }}
+      onPress={() => onSelect(item.key)}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
+      style={[
+        styles.tab,
+        {
+          minHeight: Math.max(TAB_HEIGHT, MIN_TOUCH_TARGET),
+          gap: theme.spacing.xs,
+          // The sheet draws the tab button and its indicator at 10, which
+          // falls exactly between the `md` and `lg` radius steps; a tie
+          // rounds up.
+          borderRadius: theme.radii.lg,
+        },
+        focus.ringStyle,
+      ]}
+    >
+      {({ pressed }) => (
+        <>
+          <View
+            testID={`tab-indicator-${item.key}`}
+            style={[
+              styles.indicator,
+              {
+                borderRadius: theme.radii.lg,
+                backgroundColor: active
+                  ? theme.colors.cyan
+                  : pressed
+                    ? theme.colors.accent
+                    : 'transparent',
+              },
+            ]}
+          >
+            <Icon
+              name={item.icon}
+              size={ICON_SIZE}
+              color={active ? 'cyanForeground' : 'mutedForeground'}
+              strokeWidth={active ? ACTIVE_STROKE : INACTIVE_STROKE}
+            />
+          </View>
+          <Text
+            color={active ? 'foreground' : 'mutedForeground'}
+            maxFontSizeMultiplier={TAB_LABEL_SCALE_CAP}
+            numberOfLines={1}
+            style={[
+              styles.label,
+              {
+                fontFamily: fontCutFor('body', active ? '700' : '500'),
+              },
+            ]}
+          >
+            {item.label}
+          </Text>
+        </>
+      )}
+    </Pressable>
+  );
+}
+
+/**
+ * The Navigation sheet's tab geometry. A tab is 60 tall — the 30pt
+ * indicator, a 4pt gap, and a 14pt label, centred — and its indicator is a
+ * 56 × 30 pill carrying a 22pt glyph. These are component dimensions, like the
+ * touch target, rather than spacing: no step of the scale is any of them.
+ */
+const TAB_HEIGHT = 60;
+const INDICATOR_WIDTH = 56;
+const INDICATOR_HEIGHT = 30;
+const ICON_SIZE = 22;
+const ACTIVE_STROKE = 2.4;
+const INACTIVE_STROKE = 2;
+
 const styles = StyleSheet.create({
   bar: {
     flexDirection: 'row',
-    alignItems: 'flex-end',
+    alignItems: 'flex-start',
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   tab: {
     flex: 1,
+    minWidth: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  indicator: {
+    width: INDICATOR_WIDTH,
+    height: INDICATOR_HEIGHT,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -141,8 +210,5 @@ const styles = StyleSheet.create({
     lineHeight: 14,
     letterSpacing: 0,
     textAlign: 'center',
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

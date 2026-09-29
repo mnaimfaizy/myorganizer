@@ -1,8 +1,8 @@
 import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
-import type { TestInstance } from 'test-renderer';
 import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
+import { MIN_TOUCH_TARGET } from '../metrics';
 import { Checkbox } from './Checkbox';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -21,9 +21,12 @@ function hapticTrigger(): jest.Mock {
   return module.default.trigger;
 }
 
-/** The box a Checkbox draws, which is the control's first child. */
-function boxStyle(control: TestInstance) {
-  return StyleSheet.flatten((control.children[0] as TestInstance).props.style);
+/** The box a Checkbox draws, inside its 44pt target. */
+function boxStyle() {
+  return StyleSheet.flatten(
+    screen.getByTestId('checkbox-box', { includeHiddenElements: true }).props
+      .style,
+  );
 }
 
 describe('Checkbox Component', () => {
@@ -87,8 +90,7 @@ describe('Checkbox Component', () => {
         <Checkbox checked={false} onChange={jest.fn()} size="standard" />
       </TestWrapper>,
     );
-    const control = screen.getByRole('checkbox');
-    expect(boxStyle(control).width).toBe(24);
+    expect(boxStyle().width).toBe(24);
   });
 
   it('should render box size 28pt for large size', async () => {
@@ -97,11 +99,10 @@ describe('Checkbox Component', () => {
         <Checkbox checked={false} onChange={jest.fn()} size="large" />
       </TestWrapper>,
     );
-    const control = screen.getByRole('checkbox');
-    expect(boxStyle(control).width).toBe(28);
+    expect(boxStyle().width).toBe(28);
   });
 
-  it('should trigger impactMedium haptic when ticking (unchecked to checked)', async () => {
+  it('should trigger the light impact haptic when ticking (unchecked to checked)', async () => {
     const trigger = hapticTrigger();
     trigger.mockClear();
 
@@ -113,7 +114,7 @@ describe('Checkbox Component', () => {
     );
     const checkbox = screen.getByRole('checkbox');
     await user.press(checkbox);
-    expect(trigger).toHaveBeenCalledWith('impactMedium', expect.any(Object));
+    expect(trigger).toHaveBeenCalledWith('impactLight', expect.any(Object));
   });
 
   it('should trigger selection haptic when unticking (checked to unchecked)', async () => {
@@ -129,5 +130,38 @@ describe('Checkbox Component', () => {
     const checkbox = screen.getByRole('checkbox');
     await user.press(checkbox);
     expect(trigger).toHaveBeenCalledWith('selection', expect.any(Object));
+  });
+
+  it('should draw the box at the 6pt design radius rounded up to the md step', async () => {
+    await render(
+      <TestWrapper>
+        <Checkbox checked={false} onChange={jest.fn()} />
+      </TestWrapper>,
+    );
+    expect(boxStyle().borderRadius).toBe(8);
+  });
+
+  it('should give the box a touch target of MIN_TOUCH_TARGET on both axes', async () => {
+    await render(
+      <TestWrapper>
+        <Checkbox checked={false} onChange={jest.fn()} />
+      </TestWrapper>,
+    );
+    const target = StyleSheet.flatten(
+      screen.getByTestId('checkbox-target', { includeHiddenElements: true })
+        .props.style,
+    );
+    expect(target.width).toBe(MIN_TOUCH_TARGET);
+    expect(target.height).toBe(MIN_TOUCH_TARGET);
+  });
+
+  it('should take the disabled checkbox off the focus path', async () => {
+    await render(
+      <TestWrapper>
+        <Checkbox checked={false} onChange={jest.fn()} disabled />
+      </TestWrapper>,
+    );
+    const control = screen.getByRole('checkbox');
+    expect(control.props.focusable).toBe(false);
   });
 });

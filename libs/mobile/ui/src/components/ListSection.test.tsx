@@ -1,7 +1,8 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
-import { Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
+import { lightTheme } from '../theme';
 import { ThemeProvider } from '../useTheme';
 import { ListSection } from './ListSection';
 
@@ -128,5 +129,73 @@ describe('ListSection Component', () => {
     );
     const header = screen.getByRole('button');
     expect(header.props?.accessibilityLabel).toBe('Tasks');
+  });
+
+  it('prints the count beside the title as the sheet draws it', async () => {
+    await render(
+      <TestWrapper>
+        <ListSection title="To buy" count={3} />
+      </TestWrapper>,
+    );
+    expect(screen.getByText('To buy · 3')).toBeOnTheScreen();
+  });
+
+  it('turns the chevron -90deg when a collapsible section is closed', async () => {
+    const user = userEvent.setup();
+    await render(
+      <TestWrapper>
+        <ListSection title="Checked" count={2} collapsible>
+          <Text>Baby spinach</Text>
+        </ListSection>
+      </TestWrapper>,
+    );
+    const header = screen.getByRole('button', { name: 'Checked · 2' });
+    const chevron = () =>
+      StyleSheet.flatten(
+        screen.getByTestId('list-section-chevron', {
+          includeHiddenElements: true,
+        }).props.style,
+      );
+    expect(chevron()?.transform).toBeUndefined();
+    await user.press(header);
+    expect(header.props.accessibilityState).toEqual({ expanded: false });
+    expect(chevron().transform).toEqual([{ rotate: '-90deg' }]);
+  });
+
+  it('follows a screen-owned collapsed state and reports the next one', async () => {
+    const onCollapsedChange = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <TestWrapper>
+        <ListSection
+          title="Checked"
+          collapsible
+          collapsed
+          onCollapsedChange={onCollapsedChange}
+        >
+          <Text>Baby spinach</Text>
+        </ListSection>
+      </TestWrapper>,
+    );
+    expect(screen.queryByText('Baby spinach')).toBeNull();
+    await user.press(screen.getByRole('button'));
+    expect(onCollapsedChange).toHaveBeenCalledWith(false);
+    // Still closed: the screen owns the state and has not changed it.
+    expect(screen.queryByText('Baby spinach')).toBeNull();
+  });
+
+  it('sets the rows on card between hairlines, with no rounded card', async () => {
+    await render(
+      <TestWrapper>
+        <ListSection title="To buy">
+          <Text>Oat milk</Text>
+        </ListSection>
+      </TestWrapper>,
+    );
+    const style = StyleSheet.flatten(
+      screen.getByTestId('list-section-rows').props.style,
+    );
+    expect(style.backgroundColor).toBe(lightTheme.colors.card);
+    expect(style.borderRadius).toBeUndefined();
   });
 });

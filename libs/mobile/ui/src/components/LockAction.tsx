@@ -2,6 +2,8 @@ import React from 'react';
 import { Pressable, StyleSheet, type ViewStyle } from 'react-native';
 import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
+import { useFocusRing } from '../hooks/useFocusRing';
+import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Icon } from './Icon';
 
 export interface LockActionProps {
@@ -27,12 +29,17 @@ export function LockAction({
   style,
 }: LockActionProps): React.JSX.Element {
   const theme = useTheme();
+  const press = usePressFeedback('borderless');
+  const focus = useFocusRing();
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
+      android_ripple={press.android_ripple}
       style={({ pressed }) => [
         styles.button,
         {
@@ -40,11 +47,15 @@ export function LockAction({
           minHeight: MIN_TOUCH_TARGET,
           borderRadius: theme.radii.full,
         },
-        pressed && styles.pressed,
+        press.pressedStyle(pressed),
+        focus.ringStyle,
         style,
       ]}
     >
-      <Icon name="lock" size={24} color="foreground" />
+      {/* The Navigation sheet draws the lock in `brand` at 22pt: it is the
+          one header action on every tab root, and the brand colour is what
+          marks it as the app's own control rather than a screen's. */}
+      <Icon name="lock" size={22} color="brand" />
     </Pressable>
   );
 }
@@ -53,8 +64,5 @@ const styles = StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  pressed: {
-    opacity: 0.6,
   },
 });

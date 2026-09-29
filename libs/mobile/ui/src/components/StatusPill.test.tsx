@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { StatusPill } from './StatusPill';
 
@@ -69,5 +70,25 @@ describe('StatusPill Component', () => {
       </ThemeProvider>,
     );
     expect(await screen.findByText('Dark')).toBeOnTheScreen();
+  });
+
+  it('should render the brand tone', async () => {
+    await render(
+      <TestWrapper>
+        <StatusPill label="Encrypted" tone="brand" />
+      </TestWrapper>,
+    );
+    expect(await screen.findByText('Encrypted')).toBeOnTheScreen();
+  });
+
+  it('should set the label in the uppercase label-caps step', async () => {
+    await render(
+      <TestWrapper>
+        <StatusPill label="Manual" tone="warning" />
+      </TestWrapper>,
+    );
+    const style = StyleSheet.flatten(screen.getByText('Manual').props.style);
+    expect(style.textTransform).toBe('uppercase');
+    expect(style.fontSize).toBe(12);
   });
 });

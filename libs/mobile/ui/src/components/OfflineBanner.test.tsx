@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { act, render, screen } from '@testing-library/react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { ThemeProvider } from '../useTheme';
 import { OfflineBanner } from './OfflineBanner';
@@ -41,9 +41,7 @@ describe('OfflineBanner Component', () => {
         </TestWrapper>,
       );
       expect(
-        await screen.findByText(
-          /Offline — changes are saved on this device and sync later/,
-        ),
+        await screen.findByText('You’re offline — changes can’t be saved'),
       ).toBeTruthy();
     });
 
@@ -58,9 +56,7 @@ describe('OfflineBanner Component', () => {
         </TestWrapper>,
       );
       expect(
-        await screen.findByText(
-          /Offline — changes are saved on this device and sync later/,
-        ),
+        await screen.findByText('You’re offline — changes can’t be saved'),
       ).toBeTruthy();
     });
 
@@ -75,9 +71,7 @@ describe('OfflineBanner Component', () => {
         </TestWrapper>,
       );
       expect(
-        await screen.findByText(
-          /Offline — changes are saved on this device and sync later/,
-        ),
+        await screen.findByText('You’re offline — changes can’t be saved'),
       ).toBeTruthy();
     });
   });
@@ -94,9 +88,7 @@ describe('OfflineBanner Component', () => {
         </TestWrapper>,
       );
       expect(
-        await screen.findByText(
-          /Offline — changes are saved on this device and sync later/,
-        ),
+        await screen.findByText('You’re offline — changes can’t be saved'),
       ).toBeTruthy();
     });
 
@@ -111,6 +103,69 @@ describe('OfflineBanner Component', () => {
         </TestWrapper>,
       );
       expect(screen.queryByText(/Offline/)).not.toBeOnTheScreen();
+    });
+  });
+
+  describe('Online-only copy (ADR 0107)', () => {
+    it('should never promise to save on the device and sync later', async () => {
+      await render(
+        <TestWrapper>
+          <OfflineBanner offline={true} />
+        </TestWrapper>,
+      );
+      expect(screen.queryByText(/sync later|saved on this device/)).toBeNull();
+    });
+  });
+
+  describe('Reconnecting and back online', () => {
+    afterEach(() => {
+      jest.useRealTimers();
+    });
+
+    it('should say Reconnecting… while the screen is retrying', async () => {
+      await render(
+        <TestWrapper>
+          <OfflineBanner offline={true} reconnecting={true} />
+        </TestWrapper>,
+      );
+      expect(screen.getByText('Reconnecting…')).toBeOnTheScreen();
+      expect(
+        screen.queryByText('You’re offline — changes can’t be saved'),
+      ).toBeNull();
+    });
+
+    it('should say Back online for two seconds after the connection returns, then collapse', async () => {
+      jest.useFakeTimers();
+      const { rerender } = await render(
+        <TestWrapper>
+          <OfflineBanner offline={true} />
+        </TestWrapper>,
+      );
+      await rerender(
+        <TestWrapper>
+          <OfflineBanner offline={false} />
+        </TestWrapper>,
+      );
+      expect(screen.getByText('Back online')).toBeOnTheScreen();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1999);
+      });
+      expect(screen.getByText('Back online')).toBeOnTheScreen();
+
+      await act(async () => {
+        jest.advanceTimersByTime(1);
+      });
+      expect(screen.queryByText('Back online')).toBeNull();
+    });
+
+    it('should not say Back online when it was never offline', async () => {
+      await render(
+        <TestWrapper>
+          <OfflineBanner offline={false} />
+        </TestWrapper>,
+      );
+      expect(screen.queryByText('Back online')).toBeNull();
     });
   });
 });

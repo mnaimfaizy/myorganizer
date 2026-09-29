@@ -2,6 +2,7 @@ import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
+import { FONT_FAMILY } from '../typeScale';
 import { TEXT_SCALE_CAP } from '../metrics';
 import { Text } from './Text';
 
@@ -103,6 +104,35 @@ describe('Text Component', () => {
       // Should use body variant by default — fontSize and fontFamily applied
       expect(flatStyle.fontSize).toBeDefined();
       expect(flatStyle.fontFamily).toBeDefined();
+    });
+  });
+
+  describe('Weight', () => {
+    it('should set a body-face step at another bundled weight, keeping its size', async () => {
+      await render(
+        <TestWrapper>
+          <Text variant="bodySm" weight="semibold">
+            Label
+          </Text>
+        </TestWrapper>,
+      );
+      const style = StyleSheet.flatten(screen.getByText('Label').props.style);
+      expect(style.fontFamily).toBe(FONT_FAMILY.bodySemiBold);
+      expect(style.fontSize).toBe(15);
+      expect(style.lineHeight).toBe(20);
+    });
+
+    it("should ignore a weight the step's face bundles no cut for", async () => {
+      await render(
+        <TestWrapper>
+          <Text variant="title" weight="medium">
+            Title
+          </Text>
+        </TestWrapper>,
+      );
+      expect(
+        StyleSheet.flatten(screen.getByText('Title').props.style).fontFamily,
+      ).toBe(FONT_FAMILY.displayBold);
     });
   });
 });

@@ -33,6 +33,12 @@ export interface TabScreenHeaderProps {
   title: string;
   /** An extra control before Lock — a tab's own header action, e.g. Groceries' "New list". */
   trailing?: React.ReactNode;
+  /**
+   * Whether the screen has scrolled past its title (Android only; iOS's
+   * native large title collapses itself). Drive it with the UI library's
+   * `useLargeTitleCollapse` on the screen's scroll view.
+   */
+  collapsed?: boolean;
 }
 
 /**
@@ -50,6 +56,7 @@ export interface TabScreenHeaderProps {
 export function TabScreenHeader({
   title,
   trailing,
+  collapsed = false,
 }: TabScreenHeaderProps): React.JSX.Element | null {
   const { lock } = useVaultSession();
 
@@ -59,6 +66,7 @@ export function TabScreenHeader({
     <LargeTitleHeader
       title={title}
       trailing={trailing}
+      collapsed={collapsed}
       onLock={() => lock('manual')}
     />
   );

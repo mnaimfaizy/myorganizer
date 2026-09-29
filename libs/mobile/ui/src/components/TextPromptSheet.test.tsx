@@ -61,7 +61,7 @@ describe('TextPromptSheet Component', () => {
     expect(onSubmit).toHaveBeenCalledWith('Weekly shop');
   });
 
-  it('should call onCancel when Cancel is pressed', async () => {
+  it('should call onCancel when the sheet is dismissed from the scrim', async () => {
     const onCancel = jest.fn();
     const user = userEvent.setup();
     await render(
@@ -75,7 +75,11 @@ describe('TextPromptSheet Component', () => {
         />
       </TestWrapper>,
     );
-    await user.press(screen.getByRole('button', { name: 'Cancel' }));
+    // The scrim sits outside the modal panel, so a screen reader is kept off
+    // it; it is still what a tap outside the panel lands on.
+    await user.press(
+      screen.getByLabelText('Dismiss', { includeHiddenElements: true }),
+    );
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
 

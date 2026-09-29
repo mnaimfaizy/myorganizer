@@ -10,7 +10,13 @@ import {
 } from '@react-navigation/native-stack';
 import { getDeviceSettings, setLastTab } from '@myorganizer/mobile/core';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
-import { LockAction, TabBar } from '@myorganizer/mobile/ui';
+import {
+  FONT_FAMILY,
+  LockAction,
+  TabBar,
+  useTheme,
+  type Theme,
+} from '@myorganizer/mobile/ui';
 import { AccountScreen } from './AccountScreen';
 import { AddressDetailScreen } from './AddressDetailScreen';
 import { DetailsScreen } from './DetailsScreen';
@@ -54,6 +60,43 @@ const PUSHED_SCREEN_OPTIONS: NativeStackNavigationOptions = {
 };
 
 /**
+ * The native header themed from the token theme, for both colour modes.
+ *
+ * The Navigation and Platform sheets draw the bar on `background` in
+ * `foreground`, with a hairline once the content scrolls under it: the native
+ * stack draws that hairline itself when the large title collapses, so it is
+ * hidden only while the large title is showing. The inline title is 17/600 on
+ * iOS and 22/28/700 on Android; the type scale has neither, so iOS takes the
+ * `body` size in the 600 cut and Android the `title` step.
+ */
+function headerChrome(theme: Theme): NativeStackNavigationOptions {
+  const inline =
+    Platform.OS === 'ios'
+      ? {
+          fontFamily: FONT_FAMILY.bodySemiBold,
+          fontSize: theme.type.body.fontSize,
+        }
+      : {
+          fontFamily: theme.type.title.fontFamily,
+          fontSize: theme.type.title.fontSize,
+        };
+  return {
+    headerStyle: { backgroundColor: theme.colors.background },
+    headerLargeStyle: { backgroundColor: theme.colors.background },
+    headerTintColor: theme.colors.foreground,
+    headerTitleStyle: { ...inline, color: theme.colors.foreground },
+    headerLargeTitleStyle: {
+      fontFamily: theme.type.display.fontFamily,
+      fontSize: theme.type.display.fontSize,
+      color: theme.colors.foreground,
+    },
+    headerShadowVisible: true,
+    headerLargeTitleShadowVisible: false,
+    contentStyle: { backgroundColor: theme.colors.background },
+  };
+}
+
+/**
  * Wraps a tab's screen in its own native stack, so each tab keeps a
  * navigation history of its own: pushing inside Groceries and switching to
  * Tasks leaves Groceries where it was.
@@ -77,10 +120,12 @@ function tabStack(
 
   function TabStack(): React.JSX.Element {
     const { lock } = useVaultSession();
+    const theme = useTheme();
 
     return (
       <Stack.Navigator
         screenOptions={{
+          ...headerChrome(theme),
           headerShown: Platform.OS === 'ios',
           headerLargeTitle: true,
           title: TAB_META[name].label,
