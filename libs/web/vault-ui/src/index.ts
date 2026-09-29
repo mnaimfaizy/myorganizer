@@ -35,5 +35,6 @@ export * from './lib/vaultClaimEvidenceGateView';
 export * from './lib/vaultGate';
 export * from './lib/vaultImportErrorMessages';
 export * from './lib/vaultMetaPushMessages';
+export * from './lib/vaultMountSettle';
 export * from './lib/VaultReplaceOffer';
 export * from './lib/vaultSyncMessages';

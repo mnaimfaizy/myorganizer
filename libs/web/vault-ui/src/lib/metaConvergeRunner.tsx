@@ -25,6 +25,7 @@ import {
 } from '@myorganizer/web-vault';
 
 import { useOptionalVaultSession } from './session';
+import { useReportVaultMountSettle } from './vaultMountSettle';
 
 /**
  * What answering the dialog records, per answer.
@@ -186,6 +187,8 @@ export function VaultMetaConvergeRunner() {
   // lock/unlock (which changes `handle`'s identity but not its owner) never
   // re-triggers a converge that's already in flight.
   const handleRef = useRef(handle);
+  const reportMountSettled = useReportVaultMountSettle('meta-converge');
+  const reportMountSettledRef = useRef(reportMountSettled);
 
   useEffect(() => {
     toastRef.current = toast;
@@ -194,6 +197,10 @@ export function VaultMetaConvergeRunner() {
   useEffect(() => {
     handleRef.current = handle;
   }, [handle]);
+
+  useEffect(() => {
+    reportMountSettledRef.current = reportMountSettled;
+  }, [reportMountSettled]);
 
   useEffect(() => {
     let cancelled = false;
@@ -343,6 +350,10 @@ export function VaultMetaConvergeRunner() {
         })
         .finally(() => {
           inFlight = false;
+          // Reported on every pass, not just the mount one — a no-op past
+          // the first report, since the mount-settle signal only ever means
+          // "the first pass finished."
+          reportMountSettledRef.current();
           if (cancelled || stopped) return;
           if (pendingRecheck) {
             pendingRecheck = false;

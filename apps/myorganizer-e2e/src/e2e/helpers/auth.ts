@@ -99,6 +99,7 @@ export async function submitLoginForm(
 
   await expect(page).toHaveURL(/.*dashboard/, { timeout: 60000 });
   await waitForDashboardReady(page);
+  await waitForVaultMountSettled(page);
 }
 
 /**
@@ -117,6 +118,23 @@ export async function waitForDashboardReady(page: Page): Promise<void> {
 }
 
 /**
+ * Resolve once the dashboard's mount-time vault async work —
+ * VaultMetaConvergeRunner, VaultPullRunner, and VaultReconcileRunner's
+ * first pass — has settled. Complements `waitForDashboardReady`, which
+ * only proves `DashboardGuard` resolved: a hard navigation issued before
+ * this settles can tear down those runners' in-flight requests mid-pass,
+ * a race that intermittently crashed WebKit's navigation outright rather
+ * than just flaking (issue #858).
+ */
+export async function waitForVaultMountSettled(page: Page): Promise<void> {
+  await expect(page.getByTestId('dashboard-mount-settled')).toHaveAttribute(
+    'data-settled',
+    'true',
+    { timeout: 60000 },
+  );
+}
+
+/**
  * Wait for a full page reload triggered by a callback, then resolve once the
  * dashboard shell is live.
  *
@@ -126,7 +144,10 @@ export async function waitForDashboardReady(page: Page): Promise<void> {
  * to vanish via `waitForFunction()`. `waitForFunction()` is resilient to
  * navigation and re-evaluates in the new execution context, so the absence
  * of the marker proves the reload committed. Then `waitForDashboardReady()`
- * ensures the new document's shell has mounted (issue #557).
+ * ensures the new document's shell has mounted (issue #557), and
+ * `waitForVaultMountSettled()` ensures the reloaded document's own mount-time
+ * vault work has too — a reload remounts `VaultSessionProvider` exactly like
+ * a fresh login does, so it is exposed to the same race (issue #858).
  */
 export async function waitForReload(
   page: Page,
@@ -146,4 +167,5 @@ export async function waitForReload(
   );
 
   await waitForDashboardReady(page);
+  await waitForVaultMountSettled(page);
 }

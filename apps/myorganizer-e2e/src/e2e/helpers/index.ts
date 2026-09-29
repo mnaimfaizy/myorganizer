@@ -5,6 +5,7 @@ export {
   waitForLoginFormInteractive,
   waitForReload,
   waitForSignupFormInteractive,
+  waitForVaultMountSettled,
 } from './auth';
 export { GroceriesPage } from './GroceriesPage';
 export { readDownloadText } from './download';
