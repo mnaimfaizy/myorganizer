@@ -24,6 +24,10 @@ the web bundle cannot resolve them. The two paths are wire-compatible: WebCrypto
 is already `ciphertext || 16-byte authTag`, the same layout the native path assembles by hand.
 Change one and you must change the other.
 
+`bytes.ts` has a `bytes.web.ts` variant for the same reason: its Buffer shim requires
+react-native-quick-base64 on React Native. `crypto.web.ts` re-exports the byte helpers from `./bytes`
+as `crypto.ts` does, so the web target has one copy of them.
+
 ## Commands
 
 - Test: `yarn nx test mobile-feat-vault` (or the direct Jest invocation in the harness's own
