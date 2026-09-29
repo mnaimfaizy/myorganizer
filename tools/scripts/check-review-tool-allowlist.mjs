@@ -92,9 +92,9 @@
 //      `ask` or `deny` rule in `.claude/settings.json`. Direction 2 only sees
 //      a command a document instructs. A grant the reviewer reaches for on
 //      its own is refused the same way, and direction 2 stays green because
-//      nobody was told to run it. Golden replay run 35714717480 spent 9
-//      permission denials on exactly that: commands the allowlist names and
-//      the project settings retract (ADR 0099). "Wholly" means the rule
+//      nobody was told to run it. The refusal is the mechanism ADR 0099
+//      records: an ask rule outranks the grant, and a headless run has nobody
+//      to answer it. "Wholly" means the rule
 //      matches every command the grant permits (`Bash(find:*)` against the
 //      same rule). "Partly" means it matches a narrower form, which is the
 //      damaging case: `Bash(node:*)` still looks granted while
@@ -1067,8 +1067,7 @@ const main = () => {
       `\nClaude Code evaluates deny, then ask, then allow, so the rule outranks the grant, and in a` +
         '\nheadless run an `ask` is a refusal (ADR 0099). Direction 2 does not see this: it only' +
         '\ncompares commands a document instructs. Drop the grant, narrow it to a form no rule' +
-        '\nmatches, or exempt the pair with a written reason in GRANT_RETRACTION_EXEMPTIONS.' +
-        '\nGolden replay run 35714717480 spent 9 permission denials on grants retracted this way.',
+        '\nmatches, or exempt the pair with a written reason in GRANT_RETRACTION_EXEMPTIONS.',
     );
     process.exit(1);
   }
