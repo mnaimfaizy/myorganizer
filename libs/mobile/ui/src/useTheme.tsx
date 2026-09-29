@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useMemo } from 'react';
-import { useColorScheme } from 'react-native';
+import React, { createContext, useContext, useEffect, useMemo } from 'react';
+import { Appearance as NativeAppearance, useColorScheme } from 'react-native';
 import type { Appearance } from '@myorganizer/mobile/core';
 import { resolveColorMode } from './appearance';
 import { themeForMode, type Theme } from './theme';
@@ -24,6 +24,17 @@ export function ThemeProvider({
   appearance,
   children,
 }: ThemeProviderProps): React.JSX.Element {
+  // The same choice for what the platform draws — the Material date dialog,
+  // the keyboard, an alert — which otherwise follows the device alone. `null`
+  // hands the choice back to the device, so `system` still means it. The
+  // web preview has no native appearance to set.
+  useEffect(() => {
+    if (typeof NativeAppearance.setColorScheme !== 'function') return;
+    NativeAppearance.setColorScheme(
+      appearance === 'system' ? null : appearance,
+    );
+  }, [appearance]);
+
   const systemScheme = useColorScheme();
   const theme = useMemo(
     () => themeForMode(resolveColorMode(appearance, systemScheme)),

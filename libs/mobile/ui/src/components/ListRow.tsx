@@ -565,6 +565,9 @@ export function ListRow({
   const enter = useSharedValue(entering ? 0 : 1);
   const previousChecked = useRef(checked);
   const [dwelling, setDwelling] = useState(false);
+  // Android fades a view group child by child, so a row fading in shows its
+  // swipe action panels through the sheet; iOS fades the group as one layer.
+  const [fadingIn, setFadingIn] = useState(entering === true);
   const settled = useRef(onTickSettled);
   settled.current = onTickSettled;
 
@@ -610,6 +613,9 @@ export function ListRow({
       reduceMotion
         ? { duration: MOTION.reducedFade }
         : { duration: MOTION.enter, easing: EASING.out },
+      (finished) => {
+        if (finished) runOnJS(setFadingIn)(false);
+      },
     );
     // Mount-only on purpose: `entering` describes how the row arrived, not a
     // state it can move into later.
@@ -673,6 +679,7 @@ export function ListRow({
   return (
     <Animated.View
       onLayout={onRowLayout}
+      needsOffscreenAlphaCompositing={fadingIn || dwelling}
       style={[style, disabled && styles.disabled, lifecycle]}
     >
       <View style={[styles.track, { backgroundColor: theme.colors.card }]}>

@@ -35,7 +35,12 @@ export function PrivacyCover({
   const theme = useTheme();
 
   return (
-    <Modal visible={visible} animationType="none" statusBarTranslucent>
+    <Modal
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent
+      navigationBarTranslucent
+    >
       <View
         accessibilityViewIsModal
         accessibilityLabel="MyOrganizer is hidden"

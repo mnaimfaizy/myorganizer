@@ -13,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../useTheme';
 import { useReduceMotion } from '../hooks/useReduceMotion';
+import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ColorMode, ThemeColors } from '../theme';
 import { usePressFeedback } from '../hooks/usePressFeedback';
@@ -120,7 +121,11 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
       // still covers what it covered, without sliding up to do it.
       animationType={reduceMotion ? 'none' : 'slide'}
       onRequestClose={props.onDismiss}
+      // Edge-to-edge like the screen under it (Android 15 enforces it there):
+      // with the status bar alone translucent, the dialog window still fits
+      // inside the system bars and the sheet's safe-area padding lands twice.
       statusBarTranslucent
+      navigationBarTranslucent
     >
       {props.navBar === undefined ? (
         <FitSheet {...props} />
@@ -129,6 +134,18 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
       )}
     </Modal>
   );
+}
+
+/**
+ * Whether a sheet's `KeyboardAvoidingView` pads for the keyboard. Always on
+ * iOS; on Android only while the keyboard is up, because React Native 0.79
+ * reports its hiding with the window's visible frame — the frame less the
+ * system bars — and a sheet drawn edge-to-edge in a Modal kept that
+ * difference as padding once the keyboard had gone.
+ */
+function useAvoidKeyboard(): boolean {
+  const keyboardVisible = useKeyboardVisible();
+  return Platform.OS === 'ios' || keyboardVisible;
 }
 
 function FitSheet({
@@ -143,11 +160,13 @@ function FitSheet({
   const { height: windowHeight } = useWindowDimensions();
   const closeFeedback = usePressFeedback('borderless');
   const dark = theme.mode === 'dark';
+  const avoidKeyboard = useAvoidKeyboard();
 
   return (
     <KeyboardAvoidingView
       style={styles.fill}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
+      enabled={avoidKeyboard}
     >
       <Pressable
         accessibilityRole="button"
@@ -265,6 +284,7 @@ function FormSheet({
     actionBusy = false,
   } = navBar;
   const actionInert = actionDisabled || actionBusy;
+  const avoidKeyboard = useAvoidKeyboard();
 
   return (
     <KeyboardAvoidingView
@@ -277,7 +297,8 @@ function FormSheet({
           backgroundColor: theme.colors.background,
         },
       ]}
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      behavior="padding"
+      enabled={avoidKeyboard}
     >
       <View
         style={[

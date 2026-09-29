@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
+  Platform,
   Pressable,
   StyleSheet,
   TextInput,
@@ -19,6 +20,15 @@ const FIELD_HEIGHT = 48;
 
 /** How many lines a multiline field shows before it grows. */
 const MULTILINE_ROWS = 2;
+
+/**
+ * How long an Android `autoFocus` field waits before taking focus. Focused as
+ * it mounts, a field inside a Modal takes focus before the dialog window can
+ * show a keyboard for it, and focusing it again does nothing — React Native
+ * skips a field it already counts as focused — so on Android the field is
+ * focused once, after this.
+ */
+const ANDROID_AUTOFOCUS_DELAY_MS = 300;
 
 export interface TextFieldProps extends TextInputProps {
   /** Sentence case, above the field. Also what the input is announced as. */
@@ -96,11 +106,24 @@ export function TextField({
   multiline,
   editable,
   value,
+  autoFocus,
   ...rest
 }: TextFieldProps): React.JSX.Element {
   const theme = useTheme();
+  const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const delayFocus = autoFocus === true && Platform.OS === 'android';
+
+  useEffect(() => {
+    if (!delayFocus) return;
+    const timer = setTimeout(
+      () => inputRef.current?.focus(),
+      ANDROID_AUTOFOCUS_DELAY_MS,
+    );
+    return () => clearTimeout(timer);
+    // Mount-only, like `autoFocus` itself.
+  }, []);
   const disabled = editable === false;
   const hasError = error != null;
   const showClear =
@@ -182,6 +205,8 @@ export function TextField({
           </Text>
         )}
         <TextInput
+          ref={inputRef}
+          autoFocus={autoFocus === true && !delayFocus}
           accessibilityLabel={
             label != null && prefix != null ? `${label}, ${prefix}` : label
           }

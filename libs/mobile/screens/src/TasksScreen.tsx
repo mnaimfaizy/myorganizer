@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Keyboard,
   KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -691,10 +690,7 @@ export function TasksScreen(): React.JSX.Element {
           />
         </View>
       ) : (
-        <KeyboardAvoidingView
-          style={styles.fill}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        >
+        <KeyboardAvoidingView style={styles.fill} behavior="padding">
           <View style={styles.fill}>
             <ScrollView
               contentInsetAdjustmentBehavior="automatic"
