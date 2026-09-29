@@ -1,7 +1,7 @@
-import type {
-  PutVaultBlobResponse,
-  VaultApi,
+import {
   VaultBlobType,
+  type PutVaultBlobResponse,
+  type VaultApi,
 } from '@myorganizer/app-api-client';
 import {
   toVaultBlobEnvelope,
@@ -77,6 +77,22 @@ export { isNetworkError } from './networkError';
  * — the network, the server, a Ciphertext this Master Key cannot open — is
  * thrown; none of them is evidence the blob is empty.
  */
+/**
+ * A Vault Blob Type's records before its first write, in the shape its
+ * readers and edits expect — the web's shape for the same blob. Groceries
+ * holds an object, `{ catalog, lists }`; the other four hold a list. Every
+ * type once got a list here, which `createGroceryList` rightly declines to
+ * edit, so a new account's first Grocery List saved as nothing at all — and
+ * saved that empty list as the blob, which is why a read repairs it too.
+ */
+const EMPTY_RECORDS = {
+  [VaultBlobType.Addresses]: () => [],
+  [VaultBlobType.Groceries]: () => ({ catalog: [], lists: [] }),
+  [VaultBlobType.MobileNumbers]: () => [],
+  [VaultBlobType.Subscriptions]: () => [],
+  [VaultBlobType.Tasks]: () => [],
+} as const satisfies Record<VaultBlobType, () => unknown>;
+
 export async function readVaultBlob(params: {
   vaultApi: VaultApi;
   masterKey: Uint8Array;
@@ -87,7 +103,10 @@ export async function readVaultBlob(params: {
     response = await params.vaultApi.getVaultBlob({ type: params.type });
   } catch (err) {
     if (httpStatus(err) === 404) {
-      return { envelope: { records: [], deletions: {} }, etag: null };
+      return {
+        envelope: { records: EMPTY_RECORDS[params.type](), deletions: {} },
+        etag: null,
+      };
     }
     throw err;
   }
@@ -99,8 +118,17 @@ export async function readVaultBlob(params: {
     iv: base64ToBytes(blob.iv),
   });
 
+  const envelope = toVaultBlobEnvelope(JSON.parse(bytesToUtf8(plaintext)));
   return {
-    envelope: toVaultBlobEnvelope(JSON.parse(bytesToUtf8(plaintext))),
+    envelope: {
+      ...envelope,
+      // A blob saved empty in the wrong shape reads as empty in the right
+      // one: an empty list holds nothing to lose.
+      records:
+        Array.isArray(envelope.records) && envelope.records.length === 0
+          ? EMPTY_RECORDS[params.type]()
+          : envelope.records,
+    },
     etag,
   };
 }
