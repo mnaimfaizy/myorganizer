@@ -12,6 +12,11 @@ export interface IconButtonProps {
   /** What the control is announced as. An icon carries no label of its own. */
   accessibilityLabel: string;
   disabled?: boolean;
+  /**
+   * `plain` (the default) is a bare glyph. `filled` sits the glyph on a round
+   * `primary` fill — the Tasks capture composer's Save.
+   */
+  variant?: 'plain' | 'filled';
   style?: ViewStyle;
 }
 
@@ -26,11 +31,13 @@ export function IconButton({
   onPress,
   accessibilityLabel,
   disabled = false,
+  variant = 'plain',
   style,
 }: IconButtonProps): React.JSX.Element {
   const theme = useTheme();
   const press = usePressFeedback('borderless');
   const focus = useFocusRing();
+  const filled = variant === 'filled';
 
   return (
     <Pressable
@@ -51,13 +58,24 @@ export function IconButton({
           minHeight: MIN_TOUCH_TARGET,
           borderRadius: theme.radii.full,
         },
+        filled && { backgroundColor: theme.colors.primary },
         press.pressedStyle(pressed),
         focus.ringStyle,
         disabled && styles.disabled,
         style,
       ]}
     >
-      <Icon name={icon} size={22} color="foreground" />
+      {filled ? (
+        // The sheet draws the filled glyph at 20 and 2.4.
+        <Icon
+          name={icon}
+          size={20}
+          color="primaryForeground"
+          strokeWidth={2.4}
+        />
+      ) : (
+        <Icon name={icon} size={22} color="foreground" />
+      )}
     </Pressable>
   );
 }

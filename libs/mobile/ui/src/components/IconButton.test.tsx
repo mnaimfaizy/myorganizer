@@ -1,6 +1,8 @@
 import React from 'react';
 import { render, screen, userEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
+import { lightTheme } from '../theme';
 import { IconButton } from './IconButton';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -56,5 +58,21 @@ describe('IconButton Component', () => {
     expect(button.props.accessibilityState?.disabled).toBe(true);
     await user.press(button);
     expect(onPress).not.toHaveBeenCalled();
+  });
+  it('sits the glyph on a round primary fill when filled', async () => {
+    await render(
+      <TestWrapper>
+        <IconButton
+          icon="arrowUp"
+          variant="filled"
+          accessibilityLabel="Save task"
+          onPress={jest.fn()}
+        />
+      </TestWrapper>,
+    );
+    const button = screen.getByRole('button', { name: 'Save task' });
+    expect(StyleSheet.flatten(button.props.style).backgroundColor).toBe(
+      lightTheme.colors.primary,
+    );
   });
 });

@@ -65,6 +65,12 @@ export interface InlineNoticeProps {
   variant?: NoticeVariant;
   /** Overrides the tone's glyph, where the cause is more specific than the tone. */
   icon?: IconName;
+  /**
+   * Overrides the tone's glyph colour and leaves the line's alone — Sign in's
+   * disabled-account line draws a red mark beside body text, and Unlock's
+   * "Unlocking —" status a brand-violet spinner beside a muted line.
+   */
+  iconColor?: keyof ThemeColors;
   /** An optional way out — Retry, most often. */
   actionLabel?: string;
   /** A glyph before the action's label — `retry` for Retry. */
@@ -91,6 +97,7 @@ export function InlineNotice({
   tone = 'neutral',
   variant = 'inline',
   icon,
+  iconColor,
   actionLabel,
   actionIcon,
   onAction,
@@ -134,7 +141,11 @@ export function InlineNotice({
             paddingTop: (theme.type[step].lineHeight - iconSize) / 2,
           }}
         >
-          <Icon name={icon ?? toneIcon} size={iconSize} color={glyph} />
+          <Icon
+            name={icon ?? toneIcon}
+            size={iconSize}
+            color={iconColor ?? glyph}
+          />
         </View>
         <Text variant={step} color={text} style={styles.messageText}>
           {message}

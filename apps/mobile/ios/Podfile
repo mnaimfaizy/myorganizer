@@ -27,6 +27,10 @@ target 'Mobile' do
   # for the one flag it sets. See RNKeepAwake/RNKeepAwake.swift.
   pod 'RNKeepAwake', :path => './RNKeepAwake'
 
+  # The bundle's version and build for Account's About row. See
+  # RNAppInfo/RNAppInfo.swift.
+  pod 'RNAppInfo', :path => './RNAppInfo'
+
   use_react_native!(
     :path => config[:reactNativePath],
     # An absolute path to your application root.

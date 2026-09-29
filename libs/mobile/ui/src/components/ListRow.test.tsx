@@ -279,6 +279,42 @@ describe('ListRow Component', () => {
     });
   });
 
+  describe('toggle', () => {
+    it('announces the row as a switch in its state, and presses flip it', async () => {
+      const onPress = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Keep screen awake on a trip"
+            toggle={{ value: true }}
+            onPress={onPress}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('switch');
+      expect(row.props.accessibilityState.checked).toBe(true);
+      expect(row.props.accessibilityState.disabled).toBe(false);
+      await userEvent.setup().press(row);
+      expect(onPress).toHaveBeenCalledTimes(1);
+    });
+
+    it('announces a switch that cannot be flipped as disabled', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Biometric Unlock"
+            toggle={{ value: false, disabled: true }}
+          />
+        </TestWrapper>,
+      );
+      const row = screen.getByRole('switch');
+      expect(row.props.accessibilityState).toMatchObject({
+        checked: false,
+        disabled: true,
+      });
+    });
+  });
+
   describe('accessibilityLabel', () => {
     it('uses accessibilityLabel when provided', async () => {
       await render(
@@ -571,6 +607,34 @@ describe('ListRow Component', () => {
         .map((node) => StyleSheet.flatten(node.props.style))
         .find((style) => style.textDecorationLine === 'line-through');
       expect(struck?.color).toBe(lightTheme.colors.mutedForeground);
+    });
+
+    it('mutes a checked title without striking it when strikeChecked is false', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Medibank"
+            checked
+            strikeChecked={false}
+            onPress={jest.fn()}
+          />
+        </TestWrapper>,
+      );
+      const styles = screen
+        .getAllByText('Medibank', { includeHiddenElements: true })
+        .map((node) => StyleSheet.flatten(node.props.style));
+      expect(
+        styles.some((style) => style.textDecorationLine === 'line-through'),
+      ).toBe(false);
+      expect(
+        styles.some(
+          (style) => style.color === lightTheme.colors.mutedForeground,
+        ),
+      ).toBe(true);
+      expect(
+        screen.getByRole('checkbox', { name: 'Medibank' }).props
+          .accessibilityState.checked,
+      ).toBe(true);
     });
 
     it('dims a disabled row, takes it off the focus path, and ignores presses', async () => {

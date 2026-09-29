@@ -41,6 +41,17 @@ export interface ListSectionProps {
    * Not the count: a count belongs in `count`, beside the title.
    */
   meta?: React.ReactNode;
+  /**
+   * Draws the heading in `warning` — a group that needs attention now, such
+   * as the Tasks list's "Overdue · 1".
+   */
+  warning?: boolean;
+  /**
+   * Draws the rows as an inset card — in from the screen edge by the gutter,
+   * edged and rounded, on the `card` elevation — as the Account and detail
+   * sheets draw a settings group, instead of the Lists sheet's full-bleed run.
+   */
+  inset?: boolean;
   /** Gives the header a disclosure control. */
   collapsible?: boolean;
   /** Whether a collapsible section starts closed (uncontrolled). */
@@ -72,6 +83,8 @@ export function ListSection({
   title,
   count,
   meta,
+  warning = false,
+  inset = false,
   collapsible = false,
   defaultCollapsed = false,
   collapsed: collapsedProp,
@@ -89,10 +102,19 @@ export function ListSection({
   const heading = count == null ? title : `${title} · ${count}`;
 
   const rows = React.Children.toArray(children);
+  const content = rows.map((child, index) => (
+    <RowPositionContext.Provider
+      key={React.isValidElement(child) ? child.key : index}
+      value={index === rows.length - 1 ? LAST : NOT_LAST}
+    >
+      {child}
+    </RowPositionContext.Provider>
+  ));
 
   const label = (
     <Text
       variant="labelCaps"
+      color={warning ? 'warning' : undefined}
       accessibilityRole={collapsible ? undefined : 'header'}
       style={styles.title}
       numberOfLines={1}
@@ -164,7 +186,7 @@ export function ListSection({
           {trailing}
         </View>
       )}
-      {!collapsed && rows.length > 0 && (
+      {!collapsed && rows.length > 0 && !inset && (
         <View
           testID="list-section-rows"
           style={[
@@ -175,14 +197,35 @@ export function ListSection({
             },
           ]}
         >
-          {rows.map((child, index) => (
-            <RowPositionContext.Provider
-              key={React.isValidElement(child) ? child.key : index}
-              value={index === rows.length - 1 ? LAST : NOT_LAST}
-            >
-              {child}
-            </RowPositionContext.Provider>
-          ))}
+          {content}
+        </View>
+      )}
+      {!collapsed && rows.length > 0 && inset && (
+        // The shadow sits on an outer view and the clip on an inner one: on
+        // iOS `overflow: hidden` clips a view's own shadow away.
+        <View
+          testID="list-section-rows"
+          style={[
+            {
+              marginHorizontal: theme.spacing.md,
+              // The sheet rounds the card at 12: `lg`.
+              borderRadius: theme.radii.lg,
+              backgroundColor: theme.colors.card,
+            },
+            theme.shadows.card,
+          ]}
+        >
+          <View
+            style={[
+              styles.insetRows,
+              {
+                borderRadius: theme.radii.lg,
+                borderColor: theme.colors.border,
+              },
+            ]}
+          >
+            {content}
+          </View>
         </View>
       )}
     </View>
@@ -192,6 +235,51 @@ export function ListSection({
 /** Shared so a re-render does not hand every row a new context value. */
 const LAST: ListRowPosition = { last: true };
 const NOT_LAST: ListRowPosition = { last: false };
+
+export interface ListSectionRowsProps {
+  children?: React.ReactNode;
+}
+
+/**
+ * A section's rows without its header: the full-bleed card band between two
+ * hairlines, every row but the last drawing its inset divider — exactly the
+ * band `ListSection` draws under its header.
+ *
+ * For a list whose headers are laid out apart from their rows — the grocery
+ * trip view pins each category header as a sticky header of its scroll view,
+ * which only a direct child of the scroll view can be — and for a run of rows
+ * the design draws with no header at all (the Add sheet's results). Renders
+ * nothing when it holds no rows.
+ */
+export function ListSectionRows({
+  children,
+}: ListSectionRowsProps): React.JSX.Element | null {
+  const theme = useTheme();
+  const rows = React.Children.toArray(children);
+  if (rows.length === 0) return null;
+
+  return (
+    <View
+      testID="list-section-rows"
+      style={[
+        styles.rows,
+        {
+          borderColor: theme.colors.border,
+          backgroundColor: theme.colors.card,
+        },
+      ]}
+    >
+      {rows.map((child, index) => (
+        <RowPositionContext.Provider
+          key={React.isValidElement(child) ? child.key : index}
+          value={index === rows.length - 1 ? LAST : NOT_LAST}
+        >
+          {child}
+        </RowPositionContext.Provider>
+      ))}
+    </View>
+  );
+}
 
 const styles = StyleSheet.create({
   header: {
@@ -213,5 +301,9 @@ const styles = StyleSheet.create({
   rows: {
     borderTopWidth: StyleSheet.hairlineWidth,
     borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  insetRows: {
+    borderWidth: 1,
+    overflow: 'hidden',
   },
 });

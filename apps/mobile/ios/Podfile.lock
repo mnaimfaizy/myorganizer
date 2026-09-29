@@ -1854,6 +1854,8 @@ PODS:
     - React-logger (= 0.79.7)
     - React-perflogger (= 0.79.7)
     - React-utils (= 0.79.7)
+  - RNAppInfo (1.0.0):
+    - React-Core
   - RNDateTimePicker (8.6.0):
     - DoubleConversion
     - glog
@@ -2259,6 +2261,7 @@ DEPENDENCIES:
   - ReactAppDependencyProvider (from `build/generated/ios`)
   - ReactCodegen (from `build/generated/ios`)
   - ReactCommon/turbomodule/core (from `../../../node_modules/react-native/ReactCommon`)
+  - RNAppInfo (from `./RNAppInfo`)
   - "RNDateTimePicker (from `../../../node_modules/@react-native-community/datetimepicker`)"
   - RNGestureHandler (from `../../../node_modules/react-native-gesture-handler`)
   - RNKeepAwake (from `./RNKeepAwake`)
@@ -2427,6 +2430,8 @@ EXTERNAL SOURCES:
     :path: build/generated/ios
   ReactCommon:
     :path: "../../../node_modules/react-native/ReactCommon"
+  RNAppInfo:
+    :path: "./RNAppInfo"
   RNDateTimePicker:
     :path: "../../../node_modules/@react-native-community/datetimepicker"
   RNGestureHandler:
@@ -2525,6 +2530,7 @@ SPEC CHECKSUMS:
   ReactAppDependencyProvider: b203bace11326361b7f0513b3f5854cd340aa929
   ReactCodegen: 25463f45cfeb98adf151620288bf1132398f39b2
   ReactCommon: 4e460daed3ccb6af9e3de3176920362d8b888a17
+  RNAppInfo: 6eb7dbb135f04454f834f816c01da68a668f6112
   RNDateTimePicker: 4b3de938b14deb7f63a719318b21f0fbfa9ad070
   RNGestureHandler: f72fa3dac5dc7a8e8d32f955a42409c148aba331
   RNKeepAwake: 5341f94270a82103c6772618601573f93f763123
@@ -2537,6 +2543,6 @@ SPEC CHECKSUMS:
   SocketRocket: d4aabe649be1e368d1318fdf28a022d714d65748
   Yoga: 9663a18d096f7f7e17a535cf00849db756709955
 
-PODFILE CHECKSUM: 18da2dbdf996f2645d46fc5f8c8a82b59a80e53b
+PODFILE CHECKSUM: 62f1080b4ca63ee80cf50f5c7b3fdd594214871a
 
 COCOAPODS: 1.15.2

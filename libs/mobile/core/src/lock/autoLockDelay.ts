@@ -47,15 +47,15 @@ const AUTO_LOCK_DELAYS = {
   immediately: { ms: 0, lockedMessage: 'Locked when you left the app.' },
   '1m': {
     ms: 60_000,
-    lockedMessage: 'Locked after 1 minute in the background.',
+    lockedMessage: 'Locked after 1 minute in the background',
   },
   '5m': {
     ms: 5 * 60_000,
-    lockedMessage: 'Locked after 5 minutes in the background.',
+    lockedMessage: 'Locked after 5 minutes in the background',
   },
   '15m': {
     ms: 15 * 60_000,
-    lockedMessage: 'Locked after 15 minutes in the background.',
+    lockedMessage: 'Locked after 15 minutes in the background',
   },
 } as const satisfies Record<AutoLockDelay, AutoLockDelayMeta>;
 

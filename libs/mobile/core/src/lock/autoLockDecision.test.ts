@@ -251,21 +251,21 @@ describe('autoLockDelay.ts', () => {
       );
     });
 
-    it('for 1m: "Locked after 1 minute in the background."', () => {
+    it('for 1m: "Locked after 1 minute in the background"', () => {
       expect(describeAutoLock('1m')).toBe(
-        'Locked after 1 minute in the background.',
+        'Locked after 1 minute in the background',
       );
     });
 
-    it('for 5m: "Locked after 5 minutes in the background."', () => {
+    it('for 5m: "Locked after 5 minutes in the background"', () => {
       expect(describeAutoLock('5m')).toBe(
-        'Locked after 5 minutes in the background.',
+        'Locked after 5 minutes in the background',
       );
     });
 
-    it('for 15m: "Locked after 15 minutes in the background."', () => {
+    it('for 15m: "Locked after 15 minutes in the background"', () => {
       expect(describeAutoLock('15m')).toBe(
-        'Locked after 15 minutes in the background.',
+        'Locked after 15 minutes in the background',
       );
     });
 

@@ -416,4 +416,37 @@ describe('TextField Component', () => {
       expect(onClear).toHaveBeenCalledTimes(1);
     });
   });
+
+  describe('Leading icon', () => {
+    it('draws the glyph before the value, hidden from a screen reader', async () => {
+      await render(
+        <TestWrapper>
+          <TextField
+            icon="search"
+            placeholder="Search your Catalog"
+            accessibilityLabel="Search your Catalog"
+          />
+        </TestWrapper>,
+      );
+      const icon = screen.getByTestId('text-field-icon', {
+        includeHiddenElements: true,
+      });
+      expect(icon.props.accessibilityElementsHidden).toBe(true);
+      expect(icon.props.importantForAccessibility).toBe('no-hide-descendants');
+      expect(screen.getByLabelText('Search your Catalog')).toBeOnTheScreen();
+    });
+
+    it('draws no glyph without an icon', async () => {
+      await render(
+        <TestWrapper>
+          <TextField placeholder="List name" />
+        </TestWrapper>,
+      );
+      expect(
+        screen.queryByTestId('text-field-icon', {
+          includeHiddenElements: true,
+        }),
+      ).toBeNull();
+    });
+  });
 });

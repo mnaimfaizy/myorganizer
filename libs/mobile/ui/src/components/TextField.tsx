@@ -11,7 +11,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET, TEXT_SCALE_CAP } from '../metrics';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Glyph } from './glyphs';
-import { Icon } from './Icon';
+import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
 
 /** The field's height on the Inputs sheet. No token carries a control height. */
@@ -35,6 +35,22 @@ export interface TextFieldProps extends TextInputProps {
    * amount. Read after the label, before the value.
    */
   prefix?: string;
+  /**
+   * Fixed text inside the field after the value — a unit ("minutes" on a
+   * Task's estimate). Read after the value.
+   */
+  suffix?: string;
+  /**
+   * Drawn at the far end of the label's line — an Unconfirmed Edit's
+   * "Saving…" beside the field it is saving (Tasks · Detail · Saving).
+   */
+  labelAccessory?: React.ReactNode;
+  /**
+   * A glyph inside the field before the value — the Add sheet's magnifier on
+   * "Search your Catalog". Decorative: the label or placeholder says what the
+   * field is for.
+   */
+  icon?: IconName;
   containerStyle?: ViewStyle;
   /**
    * Renders the reveal toggle — a 44 × 44 eye inside the field's trailing
@@ -64,6 +80,9 @@ export function TextField({
   error,
   hint,
   prefix,
+  suffix,
+  labelAccessory,
+  icon,
   containerStyle,
   style,
   onFocus,
@@ -109,11 +128,19 @@ export function TextField({
         containerStyle,
       ]}
     >
-      {label != null && (
-        <Text variant="bodySm" weight="semibold" color="foreground">
-          {label}
-        </Text>
-      )}
+      {label != null &&
+        (labelAccessory == null ? (
+          <Text variant="bodySm" weight="semibold" color="foreground">
+            {label}
+          </Text>
+        ) : (
+          <View style={[styles.labelRow, { gap: theme.spacing.sm }]}>
+            <Text variant="bodySm" weight="semibold" color="foreground">
+              {label}
+            </Text>
+            {labelAccessory}
+          </View>
+        ))}
       <View
         style={[
           styles.field,
@@ -135,6 +162,15 @@ export function TextField({
           },
         ]}
       >
+        {icon != null && (
+          <View
+            testID="text-field-icon"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            <Icon name={icon} size={20} color="foreground" />
+          </View>
+        )}
         {prefix != null && (
           <Text
             variant="body"
@@ -180,6 +216,16 @@ export function TextField({
           }}
           {...rest}
         />
+        {suffix != null && (
+          <Text
+            variant="bodySm"
+            color="mutedForeground"
+            accessibilityElementsHidden
+            importantForAccessibility="no-hide-descendants"
+          >
+            {suffix}
+          </Text>
+        )}
         {revealable && (
           <Accessory
             label={revealed ? `Hide ${revealLabel}` : `Show ${revealLabel}`}
@@ -266,6 +312,11 @@ const styles = StyleSheet.create({
   field: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   input: {
     flex: 1,

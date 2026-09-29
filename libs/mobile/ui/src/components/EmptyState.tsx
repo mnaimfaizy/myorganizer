@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
 import { useTheme } from '../useTheme';
-import { Button } from './Button';
+import { Button, type ButtonVariant } from './Button';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
 
@@ -17,8 +17,29 @@ export interface EmptyStateProps {
   /** A glyph before the action's label — `plus` for "Add task". */
   actionIcon?: IconName;
   onAction?: () => void;
+  /**
+   * The action's weight. `primary` by default; the Tasks "All clear" state
+   * offers "Show done" as `secondary`, because nothing there is to be done.
+   */
+  actionVariant?: ButtonVariant;
+  /**
+   * Which side of the label `actionIcon` sits. `leading` by default; the
+   * Details empty state's "Open the web app" ends in the external-link glyph,
+   * because it leaves the app (Det-List-Empty).
+   */
+  actionIconPosition?: 'leading' | 'trailing';
+  /**
+   * `neutral` (the default) draws the glyph on the `muted` tile. `success`
+   * tints the tile `success` at 12% and draws the glyph in `success` — a
+   * list that is empty because everything in it is finished (Tasks' "All
+   * clear"), not because nothing was ever added.
+   */
+  tone?: 'neutral' | 'success';
   style?: ViewStyle;
 }
+
+/** The sheet's tint behind a `success` glyph. No token carries an alpha. */
+const SUCCESS_TINT_OPACITY = 0.12;
 
 /** The Lists sheet's tile and its glyph, in points. */
 const TILE = 56;
@@ -41,9 +62,13 @@ export function EmptyState({
   actionLabel,
   actionIcon,
   onAction,
+  actionVariant = 'primary',
+  actionIconPosition = 'leading',
+  tone = 'neutral',
   style,
 }: EmptyStateProps): React.JSX.Element {
   const theme = useTheme();
+  const success = tone === 'success';
 
   return (
     <View
@@ -61,11 +86,28 @@ export function EmptyState({
             styles.tile,
             {
               borderRadius: theme.radii.xl,
-              backgroundColor: theme.colors.muted,
+              backgroundColor: success ? undefined : theme.colors.muted,
             },
           ]}
         >
-          <Icon name={icon} size={GLYPH} />
+          {success && (
+            <View
+              style={[
+                StyleSheet.absoluteFill,
+                {
+                  borderRadius: theme.radii.xl,
+                  backgroundColor: theme.colors.success,
+                  opacity: SUCCESS_TINT_OPACITY,
+                },
+              ]}
+            />
+          )}
+          <Icon
+            name={icon}
+            size={GLYPH}
+            color={success ? 'success' : 'foreground'}
+            strokeWidth={success ? 2.6 : undefined}
+          />
         </View>
       )}
       <Text variant="title" accessibilityRole="header" style={styles.centred}>
@@ -80,7 +122,8 @@ export function EmptyState({
         <Button
           label={actionLabel}
           icon={actionIcon}
-          variant="primary"
+          variant={actionVariant}
+          iconPosition={actionIconPosition}
           onPress={onAction}
           style={{ marginTop: theme.spacing.xs }}
         />

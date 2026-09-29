@@ -40,3 +40,4 @@ export {
   recallScrollOffset,
   rememberScrollOffset,
 } from './lock/resumePoint';
+export { readAppVersion, type AppVersion } from './appInfo/appVersion';

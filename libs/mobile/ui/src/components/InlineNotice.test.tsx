@@ -194,4 +194,59 @@ describe('InlineNotice Component', () => {
       expect(fill).toBe('#eceef0');
     });
   });
+
+  describe('iconColor', () => {
+    interface Node {
+      props: Record<string, unknown>;
+      children?: readonly (Node | string)[];
+    }
+
+    /**
+     * Every `stroke` drawn under `node` — the glyph's colour — as `#rrggbb`.
+     * The SVG renderer hands its native view the colour already processed,
+     * as an ARGB integer.
+     */
+    function strokes(node: Node): string[] {
+      const stroke = node.props.stroke as { payload?: number } | undefined;
+      const own =
+        typeof stroke?.payload === 'number'
+          ? [`#${(stroke.payload & 0xffffff).toString(16).padStart(6, '0')}`]
+          : [];
+      const below = (node.children ?? []).flatMap((child) =>
+        typeof child === 'string' ? [] : strokes(child),
+      );
+      return [...own, ...below];
+    }
+
+    it('recolours the glyph and leaves the line in its tone colour', async () => {
+      await render(
+        <TestWrapper>
+          <InlineNotice
+            message="This account has been disabled, so it can’t sign in."
+            tone="warning"
+            iconColor="errorEdge"
+          />
+        </TestWrapper>,
+      );
+      const alert = screen.getByRole('alert');
+      expect(new Set(strokes(alert as unknown as Node))).toEqual(
+        new Set(['#dc2626']),
+      );
+      const line = screen.getByText(
+        'This account has been disabled, so it can’t sign in.',
+      );
+      expect(StyleSheet.flatten(line.props.style).color).toBe('#0f172a');
+    });
+
+    it('keeps the tone glyph colour when not given', async () => {
+      await render(
+        <TestWrapper>
+          <InlineNotice message="Offline" tone="warning" />
+        </TestWrapper>,
+      );
+      expect(
+        new Set(strokes(screen.getByRole('alert') as unknown as Node)),
+      ).toEqual(new Set(['#b45309']));
+    });
+  });
 });

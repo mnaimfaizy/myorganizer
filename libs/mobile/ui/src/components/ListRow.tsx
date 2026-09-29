@@ -29,7 +29,7 @@ import type { ThemeColors } from '../theme';
 import { CHECKBOX_BOX, Checkbox, type CheckboxProps } from './Checkbox';
 import { Icon, type IconName } from './Icon';
 import { useListRowPosition } from './ListSection';
-import { Text } from './Text';
+import { Text, type TextWeight } from './Text';
 
 /** One thing a row can be asked to do, however it is reached. */
 export interface RowAction {
@@ -56,9 +56,10 @@ export interface SwipeAction extends RowAction {
 /**
  * How tall a row is at minimum. `comfortable` is the grocery trip view's: a
  * row ticked one-handed while walking round a shop, drawn well clear of the
- * touch-target floor rather than at it.
+ * touch-target floor rather than at it. `tall` is the Tasks list's: a title
+ * line over a meta line that can carry a StatusPill, drawn at 72.
  */
-export type ListRowSize = 'standard' | 'comfortable';
+export type ListRowSize = 'standard' | 'comfortable' | 'tall';
 
 /**
  * Where a row's edit has got to. `unconfirmed` and `reverted` are the two
@@ -76,7 +77,8 @@ const OPEN_FRACTION = 0.5;
 
 /**
  * The Lists sheet's row heights: 56 for one line, 64 with a subtitle, and the
- * trip view's comfortable row at 64 whatever it carries.
+ * trip view's comfortable row at 64 whatever it carries. The Tasks sheet
+ * draws its rows at 72; no metric carries that height.
  */
 const ROW_MIN_HEIGHT = {
   standard: { single: 56, double: 64 },
@@ -84,6 +86,7 @@ const ROW_MIN_HEIGHT = {
     single: COMFORTABLE_ROW_HEIGHT,
     double: COMFORTABLE_ROW_HEIGHT,
   },
+  tall: { single: 72, double: 72 },
 } as const satisfies Record<ListRowSize, { single: number; double: number }>;
 
 /** The leading icon tile, 32 or 36 as the sheets draw it, with its glyph. */
@@ -115,6 +118,34 @@ export interface ListRowProps {
   title: string;
   subtitle?: string;
   /**
+   * Sets the title at another weight — the Subscriptions list draws its
+   * names at 600 where the Lists sheet's plain row is 400.
+   */
+  titleWeight?: TextWeight;
+  /**
+   * Draws the title in `muted-foreground` without striking it — a record
+   * that no longer counts (a Cancelled Subscription), not a ticked one.
+   */
+  muted?: boolean;
+  /**
+   * Drawn inline after the subtitle, on its line — a StatusPill that
+   * qualifies it ("renews in 4 days  MANUAL").
+   */
+  subtitleAccessory?: React.ReactNode;
+  /**
+   * Drawn in place of the `subtitle` string, which stays the row's spoken
+   * text — a line with a styled run in it, such as the Tasks list's amber
+   * "2 days overdue". Only drawn while `subtitle` is given.
+   */
+  subtitleContent?: React.ReactNode;
+  /**
+   * Drawn inline before the title, inside the labels column — the Tasks
+   * list's priority marker. The divider and a reverted note still start at
+   * the labels column, so they line up under it, as the Tasks sheet draws.
+   * Decorative: put what it says in `accessibilityLabel`.
+   */
+  titleAccessory?: React.ReactNode;
+  /**
    * Rendered before the title — a Checkbox, an avatar, a colour dot. A bare
    * `Checkbox` is pulled out to the row's edge so its box, not its 44pt
    * target, sits on the 16pt inset, as the Lists sheet draws it.
@@ -124,6 +155,11 @@ export interface ListRowProps {
   leadingIcon?: IconName;
   /** The tile's size: 32 (`standard`) or 36 (`large`). */
   leadingIconSize?: 'standard' | 'large';
+  /**
+   * The tile glyph's Semantic Role. The body colour by default; Account draws
+   * its Lock row's glyph in `brand`.
+   */
+  leadingIconColor?: keyof ThemeColors;
   /** Rendered after the title — a StatusPill, an amount, a chevron. */
   trailing?: React.ReactNode;
   /** A trailing value in muted tabular figures — an amount, a count. */
@@ -149,6 +185,31 @@ export interface ListRowProps {
    * A checked row draws its title in `muted-foreground` with a strikethrough.
    */
   checked?: boolean;
+  /**
+   * `false` keeps a checked title muted but unstruck — a notified Usage
+   * Location is done yet still listed (Det-UL), where a struck line reads as
+   * removed. `true` by default.
+   */
+  strikeChecked?: boolean;
+  /**
+   * Where a `checked` row is ticked. `row` (the default) makes the whole row
+   * the tick target, as above. `leading` leaves the tick to the Checkbox
+   * drawn in `leading`: the row announces as a button, `onPress` opens it,
+   * and `checked` only draws the tick sequence — the Tasks list, whose row
+   * body opens the Task. The tick must then also be a row action, because
+   * the Checkbox inside the row is not reachable by a screen reader.
+   */
+  tickTarget?: 'row' | 'leading';
+  /**
+   * When given, the row announces as a switch in this state — a setting row
+   * whose trailing `Switch` is drawn for sight (Account's Biometric Unlock).
+   * The row is one accessibility element, so the switch inside it is not
+   * reachable on its own; `onPress` is what flips it, and the screen hides
+   * the drawn switch from the accessibility tree. `disabled` announces a
+   * switch that cannot be flipped without dimming the row the way the
+   * row-level `disabled` does, for a screen that dims it as drawn.
+   */
+  toggle?: { value: boolean; disabled?: boolean };
   /**
    * Opts the row into the rest of the Motion sheet's tick sequence. When
    * `checked` turns true, the title mutes and strikes (160 ms), the row
@@ -260,8 +321,16 @@ function ActionPanel({
   );
 }
 
-/** The Unconfirmed row's inline "Saving…": a turning arc and the words. */
-function SavingNote({ label }: { label: string }): React.JSX.Element {
+/**
+ * The Unconfirmed row's inline "Saving…": a turning arc and the words.
+ * Exported for a value the same edit is showing outside a row — a detail
+ * screen's hero amount (Subscriptions · Detail · Saving).
+ */
+export function SavingNote({
+  label = 'Saving…',
+}: {
+  label?: string;
+}): React.JSX.Element {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
   const turn = useSharedValue(0);
@@ -402,15 +471,24 @@ function checkboxBleed(leading: React.ReactNode): number {
 export function ListRow({
   title,
   subtitle,
+  titleWeight,
+  muted = false,
+  subtitleAccessory,
+  subtitleContent,
+  titleAccessory,
   leading,
   leadingIcon,
   leadingIconSize = 'standard',
+  leadingIconColor = 'foreground',
+  toggle,
   trailing,
   value,
   chevron = false,
   onPress,
   onLongPress,
   checked,
+  strikeChecked = true,
+  tickTarget = 'row',
   onTickSettled,
   entering = false,
   disabled = false,
@@ -583,6 +661,9 @@ export function ListRow({
       ?.onPress();
   };
 
+  // A toggle that cannot be flipped refuses presses and announces as
+  // disabled, but is not dimmed here: the screen dims it as drawn.
+  const pressDisabled = disabled || toggle?.disabled === true;
   const bleed = checkboxBleed(leading);
   const tile = ICON_TILE[leadingIconSize];
   const height = ROW_MIN_HEIGHT[size][subtitle == null ? 'single' : 'double'];
@@ -605,15 +686,17 @@ export function ListRow({
           <Animated.View style={sheet}>
             <Pressable
               accessibilityRole={
-                checked != null
-                  ? 'checkbox'
-                  : onPress == null
-                    ? undefined
-                    : 'button'
+                toggle != null
+                  ? 'switch'
+                  : checked != null && tickTarget === 'row'
+                    ? 'checkbox'
+                    : onPress == null
+                      ? undefined
+                      : 'button'
               }
               accessibilityState={{
-                checked: checked ?? undefined,
-                disabled,
+                checked: toggle?.value ?? checked ?? undefined,
+                disabled: pressDisabled,
                 busy: state === 'unconfirmed' || undefined,
               }}
               accessibilityLabel={
@@ -625,8 +708,11 @@ export function ListRow({
                 label: action.label,
               }))}
               onAccessibilityAction={onAccessibilityAction}
-              disabled={disabled}
-              focusable={!disabled && (onPress != null || checked != null)}
+              disabled={pressDisabled}
+              focusable={
+                !pressDisabled &&
+                (onPress != null || checked != null || toggle != null)
+              }
               onPress={onPress}
               onLongPress={onLongPress}
               onFocus={focus.onFocus}
@@ -659,7 +745,11 @@ export function ListRow({
                     },
                   ]}
                 >
-                  <Icon name={leadingIcon} size={tile.glyph} />
+                  <Icon
+                    name={leadingIcon}
+                    size={tile.glyph}
+                    color={leadingIconColor}
+                  />
                 </View>
               ) : bleed > 0 ? (
                 <View style={{ marginHorizontal: -bleed }}>{leading}</View>
@@ -667,34 +757,69 @@ export function ListRow({
                 leading
               )}
               <View style={styles.labels} onLayout={onLabelsLayout}>
-                <View>
-                  <Animated.View style={titleUnstruck}>
-                    <Text variant="body" numberOfLines={2}>
-                      {title}
-                    </Text>
-                  </Animated.View>
-                  {checked != null && (
-                    <Animated.View
-                      style={[StyleSheet.absoluteFill, titleStruck]}
-                      accessibilityElementsHidden
-                      importantForAccessibility="no-hide-descendants"
-                    >
+                <View
+                  style={
+                    titleAccessory != null
+                      ? [styles.inline, { gap: theme.spacing.sm }]
+                      : undefined
+                  }
+                >
+                  {titleAccessory}
+                  <View
+                    style={titleAccessory != null ? styles.grow : undefined}
+                  >
+                    <Animated.View style={titleUnstruck}>
                       <Text
                         variant="body"
-                        color="mutedForeground"
+                        weight={titleWeight}
+                        color={muted ? 'mutedForeground' : undefined}
                         numberOfLines={2}
-                        style={styles.struck}
                       >
                         {title}
                       </Text>
                     </Animated.View>
-                  )}
+                    {checked != null && (
+                      <Animated.View
+                        style={[StyleSheet.absoluteFill, titleStruck]}
+                        accessibilityElementsHidden
+                        importantForAccessibility="no-hide-descendants"
+                      >
+                        <Text
+                          variant="body"
+                          weight={titleWeight}
+                          color="mutedForeground"
+                          numberOfLines={2}
+                          style={strikeChecked ? styles.struck : undefined}
+                        >
+                          {title}
+                        </Text>
+                      </Animated.View>
+                    )}
+                  </View>
                 </View>
-                {subtitle != null && (
-                  <Text variant="caption" numberOfLines={2}>
-                    {subtitle}
-                  </Text>
-                )}
+                {subtitle != null &&
+                  (subtitleAccessory == null ? (
+                    (subtitleContent ?? (
+                      <Text variant="caption" numberOfLines={2}>
+                        {subtitle}
+                      </Text>
+                    ))
+                  ) : (
+                    <View
+                      style={[
+                        styles.inline,
+                        styles.wrap,
+                        { gap: theme.spacing.sm },
+                      ]}
+                    >
+                      {subtitleContent ?? (
+                        <Text variant="caption" numberOfLines={1}>
+                          {subtitle}
+                        </Text>
+                      )}
+                      {subtitleAccessory}
+                    </View>
+                  ))}
               </View>
               {state === 'unconfirmed' && (
                 <SavingNote label={unconfirmedLabel} />
@@ -781,6 +906,9 @@ const styles = StyleSheet.create({
   inline: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  wrap: {
+    flexWrap: 'wrap',
   },
   grow: {
     flexGrow: 1,

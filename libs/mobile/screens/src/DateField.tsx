@@ -1,8 +1,5 @@
 import React, { useState } from 'react';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import DateTimePicker, {
-  DateTimePickerAndroid,
-} from '@react-native-community/datetimepicker';
 import {
   BottomSheet,
   Button,
@@ -17,6 +14,7 @@ import {
   parseCalendarDate,
   toCalendarDate,
 } from './calendarDate';
+import { InlineDatePicker, openDialogDatePicker } from './platformDatePicker';
 
 /** The field's height, matching TextField on the Inputs sheet. */
 const FIELD_HEIGHT = 48;
@@ -37,6 +35,107 @@ export interface DateFieldProps {
   error?: string;
   disabled?: boolean;
   minimumDate?: Date;
+  /**
+   * Drawn at the far end of the label's line — an Unconfirmed Edit's
+   * "Saving…" beside the date it is saving (Tasks · Detail · Saving).
+   */
+  labelAccessory?: React.ReactNode;
+}
+
+export interface CalendarDatePickerOptions {
+  /** The iOS sheet's title — the field's label, "Due date". */
+  title: string;
+  onChange: (value: string | null) => void;
+  /** Offers "Clear date" beside "Done" in the iOS sheet. */
+  clearable?: boolean;
+  minimumDate?: Date;
+  /** Called once the picker has gone, whichever way it was closed. */
+  onClose?: () => void;
+}
+
+export interface CalendarDatePicker {
+  /** Opens the platform picker on `value`, or on today when there is none. */
+  open: (value: string | null) => void;
+  /** The iOS sheet. Render it once; it is `null` on Android. */
+  sheet: React.ReactNode;
+}
+
+/**
+ * The platform's own date picker without a field in front of it — for a
+ * control that is not a field, such as the Tasks composer's "Pick date" chip.
+ * On iOS the system inline calendar in a sheet with "Clear date" and "Done";
+ * on Android the Material date dialog. `DateField` is built on it.
+ */
+export function useCalendarDatePicker({
+  title,
+  onChange,
+  clearable = false,
+  minimumDate,
+  onClose,
+}: CalendarDatePickerOptions): CalendarDatePicker {
+  const theme = useTheme();
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [draft, setDraft] = useState<Date>(new Date());
+
+  const close = (): void => {
+    setSheetOpen(false);
+    onClose?.();
+  };
+
+  const open = (value: string | null): void => {
+    const start =
+      (value != null ? parseCalendarDate(value) : null) ?? new Date();
+    if (Platform.OS === 'android') {
+      openDialogDatePicker({
+        value: start,
+        minimumDate,
+        onPicked: (picked) => onChange(toCalendarDate(picked)),
+        onClose,
+      });
+      return;
+    }
+    setDraft(start);
+    setSheetOpen(true);
+  };
+
+  // iOS (and the web preview) pick in a sheet; Android opens a dialog.
+  const sheet =
+    Platform.OS !== 'android' ? (
+      <BottomSheet visible={sheetOpen} onDismiss={close} title={title}>
+        <InlineDatePicker
+          value={draft}
+          minimumDate={minimumDate}
+          accentColor={theme.colors.primary}
+          mode={theme.mode}
+          onChange={setDraft}
+        />
+        <View style={[styles.actions, { gap: theme.spacing.sm }]}>
+          {clearable && (
+            <View style={styles.action}>
+              <Button
+                label="Clear date"
+                variant="secondary"
+                onPress={() => {
+                  onChange(null);
+                  close();
+                }}
+              />
+            </View>
+          )}
+          <View style={styles.action}>
+            <Button
+              label="Done"
+              onPress={() => {
+                onChange(toCalendarDate(draft));
+                close();
+              }}
+            />
+          </View>
+        </View>
+      </BottomSheet>
+    ) : null;
+
+  return { open, sheet };
 }
 
 /**
@@ -58,38 +157,27 @@ export function DateField({
   error,
   disabled = false,
   minimumDate,
+  labelAccessory,
 }: DateFieldProps): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback('bounded');
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [draft, setDraft] = useState<Date>(new Date());
-  const current = value != null ? parseCalendarDate(value) : null;
+  const picker = useCalendarDatePicker({
+    title: label,
+    onChange,
+    clearable,
+    minimumDate,
+  });
   const hasError = error != null;
-
-  const open = (): void => {
-    const start = current ?? new Date();
-    if (Platform.OS === 'android') {
-      DateTimePickerAndroid.open({
-        value: start,
-        mode: 'date',
-        minimumDate,
-        onChange: (event, picked) => {
-          if (event.type === 'set' && picked != null) {
-            onChange(toCalendarDate(picked));
-          }
-        },
-      });
-      return;
-    }
-    setDraft(start);
-    setSheetOpen(true);
-  };
+  const open = (): void => picker.open(value);
 
   return (
     <View style={[{ gap: theme.spacing.sm }, disabled && styles.disabled]}>
-      <Text variant="bodySm" weight="semibold" color="foreground">
-        {label}
-      </Text>
+      <View style={[styles.labelRow, { gap: theme.spacing.sm }]}>
+        <Text variant="bodySm" weight="semibold" color="foreground">
+          {label}
+        </Text>
+        {labelAccessory}
+      </View>
       <View
         style={[
           styles.field,
@@ -120,11 +208,14 @@ export function DateField({
             {
               minHeight: MIN_TOUCH_TARGET,
               paddingHorizontal: theme.spacing.md,
+              // The sheet sets the glyph 10 from the date: the nearer step.
+              gap: theme.spacing.sm,
               borderRadius: theme.radii.md,
             },
             feedback.pressedStyle(pressed),
           ]}
         >
+          <Icon name="calendar" size={20} color="mutedForeground" />
           <Text
             variant="body"
             color={value != null ? 'foreground' : 'mutedForeground'}
@@ -160,48 +251,7 @@ export function DateField({
         </View>
       )}
 
-      {Platform.OS === 'ios' && (
-        <BottomSheet
-          visible={sheetOpen}
-          onDismiss={() => setSheetOpen(false)}
-          title={label}
-        >
-          <DateTimePicker
-            value={draft}
-            mode="date"
-            display="inline"
-            minimumDate={minimumDate}
-            accentColor={theme.colors.primary}
-            themeVariant={theme.mode}
-            onChange={(_event, picked) => {
-              if (picked != null) setDraft(picked);
-            }}
-          />
-          <View style={[styles.actions, { gap: theme.spacing.sm }]}>
-            {clearable && (
-              <View style={styles.action}>
-                <Button
-                  label="Clear date"
-                  variant="secondary"
-                  onPress={() => {
-                    onChange(null);
-                    setSheetOpen(false);
-                  }}
-                />
-              </View>
-            )}
-            <View style={styles.action}>
-              <Button
-                label="Done"
-                onPress={() => {
-                  onChange(toCalendarDate(draft));
-                  setSheetOpen(false);
-                }}
-              />
-            </View>
-          </View>
-        </BottomSheet>
-      )}
+      {picker.sheet}
     </View>
   );
 }
@@ -211,9 +261,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
+  labelRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   value: {
     flex: 1,
-    justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   clear: {
     alignItems: 'center',

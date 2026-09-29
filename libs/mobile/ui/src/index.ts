@@ -83,6 +83,7 @@ export {
 } from './components/LargeTitleHeader';
 export {
   ListRow,
+  SavingNote,
   type ListRowProps,
   type ListRowSize,
   type ListRowState,
@@ -92,8 +93,10 @@ export {
 } from './components/ListRow';
 export {
   ListSection,
+  ListSectionRows,
   type ListRowPosition,
   type ListSectionProps,
+  type ListSectionRowsProps,
 } from './components/ListSection';
 export { LockAction, type LockActionProps } from './components/LockAction';
 export {

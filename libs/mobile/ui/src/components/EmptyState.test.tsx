@@ -1,7 +1,9 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
+import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
+import { lightTheme } from '../theme';
 import { EmptyState } from './EmptyState';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -71,5 +73,27 @@ describe('EmptyState Component', () => {
     expect(
       screen.getByRole('header', { name: 'No tasks yet' }),
     ).toBeOnTheScreen();
+  });
+  it('offers its action as a secondary button when asked', async () => {
+    const onAction = jest.fn();
+    await render(
+      <TestWrapper>
+        <EmptyState
+          icon="check"
+          tone="success"
+          title="All clear"
+          description="Nothing open. 4 Tasks done this week."
+          actionLabel="Show done"
+          actionVariant="secondary"
+          onAction={onAction}
+        />
+      </TestWrapper>,
+    );
+    const button = screen.getByRole('button', { name: 'Show done' });
+    expect(StyleSheet.flatten(button.props.style).backgroundColor).toBe(
+      lightTheme.colors.secondary,
+    );
+    await userEvent.setup().press(button);
+    expect(onAction).toHaveBeenCalledTimes(1);
   });
 });

@@ -27,7 +27,36 @@ export type IconName =
   | 'archive'
   | 'copy'
   | 'mapPin'
-  | 'share';
+  | 'share'
+  | 'phone'
+  | 'faceId'
+  | 'fingerprint'
+  | 'timer'
+  | 'sun'
+  | 'globe'
+  | 'shield'
+  | 'document'
+  | 'external'
+  | 'logout'
+  | 'chevronLeft'
+  | 'mail'
+  | 'trash'
+  | 'pencil'
+  | 'search'
+  | 'tag'
+  | 'undo'
+  | 'listRemove'
+  | 'calendar'
+  | 'arrowUp'
+  | 'home'
+  | 'call'
+  | 'person'
+  | 'government'
+  | 'healthcare'
+  | 'bank'
+  | 'briefcase'
+  | 'bolt'
+  | 'graduation';
 
 /**
  * A rounded rectangle as a path, so the glyph table stays one shape: every
@@ -162,6 +191,116 @@ const PATHS = {
     'M8 8.5 12 4.5 16 8.5',
     'M5.5 13v6a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-6',
   ],
+  // The glyphs below are traced from the Account sheet (6 · Account).
+  // A handset: "this phone" — a setting that belongs to this device.
+  phone: [rect(7, 2, 10, 20, 2), 'M11 18h2'],
+  // Face ID's own mark, for a row that names Face ID. The neutral
+  // `biometric` mark stays for a control that may raise either method.
+  faceId: [
+    'M4 8V6a2 2 0 0 1 2-2h2',
+    'M16 4h2a2 2 0 0 1 2 2v2',
+    'M20 16v2a2 2 0 0 1-2 2h-2',
+    'M8 20H6a2 2 0 0 1-2-2v-2',
+    'M9 9v1.5',
+    'M15 9v1.5',
+    'M12 9v4h-1',
+    'M9 15.5c1.6 1.3 4.4 1.3 6 0',
+  ],
+  fingerprint: [
+    'M12 11v3a8 8 0 0 1-1.5 4.5',
+    'M8.5 12a3.5 3.5 0 0 1 7 0v1.5a13 13 0 0 1-.8 4.5',
+    'M5.5 15.5a14 14 0 0 0 .5-3.5 6 6 0 0 1 11-3.3',
+    'M18.8 11.5c.1.6.2 1.3.2 2a18 18 0 0 1-.4 3.5',
+    'M4 9.5A8.5 8.5 0 0 1 17.5 4.8',
+  ],
+  // A stopwatch: Auto-lock.
+  timer: [circle(12, 13, 8), 'M12 9v4l2 2', 'M9 2h6'],
+  // A sun: keep the screen awake.
+  sun: [
+    circle(12, 12, 4),
+    'M12 2v2',
+    'M12 20v2',
+    'M4.9 4.9l1.4 1.4',
+    'M17.7 17.7l1.4 1.4',
+    'M2 12h2',
+    'M20 12h2',
+    'M4.9 19.1l1.4-1.4',
+    'M17.7 6.3l1.4-1.4',
+  ],
+  globe: [
+    circle(12, 12, 9),
+    'M3 12h18',
+    'M12 3a14 14 0 0 1 0 18',
+    'M12 3a14 14 0 0 0 0 18',
+  ],
+  shield: ['M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z'],
+  document: ['M6 3h8l4 4v14H6z', 'M14 3v4h4', 'M9 12h6', 'M9 16h6'],
+  // A box with an arrow leaving it: the row opens outside the app.
+  external: [
+    'M14 4h6v6',
+    'M20 4l-9 9',
+    'M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4',
+  ],
+  logout: [
+    'M15 4h3a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-3',
+    'M10 16l-4-4 4-4',
+    'M6 12h10',
+  ],
+  // The in-screen back link ("‹ Sign in", "‹ Unlock") on the Entry sheets,
+  // which draw it at 2.4.
+  chevronLeft: ['M15 5l-7 7 7 7'],
+  // An envelope — Forgot password's "Check your email" (Entry sheets).
+  mail: [rect(3, 5, 18, 14, 2), 'M3.5 6.5l8.5 6.5 8.5-6.5'],
+  // The glyphs below are traced from the Groceries sheet (2 · Groceries).
+  // A bin: Delete — a list, or a line from one.
+  trash: [
+    'M4 7h16',
+    'M10 11v6',
+    'M14 11v6',
+    'M6 7l1 12a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-12',
+    'M9 7V4h6v3',
+  ],
+  // A pencil: Rename list.
+  pencil: ['M4 20h4L19 9l-4-4L4 16v4z', 'M13.5 6.5l4 4'],
+  // A magnifier: the Add sheet's "Search your Catalog" field.
+  search: [circle(11, 11, 7), 'M20 20l-3.5-3.5'],
+  // A price tag: an unselected category chip on the Create sheet.
+  tag: ['M3 12V4h8l10 10-8 8L3 12z', circle(7.5, 7.5, 1.3)],
+  // An arrow turning back: Uncheck All.
+  undo: ['M9 14L4 9l5-5', 'M4 9h10a6 6 0 0 1 0 12h-3'],
+  // Lines with a cross: Remove Checked From List.
+  listRemove: ['M4 6h10', 'M4 12h10', 'M4 18h6', 'M16 16l5 5', 'M21 16l-5 5'],
+  // The glyphs below are traced from the Tasks sheet (3 · Tasks).
+  // A calendar page: the capture composer's Today / Tomorrow / Pick date.
+  calendar: [rect(4, 5, 16, 16, 2), 'M4 10h16', 'M9 3v4', 'M15 3v4'],
+  // An arrow rising: the capture composer's round Save.
+  arrowUp: ['M12 19V5', 'M6 11l6-6 6 6'],
+  // The glyphs below are traced from the Details sheet (5 · Details).
+  // A house: an Address, and the Housing Organisation Type.
+  home: ['M3 11l9-7 9 7', 'M5 10v10h14V10'],
+  // A handset receiver: a Usage Location updated "By phone", and Telecom.
+  call: [
+    'M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2',
+  ],
+  // A person: a Usage Location updated "In person". Not drawn on the sheet,
+  // which shows only Online and By phone; built on `account`'s figure.
+  person: [circle(12, 8, 3.5), 'M5.5 20c1.2-3.3 3.6-5 6.5-5s5.3 1.7 6.5 5'],
+  // The Organisation Type tiles on Det-UL.
+  government: [
+    'M3 21h18',
+    'M4 10h16',
+    'M12 3l8 5H4l8-5z',
+    'M6 10v8',
+    'M10 10v8',
+    'M14 10v8',
+    'M18 10v8',
+  ],
+  healthcare: ['M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7V3z'],
+  bank: [rect(3, 6, 18, 13, 2), 'M3 10h18', 'M7 15h3'],
+  briefcase: [rect(3, 7, 18, 13, 2), 'M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2'],
+  bolt: ['M13 2L4 14h7l-1 8 9-12h-7l1-8z'],
+  // A mortarboard: School and University. Not drawn on the sheet.
+  graduation: ['M2 9l10-5 10 5-10 5-10-5z', 'M6 11v5c3.5 2.5 8.5 2.5 12 0v-5'],
 } as const satisfies Record<IconName, readonly Stroke[]>;
 
 /** The stroke weight the design sheets draw nearly every glyph at. */

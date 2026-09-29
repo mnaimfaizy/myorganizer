@@ -198,4 +198,20 @@ describe('ListSection Component', () => {
     expect(style.backgroundColor).toBe(lightTheme.colors.card);
     expect(style.borderRadius).toBeUndefined();
   });
+
+  it('draws an inset section as an edged, rounded card in from the gutter', async () => {
+    await render(
+      <TestWrapper>
+        <ListSection title="Security" inset>
+          <Text>Lock Vault now</Text>
+        </ListSection>
+      </TestWrapper>,
+    );
+    const card = StyleSheet.flatten(
+      screen.getByTestId('list-section-rows').props.style,
+    );
+    expect(card.marginHorizontal).toBe(lightTheme.spacing.md);
+    expect(card.borderRadius).toBe(lightTheme.radii.lg);
+    expect(card.backgroundColor).toBe(lightTheme.colors.card);
+  });
 });
