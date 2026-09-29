@@ -59,7 +59,9 @@ describe('taskModel', () => {
         // One day after should be "upcoming"
         expect(dueDateGroup('2026-01-16', now)).toBe('upcoming');
       } finally {
-        process.env.TZ = originalTz;
+        // Assigning `undefined` would store the string "undefined"; unset instead.
+        if (originalTz === undefined) delete process.env.TZ;
+        else process.env.TZ = originalTz;
       }
     });
   });
