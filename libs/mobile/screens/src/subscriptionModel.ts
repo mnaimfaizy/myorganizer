@@ -1,9 +1,19 @@
 import {
   monthlyEquivalentAmount,
   type CurrencyCode,
+  type SubscriptionBillingCycle,
+  type SubscriptionPaymentMethod,
   type SubscriptionRecord,
+  type SubscriptionRenewalType,
   type SubscriptionStatus,
+  type SubscriptionTier,
 } from '@myorganizer/vault-core/portable';
+import {
+  formatCalendarDate,
+  formatCalendarDateShort,
+  formatDayMonth,
+  parseCalendarDate,
+} from './calendarDate';
 
 /**
  * What the Subscriptions screens read out of a decrypted Subscriptions Vault
@@ -34,6 +44,13 @@ export type SubscriptionListFilter =
 /** The unfiltered "renews within a week" window, in days. */
 const RENEWING_SOON_DAYS = 7;
 
+/**
+ * How far ahead a renewal still reads as a countdown ("renews in 25 days").
+ * Past it the row prints the date instead ("renews 3 Mar 2027") — a count
+ * of a hundred-odd days is a number nobody can place (Sub-List).
+ */
+const COUNTDOWN_DAYS = 30;
+
 /** Unambiguous per-currency prefixes (CurrencyCode's own five). */
 const CURRENCY_PREFIXES = {
   AUD: 'A$',
@@ -62,6 +79,12 @@ function readVisibleSubscriptions(records: unknown): DecryptedSubscription[] {
     if (subscription !== null) subscriptions.push(subscription);
   }
   return subscriptions;
+}
+
+/** Whether the payload holds any Subscription at all, whatever its status —
+ * the List screen's "No Subscriptions yet" (Sub-List-Empty) is for none. */
+export function hasVisibleSubscriptions(records: unknown): boolean {
+  return readVisibleSubscriptions(records).length > 0;
 }
 
 /** The one Subscription with `id`, or `null` when the payload holds none —
@@ -158,10 +181,29 @@ function compareByNextBillingDate(
   );
 }
 
+/**
+ * The Cancelled tab's order: most recently cancelled first (Sub-List-Cancelled
+ * lists "Cancelled 12 Aug" above "Cancelled 2 Jun"), with a Subscription that
+ * carries no cancellation date last. A next billing date means nothing on a
+ * Cancelled Subscription — there is no next bill.
+ */
+function compareByCancellationDateDescending(
+  a: DecryptedSubscription,
+  b: DecryptedSubscription,
+): number {
+  const aDate = a.cancellationDate;
+  const bDate = b.cancellationDate;
+  if (aDate != null && bDate == null) return -1;
+  if (aDate == null && bDate != null) return 1;
+  if (aDate == null || bDate == null) return 0;
+  return bDate.localeCompare(aDate);
+}
+
 /** What the List screen renders for one filter tab: the Renewing soon bucket
  * (Active tab only — CONTEXT.md's Monthly Equivalent card is Active-only for
  * the same reason), then the rest, ordered by next billing date with no date
- * sorting last. The two never overlap: a Subscription placed in `renewingSoon`
+ * sorting last — except on Cancelled, which lists the most recently
+ * cancelled first. The two never overlap: a Subscription placed in `renewingSoon`
  * is not repeated in `items`. */
 export interface SubscriptionListView {
   renewingSoon: DecryptedSubscription[];
@@ -189,7 +231,11 @@ export function selectSubscriptionListView(
   );
   const items = matching
     .filter((subscription) => !renewingSoonIds.has(subscription.id))
-    .sort(compareByNextBillingDate);
+    .sort(
+      filter === 'cancelled'
+        ? compareByCancellationDateDescending
+        : compareByNextBillingDate,
+    );
 
   return { renewingSoon, items };
 }
@@ -230,19 +276,292 @@ export function calculateVisibleMonthlyEquivalents(
   }));
 }
 
-/** "Renews in n days", read against `now`'s local calendar day — or "No
- * renewal date" when there is nothing to count down to. */
+// --- Presentation tables ------------------------------------------------
+//
+// One label per enum member, pinned (ADR 0053): a member added to its enum
+// and not here fails to compile, rather than printing a raw key. Every
+// Subscriptions screen on mobile reads these; none keeps a copy of its own.
+
+/**
+ * A status as the screens print it. Declared in the order the Edit sheet
+ * offers them (Sub-Edit): Active, Pending, Inactive, Expired, Cancelled.
+ */
+export const SUBSCRIPTION_STATUS_LABELS = {
+  active: 'Active',
+  pending: 'Pending',
+  inactive: 'Inactive',
+  expired: 'Expired',
+  cancelled: 'Cancelled',
+} as const satisfies Record<SubscriptionStatus, string>;
+
+/** The statuses in the Edit sheet's order — the table above's own keys. */
+export const SUBSCRIPTION_STATUS_ORDER = Object.keys(
+  SUBSCRIPTION_STATUS_LABELS,
+) as SubscriptionStatus[];
+
+/** A billing cycle named on its own — the Detail's "Billing cycle" row, the New chips. */
+export const BILLING_CYCLE_LABELS = {
+  weekly: 'Weekly',
+  fortnightly: 'Fortnightly',
+  monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  yearly: 'Yearly',
+  twoYears: 'Every 2 years',
+  threeYears: 'Every 3 years',
+} as const satisfies Record<SubscriptionBillingCycle, string>;
+
+/** The New sheet's cycle chips, in the table's (and the design's) order. */
+export const BILLING_CYCLE_ORDER = Object.keys(
+  BILLING_CYCLE_LABELS,
+) as SubscriptionBillingCycle[];
+
+/** A billing cycle as the unit after an amount — "A$22.99 / month". */
+export const BILLING_CYCLE_UNITS = {
+  weekly: '/ week',
+  fortnightly: '/ fortnight',
+  monthly: '/ month',
+  quarterly: '/ quarter',
+  yearly: '/ year',
+  twoYears: '/ 2 years',
+  threeYears: '/ 3 years',
+} as const satisfies Record<SubscriptionBillingCycle, string>;
+
+export const PAYMENT_METHOD_LABELS = {
+  creditCard: 'Credit card',
+  paypal: 'PayPal',
+  bankTransfer: 'Bank transfer',
+} as const satisfies Record<SubscriptionPaymentMethod, string>;
+
+export const RENEWAL_TYPE_LABELS = {
+  autoRenew: 'Auto-renew',
+  manual: 'Manual',
+} as const satisfies Record<SubscriptionRenewalType, string>;
+
+export const TIER_LABELS = {
+  free: 'Free',
+  basic: 'Basic',
+  pro: 'Pro',
+  enterprise: 'Enterprise',
+  individual: 'Individual',
+  family: 'Family',
+} as const satisfies Record<SubscriptionTier, string>;
+
+/** Each currency's own name — the New sheet's Currency picker (Sub-New-Currency). */
+export const CURRENCY_NAMES = {
+  AUD: 'Australian dollar',
+  USD: 'US dollar',
+  EUR: 'Euro',
+  GBP: 'British pound',
+  NZD: 'New Zealand dollar',
+} as const satisfies Record<CurrencyCode, string>;
+
+/** The Currency picker's rows, in the table's (and the design's) order. */
+export const CURRENCY_ORDER = Object.keys(CURRENCY_NAMES) as CurrencyCode[];
+
+/** A currency's unambiguous prefix on its own — the Currency picker's "· A$". */
+export function currencyPrefix(currency: CurrencyCode): string {
+  return CURRENCY_PREFIXES[currency];
+}
+
+// --- Dates and renewal wording ------------------------------------------
+
+/**
+ * When a Subscription renews, as a row's subtitle reads it (Sub-List):
+ * "renews today", "renews tomorrow", "renews in 11 days", and past a month
+ * the date itself — "renews 3 Mar 2027". "No renewal date" when there is
+ * nothing to count down to (#908 story 49).
+ */
 export function describeRenewal(
   subscription: DecryptedSubscription,
   now: Date,
 ): string {
-  if (subscription.nextBillingDate == null) return 'No renewal date';
-  const days = daysUntil(subscription.nextBillingDate, now);
+  const date = subscription.nextBillingDate;
+  if (date == null) return 'No renewal date';
+  const days = daysUntil(date, now);
   if (days === null) return 'No renewal date';
-  if (days < 0) return 'Renewal overdue';
-  if (days === 0) return 'Renews today';
-  if (days === 1) return 'Renews tomorrow';
-  return `Renews in ${days} days`;
+  if (days < 0) return 'renewal overdue';
+  if (days === 0) return 'renews today';
+  if (days === 1) return 'renews tomorrow';
+  if (days <= COUNTDOWN_DAYS) return `renews in ${days} days`;
+  return `renews ${formatDayMonth(date, now)}`;
+}
+
+function sentenceCase(text: string): string {
+  return text.length === 0 ? text : text[0].toUpperCase() + text.slice(1);
+}
+
+/** A calendar date with its year only when it is not `now`'s: "Tue 29 Sep" / "Wed 3 Mar 2027". */
+function formatDateAgainst(iso: string, now: Date): string {
+  const date = parseCalendarDate(iso);
+  if (date === null) return iso;
+  return date.getFullYear() === now.getFullYear()
+    ? formatCalendarDateShort(iso)
+    : formatCalendarDate(iso);
+}
+
+/**
+ * The Detail hero's schedule line, before its renewal-type part (Sub-Detail):
+ * "Renews in 2 days · Tue 29 Sep". Past a month the countdown drops out and
+ * the date carries the line: "Renews Wed 3 Mar 2027". A Cancelled
+ * Subscription says when it stopped instead (Sub-Detail-Cancelled):
+ * "Cancelled Wed 12 Aug 2026 · no further charges".
+ */
+export function describeScheduleLine(
+  subscription: DecryptedSubscription,
+  now: Date,
+): string {
+  if (subscriptionStatus(subscription) === 'cancelled') {
+    return subscription.cancellationDate != null
+      ? `Cancelled ${formatCalendarDate(subscription.cancellationDate)} · no further charges`
+      : 'Cancelled · no further charges';
+  }
+  const date = subscription.nextBillingDate;
+  const renewal = describeRenewal(subscription, now);
+  if (date == null || parseCalendarDate(date) === null) return renewal;
+  const days = daysUntil(date, now);
+  if (days !== null && days > COUNTDOWN_DAYS) {
+    return `Renews ${formatDateAgainst(date, now)}`;
+  }
+  return `${sentenceCase(renewal)} · ${formatDateAgainst(date, now)}`;
+}
+
+/**
+ * A non-Active row's subtitle on its filter tab. A Cancelled one says when
+ * (Sub-List-Cancelled: "Cancelled 12 Aug"); the others keep the renewal
+ * wording the Active tab uses.
+ */
+export function describeRowSubtitle(
+  subscription: DecryptedSubscription,
+  now: Date,
+): string {
+  if (subscriptionStatus(subscription) !== 'cancelled') {
+    return describeRenewal(subscription, now);
+  }
+  return subscription.cancellationDate != null
+    ? `Cancelled ${formatDayMonth(subscription.cancellationDate, now)}`
+    : 'Cancelled';
+}
+
+/** A stored date printed in full ("Tue 29 Sep 2026"), or "—" when there is none. */
+export function formatStoredDate(value: string | undefined): string {
+  return value != null && value.length > 0 ? formatCalendarDate(value) : '—';
+}
+
+/**
+ * A stored date as the date picker's `YYYY-MM-DD`, or `null`. A date-time
+ * stored by another client keeps its calendar-day part.
+ */
+export function toPickerDate(value: string | undefined): string | null {
+  if (value == null) return null;
+  const day = value.slice(0, 10);
+  return parseCalendarDate(day) !== null ? day : null;
+}
+
+// --- Monthly Equivalent presentation --------------------------------------
+
+/** Whether a Subscription is Active and carries everything its Monthly Equivalent needs. */
+function countsTowardMonthlyEquivalent(
+  subscription: DecryptedSubscription,
+): subscription is DecryptedSubscription & {
+  amount: number;
+  billingCycle: SubscriptionBillingCycle;
+  currency: CurrencyCode;
+} {
+  return (
+    subscriptionStatus(subscription) === 'active' &&
+    subscription.amount != null &&
+    subscription.billingCycle != null &&
+    subscription.currency != null
+  );
+}
+
+/** How many Active Subscriptions the Monthly Equivalent card is counting ("7 active"). */
+export function countActiveSubscriptions(
+  subscriptions: readonly DecryptedSubscription[],
+): number {
+  return subscriptions.filter(
+    (subscription) => subscriptionStatus(subscription) === 'active',
+  ).length;
+}
+
+/** One worked example on the Monthly Equivalent explainer (Sub-List-Explainer). */
+export interface MonthlyEquivalentExample {
+  id: string;
+  /** "Anytime Gym · A$17.50 / week" */
+  label: string;
+  /** "≈ A$75.83" */
+  equivalent: string;
+}
+
+/**
+ * The explainer's worked examples: every counted Subscription whose cycle is
+ * not already monthly — a monthly one restates as itself and teaches nothing
+ * — grouped by currency in the card's order, then in the order given.
+ */
+export function monthlyEquivalentExamples(
+  subscriptions: readonly DecryptedSubscription[],
+): MonthlyEquivalentExample[] {
+  const counted = subscriptions.filter(countsTowardMonthlyEquivalent);
+  const currencies: CurrencyCode[] = [];
+  for (const subscription of counted) {
+    if (!currencies.includes(subscription.currency)) {
+      currencies.push(subscription.currency);
+    }
+  }
+  return currencies.flatMap((currency) =>
+    counted
+      .filter(
+        (subscription) =>
+          subscription.currency === currency &&
+          subscription.billingCycle !== 'monthly',
+      )
+      .map((subscription) => ({
+        id: subscription.id,
+        label: `${subscription.name ?? 'Untitled subscription'} · ${formatSubscriptionAmount(
+          subscription.amount,
+          currency,
+        )} ${BILLING_CYCLE_UNITS[subscription.billingCycle]}`,
+        equivalent: `≈ ${formatSubscriptionAmount(
+          monthlyEquivalentAmount(subscription as SubscriptionRecord),
+          currency,
+        )}`,
+      })),
+  );
+}
+
+/**
+ * One Subscription's own Monthly Equivalent ("≈ A$22.99"), or `null` when it
+ * does not count toward one — anything not Active, or missing a field.
+ */
+export function describeMonthlyEquivalent(
+  subscription: DecryptedSubscription,
+): string | null {
+  if (!countsTowardMonthlyEquivalent(subscription)) return null;
+  return `≈ ${formatSubscriptionAmount(
+    monthlyEquivalentAmount(subscription as SubscriptionRecord),
+    subscription.currency,
+  )}`;
+}
+
+// --- Form validation --------------------------------------------------------
+
+/** Sub-Edit-Error and Sub-New-Errors, verbatim. */
+export const AMOUNT_ERROR = 'Enter an amount above 0';
+export const NAME_ERROR = 'Give it a name';
+
+/**
+ * An amount draft read as money, or why it cannot be one. Zero is not a
+ * Subscription's price, so it is refused with the rest (Sub-Edit-Error).
+ */
+export function parseAmountDraft(
+  draft: string,
+): { ok: true; amount: number } | { ok: false; error: string } {
+  const trimmed = draft.trim();
+  const amount = Number(trimmed);
+  if (trimmed.length === 0 || !Number.isFinite(amount) || amount <= 0) {
+    return { ok: false, error: AMOUNT_ERROR };
+  }
+  return { ok: true, amount };
 }
 
 function withThousands(fixed: string): string {

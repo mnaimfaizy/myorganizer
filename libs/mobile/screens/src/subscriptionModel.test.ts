@@ -1,4 +1,16 @@
-import { selectSubscriptionListView } from './subscriptionModel';
+import {
+  AMOUNT_ERROR,
+  describeMonthlyEquivalent,
+  describeRenewal,
+  describeRowSubtitle,
+  describeScheduleLine,
+  formatStoredDate,
+  hasVisibleSubscriptions,
+  monthlyEquivalentExamples,
+  parseAmountDraft,
+  selectSubscriptionListView,
+  toPickerDate,
+} from './subscriptionModel';
 
 describe('subscriptionModel', () => {
   describe('selectSubscriptionListView', () => {
@@ -613,6 +625,198 @@ describe('subscriptionModel', () => {
           'sub-jan30',
         ]);
       });
+    });
+  });
+
+  describe('cancelled tab ordering', () => {
+    const now = new Date(2026, 8, 27);
+
+    it('lists the most recently cancelled first, undated last', () => {
+      const records = [
+        { id: 'jun', status: 'cancelled', cancellationDate: '2026-06-02' },
+        { id: 'none', status: 'cancelled' },
+        { id: 'aug', status: 'cancelled', cancellationDate: '2026-08-12' },
+      ];
+
+      const result = selectSubscriptionListView(records, 'cancelled', now);
+
+      expect(result.items.map((s) => s.id)).toEqual(['aug', 'jun', 'none']);
+    });
+  });
+
+  describe('hasVisibleSubscriptions', () => {
+    it('is true for any status and false for none', () => {
+      expect(hasVisibleSubscriptions([{ id: 'a', status: 'expired' }])).toBe(
+        true,
+      );
+      expect(hasVisibleSubscriptions([])).toBe(false);
+      expect(hasVisibleSubscriptions(undefined)).toBe(false);
+    });
+  });
+
+  describe('describeRenewal', () => {
+    const now = new Date(2026, 8, 27); // Sun 27 Sep 2026
+
+    it.each([
+      ['2026-09-27', 'renews today'],
+      ['2026-09-28', 'renews tomorrow'],
+      ['2026-09-29', 'renews in 2 days'],
+      ['2026-10-27', 'renews in 30 days'],
+      ['2026-10-28', 'renews 28 Oct'],
+      ['2027-03-03', 'renews 3 Mar 2027'],
+      ['2026-09-20', 'renewal overdue'],
+    ])('reads %s as "%s"', (nextBillingDate, expected) => {
+      expect(describeRenewal({ id: 'a', nextBillingDate }, now)).toBe(expected);
+    });
+
+    it('says "No renewal date" when there is none', () => {
+      expect(describeRenewal({ id: 'a' }, now)).toBe('No renewal date');
+    });
+  });
+
+  describe('describeRowSubtitle', () => {
+    const now = new Date(2026, 8, 27);
+
+    it('says when a Cancelled Subscription was cancelled', () => {
+      expect(
+        describeRowSubtitle(
+          { id: 'a', status: 'cancelled', cancellationDate: '2026-08-12' },
+          now,
+        ),
+      ).toBe('Cancelled 12 Aug');
+    });
+
+    it('keeps the renewal wording for other statuses', () => {
+      expect(
+        describeRowSubtitle(
+          { id: 'a', status: 'inactive', nextBillingDate: '2026-09-29' },
+          now,
+        ),
+      ).toBe('renews in 2 days');
+    });
+  });
+
+  describe('describeScheduleLine', () => {
+    const now = new Date(2026, 8, 27);
+
+    it('counts down and names the day within a month', () => {
+      expect(
+        describeScheduleLine({ id: 'a', nextBillingDate: '2026-09-29' }, now),
+      ).toBe('Renews in 2 days · Tue 29 Sep');
+    });
+
+    it('names only the date, with its year, past a month', () => {
+      expect(
+        describeScheduleLine({ id: 'a', nextBillingDate: '2027-03-03' }, now),
+      ).toBe('Renews Wed 3 Mar 2027');
+    });
+
+    it('says when a Cancelled Subscription stopped', () => {
+      expect(
+        describeScheduleLine(
+          { id: 'a', status: 'cancelled', cancellationDate: '2026-08-12' },
+          now,
+        ),
+      ).toBe('Cancelled Wed 12 Aug 2026 · no further charges');
+    });
+  });
+
+  describe('Monthly Equivalent presentation', () => {
+    const records = [
+      {
+        id: 'netflix',
+        name: 'Netflix',
+        status: 'active',
+        amount: 22.99,
+        currency: 'AUD',
+        billingCycle: 'monthly',
+      },
+      {
+        id: 'fastmail',
+        name: 'Fastmail',
+        status: 'active',
+        amount: 60,
+        currency: 'USD',
+        billingCycle: 'yearly',
+      },
+      {
+        id: 'gym',
+        name: 'Anytime Gym',
+        status: 'active',
+        amount: 17.5,
+        currency: 'AUD',
+        billingCycle: 'weekly',
+      },
+      {
+        id: 'car',
+        name: 'Car insurance',
+        status: 'active',
+        amount: 612,
+        currency: 'AUD',
+        billingCycle: 'yearly',
+      },
+      {
+        id: 'pending',
+        name: 'Pending',
+        status: 'pending',
+        amount: 10,
+        currency: 'AUD',
+        billingCycle: 'yearly',
+      },
+    ] as const;
+
+    it('works every counted non-monthly Subscription, grouped by currency', () => {
+      expect(monthlyEquivalentExamples(records)).toEqual([
+        {
+          id: 'gym',
+          label: 'Anytime Gym · A$17.50 / week',
+          equivalent: '≈ A$75.83',
+        },
+        {
+          id: 'car',
+          label: 'Car insurance · A$612.00 / year',
+          equivalent: '≈ A$51.00',
+        },
+        {
+          id: 'fastmail',
+          label: 'Fastmail · US$60.00 / year',
+          equivalent: '≈ US$5.00',
+        },
+      ]);
+    });
+
+    it('gives one Subscription its own figure only when it counts', () => {
+      expect(describeMonthlyEquivalent(records[0])).toBe('≈ A$22.99');
+      expect(describeMonthlyEquivalent(records[4])).toBeNull();
+    });
+  });
+
+  describe('parseAmountDraft', () => {
+    it.each(['', '  ', '0', '0.00', '-3', 'abc'])(
+      'refuses %j with the drawn error',
+      (draft) => {
+        expect(parseAmountDraft(draft)).toEqual({
+          ok: false,
+          error: AMOUNT_ERROR,
+        });
+      },
+    );
+
+    it('reads a positive amount', () => {
+      expect(parseAmountDraft(' 24.99 ')).toEqual({ ok: true, amount: 24.99 });
+    });
+  });
+
+  describe('dates for display and the picker', () => {
+    it('prints a stored date in full, or a dash', () => {
+      expect(formatStoredDate('2026-09-29')).toBe('Tue 29 Sep 2026');
+      expect(formatStoredDate(undefined)).toBe('—');
+    });
+
+    it('keeps the calendar-day part of a stored date-time for the picker', () => {
+      expect(toPickerDate('2026-09-29T00:00:00.000Z')).toBe('2026-09-29');
+      expect(toPickerDate('not a date')).toBeNull();
+      expect(toPickerDate(undefined)).toBeNull();
     });
   });
 });
