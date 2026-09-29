@@ -5937,6 +5937,7 @@ __metadata:
     "@react-native-community/cli": "npm:~18.0.0"
     "@react-native-community/cli-platform-android": "npm:~18.0.0"
     "@react-native-community/cli-platform-ios": "npm:~18.0.0"
+    "@react-native-community/datetimepicker": "npm:8.6.0"
     "@react-native-community/netinfo": "npm:12.0.1"
     "@react-native/babel-preset": "npm:~0.79.3"
     "@react-native/metro-config": "npm:~0.79.3"
@@ -8678,6 +8679,25 @@ __metadata:
   bin:
     rnc-cli: build/bin.js
   checksum: 10c0/75f6fcc09059b1fe09255ca6f7b8e11bb0a82734f0a839b19d033330a702f3f8fefe4dd45a833b6236817051f1f8be440ed601636c693de29e1f934836ddb405
+  languageName: node
+  linkType: hard
+
+"@react-native-community/datetimepicker@npm:8.6.0":
+  version: 8.6.0
+  resolution: "@react-native-community/datetimepicker@npm:8.6.0"
+  dependencies:
+    invariant: "npm:^2.2.4"
+  peerDependencies:
+    expo: ">=52.0.0"
+    react: "*"
+    react-native: "*"
+    react-native-windows: "*"
+  peerDependenciesMeta:
+    expo:
+      optional: true
+    react-native-windows:
+      optional: true
+  checksum: 10c0/4f7e84480e3a324a1f4e235d13552468a758a0bf3d6de6a67ef39bfc56c18c41566c4411cc5fc075d000cc5f744a63ced77dd38c6bb13ae15cc980f9af891b56
   languageName: node
   linkType: hard
 

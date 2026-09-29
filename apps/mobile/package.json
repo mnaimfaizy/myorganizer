@@ -4,6 +4,7 @@
   "private": true,
   "dependencies": {
     "@craftzdog/react-native-buffer": "*",
+    "@react-native-community/datetimepicker": "*",
     "@react-native-community/netinfo": "*",
     "@react-native/metro-config": "*",
     "@react-navigation/bottom-tabs": "*",
