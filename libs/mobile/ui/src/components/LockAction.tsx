@@ -43,8 +43,11 @@ export function LockAction({
       style={({ pressed }) => [
         styles.button,
         {
-          minWidth: MIN_TOUCH_TARGET,
-          minHeight: MIN_TOUCH_TARGET,
+          // Fixed, not minimum: on iOS 26 the navigation bar stretches a
+          // bar button whose width can grow, and a minimum let the Lock
+          // action widen into a pill once the keyboard had moved the layout.
+          width: MIN_TOUCH_TARGET,
+          height: MIN_TOUCH_TARGET,
           borderRadius: theme.radii.full,
         },
         press.pressedStyle(pressed),

@@ -75,7 +75,7 @@ describe('LockAction Component', () => {
   });
 
   describe('Touch target size', () => {
-    it('should meet MIN_TOUCH_TARGET on minWidth', async () => {
+    it('is exactly MIN_TOUCH_TARGET wide, so the iOS 26 bar cannot stretch it', async () => {
       await render(
         <TestWrapper>
           <LockAction onPress={jest.fn()} />
@@ -83,10 +83,10 @@ describe('LockAction Component', () => {
       );
       const button = screen.getByLabelText('Lock vault');
       const flatStyle = StyleSheet.flatten(button.props.style);
-      expect(flatStyle.minWidth).toBe(MIN_TOUCH_TARGET);
+      expect(flatStyle.width).toBe(MIN_TOUCH_TARGET);
     });
 
-    it('should meet MIN_TOUCH_TARGET on minHeight', async () => {
+    it('is exactly MIN_TOUCH_TARGET tall', async () => {
       await render(
         <TestWrapper>
           <LockAction onPress={jest.fn()} />
@@ -94,10 +94,10 @@ describe('LockAction Component', () => {
       );
       const button = screen.getByLabelText('Lock vault');
       const flatStyle = StyleSheet.flatten(button.props.style);
-      expect(flatStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+      expect(flatStyle.height).toBe(MIN_TOUCH_TARGET);
     });
 
-    it('should have both minWidth and minHeight set to MIN_TOUCH_TARGET', async () => {
+    it('has both width and height fixed at MIN_TOUCH_TARGET', async () => {
       await render(
         <TestWrapper>
           <LockAction onPress={jest.fn()} />
@@ -105,8 +105,8 @@ describe('LockAction Component', () => {
       );
       const button = screen.getByLabelText('Lock vault');
       const flatStyle = StyleSheet.flatten(button.props.style);
-      expect(flatStyle.minWidth).toBe(MIN_TOUCH_TARGET);
-      expect(flatStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+      expect(flatStyle.width).toBe(MIN_TOUCH_TARGET);
+      expect(flatStyle.height).toBe(MIN_TOUCH_TARGET);
     });
   });
 
@@ -121,8 +121,8 @@ describe('LockAction Component', () => {
       const button = screen.getByLabelText('Lock vault');
       const flatStyle = StyleSheet.flatten(button.props.style);
       // Touch target should still be applied
-      expect(flatStyle.minWidth).toBe(MIN_TOUCH_TARGET);
-      expect(flatStyle.minHeight).toBe(MIN_TOUCH_TARGET);
+      expect(flatStyle.width).toBe(MIN_TOUCH_TARGET);
+      expect(flatStyle.height).toBe(MIN_TOUCH_TARGET);
     });
   });
 
