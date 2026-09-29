@@ -37,13 +37,16 @@ const baseURL = process.env['BASE_URL'] || `http://localhost:${port}`;
  * keeps stubbing `/auth/logout`. The API listens on :3000 and is never reused —
  * a leftover server would skip migrate and the verified-user seed.
  */
-function liveBackendWebServers(frontend: {
-  command: string;
-  url: string;
-  reuseExistingServer: boolean;
-  cwd: string;
-  timeout: number;
-}): PlaywrightTestConfig['webServer'] {
+function liveBackendWebServers(
+  frontend: {
+    command: string;
+    url: string;
+    reuseExistingServer: boolean;
+    cwd: string;
+    timeout: number;
+  },
+  devServer: boolean,
+): PlaywrightTestConfig['webServer'] {
   if (process.env['E2E_LIVE_BACKEND'] !== '1') return frontend;
 
   const env: Record<string, string> = {};
@@ -59,9 +62,10 @@ function liveBackendWebServers(frontend: {
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) frontendEnv[key] = value;
   }
-  // `next start` is the production server. The API process above is
-  // development so the refresh cookie is not Secure on http.
-  frontendEnv['NODE_ENV'] = 'production';
+  // `next start` is the production server. `E2E_DEV_SERVER=1` must keep
+  // development, or `next dev` inherits production and the fast loop is a lie.
+  // The API process above stays development so the refresh cookie is not Secure on http.
+  frontendEnv['NODE_ENV'] = devServer ? 'development' : 'production';
 
   return [
     {
@@ -115,36 +119,39 @@ export default defineConfig({
    * step) hits that cache rather than paying twice. The dev branch runs `dev`,
    * which compiles on demand, so building there would be pure waste.
    */
-  webServer: liveBackendWebServers({
-    command: useDevServer
-      ? `corepack yarn nx run myorganizer:dev --port=${port}`
-      : `corepack yarn nx run myorganizer:start --port=${port}`,
-    url: baseURL,
-    /**
-     * Reuse is a dev-loop convenience, never a production-run one.
-     *
-     * Playwright skips `command` entirely when something already answers on
-     * `url` — including the build above. Whatever is on the port gets tested
-     * instead, and a `yarn start:myorganizer` dev server left running answers
-     * exactly like the production build would, so a run that reports itself as
-     * production silently is not one. That is the stale-bundle failure again,
-     * one layer up: the suite tests something other than what it claims, and
-     * says nothing.
-     *
-     * So the production path always starts its own server. If the port is
-     * taken, Playwright fails with "already used, make sure that nothing is
-     * running on the port" — stop that server and re-run. A refusal to start is
-     * a worse afternoon than a stale pass only until the first stale pass.
-     *
-     * The dev branch keeps reuse, because there the running server is the
-     * point — and it is now safe, because the port above guarantees the only
-     * thing it can adopt is a dev server a previous dev run started.
-     */
-    reuseExistingServer: useDevServer && !process.env.CI,
-    cwd: workspaceRoot,
-    // A production build from cold costs far more than a dev boot.
-    timeout: (useDevServer ? 120 : 300) * 1000,
-  }),
+  webServer: liveBackendWebServers(
+    {
+      command: useDevServer
+        ? `corepack yarn nx run myorganizer:dev --port=${port}`
+        : `corepack yarn nx run myorganizer:start --port=${port}`,
+      url: baseURL,
+      /**
+       * Reuse is a dev-loop convenience, never a production-run one.
+       *
+       * Playwright skips `command` entirely when something already answers on
+       * `url` — including the build above. Whatever is on the port gets tested
+       * instead, and a `yarn start:myorganizer` dev server left running answers
+       * exactly like the production build would, so a run that reports itself as
+       * production silently is not one. That is the stale-bundle failure again,
+       * one layer up: the suite tests something other than what it claims, and
+       * says nothing.
+       *
+       * So the production path always starts its own server. If the port is
+       * taken, Playwright fails with "already used, make sure that nothing is
+       * running on the port" — stop that server and re-run. A refusal to start is
+       * a worse afternoon than a stale pass only until the first stale pass.
+       *
+       * The dev branch keeps reuse, because there the running server is the
+       * point — and it is now safe, because the port above guarantees the only
+       * thing it can adopt is a dev server a previous dev run started.
+       */
+      reuseExistingServer: useDevServer && !process.env.CI,
+      cwd: workspaceRoot,
+      // A production build from cold costs far more than a dev boot.
+      timeout: (useDevServer ? 120 : 300) * 1000,
+    },
+    useDevServer,
+  ),
   projects: [
     {
       name: 'chromium',
