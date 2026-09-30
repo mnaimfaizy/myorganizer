@@ -15,7 +15,10 @@
 
 import type { AxiosResponse } from 'axios';
 import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core';
+import {
+  readVaultBlobRecords,
+  type VaultBlobEnvelope,
+} from '@myorganizer/vault-core';
 
 import { createVaultHandle } from './vaultHandle';
 import {
@@ -524,18 +527,26 @@ describe('reconcileVaultWithServer', () => {
     expect(prompt).not.toHaveBeenCalled();
   });
 
-  test('Groceries conflict prompts due to promptOnConflict strategy', async () => {
+  test('Groceries conflict converges by merge without prompt', async () => {
     const api = createApiDouble();
 
+    const localPayload = {
+      catalog: [{ id: 'cat1', name: 'Local' }],
+      lists: [] as unknown[],
+    };
     const handle = await setupHandle(
       'user-1',
-      [{ id: 'cat1' }],
+      localPayload,
       VaultBlobType.Groceries,
     );
 
+    const remotePayload = {
+      catalog: [{ id: 'remote-cat', name: 'Remote' }],
+      lists: [] as unknown[],
+    };
     const remoteBlob = await captureRemoteBlob(
       handle,
-      [{ id: 'remote-cat' }],
+      remotePayload,
       VaultBlobType.Groceries,
     );
 
@@ -546,15 +557,10 @@ describe('reconcileVaultWithServer', () => {
       meta: serverMeta,
     });
 
-    const promptAsks: VaultReconcileAsk[] = [];
     const prompt = jest.fn<
       Promise<VaultReconcileDecision>,
       [VaultReconcileAsk]
     >();
-    prompt.mockImplementation(async (ask: VaultReconcileAsk) => {
-      promptAsks.push(ask);
-      return 'keep-local';
-    });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
       async (_api: unknown, type: VaultBlobType) => {
@@ -586,17 +592,27 @@ describe('reconcileVaultWithServer', () => {
       VaultBlobType.Groceries,
     );
     expect(result.kind).toBe('reconciled');
-    // A conflict answered on this device moves Ciphertext and never the
-    // wrapping (ADR 0057).
     expect(serverVaultSync.putServerVaultMetaEtagAware).not.toHaveBeenCalled();
-    expect(promptAsks.length).toBeGreaterThan(0);
-    const groceriesAsk = promptAsks.find(
-      (ask) =>
-        ask.kind === 'blob' &&
-        ask.type === VaultBlobType.Groceries &&
-        ask.reason === 'strategy',
+    expect(prompt).not.toHaveBeenCalled();
+
+    if (result.kind === 'reconciled') {
+      const groceriesOutcome = result.converged.find(
+        (c) => c.type === VaultBlobType.Groceries,
+      );
+      expect(groceriesOutcome?.outcome.kind).toBe('merged');
+    }
+
+    const decrypted = await handle.loadDecryptedData({
+      type: 'groceries',
+      defaultValue: null,
+    });
+    if (!decrypted) throw new Error('Failed to decrypt groceries');
+    const records = readVaultBlobRecords(decrypted) as {
+      catalog: Array<{ id: string }>;
+    };
+    expect(records.catalog.map((c) => c.id).sort()).toEqual(
+      ['cat1', 'remote-cat'].sort(),
     );
-    expect(groceriesAsk).toBeDefined();
   });
 
   test('meta-divergence alone (same ciphertext, different wrapping) prompts nothing (ADR 0057)', async () => {
@@ -712,19 +728,20 @@ describe('reconcileVaultWithServer', () => {
   test('deferred answer records deferred flag and writes nothing', async () => {
     const api = createApiDouble();
 
-    // Groceries, because deferring is only reachable where something asks —
-    // and what asks is what the pinned strategy table says asks.
-    const handle = await setupHandle(
-      'user-1',
-      [{ id: 'cat1' }],
-      VaultBlobType.Groceries,
-    );
-    const localBefore = handle.loadVault()?.data.groceries;
+    const handle = await setupHandle('user-1', [
+      {
+        id: 'task-1',
+        title: 'Local task',
+        status: 'todo',
+        priority: 'high',
+        archived: false,
+        createdAt: '2026-01-01T00:00:00.000Z',
+      },
+    ]);
+    const localBefore = handle.loadVault()?.data.tasks;
 
-    const remoteBlob = await captureRemoteBlob(
-      handle,
-      [{ id: 'remote-cat' }],
-      VaultBlobType.Groceries,
+    const undecryptableBlob = await makeUndecryptableRemote(
+      VaultBlobType.Tasks,
     );
 
     const serverMeta = localToServerMeta(handle.loadVault()!);
@@ -738,16 +755,21 @@ describe('reconcileVaultWithServer', () => {
       Promise<VaultReconcileDecision>,
       [VaultReconcileAsk]
     >();
-    prompt.mockImplementation(async () => 'defer');
+    prompt.mockImplementation(async (ask) => {
+      if (ask.kind === 'vault') return 'defer';
+      return 'defer';
+    });
 
     serverVaultSync.getServerVaultBlob.mockImplementation(
       async (_api: unknown, type: VaultBlobType) => {
-        if (type === VaultBlobType.Groceries) return remoteBlob;
+        if (type === VaultBlobType.Tasks) return undecryptableBlob;
         return null;
       },
     );
     serverVaultSync.checkServerVaultBlobInventory.mockResolvedValue(
-      inventoryOf([{ type: VaultBlobType.Groceries, etag: remoteBlob.etag }]),
+      inventoryOf([
+        { type: VaultBlobType.Tasks, etag: undecryptableBlob.etag },
+      ]),
     );
 
     const result = await reconcileVaultWithServer({
@@ -756,16 +778,14 @@ describe('reconcileVaultWithServer', () => {
       prompt,
     });
 
-    expect(prompt).toHaveBeenCalled();
+    expect(prompt).toHaveBeenCalledWith({ kind: 'vault' });
     expect(result.kind).toBe('reconciled');
     if (result.kind === 'reconciled') {
       expect(result.deferred).toBe(true);
     }
 
-    // Nothing written on either side, so the choice survives to be made
-    // again (ADR 0033).
     expect(api.putVaultBlob).not.toHaveBeenCalled();
-    expect(handle.loadVault()?.data.groceries).toEqual(localBefore);
+    expect(handle.loadVault()?.data.tasks).toEqual(localBefore);
   });
 
   test('skips when auth error mid-loop', async () => {

@@ -5,9 +5,8 @@
  * being added without deciding how it converges. Every entry must declare its
  * strategy: mergeById with a callable merge, or promptOnConflict with no merge.
  *
- * promptOnConflict is permanent, not temporary or deprecated. Groceries
- * merge poorly under record union, and no record-level merge strategy will
- * be written for them.
+ * Groceries converges by nested record merge (catalog, lists, lines); see
+ * ADR 0110.
  */
 
 import { VaultBlobType } from '@myorganizer/app-api-client';
@@ -29,7 +28,7 @@ describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
     expect(strategyKeys.sort()).toEqual(expectedKeys);
   });
 
-  test('should assign mergeById strategy when type is Tasks, Addresses, MobileNumbers, or Subscriptions', () => {
+  test('should assign mergeById strategy when type is Tasks, Addresses, MobileNumbers, Subscriptions, or Groceries', () => {
     expect(VAULT_BLOB_CONVERGE_STRATEGIES[VaultBlobType.Tasks]).toEqual(
       expect.objectContaining({ strategy: 'mergeById' }),
     );
@@ -42,12 +41,9 @@ describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
     expect(VAULT_BLOB_CONVERGE_STRATEGIES[VaultBlobType.Subscriptions]).toEqual(
       expect.objectContaining({ strategy: 'mergeById' }),
     );
-  });
-
-  test('should assign promptOnConflict strategy when type is Groceries', () => {
-    expect(VAULT_BLOB_CONVERGE_STRATEGIES[VaultBlobType.Groceries]).toEqual({
-      strategy: 'promptOnConflict',
-    });
+    expect(VAULT_BLOB_CONVERGE_STRATEGIES[VaultBlobType.Groceries]).toEqual(
+      expect.objectContaining({ strategy: 'mergeById' }),
+    );
   });
 
   test('should carry a callable merge function when strategy is mergeById', () => {
@@ -56,6 +52,7 @@ describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
       VaultBlobType.Addresses,
       VaultBlobType.MobileNumbers,
       VaultBlobType.Subscriptions,
+      VaultBlobType.Groceries,
     ];
 
     for (const type of mergeableTypes) {
@@ -68,7 +65,10 @@ describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
   });
 
   test('should carry no merge function when strategy is promptOnConflict', () => {
-    const promptTypes = [VaultBlobType.Groceries];
+    const promptTypes = VAULT_BLOB_TYPES.filter(
+      (type) =>
+        VAULT_BLOB_CONVERGE_STRATEGIES[type].strategy === 'promptOnConflict',
+    );
 
     for (const type of promptTypes) {
       const strategy = VAULT_BLOB_CONVERGE_STRATEGIES[type];

@@ -1057,17 +1057,15 @@ describe('convergeVaultBlob', () => {
     expect(handle.lastPushedEtag('tasks')).toBe('etag-undecryptable');
   });
 
-  // ===== Row 14: promptOnConflict strategy asks instead of merging =====
-  test('should ask with strategy reason instead of merging when promptOnConflict type conflicts', async () => {
-    // #548 matrix row 14
+  // ===== Row 14: Groceries 409 → merge → retry =====
+  test('should retry with fresh ETag and merge groceries after 409 conflict', async () => {
     const handle = await setupHandle(
       'user-1',
       { catalog: [], lists: [] },
       'groceries',
     );
-    await handle.recordPushSuccess({ type: 'groceries', etag: 'etag-1' });
+    await handle.recordPushSuccess({ type: 'groceries', etag: 'etag-stale' });
 
-    // Make dirty
     const dirtyPayload = {
       catalog: [{ id: 'cat-1', name: 'Produce' }],
       lists: [],
@@ -1078,7 +1076,6 @@ describe('convergeVaultBlob', () => {
     };
     await handle.saveEncryptedData({ type: 'groceries', value: envelope });
 
-    // Capture remote blob using same Master Key
     const remotePayload = {
       catalog: [{ id: 'cat-2', name: 'Dairy' }],
       lists: [],
@@ -1101,7 +1098,7 @@ describe('convergeVaultBlob', () => {
         return formatPutVaultBlobResponse('etag-server');
       }),
     };
-    const prompt = jest.fn().mockResolvedValue('defer' as const);
+    const prompt = jest.fn() as VaultBlobConvergePrompt;
 
     const outcome = await convergeVaultBlob({
       api,
@@ -1111,96 +1108,26 @@ describe('convergeVaultBlob', () => {
       serverMeta: serverMetaFor(handle),
     });
 
-    expect(outcome).toEqual({
-      kind: 'asked',
-      reason: 'strategy',
-      decision: 'defer',
-    });
+    expect(outcome).toEqual({ kind: 'merged', etag: 'etag-server' });
+    expect(prompt).not.toHaveBeenCalled();
+    expect(api.getVaultBlob).toHaveBeenCalledTimes(1);
+    expect(api.putVaultBlob).toHaveBeenCalledTimes(2);
 
-    // Prompt called once with reason: 'strategy'
-    expect(prompt).toHaveBeenCalledTimes(1);
-    expect(prompt.mock.calls[0][0].reason).toBe('strategy');
-
-    // Local groceries Ciphertext unchanged (no merge was written)
-    const currentPayload = await handle.loadDecryptedData({
+    const merged = await handle.loadDecryptedData({
       type: 'groceries',
       defaultValue: null,
     });
-    if (!currentPayload) throw new Error('Failed to decrypt groceries');
-
-    const currentRecords = readVaultBlobRecords(currentPayload);
-    expect(currentRecords).toEqual(dirtyPayload);
-
-    // Nothing written on either side
-    expect(api.putVaultBlob).toHaveBeenCalledTimes(1); // Initial attempt only
-  });
-
-  // ===== Row 15: promptOnConflict + keep-local =====
-  test('should send local blob with remote ETag when user chooses keep-local on strategy conflict', async () => {
-    // #548 matrix row 15
-    const handle = await setupHandle(
-      'user-1',
-      { catalog: [], lists: [] },
-      'groceries',
+    if (!merged) throw new Error('Failed to decrypt merged groceries');
+    const records = readVaultBlobRecords(merged) as {
+      catalog: Array<{ id: string; name: string }>;
+      lists: unknown[];
+    };
+    expect(records.catalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'cat-1', name: 'Produce' }),
+        expect.objectContaining({ id: 'cat-2', name: 'Dairy' }),
+      ]),
     );
-    await handle.recordPushSuccess({ type: 'groceries', etag: 'etag-1' });
-
-    const dirtyPayload = {
-      catalog: [{ id: 'cat-1', name: 'Produce' }],
-      lists: [],
-    };
-    const envelope: VaultBlobEnvelope<unknown> = {
-      records: dirtyPayload,
-      deletions: {},
-    };
-    await handle.saveEncryptedData({ type: 'groceries', value: envelope });
-
-    // Capture remote blob using same Master Key
-    const remotePayload = {
-      catalog: [{ id: 'cat-2', name: 'Dairy' }],
-      lists: [],
-    };
-    const remote = await captureRemoteBlob(handle, remotePayload, 'groceries');
-
-    let callCount = 0;
-    const api = {
-      getVaultBlob: jest
-        .fn()
-        .mockResolvedValue(formatGetVaultBlobResponse(remote)),
-      putVaultBlob: jest.fn(async () => {
-        callCount++;
-        if (callCount === 1) {
-          const error = Object.assign(new Error('conflict'), {
-            response: { status: 409 },
-          });
-          throw error;
-        }
-        return formatPutVaultBlobResponse('etag-server');
-      }),
-    };
-    const prompt = jest.fn().mockResolvedValue('keep-local' as const);
-
-    const outcome = await convergeVaultBlob({
-      api,
-      handle,
-      type: VaultBlobType.Groceries,
-      prompt,
-      serverMeta: serverMetaFor(handle),
-    });
-
-    expect(outcome).toEqual({
-      kind: 'asked',
-      reason: 'strategy',
-      decision: 'keep-local',
-      etag: 'etag-server',
-    });
-
-    // Verify PUT was sent with remote ETag
-    expect(api.putVaultBlob).toHaveBeenCalledTimes(2);
-    expect(getCallArg<{ ifMatch?: string }>(api.putVaultBlob, 1)?.ifMatch).toBe(
-      'etag-remote',
-    );
-
     expect(handle.lastPushedEtag('groceries')).toBe('etag-server');
   });
 
