@@ -538,6 +538,16 @@ describe('useGroceriesVault', () => {
         expect(
           result.current.lists.find((l) => l.id === 'listA')?.lines,
         ).toEqual([]);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: expect.objectContaining({
+              deletions: expect.objectContaining({
+                'cat-1': expect.any(String),
+              }),
+            }),
+          }),
+        );
       });
     });
   });
@@ -877,6 +887,35 @@ describe('useGroceriesVault', () => {
           groceriesEncryptedSave({
             catalog: [],
             lists: result.current.lists,
+          }),
+        );
+      });
+    });
+  });
+
+  describe('deleteList', () => {
+    it('removes the list from records and records the list id in deletions', async () => {
+      const listA = makeList({ id: 'listA', name: 'A' });
+      const listB = makeList({ id: 'listB', name: 'B' });
+      const result = await setup({ catalog: [], lists: [listA, listB] });
+
+      await act(async () => {
+        await result.current.deleteList('listA');
+      });
+
+      await waitFor(() => {
+        expect(result.current.lists.map((l) => l.id)).toEqual(['listB']);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: expect.objectContaining({
+              deletions: expect.objectContaining({
+                listA: expect.any(String),
+              }),
+              records: expect.objectContaining({
+                lists: [listB],
+              }),
+            }),
           }),
         );
       });
