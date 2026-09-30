@@ -146,7 +146,13 @@ test('buildResultRecord requires run_id, commit, case, and model', () => {
 });
 
 test('OUTCOMES and VOID_REASONS are the documented vocabularies', () => {
-  assert.deepEqual(OUTCOMES, ['caught', 'missed', 'void']);
+  assert.deepEqual(OUTCOMES, [
+    'caught',
+    'missed',
+    'clean-pass',
+    'clean-fail',
+    'void',
+  ]);
   assert.deepEqual(VOID_REASONS, [
     'rate-limit',
     'turn-ceiling',
@@ -154,6 +160,73 @@ test('OUTCOMES and VOID_REASONS are the documented vocabularies', () => {
     'answer-sheet-check-failed',
     'unknown',
   ]);
+});
+
+// ---------------------------------------------------------------------------
+// Clean-diff cases (issue #933): scored clean-pass or clean-fail, never with
+// a recall — the same distinction golden.mjs's scoreCase draws, preserved
+// here so the result record cannot fold a clean case back into a recall
+// number on the way to disk.
+
+const CLEAN_PASS = {
+  date: '2026-09-30',
+  runId: '111',
+  commit: 'a'.repeat(40),
+  caseId: 'npm-advisory-rekey-lands-clean',
+  outcome: 'clean-pass',
+  model: 'claude-sonnet-5',
+};
+
+test('buildResultRecord accepts a clean-pass record with no recall', () => {
+  const record = buildResultRecord(CLEAN_PASS);
+  assert.equal(record.outcome, 'clean-pass');
+  assert.equal(record.recall, null);
+  assert.equal(record.void_reason, null);
+});
+
+test('buildResultRecord accepts a clean-fail record with no recall', () => {
+  const record = buildResultRecord({ ...CLEAN_PASS, outcome: 'clean-fail' });
+  assert.equal(record.outcome, 'clean-fail');
+  assert.equal(record.recall, null);
+});
+
+test('buildResultRecord rejects a clean-pass or clean-fail record carrying a recall', () => {
+  assert.throws(
+    () => buildResultRecord({ ...CLEAN_PASS, recall: 1 }),
+    /carries no recall/,
+  );
+  assert.throws(
+    () =>
+      buildResultRecord({ ...CLEAN_PASS, outcome: 'clean-fail', recall: 0 }),
+    /carries no recall/,
+  );
+});
+
+test('buildResultRecord rejects a clean-pass or clean-fail record carrying a void_reason', () => {
+  assert.throws(
+    () => buildResultRecord({ ...CLEAN_PASS, voidReason: 'rate-limit' }),
+    /carries no void_reason/,
+  );
+});
+
+test('summarizeRun counts clean-pass alongside caught and clean-fail alongside missed', () => {
+  const group = groupRuns([
+    buildResultRecord(CAUGHT),
+    buildResultRecord(CLEAN_PASS),
+    buildResultRecord({
+      ...CLEAN_PASS,
+      caseId: 'x',
+      outcome: 'clean-fail',
+    }),
+    buildResultRecord(VOID),
+  ])[0];
+  const s = summarizeRun(group);
+  assert.equal(s.caught, 2);
+  assert.equal(s.missed, 1);
+  assert.equal(s.voided, 1);
+  assert.equal(s.scorable, 3);
+  assert.equal(s.total, 4);
+  assert.equal(s.result, '2 of 3 scorable, 1 void');
 });
 
 test('formatResultLine round-trips through parseResultsFile', () => {

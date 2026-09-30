@@ -19,9 +19,25 @@ export class GoldenResultError extends Error {
   }
 }
 
-/** A case run either caught the expected findings, missed them, or measured
- * nothing (ADR 0101). */
-export const OUTCOMES = Object.freeze(['caught', 'missed', 'void']);
+/**
+ * A pattern case's run either caught the expected findings, missed them, or
+ * measured nothing (ADR 0101). A clean case (issue #933) has no findings to
+ * catch or miss — it passed or failed on whether a Blocking finding
+ * appeared — so it is recorded as `clean-pass` or `clean-fail`, never folded
+ * into `caught`/`missed`: those two carry a recall number and a clean case
+ * has none, which is the whole distinction `scoreCase` in golden.mjs draws
+ * and this record exists to preserve, not collapse, on the way to disk.
+ */
+export const OUTCOMES = Object.freeze([
+  'caught',
+  'missed',
+  'clean-pass',
+  'clean-fail',
+  'void',
+]);
+
+/** The two clean-case outcomes: scored, but never carrying a recall number. */
+const CLEAN_OUTCOMES = Object.freeze(['clean-pass', 'clean-fail']);
 
 /**
  * Every reason a case run can measure nothing, matched to what
@@ -90,6 +106,14 @@ export function buildResultRecord({
     if (recall !== null)
       err(
         'a void record carries no recall — it was not scored (ADR 0101), never as a miss or a catch',
+      );
+  } else if (CLEAN_OUTCOMES.includes(outcome)) {
+    // clean-pass / clean-fail: scored, but on whether a Blocking finding
+    // appeared, not on a recall fraction — there is nothing here to recall.
+    if (voidReason !== null) err(`a ${outcome} record carries no void_reason`);
+    if (recall !== null)
+      err(
+        `a ${outcome} record carries no recall — a clean case is scored clean-pass or clean-fail, never a recall number`,
       );
   } else {
     if (voidReason !== null) err(`a ${outcome} record carries no void_reason`);
@@ -229,10 +253,22 @@ export function groupRuns(records) {
   return order.map((id) => byRun.get(id));
 }
 
-/** Counts and the `X of Y` phrasing the ledger's narrative sections already use. */
+/**
+ * Counts and the `X of Y` phrasing the ledger's narrative sections already
+ * use. A clean-pass counts alongside a caught pattern case and a clean-fail
+ * alongside a missed one: both pairs are "the reviewer got this one right"
+ * and "the reviewer got this one wrong" for the run-level tally, even though
+ * `buildResultRecord` never lets the two carry the same shape of evidence
+ * (one a recall number, the other none) — collapsing them here would lose
+ * nothing the raw `outcome` field on each record does not still say.
+ */
 export function summarizeRun(group) {
-  const caught = group.records.filter((r) => r.outcome === 'caught').length;
-  const missed = group.records.filter((r) => r.outcome === 'missed').length;
+  const caught = group.records.filter(
+    (r) => r.outcome === 'caught' || r.outcome === 'clean-pass',
+  ).length;
+  const missed = group.records.filter(
+    (r) => r.outcome === 'missed' || r.outcome === 'clean-fail',
+  ).length;
   const voided = group.records.filter((r) => r.outcome === 'void').length;
   const scorable = caught + missed;
   const result =

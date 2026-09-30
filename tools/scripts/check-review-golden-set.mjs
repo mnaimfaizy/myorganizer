@@ -104,5 +104,5 @@ if (findings.length) {
   process.exit(1);
 }
 console.log(
-  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + c.expected.length, 0)} expected finding(s), replay runs on schedule and request over ${REPLAY_INPUT_PATHS.length} input path(s) and checks answer sheets before scoring`,
+  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + (c.expected?.length ?? 0), 0)} expected finding(s), replay runs on schedule and request over ${REPLAY_INPUT_PATHS.length} input path(s) and checks answer sheets before scoring`,
 );

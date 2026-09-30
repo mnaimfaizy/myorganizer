@@ -20,6 +20,16 @@
  * enough to be a tuple by pinning `ruleId` to one catalogue id; an expectation
  * that pins none is simply never strict. Recall is matched over expected.
  *
+ * A case may instead be clean-diff (issue #933): a known-good merged Pull
+ * Request that measures false alarms rather than recall. It carries
+ * `expectsNoBlocking: true` and a `why` explaining what makes it a clean
+ * choice — no later fix names it as root cause and its own review raised no
+ * Blocking finding — in place of `expected` and `minRecall`, which the set
+ * measures recall from and which a clean case has none of: there is nothing
+ * to recall when nothing should have been found. `scoreCase` reports it as
+ * `clean-pass` or `clean-fail`, never as a recall number, because averaging a
+ * pass/fail measurement into a recall fraction would hide which kind failed.
+ *
  * Everything here is pure; `score-golden-case.mjs` reads files and exits.
  */
 
@@ -109,37 +119,61 @@ export function assertGoldenSet(set, source = 'golden set') {
     if (!SHA.test(c.base) || !SHA.test(c.head))
       fail(`${where}: base and head must be full 40-hex SHAs`);
     if (c.base === c.head) fail(`${where}: base equals head`);
-    if (!Array.isArray(c.expected) || c.expected.length === 0)
-      fail(`${where}: expected must be a non-empty array`);
-    const expectedIds = new Set();
-    for (const e of c.expected) {
-      const w = `${where}, expected ${e.id ?? '(no id)'}`;
-      if (typeof e.id !== 'string' || !ID.test(e.id))
-        fail(`${w}: id must be a lowercase slug`);
-      if (expectedIds.has(e.id)) fail(`${w}: duplicate expected id`);
-      expectedIds.add(e.id);
-      if (!FINDING_AXES.includes(e.axis)) fail(`${w}: axis ${e.axis}`);
-      if (typeof e.source !== 'string') fail(`${w}: source pattern missing`);
-      compile(e.source, w);
-      if (typeof e.rule !== 'string') fail(`${w}: rule pattern missing`);
-      compile(e.rule, w);
-      // Optional, and a literal rather than a pattern: it is hashed, not
-      // matched. An id the catalogue does not carry could never be minted by
-      // the validator, so an expectation naming one would annotate `strict`
-      // false for ever and read as a reviewer that keeps missing the tuple.
-      if (e.ruleId !== undefined) {
-        if (typeof e.ruleId !== 'string' || !ruleById(e.ruleId))
-          fail(`${w}: ruleId ${e.ruleId} is not in ${RULES_DISPLAY_PATH}`);
+    if (c.expectsNoBlocking === true) {
+      // A clean case measures false alarms, not recall: it has nothing to
+      // recall, so the two fields recall is computed from are the ones a
+      // pattern case requires and a clean case must not carry — carrying
+      // both would leave scoreCase to guess which kind of case this is.
+      if (c.expected !== undefined)
+        fail(
+          `${where}: a clean case (expectsNoBlocking: true) must not carry expected — it has no findings to recall`,
+        );
+      if (c.minRecall !== undefined)
+        fail(
+          `${where}: a clean case (expectsNoBlocking: true) must not carry minRecall`,
+        );
+      if (typeof c.why !== 'string' || !c.why)
+        fail(
+          `${where}: a clean case must say why this merged pull request was chosen — that no later fix names it as root cause and its own review raised no Blocking finding`,
+        );
+    } else {
+      if (c.why !== undefined)
+        fail(
+          `${where}: why belongs to a clean case (expectsNoBlocking: true); a pattern case's expectations each carry their own why`,
+        );
+      if (!Array.isArray(c.expected) || c.expected.length === 0)
+        fail(`${where}: expected must be a non-empty array`);
+      const expectedIds = new Set();
+      for (const e of c.expected) {
+        const w = `${where}, expected ${e.id ?? '(no id)'}`;
+        if (typeof e.id !== 'string' || !ID.test(e.id))
+          fail(`${w}: id must be a lowercase slug`);
+        if (expectedIds.has(e.id)) fail(`${w}: duplicate expected id`);
+        expectedIds.add(e.id);
+        if (!FINDING_AXES.includes(e.axis)) fail(`${w}: axis ${e.axis}`);
+        if (typeof e.source !== 'string') fail(`${w}: source pattern missing`);
+        compile(e.source, w);
+        if (typeof e.rule !== 'string') fail(`${w}: rule pattern missing`);
+        compile(e.rule, w);
+        // Optional, and a literal rather than a pattern: it is hashed, not
+        // matched. An id the catalogue does not carry could never be minted
+        // by the validator, so an expectation naming one would annotate
+        // `strict` false for ever and read as a reviewer that keeps missing
+        // the tuple.
+        if (e.ruleId !== undefined) {
+          if (typeof e.ruleId !== 'string' || !ruleById(e.ruleId))
+            fail(`${w}: ruleId ${e.ruleId} is not in ${RULES_DISPLAY_PATH}`);
+        }
+        if (!Array.isArray(e.files) || e.files.length === 0)
+          fail(`${w}: files must name at least one path`);
+        if (e.minSeverity && !FINDING_SEVERITIES.includes(e.minSeverity))
+          fail(`${w}: minSeverity ${e.minSeverity}`);
+        if (typeof e.why !== 'string' || !e.why)
+          fail(`${w}: why must say what went wrong in the incident`);
       }
-      if (!Array.isArray(e.files) || e.files.length === 0)
-        fail(`${w}: files must name at least one path`);
-      if (e.minSeverity && !FINDING_SEVERITIES.includes(e.minSeverity))
-        fail(`${w}: minSeverity ${e.minSeverity}`);
-      if (typeof e.why !== 'string' || !e.why)
-        fail(`${w}: why must say what went wrong in the incident`);
+      if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
+        fail(`${where}: minRecall must be between 0 and 1`);
     }
-    if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
-      fail(`${where}: minRecall must be between 0 and 1`);
   }
   // A set with no frontier case measures nothing on an ordinary review-tooling
   // change: guards run only when the brief or the finding contract moves, so an
@@ -250,10 +284,34 @@ const matches = (expected, finding) =>
   atLeast(finding.severity, expected.minSeverity);
 
 /**
+ * A clean case (issue #933) passes when the report carries no Blocking
+ * finding, whatever else it says — there is no expectation to recall, so the
+ * result is a pass/fail, reported as `clean-pass` or `clean-fail` and never
+ * folded into a recall number the way a pattern case's match count is.
+ *
+ * @param {object} goldenCase a clean case (`expectsNoBlocking: true`)
+ * @param {{ findings: object[] }} normalized the validator's output for that range
+ */
+const scoreCleanCase = (goldenCase, normalized) => {
+  const findings = normalized.findings ?? [];
+  const blocking = findings.filter((f) => f.severity === 'blocking');
+  const pass = blocking.length === 0;
+  return {
+    case: goldenCase.id,
+    clean: true,
+    blocking: blocking.map((f) => f.id),
+    pass,
+    outcome: pass ? 'clean-pass' : 'clean-fail',
+  };
+};
+
+/**
  * @param {object} goldenCase one entry of `cases`
  * @param {{ findings: object[] }} normalized the validator's output for that range
  */
 export const scoreCase = (goldenCase, normalized) => {
+  if (goldenCase.expectsNoBlocking)
+    return scoreCleanCase(goldenCase, normalized);
   const findings = normalized.findings ?? [];
   const used = new Set();
   const matched = [];
@@ -292,7 +350,23 @@ export const scoreCase = (goldenCase, normalized) => {
   };
 };
 
+const renderCleanScore = (goldenCase, score) => {
+  const lines = [
+    `## Golden replay — ${goldenCase.id}: ${score.outcome}`,
+    '',
+    `${goldenCase.title} (${goldenCase.incident}). Range \`${goldenCase.base.slice(0, 7)}...${goldenCase.head.slice(0, 7)}\`.`,
+    '',
+    score.pass
+      ? 'Clean pass: the reviewer raised no Blocking finding.'
+      : `Clean fail: ${score.blocking.length} Blocking finding(s) on a case expected to raise none.`,
+    '',
+  ];
+  for (const id of score.blocking) lines.push(`- **blocking** \`${id}\``);
+  return `${lines.join('\n')}\n`;
+};
+
 export const renderScore = (goldenCase, score) => {
+  if (score.clean) return renderCleanScore(goldenCase, score);
   const lines = [
     `## Golden replay — ${goldenCase.id}: ${score.pass ? 'pass' : 'FAIL'}`,
     '',

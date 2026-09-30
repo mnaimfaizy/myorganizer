@@ -33,10 +33,19 @@ of the Pull Requests the reviewer passed a later fix names as root cause.
 
 Recall is matched expected findings over expected findings, scored by
 `tools/scripts/review/score-golden-case.mjs` against the validated report of
-one reviewer run per case. A case passes at or above its `minRecall`. The
-reviewer is stochastic: a single run of a single case is not a measurement,
-which is why the baseline reports five runs of the same three cases and why
-promotion between tiers takes three consecutive catches.
+one reviewer run per case. A pattern case passes at or above its `minRecall`.
+The reviewer is stochastic: a single run of a single case is not a
+measurement, which is why the baseline reports five runs of the same three
+cases and why promotion between tiers takes three consecutive catches.
+
+A clean-diff case (issue #933) is the opposite measurement: a known-good
+merged pull request that carries `expectsNoBlocking: true` in place of
+`expected` and `minRecall`, and passes only when the report carries no
+Blocking finding. It has no recall — `scoreCase` reports it as `clean-pass`
+or `clean-fail`, never as a recall number, and the results record does the
+same (`OUTCOMES` in `tools/scripts/review/golden-results.mjs`). It measures
+false alarms rather than recall, and is selected by the same tier filter as
+every other case.
 
 ## Tiers
 
@@ -54,6 +63,9 @@ promoted case is a detector that quietly stopped running.
 | `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, six turns); caught in 35156450789                                                                                                                                                                                                                       |
 | `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                         |
 | `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                                                                                    |
+| `npm-advisory-rekey-lands-clean`             | `frontier` | 2026-09-30 | clean-diff case (issue #933), added from PR #922; not yet replayed                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `escaped-defect-negation-fix-lands-clean`    | `frontier` | 2026-09-30 | clean-diff case (issue #933), added from PR #928; not yet replayed                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `trust-measurement-docs-land-clean`          | `frontier` | 2026-09-30 | clean-diff case (issue #933), added from PR #931; not yet replayed                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
@@ -97,8 +109,11 @@ item 7). It stays in the set under `parked`, id reserved the same way, with a
 `reentryCondition` in place of a `reason`: it returns to the replayed set the
 day the matching entry in `docs/review/REVIEW_CHECKLIST.md`'s Deferred
 candidates — "New persisted state has an inverse" — is promoted into
-`tools/config/review-obligations.json`. **Six cases remain**: five guard, one
-frontier — and the one frontier case has now earned promotion without taking it, for the reason recorded under Runs. Finding or writing a replacement frontier case is the open work.
+`tools/config/review-obligations.json`. **Six pattern cases remain**: five
+guard, one frontier — and the one frontier case has now earned promotion
+without taking it, for the reason recorded under Runs. Finding or writing a
+replacement frontier case is the open work. **Three clean-diff cases** (issue
+#933) join them, all `frontier` and not yet replayed.
 
 ## Authorship
 

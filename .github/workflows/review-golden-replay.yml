@@ -2,9 +2,11 @@ name: Golden Replay
 
 # Replays the code reviewer against the golden set (ADR 0071, Consequences):
 # commit ranges from this repository's own history in which a documented
-# incident was merged, and the finding a reviewer should have raised. One
-# reviewer run per case; the job named "Golden Replay" fails when any case's
-# recall falls below its minimum.
+# incident was merged, and the finding a reviewer should have raised, or
+# (issue #933) a known-good merged pull request the reviewer must stay quiet
+# on. One reviewer run per case; the job named "Golden Replay" fails when any
+# pattern case's recall falls below its minimum or any clean case draws a
+# Blocking finding.
 #
 # When it runs is ADR 0109, which replaced a pull_request path filter that
 # bought 88% of three weeks' replay spend on pushes nobody asked to measure:
@@ -425,10 +427,11 @@ jobs:
             exit 1
           fi
 
-      # Recall against the case's expected findings; below the minimum fails
-      # this case, and the summary names what was missed and why it mattered.
-      # Never `always()`: after a failed answer sheet this must not run, or a
-      # void is written into the summary as a miss.
+      # Recall against the case's expected findings for a pattern case, or
+      # (issue #933) whether the report carries a Blocking finding for a
+      # clean case; either way a failure names why in the summary. Never
+      # `always()`: after a failed answer sheet this must not run, or a void
+      # is written into the summary as a miss.
       #
       # From the extracted tooling (review:golden:score's script), whose
       # golden set is the pull request's: the workspace is the case head now,
@@ -450,11 +453,11 @@ jobs:
       #
       # Branches on whether score.json exists, never on steps.score.outcome:
       # score-golden-case.mjs writes score.json before it exits, but it
-      # exits 1 on an ordinary miss (recall below minimum) same as on an
-      # inability to score, so the step's own outcome is `failure` on a
-      # miss too — reading that as void would read every miss as a void and
-      # defeat the tier mechanism ADR 0072 and ADR 0101 both rest on a
-      # truthful miss/void distinction for.
+      # exits 1 on an ordinary miss (recall below minimum, or a Blocking
+      # finding on a clean case) same as on an inability to score, so the
+      # step's own outcome is `failure` on a miss too — reading that as void
+      # would read every miss as a void and defeat the tier mechanism ADR
+      # 0072 and ADR 0101 both rest on a truthful miss/void distinction for.
       - name: Record the result
         id: record
         if: always()
@@ -477,9 +480,20 @@ jobs:
             --commit "$COMMIT" --case "$CASE" --model "$MODEL")
           if [ -f "$SCORE_FILE" ]; then
             PASS="$(jq -r '.pass' "$SCORE_FILE")"
-            RECALL="$(jq -r '.recall' "$SCORE_FILE")"
-            if [ "$PASS" = 'true' ]; then ARGS+=(--outcome caught); else ARGS+=(--outcome missed); fi
-            ARGS+=(--recall "$RECALL")
+            # A clean case (issue #933) carries its own outcome field —
+            # clean-pass or clean-fail — and no .recall: it is scored on
+            # whether a Blocking finding appeared, not a match count, and
+            # record-golden-result.mjs refuses a recall on either outcome.
+            # score.json for a pattern case has no .outcome field at all, so
+            # this is empty there and the branch below still runs.
+            CLEAN_OUTCOME="$(jq -r '.outcome // empty' "$SCORE_FILE")"
+            if [ "$CLEAN_OUTCOME" = 'clean-pass' ] || [ "$CLEAN_OUTCOME" = 'clean-fail' ]; then
+              ARGS+=(--outcome "$CLEAN_OUTCOME")
+            elif [ "$PASS" = 'true' ]; then
+              ARGS+=(--outcome caught --recall "$(jq -r '.recall' "$SCORE_FILE")")
+            else
+              ARGS+=(--outcome missed --recall "$(jq -r '.recall' "$SCORE_FILE")")
+            fi
           else
             ARGS+=(--outcome void)
             if [ "$OBLIGATIONS_FAILED" = 'true' ]; then
@@ -552,7 +566,7 @@ jobs:
             exit 0
           fi
           if [ '${{ needs.replay.result }}' != 'success' ]; then
-            echo '::error::at least one golden case fell below its minimum recall or measured nothing (a void: rate limit, turn ceiling, prevented, or an answer sheet that failed its check); see the Replay jobs'
+            echo '::error::at least one golden case failed — a pattern case fell below its minimum recall, a clean case (issue #933) drew a Blocking finding, or the run measured nothing (a void: rate limit, turn ceiling, prevented, or an answer sheet that failed its check); see the Replay jobs'
             exit 1
           fi
 

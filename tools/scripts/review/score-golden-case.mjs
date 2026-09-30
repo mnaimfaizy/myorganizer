@@ -13,8 +13,9 @@
 // narrowed to one tier (ADR 0072); `--show` prints the facts the reviewer
 // prompt needs for one case as JSON.
 //
-// Exit 0 = recall at or above the case's minimum. Exit 1 = below it.
-// Exit 2 = could not run.
+// Exit 0 = the case passed: recall at or above its minimum for a pattern
+// case, or no Blocking finding for a clean case (issue #933). Exit 1 = it
+// did not. Exit 2 = could not run.
 import { appendFileSync, writeFileSync } from 'node:fs';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';

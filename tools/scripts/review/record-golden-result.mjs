@@ -5,8 +5,13 @@
 //
 //   node tools/scripts/review/record-golden-result.mjs --out <file> \
 //     --date <YYYY-MM-DD> --run-id <id> --commit <sha> --case <id> \
-//     --outcome caught|missed|void [--void-reason <reason>] \
+//     --outcome caught|missed|clean-pass|clean-fail|void [--void-reason <reason>] \
 //     [--recall <0..1>] --model <id> [--total-cost-usd <n>] [--turns <n>]
+//
+// --recall is required for caught/missed, refused for clean-pass/clean-fail
+// and void (issue #933, ADR 0101): a clean case is scored on whether a
+// Blocking finding appeared, not on a recall fraction, and a void was never
+// scored at all.
 //
 // Exit 0 = appended. Exit 2 = the record would be invalid.
 import { cannotRun, isMain, parseArgs } from './cli.mjs';
