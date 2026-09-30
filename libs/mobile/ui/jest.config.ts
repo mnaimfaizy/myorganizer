@@ -17,6 +17,12 @@ module.exports = {
   // not be able to pass a test here (ADR 0103).
   preset: 'react-native',
   resolver: '@nx/jest/plugins/resolver',
+  // The first render in a spec file loads React Native's lazily required
+  // renderer and host components. Locally that takes a fraction of a second,
+  // but on a CI runner shared with every other project's tests it has run
+  // past Jest's 5-second default. The two tests that did were each the
+  // first in their file, and the other tests in both files passed.
+  testTimeout: 30_000,
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx'],
   moduleNameMapper: {
     // The React the device renders with. Metro aliases React to
