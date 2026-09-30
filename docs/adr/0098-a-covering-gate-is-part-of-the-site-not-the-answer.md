@@ -151,6 +151,12 @@ question and is not answered by this ADR.
 
 ## Consequences
 
+- `design-tokens:check` itself — the Covering Gate for the `tokens.json` trigger — rebuilds
+  `libs/design-tokens/src/generated` from `tokens.json` and asserts the tree did not move, the same
+  shape as `openapi:check` for the same reason: a generated tree and its source can silently
+  disagree, and nothing before this ADR asserted the two agreed. It runs in CI rather than the
+  pre-commit aggregate for the reason [ADR 0043](0043-gates-assert-facts.md)
+  gives generally: it runs a build, which is too slow for Husky.
 - `gate` leaves the reviewer's answer sheet. `docs/review/REVIEW_CHECKLIST.md` entry 1 changes its
   answer-field list and its question prose, and `yarn review:checklist:check` holds the two in
   agreement.

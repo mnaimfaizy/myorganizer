@@ -38,7 +38,14 @@ Rules are classified by kind. Factual-assertion rules run over `ROSTER` and `LEG
 
 A checker header declares which direction(s) it asserts and why any omitted direction is omitted — and a contract test proves the checker actually fails on the drift that header claims to catch. **Neither half works alone.** The header is the specification; the test is what makes it true. This mirrors the page surface exactly: the manifest states, the extractor asserts.
 
-Contract-test coverage is recorded as a shrink-only baseline rather than a written-reason opt-out list.
+Contract-test coverage is recorded as a shrink-only baseline rather than a written-reason opt-out
+list, deliberately: unlike the Meta-Gate's wiring opt-out, "is this checker worth testing" is a
+per-checker judgment call, and a written-reason list is exactly the discretion the baseline exists to
+remove. The same shape governs citation anchoring — pages whose citations are not yet anchored sit in
+a shrink-only `tools/config/citation-anchor-baseline.json` with no written-reason opt-out either, and
+a page whose citations are all anchored fails as a stale entry. An anchor whose own `file` cannot be
+read, or whose cited line is past that file's end, fails as `citation-anchor-unreadable` rather than
+passing unverified — an unreadable citation is not evidence the claim is true.
 
 ## Considered Options
 

@@ -90,3 +90,18 @@ This says nothing about whether the reviewer's _sub-agents_ are refused the same
 counter reported twenty-six denials against eighteen visible in the transcript, and the difference
 is sub-agent calls nobody has read. That remains observable only from a transcript, and a
 transcript expires in seven days; it is a known hole and is left stated rather than closed.
+
+`yarn review:allowlist:check` reads the instruction side from two documents — the code-review skill
+and the Review Checklist — and the permission side from two files — the `--allowedTools` list in
+`.github/actions/code-reviewer/action.yml` and the `ask`/`deny` rules in `.claude/settings.json` —
+because those are exactly the documents and files the reviewer's own session loads. An instruction
+written as a shape ("the `*:check` gates") is expanded to every script that shape names and refused
+if any one of them is not permitted, because reporting only the literal commands written out nearby
+understates the hole the same way an unused-entry read would overstate it. The program vocabulary
+the checker matches against is written out by hand rather than derived from the allowlist itself, so
+narrowing the allowlist cannot make an instruction invisible instead of refused — the check fails
+instead when the action grants a program the vocabulary does not know. A command the documents name
+but nobody is asked to run — `review:publish`, `review:spec`, the selector the composite action
+already runs — carries a written reason in the checker's `NOT_THE_REVIEWERS_TO_RUN` list, and a
+reason that stops matching anything fails the check, so a script leaving that list has to be re-added
+to the vocabulary or re-justified.

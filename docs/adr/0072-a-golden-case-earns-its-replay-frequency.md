@@ -73,7 +73,10 @@ replay it knows is pointless.**
 
 7. **A third state, `parked`, sits between `cases` and `retired`.** Retirement means a case cannot
    be won: a wired gate already suppresses its defect (ADR 0074), so scoring it against the reviewer
-   penalises correct behaviour. Parking means the opposite — a case the reviewer has never caught,
+   penalises correct behaviour. A retired case is retired, never deleted, and keeps its id reserved:
+   deleting it discards the written reason a case turned out to be unwinnable, and without that
+   record on file the same incident gets proposed as a case again the next time someone mines fixes
+   for the set. Parking means the opposite — a case the reviewer has never caught,
    with no gate and no reason to think it unwinnable, held out of the replayed set anyway because
    nothing productive is learned from replaying a miss that a documented, precise cause already
    explains. Filing a hard case as retired would be a lie in the one field that state exists to keep

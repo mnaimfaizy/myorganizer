@@ -144,3 +144,12 @@ partial brief. It remains not an upgrade plan, not DepAudit, and not DepSync.
 - The three existing briefs predate the structured report and are not migrated. The first run per
   Ecosystem under this ADR has no ledger to carry forward and starts a fresh delta.
 - `gates:run` and the Meta-Gate gain one checker. A brief directory with no structured reports passes.
+- The checker re-validates every `*.json` at the top level of each brief directory, not a single named
+  file, because a report that escaped the gate through a typo'd filename is the failure the Meta-Gate
+  exists to prevent one level down — a name check would have to be perfect to make that the safe
+  choice, and a directory scan does not need to be.
+- It exits 1 on an invalid report, local evidence that no longer matches, or a declined entry pointing
+  at nothing, and exits 2 on a recorded commit this clone does not have. The two are told apart
+  deliberately: `git show` fails identically for a missing path and for an unresolvable ref, so a
+  shallow clone would otherwise report every citation in the brief as a fabrication instead of as
+  unverifiable.
