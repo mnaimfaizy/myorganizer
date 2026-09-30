@@ -38,6 +38,7 @@ import {
   findDependencyCycles,
   formatCycle,
   isCompleted,
+  isSatisfiedAsDependency,
   selectPrdSlices,
   unfinishedDependencies,
 } from '../tools/scripts/lib/sandcastle-slice-selection.mjs';
@@ -51,6 +52,13 @@ import {
   prdBranchSlug,
   specAnchorMessage,
 } from '../tools/scripts/lib/sandcastle-spec-anchor.mjs';
+import {
+  COMPLETION_PROMISE,
+  NEEDS_HUMAN_LABEL,
+  OUTSTANDING_MARKER,
+  formatHeldComment,
+  judgeRunOutcome,
+} from '../tools/scripts/lib/sandcastle-outcome.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
 const SANDBOX_IMAGE = 'sandcastle:myorganizer';
@@ -1011,7 +1019,8 @@ const completedIssueNumbers = new Set(
   allIssues
     .filter(
       (issue) =>
-        issue.body?.includes(`PRD: #${prdNumber}`) && isCompleted(issue),
+        issue.body?.includes(`PRD: #${prdNumber}`) &&
+        isSatisfiedAsDependency(issue),
     )
     .map((issue) => issue.number),
 );
@@ -1478,6 +1487,24 @@ type SliceCheckpoint = {
   readonly tag: string;
   readonly fileCount: number;
 };
+
+/**
+ * The text of this run's slice log, for judging its outcome. Empty when no log
+ * can be read, which judges as held: a run nobody can read is not a run anybody
+ * can call finished.
+ */
+function readRunLog(
+  logFilePath: string | undefined,
+  issueNumber: number,
+): string {
+  const path = logFilePath ?? sliceLogPathFor(issueNumber);
+  if (!path || !existsSync(path)) return '';
+  try {
+    return readFileSync(path, 'utf8');
+  } catch {
+    return '';
+  }
+}
 
 /** Newest sandcastle log for this issue, or undefined when none was written. */
 function sliceLogPathFor(issueNumber: number): string | undefined {
@@ -2101,7 +2128,48 @@ function readMaintainerNotes(issueNumber: number): string[] {
   }
 }
 
-function buildPrompt(issue: Issue, sliceBranch: string): string {
+/**
+ * The PRD a slice was cut from, for the brief.
+ *
+ * The sandbox has no `gh` credentials, so a slice that says "see #908" sends the
+ * agent to a page it cannot open. Mobile v1's PRD stated the cyan active tab,
+ * the Android ripple, "Nothing is saved while offline", and the approved unlock
+ * copy in plain text; none of it reached a slice, and all of it drifted (ADR
+ * 0111). Read here, on the host, and carried in the prompt.
+ *
+ * Like the maintainer notes, a failure to read it degrades to "no PRD" and says
+ * so: the slice body is still a complete brief.
+ */
+function readParentPrd(
+  issue: Issue,
+): { number: number; title: string; body: string } | undefined {
+  const match = issue.body?.match(/^\s*PRD:\s*#(\d+)/m);
+  if (!match) return undefined;
+  const number = Number(match[1]);
+  try {
+    const prd = ghJson<{ title?: string; body?: string }>([
+      'issue',
+      'view',
+      String(number),
+      '--repo',
+      REPO,
+      '--json',
+      'title,body',
+    ]);
+    return { number, title: prd.title ?? '', body: prd.body ?? '' };
+  } catch {
+    console.warn(
+      `  [#${issue.number}] could not read PRD #${number}; dispatching without it.`,
+    );
+    return undefined;
+  }
+}
+
+function buildPrompt(
+  issue: Issue,
+  sliceBranch: string,
+  parentPrd?: { number: number; title: string; body: string },
+): string {
   const gate = resolveGate(issue);
   const graphifyNote = graphifyProvenance(sliceBranch);
   return [
@@ -2111,6 +2179,16 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     ``,
     issue.body,
     ``,
+    ...(parentPrd
+      ? [
+          `## Parent PRD #${parentPrd.number}: ${parentPrd.title}`,
+          ``,
+          `The PRD this slice was cut from, read on the host because this sandbox cannot open GitHub. It is background, not scope: build the issue above, and use this for the decisions, copy, and constraints the issue relies on.`,
+          ``,
+          parentPrd.body,
+          ``,
+        ]
+      : []),
     `## Instructions`,
     ``,
     `- Dependencies are ALREADY installed in this sandbox before you start (a setup hook runs \`corepack yarn install --immutable\`). Do NOT run \`yarn install\` yourself.`,
@@ -2128,8 +2206,28 @@ function buildPrompt(issue: Issue, sliceBranch: string): string {
     // feature branch, where the branch name carries nothing — ADR 0076.
     `- End the commit message body with \`Closes #${issue.number}\` on its own line, so the commit carries the issue even after it is integrated into a branch whose name does not.`,
     `- Do NOT push and do NOT open a PR — this sandbox has no credentials. Just commit locally on your branch; leave nothing uncommitted. The orchestrator integrates your branch into the feature branch on the host.`,
-    `- Do NOT output the completion promise until ALL of these hold: deterministic checks green; \`/code-review\` run once and its findings addressed; work committed through the \`Commit\` sub-agent + \`ai:commit\`; working tree clean.`,
-    `- When all of the above hold, output <promise>COMPLETE</promise>.`,
+    `- Do NOT output the completion promise until ALL of these hold: deterministic checks green; \`/code-review\` run once and each finding either fixed or listed as ${OUTSTANDING_MARKER} (see below); work committed through the \`Commit\` sub-agent + \`ai:commit\`; working tree clean.`,
+    `- When all of the above hold, output ${COMPLETION_PROMISE}.`,
+    ``,
+    `## Design`,
+    ``,
+    // ADR 0110 / 0111: Mobile v1's slices pointed at a private canvas link the
+    // sandbox could not open, and eight of ten agents built without ever saying so.
+    `- An approved design is committed under \`docs/design/\` (ADR 0110). If this issue or its PRD names a design there, that folder is the design: read the artboards this slice covers before building — each is an HTML file with every size, colour, and string written inline — and match their layout, copy, and states. The Foundation artboards apply to every screen.`,
+    `- You cannot open links to hosted designs or private pages (claude.ai artifacts, Figma, Google Docs) or GitHub issues from this sandbox. Never write that something matches a design or document you did not read. If the design this slice builds to exists only as such a link, list that as ${OUTSTANDING_MARKER}.`,
+    `- Where this issue, its PRD, and the committed design disagree, build what this issue says and list the disagreement as ${OUTSTANDING_MARKER} for a person to settle.`,
+    `- This sandbox cannot build native iOS or Android code, run the app, or show a screen. An acceptance criterion that needs a device or a visual check is not met here: list it as ${OUTSTANDING_MARKER}.`,
+    ``,
+    `## Outcome (required)`,
+    ``,
+    `Before ${COMPLETION_PROMISE}, print one line per item that is not done or could not be verified, each starting \`${OUTSTANDING_MARKER}\`:`,
+    ``,
+    `  ${OUTSTANDING_MARKER} blocking /code-review finding not fixed — <what, and why>`,
+    `  ${OUTSTANDING_MARKER} acceptance criterion not delivered — <which>`,
+    `  ${OUTSTANDING_MARKER} needs a device — <which criterion or behaviour>`,
+    `  ${OUTSTANDING_MARKER} could not read <source> — <what was assumed instead>`,
+    ``,
+    `Print none when there is nothing. The orchestrator closes this slice only when there are none; otherwise it integrates your work and hands the slice to a person with your list. An honest list is not a failure. A list with an item missing is.`,
     ``,
     `## Handoff markers (required)`,
     ``,
@@ -2585,6 +2683,12 @@ while (pendingSlices.length > 0) {
         : undefined;
 
     const maintainerNotes = readMaintainerNotes(issue.number);
+    const parentPrd = readParentPrd(issue);
+    if (parentPrd) {
+      console.log(
+        `  [#${issue.number}] carrying PRD #${parentPrd.number} into the brief.`,
+      );
+    }
     if (maintainerNotes.length > 0) {
       console.log(
         `  [#${issue.number}] carrying ${maintainerNotes.length} maintainer note(s) into the brief.`,
@@ -2738,7 +2842,7 @@ while (pendingSlices.length > 0) {
         // Notes wrap the base prompt, so the resume brief inherits them too: a
         // maintainer reviewing a checkpoint is the likeliest author of one.
         const basePrompt = withMaintainerNotes(
-          buildPrompt(issue, sliceBranch),
+          buildPrompt(issue, sliceBranch, parentPrd),
           maintainerNotes,
         );
         return checkpoint
@@ -2781,6 +2885,14 @@ while (pendingSlices.length > 0) {
         ? true
         : integrateSlice(issue, sliceBranch, integrationBranch);
 
+    // Judge the run before claiming it finished (ADR 0111). Integration above is
+    // unconditional in PRD mode (ADR 0045); closing the slice and releasing what
+    // depends on it is not. Mobile v1 closed every slice that committed anything,
+    // including one whose own output said "## Not delivered — keep-awake".
+    const outcome = judgeRunOutcome(
+      readRunLog(result.logFilePath, issue.number),
+    );
+
     if (mergeOk && integrationBranch !== null) {
       ghSilent([
         'issue',
@@ -2793,6 +2905,40 @@ while (pendingSlices.length > 0) {
         '--add-label',
         'status:done',
       ]);
+    }
+
+    if (mergeOk && integrationBranch !== null && !outcome.clean) {
+      // Held: integrated and status:done, so a re-run skips it (ADR 0045), but open
+      // as ready-for-human with the agent's own list, and its dependents stay
+      // blocked until a person closes it (isSatisfiedAsDependency).
+      ghSilent([
+        'issue',
+        'edit',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--remove-label',
+        'ready-for-agent',
+        '--add-label',
+        NEEDS_HUMAN_LABEL,
+      ]);
+      ghSilent([
+        'issue',
+        'comment',
+        String(issue.number),
+        '--repo',
+        REPO,
+        '--body',
+        formatHeldComment({
+          outstanding: outcome.outstanding,
+          integrationBranch,
+          commits: result.commits.length,
+        }),
+      ]);
+      console.log(
+        `  [#${issue.number}] integrated but held for a person: ${outcome.outstanding.length} item(s) outstanding.`,
+      );
+    } else if (mergeOk && integrationBranch !== null) {
       // Close the slice on successful local integration. status:done + closed
       // makes re-runs idempotent — both this orchestrator's open+afk filter and
       // dispatch-waves treat a closed slice as complete and skip it. The work is
@@ -2837,7 +2983,11 @@ while (pendingSlices.length > 0) {
         REPO,
         '--body',
         `Agent completed and the build gate passed. ${result.commits.length} commit(s) on the local branch \`${sliceBranch}\` (based on \`${baseRef}\`).\n` +
-          `Nothing was pushed. Left open until the branch is reviewed, pushed, and merged via a PR.`,
+          `Nothing was pushed. Left open until the branch is reviewed, pushed, and merged via a PR.` +
+          (outcome.clean
+            ? ''
+            : `\n\n**The agent listed work it did not finish or could not verify** (ADR 0111):\n\n` +
+              outcome.outstanding.map((item) => `- ${item}`).join('\n')),
       ]);
     } else {
       ghSilent([
@@ -2882,9 +3032,17 @@ while (pendingSlices.length > 0) {
       sliceBranch,
       commits: result.commits.length,
       merged: true,
-      reason: integrationBranch === null ? 'gate passed' : 'integrated',
+      reason:
+        integrationBranch === null
+          ? 'gate passed'
+          : outcome.clean
+            ? 'integrated'
+            : 'integrated, held for a person',
     });
-    completedIssueNumbers.add(issue.number);
+    // A held slice is integrated but releases nothing that depends on it.
+    if (integrationBranch === null || outcome.clean) {
+      completedIssueNumbers.add(issue.number);
+    }
   } catch (e) {
     ghSilent([
       'issue',

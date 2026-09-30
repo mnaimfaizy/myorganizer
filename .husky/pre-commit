@@ -97,6 +97,7 @@ if ! git diff --cached --quiet --diff-filter=ACMRTD -- \
  tools/scripts/lib/sandcastle-resume.mjs \
  tools/scripts/lib/sandcastle-subagent-trace.mjs \
  tools/scripts/lib/sandcastle-slice-selection.mjs \
+ tools/scripts/lib/sandcastle-outcome.mjs \
  tools/config/agent-model-policy.json \
  package.json \
  .github/workflows/ci.yml \

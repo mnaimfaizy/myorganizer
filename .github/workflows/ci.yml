@@ -569,6 +569,9 @@ jobs:
       - name: Sandcastle spec-anchor contracts
         run: corepack yarn sandcastle:spec-anchor:test
 
+      - name: Sandcastle run-outcome contracts
+        run: corepack yarn sandcastle:outcome:test
+
       - name: OpenAPI artifact checker contracts
         run: corepack yarn openapi:artifacts:test
 
