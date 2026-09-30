@@ -18,7 +18,7 @@ Two failures follow from that, and neither can be fixed after 1.0 ships.
 
 ## Decision
 
-1. **The first Mobile Release carries a Version Floor.** Every Mobile App request identifies its platform and its Mobile Release version. Each environment's backend holds the lowest Mobile Release it still serves, as configuration. A request below it is refused with HTTP 426 and a typed body. A request that does not identify itself, as the web app's requests do not, passes untouched. The comparison is on the Mobile Release's semver version, which is shared by both platforms, and never on the per-platform build numbers.
+1. **The first Mobile Release carries a Version Floor.** Every Mobile App request identifies its platform and its Mobile Release version in one header, for example `X-Client: mobile/1.0.0 (ios)`. Each environment's backend holds the lowest Mobile Release it still serves, as configuration. A request below it is refused with HTTP 426 and a typed body. A request that does not identify itself, as the web app's requests do not, passes untouched. A request carrying the header with a version that does not parse is refused as below the floor: only the Mobile App sends that header, so a malformed one is a client defect, and it fails closed. The comparison is on the Mobile Release's semver version, which is shared by both platforms, and never on the per-platform build numbers.
 
 2. **A refusal is not a rejection of data.** The Mobile App handles a 426 in one place and shows a blocking update screen. Unsynced changes stay on the device and push after the update. A client that treats the refusal as the server discarding its write loses exactly the data the floor exists to protect.
 

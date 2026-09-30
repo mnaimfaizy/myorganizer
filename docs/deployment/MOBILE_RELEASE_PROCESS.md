@@ -97,12 +97,12 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
    ```
 
 2. Store the keystore file and both passwords in the password manager straight away. Without them you cannot update the app, short of asking Google to reset the upload key.
-3. Point Gradle at it from your **user-level** Gradle properties file in your home directory, never from `apps/mobile/android/gradle.properties`, which is tracked. The release signing configuration in `apps/mobile/android/app/build.gradle` reads these property names and refuses to build a release without them. The names are fixed by the readiness PRD's signing work.
+3. Point Gradle at it from your **user-level** Gradle properties file in your home directory, never from `apps/mobile/android/gradle.properties`, which is tracked. **This does not work yet.** Today the release build type in `apps/mobile/android/app/build.gradle` signs with the public debug key, as its own "Caution!" comment says. Making it read these properties, and refuse to build a release without them, is the readiness PRD's signing work (#956), which also fixes the property names.
 4. **Play App Signing** is automatic for a new app. You sign uploads with the upload key, and Google signs what users install with a key it holds.
 
 ### iOS
 
-1. In Xcode, sign in with your Apple ID and select your team on the `Mobile` target. Automatic signing creates the App ID `app.myorganiser`, the certificates, and the provisioning profiles.
+1. In Xcode, sign in with your Apple ID and select your team on the `Mobile` target. Automatic signing creates the App ID, the certificates, and the provisioning profiles for whatever bundle identifier the target carries. That is still React Native's template identifier until #807 moves it to `app.myorganiser`, so do this only after #807 has landed.
 2. Export the **Apple Distribution** certificate from Keychain Access as a `.p12`, and store it with its password in the password manager. You need it again on a new Mac, and in CI later.
 
 ## Part 3: Versioning a Mobile Release
@@ -193,7 +193,7 @@ These answers must match what the app and backend actually do. Re-check them whe
 | User ID                                                                | Yes                       | App functionality          | Linked to the User.                                                                                                                                                                   |
 | Vault contents (tasks, groceries, subscriptions, addresses, and so on) | Stored as ciphertext only | App functionality (sync)   | End-to-end encrypted: the server cannot read it. Google's form exempts end-to-end encrypted data from disclosure; declare it on Apple's form as user content, not linked to tracking. |
 | Crash logs, diagnostics, analytics                                     | No                        | none                       | No crash reporter in v1. Store-provided crash data is collected by the store, not by the app.                                                                                         |
-| Location, contacts, photos                                             | No                        | none                       | The iOS location usage string is stale and is removed by the readiness PRD.                                                                                                           |
+| Location, contacts, photos                                             | No                        | none                       | The iOS location usage string is stale. It is still present, and removing it is readiness PRD work (#956).                                                                            |
 
 - All data is encrypted in transit (HTTPS).
 - Users can delete their data through User Deletion.
