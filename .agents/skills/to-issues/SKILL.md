@@ -63,11 +63,11 @@ In both sections, only the issue a list item **starts with** is a dependency (`-
 
 Sandcastle does this automatically after a successful integrate. `/implement` must do the same when finishing a GitHub issue (see that skill).
 
-1. Mark the completed issue `status:done` (and close with reason `completed` for AFK slices).
+1. Mark the completed issue `status:done`. An AFK slice is closed with reason `completed` only when its run ended clean; otherwise it stays open as `ready-for-human` with what it left, and is not complete for its dependents until a person closes it ([ADR 0111](../../../docs/adr/0111-a-prd-slice-closes-only-on-a-clean-outcome.md)).
 2. Read its `## Blocks` list (fallback: search open issues whose `## Blocked by` cites this number).
 3. For each dependent still labelled `status:blocked`:
    - Re-read that dependent’s `## Blocked by`.
-   - If **every** blocker is `CLOSED` or has `status:done`, remove `status:blocked` and comment that it was unblocked.
+   - If **every** blocker is `CLOSED`, or has `status:done` without `ready-for-human`, remove `status:blocked` and comment that it was unblocked.
    - If any blocker remains open/incomplete, leave `status:blocked` on.
 
 HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to flip to `type:afk` (or otherwise unblock). Dependency blocking uses `status:blocked` + `## Blocked by` only.
