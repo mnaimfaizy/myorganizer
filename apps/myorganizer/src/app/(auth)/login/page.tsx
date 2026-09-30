@@ -1,6 +1,10 @@
 'use client';
 
-import { login, resendVerificationEmail } from '@myorganizer/auth';
+import {
+  login,
+  resendVerificationEmail,
+  toAuthErrorFromMessage,
+} from '@myorganizer/auth';
 import { Button, Checkbox, Input, Label, useToast } from '@myorganizer/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -36,12 +40,23 @@ export default function LoginPage() {
       router.push('/dashboard');
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Login failed.';
+      const { code } = toAuthErrorFromMessage(message);
 
-      if (message.toLowerCase().includes('email not verified')) {
+      if (code === 'email_not_verified') {
         setEmailNotVerified(true);
         toast({
           title: 'Email not verified',
           description: 'Please verify your email before logging in.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (code === 'account_disabled') {
+        toast({
+          title: 'Account disabled',
+          description:
+            'This account has been disabled. Contact support for help.',
           variant: 'destructive',
         });
         return;

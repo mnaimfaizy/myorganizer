@@ -14,6 +14,16 @@
 // decrypts on the other. libs/vault-core/src/lib/cryptoCompatibility.test.ts pins
 // that shared format.
 import type { VaultCrypto } from '@myorganizer/vault-core/portable';
+import { utf8ToBytes } from './bytes';
+
+// Re-exported for existing callers, as ./crypto does. On the web target
+// `./bytes` resolves to ./bytes.web.ts.
+export {
+  bytesToBase64,
+  base64ToBytes,
+  utf8ToBytes,
+  bytesToUtf8,
+} from './bytes';
 
 type AesGcmKey = CryptoKey;
 
@@ -35,31 +45,6 @@ function subtle(): SubtleCrypto {
 // boundary. The copies are of key, IV, and blob-sized buffers.
 function bufferSource(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
   return new Uint8Array(bytes);
-}
-
-export function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) {
-    binary += String.fromCharCode(byte);
-  }
-  return btoa(binary);
-}
-
-export function base64ToBytes(base64: string): Uint8Array {
-  const binary = atob(base64);
-  const bytes = new Uint8Array(binary.length);
-  for (let index = 0; index < binary.length; index += 1) {
-    bytes[index] = binary.charCodeAt(index);
-  }
-  return bytes;
-}
-
-export function utf8ToBytes(text: string): Uint8Array {
-  return new TextEncoder().encode(text);
-}
-
-export function bytesToUtf8(bytes: Uint8Array): string {
-  return new TextDecoder().decode(bytes);
 }
 
 export class MobileVaultCrypto implements VaultCrypto {

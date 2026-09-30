@@ -44,6 +44,25 @@ Vendored at: tools/assets/fonts/figtree-400-800-latin.woff2
 Provenance for both fonts: tools/assets/fonts/README.md
 
 ------------------------------------------------------------------------------
+Inter and Plus Jakarta Sans
+
+Licensed under the SIL Open Font License 1.1.
+https://fonts.google.com/specimen/Inter
+https://fonts.google.com/specimen/Plus+Jakarta+Sans
+https://openfontlicense.org/
+
+Vendored at:
+  apps/mobile/src/assets/fonts/Inter-Regular.ttf
+  apps/mobile/src/assets/fonts/Inter-SemiBold.ttf
+  apps/mobile/src/assets/fonts/PlusJakartaSans-Bold.ttf
+  apps/mobile/src/assets/fonts/PlusJakartaSans-ExtraBold.ttf
+
+Each family's OFL text is vendored beside the fonts as OFL-Inter.txt and
+OFL-PlusJakartaSans.txt.
+
+Provenance: apps/mobile/src/assets/fonts/README.md
+
+------------------------------------------------------------------------------
 tools/assets/dc-runtime/support.js
 
 Generated design-tool runtime (dc-runtime). No separate license grant is

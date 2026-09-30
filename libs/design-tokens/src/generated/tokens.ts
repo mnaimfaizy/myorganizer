@@ -33,8 +33,8 @@ export const colorTertiaryVar = 'var(--color-tertiary)';
 /** Action cyan. Active nodes and successful connections. */
 export const colorCyan = "#06b6d4";
 export const colorCyanVar = 'var(--color-cyan)';
-/** Irreversible actions only (delete, purge). */
-export const colorDestructive = "#ef4444";
+/** Irreversible actions only (delete, purge). 4.8:1 on white, so a filled destructive control carries its label at AA; the red it replaced did not. */
+export const colorDestructive = "#dc2626";
 export const colorDestructiveVar = 'var(--color-destructive)';
 /** Caution amber. The User should notice this, but nothing failed and nothing is irreversible — an unsent change, a state that needs attention before an action. Never for errors (use destructive) and never for an action that cannot be undone. 5.0:1 on white, so it passes AA as body text; the lighter amber it replaced did not. The dark-surface pairing is warning-on-dark. */
 export const colorWarning = "#b45309";
@@ -67,6 +67,15 @@ export const colorCyanOnDarkVar = 'var(--color-cyan-on-dark)';
 /** Dark-surface pairing for destructive. */
 export const colorDestructiveOnDark = "#811d1d";
 export const colorDestructiveOnDarkVar = 'var(--color-destructive-on-dark)';
+/** Dark-surface pairing for the error edge: the TextField edge and alert icon of a field in error. destructive-on-dark is a fill and reads at 2.04:1 as a mark on the dark background, so the edge takes its own lighter red. The error message itself is not red in dark; it takes the near-white error text role. */
+export const colorErrorEdgeOnDark = "#f87171";
+export const colorErrorEdgeOnDarkVar = 'var(--color-error-edge-on-dark)';
+/** The wash a modal or sheet lays over the screen behind it: primary at 40%. The one colour in this tier carrying alpha, because a scrim that is opaque is not a scrim — it is a surface. */
+export const colorScrim = "rgba(15, 23, 42, 0.4)";
+export const colorScrimVar = 'var(--color-scrim)';
+/** Dark-surface pairing for scrim: black at 60%. Primary at 40% over a near-black ground does not separate the sheet from the page. */
+export const colorScrimOnDark = "rgba(0, 0, 0, 0.6)";
+export const colorScrimOnDarkVar = 'var(--color-scrim-on-dark)';
 /** Dark-surface pairing for warning. 11.8:1 on the dark background. */
 export const colorWarningOnDark = "#fbbd23";
 export const colorWarningOnDarkVar = 'var(--color-warning-on-dark)';
@@ -82,6 +91,62 @@ export const fontDisplayVar = 'var(--font-display)';
 /** Body copy and UI labels. */
 export const fontBody = "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
 export const fontBodyVar = 'var(--font-body)';
+export const typeDisplaySize = "34px";
+export const typeDisplaySizeVar = 'var(--type-display-size)';
+export const typeDisplayLineHeight = "40px";
+export const typeDisplayLineHeightVar = 'var(--type-display-line-height)';
+export const typeDisplayWeight = "800";
+export const typeDisplayWeightVar = 'var(--type-display-weight)';
+export const typeDisplayTracking = "-0.02em";
+export const typeDisplayTrackingVar = 'var(--type-display-tracking)';
+export const typeTitleLgSize = "28px";
+export const typeTitleLgSizeVar = 'var(--type-title-lg-size)';
+export const typeTitleLgLineHeight = "34px";
+export const typeTitleLgLineHeightVar = 'var(--type-title-lg-line-height)';
+export const typeTitleLgWeight = "700";
+export const typeTitleLgWeightVar = 'var(--type-title-lg-weight)';
+export const typeTitleLgTracking = "-0.02em";
+export const typeTitleLgTrackingVar = 'var(--type-title-lg-tracking)';
+export const typeTitleSize = "20px";
+export const typeTitleSizeVar = 'var(--type-title-size)';
+export const typeTitleLineHeight = "26px";
+export const typeTitleLineHeightVar = 'var(--type-title-line-height)';
+export const typeTitleWeight = "700";
+export const typeTitleWeightVar = 'var(--type-title-weight)';
+export const typeTitleTracking = "-0.015em";
+export const typeTitleTrackingVar = 'var(--type-title-tracking)';
+export const typeBodySize = "17px";
+export const typeBodySizeVar = 'var(--type-body-size)';
+export const typeBodyLineHeight = "24px";
+export const typeBodyLineHeightVar = 'var(--type-body-line-height)';
+export const typeBodyWeight = "400";
+export const typeBodyWeightVar = 'var(--type-body-weight)';
+export const typeBodyTracking = "0em";
+export const typeBodyTrackingVar = 'var(--type-body-tracking)';
+export const typeBodySmSize = "15px";
+export const typeBodySmSizeVar = 'var(--type-body-sm-size)';
+export const typeBodySmLineHeight = "20px";
+export const typeBodySmLineHeightVar = 'var(--type-body-sm-line-height)';
+export const typeBodySmWeight = "400";
+export const typeBodySmWeightVar = 'var(--type-body-sm-weight)';
+export const typeBodySmTracking = "0em";
+export const typeBodySmTrackingVar = 'var(--type-body-sm-tracking)';
+export const typeLabelCapsSize = "12px";
+export const typeLabelCapsSizeVar = 'var(--type-label-caps-size)';
+export const typeLabelCapsLineHeight = "16px";
+export const typeLabelCapsLineHeightVar = 'var(--type-label-caps-line-height)';
+export const typeLabelCapsWeight = "600";
+export const typeLabelCapsWeightVar = 'var(--type-label-caps-weight)';
+export const typeLabelCapsTracking = "0.02em";
+export const typeLabelCapsTrackingVar = 'var(--type-label-caps-tracking)';
+export const typeCaptionSize = "13px";
+export const typeCaptionSizeVar = 'var(--type-caption-size)';
+export const typeCaptionLineHeight = "18px";
+export const typeCaptionLineHeightVar = 'var(--type-caption-line-height)';
+export const typeCaptionWeight = "400";
+export const typeCaptionWeightVar = 'var(--type-caption-weight)';
+export const typeCaptionTracking = "0em";
+export const typeCaptionTrackingVar = 'var(--type-caption-tracking)';
 export const radiusSm = "0.25rem";
 export const radiusSmVar = 'var(--radius-sm)';
 export const radiusMd = "0.5rem";
@@ -132,7 +197,7 @@ export const tokens = {
   'color-secondary': { value: "#7c3aed", cssVar: 'var(--color-secondary)' },
   'color-tertiary': { value: "#0f766e", cssVar: 'var(--color-tertiary)' },
   'color-cyan': { value: "#06b6d4", cssVar: 'var(--color-cyan)' },
-  'color-destructive': { value: "#ef4444", cssVar: 'var(--color-destructive)' },
+  'color-destructive': { value: "#dc2626", cssVar: 'var(--color-destructive)' },
   'color-warning': { value: "#b45309", cssVar: 'var(--color-warning)' },
   'color-surface': { value: "#f8fafc", cssVar: 'var(--color-surface)' },
   'color-surface-container': { value: "#eceef0", cssVar: 'var(--color-surface-container)' },
@@ -144,11 +209,42 @@ export const tokens = {
   'color-secondary-on-dark': { value: "#a78bfa", cssVar: 'var(--color-secondary-on-dark)' },
   'color-cyan-on-dark': { value: "#22d3ee", cssVar: 'var(--color-cyan-on-dark)' },
   'color-destructive-on-dark': { value: "#811d1d", cssVar: 'var(--color-destructive-on-dark)' },
+  'color-error-edge-on-dark': { value: "#f87171", cssVar: 'var(--color-error-edge-on-dark)' },
+  'color-scrim': { value: "rgba(15, 23, 42, 0.4)", cssVar: 'var(--color-scrim)' },
+  'color-scrim-on-dark': { value: "rgba(0, 0, 0, 0.6)", cssVar: 'var(--color-scrim-on-dark)' },
   'color-warning-on-dark': { value: "#fbbd23", cssVar: 'var(--color-warning-on-dark)' },
   'color-success': { value: "#15803d", cssVar: 'var(--color-success)' },
   'color-success-on-dark': { value: "#4ade80", cssVar: 'var(--color-success-on-dark)' },
   'font-display': { value: "'Plus Jakarta Sans', 'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif", cssVar: 'var(--font-display)' },
   'font-body': { value: "'Inter', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif", cssVar: 'var(--font-body)' },
+  'type-display-size': { value: "34px", cssVar: 'var(--type-display-size)' },
+  'type-display-line-height': { value: "40px", cssVar: 'var(--type-display-line-height)' },
+  'type-display-weight': { value: "800", cssVar: 'var(--type-display-weight)' },
+  'type-display-tracking': { value: "-0.02em", cssVar: 'var(--type-display-tracking)' },
+  'type-title-lg-size': { value: "28px", cssVar: 'var(--type-title-lg-size)' },
+  'type-title-lg-line-height': { value: "34px", cssVar: 'var(--type-title-lg-line-height)' },
+  'type-title-lg-weight': { value: "700", cssVar: 'var(--type-title-lg-weight)' },
+  'type-title-lg-tracking': { value: "-0.02em", cssVar: 'var(--type-title-lg-tracking)' },
+  'type-title-size': { value: "20px", cssVar: 'var(--type-title-size)' },
+  'type-title-line-height': { value: "26px", cssVar: 'var(--type-title-line-height)' },
+  'type-title-weight': { value: "700", cssVar: 'var(--type-title-weight)' },
+  'type-title-tracking': { value: "-0.015em", cssVar: 'var(--type-title-tracking)' },
+  'type-body-size': { value: "17px", cssVar: 'var(--type-body-size)' },
+  'type-body-line-height': { value: "24px", cssVar: 'var(--type-body-line-height)' },
+  'type-body-weight': { value: "400", cssVar: 'var(--type-body-weight)' },
+  'type-body-tracking': { value: "0em", cssVar: 'var(--type-body-tracking)' },
+  'type-body-sm-size': { value: "15px", cssVar: 'var(--type-body-sm-size)' },
+  'type-body-sm-line-height': { value: "20px", cssVar: 'var(--type-body-sm-line-height)' },
+  'type-body-sm-weight': { value: "400", cssVar: 'var(--type-body-sm-weight)' },
+  'type-body-sm-tracking': { value: "0em", cssVar: 'var(--type-body-sm-tracking)' },
+  'type-label-caps-size': { value: "12px", cssVar: 'var(--type-label-caps-size)' },
+  'type-label-caps-line-height': { value: "16px", cssVar: 'var(--type-label-caps-line-height)' },
+  'type-label-caps-weight': { value: "600", cssVar: 'var(--type-label-caps-weight)' },
+  'type-label-caps-tracking': { value: "0.02em", cssVar: 'var(--type-label-caps-tracking)' },
+  'type-caption-size': { value: "13px", cssVar: 'var(--type-caption-size)' },
+  'type-caption-line-height': { value: "18px", cssVar: 'var(--type-caption-line-height)' },
+  'type-caption-weight': { value: "400", cssVar: 'var(--type-caption-weight)' },
+  'type-caption-tracking': { value: "0em", cssVar: 'var(--type-caption-tracking)' },
   'radius-sm': { value: "0.25rem", cssVar: 'var(--radius-sm)' },
   'radius-md': { value: "0.5rem", cssVar: 'var(--radius-md)' },
   'radius-lg': { value: "0.75rem", cssVar: 'var(--radius-lg)' },

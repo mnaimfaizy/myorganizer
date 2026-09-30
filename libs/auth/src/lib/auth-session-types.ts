@@ -7,6 +7,7 @@ export type AuthErrorCode =
   | 'email_not_verified'
   | 'email_already_registered'
   | 'verification_resent'
+  | 'account_disabled'
   | 'network_error'
   | 'unknown';
 

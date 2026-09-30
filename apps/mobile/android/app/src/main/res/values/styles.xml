@@ -1,9 +1,20 @@
 <resources>
 
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
-        <!-- Customize your theme here. -->
+    <!-- Base application theme. Material 3, so the Material date dialog
+         (DateField on Android) has a calendar theme to read; React Native
+         draws every screen itself, so only system dialogs take these. -->
+    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
+        <item name="android:windowBackground">@color/background</item>
+        <item name="colorPrimary">@color/primary</item>
+        <item name="colorOnPrimary">@color/primary_foreground</item>
+        <item name="colorSurface">@color/sheet_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/sheet_surface</item>
+        <item name="colorOnSurface">@color/foreground</item>
+        <item name="colorOnSurfaceVariant">@color/muted_foreground</item>
+        <item name="colorOutline">@color/border</item>
+        <!-- Surfaces keep the sheet colour: no primary tint by elevation. -->
+        <item name="elevationOverlayEnabled">false</item>
     </style>
 
 </resources>

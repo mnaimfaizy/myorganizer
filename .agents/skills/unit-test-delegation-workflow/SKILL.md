@@ -16,7 +16,12 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-
 
 Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/myorganizer-e2e`.
 
-**Mobile App**: React Native code has no Jest lane. The mobile test toolchain is unresolved (see TECH_STACK.md mobile note). The first mobile test should not be written without resolving the toolchain. Do not proceed with mobile test implementation: stop, tell the user the toolchain is the blocker, and do not silently skip the work or report the empty `yarn nx test mobile` pass as success.
+**Mobile App**: which Jest lane you are in is decided by the project, not by what the spec imports.
+
+- **`libs/mobile/ui` renders.** It runs on `preset: 'react-native'` with `@testing-library/react-native` 14, which dropped the deprecated `react-test-renderer` peer that blocked this until #910. Mount a component, fire a press, read rendered output. Two things catch people out: **`render` is async** — `await` it — and the native modules are stubbed once in `libs/mobile/ui/jest.setup.ts` rather than per spec. See [the Mobile UI Agent Guide](../../../libs/mobile/ui/AGENTS.md).
+- **`libs/mobile/core` and `libs/mobile/screens` run pure logic only.** Both use `testEnvironment: 'node'` with no renderer configured, so a spec in either must import no `react-native`, no `react`, no `@testing-library/react-native`, no library barrel, and no component. A type-only import of a React Native type is fine; it is erased before Jest sees it.
+
+Logic worth asserting that needs no renderer still belongs in a pure module — that is why theme resolution and the Device Settings parsing are pure, and it keeps the cheapest lane open.
 
 ## Gate tier routing
 
