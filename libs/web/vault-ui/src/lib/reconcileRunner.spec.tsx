@@ -1099,6 +1099,7 @@ describe('VaultReconcileRunner', () => {
  */
 describe('E2E specs stay pinned to the whole-Vault standoff testid (issue #574)', () => {
   const E2E_SPEC_PATHS = [
+    'apps/myorganizer-e2e/src/e2e/groceries-vault-sync-convergence.spec.ts',
     'apps/myorganizer-e2e/src/e2e/tasks-vault-sync-convergence.spec.ts',
     'apps/myorganizer-e2e/src/e2e/tasks-vault-sync-delete-propagation.spec.ts',
   ];
