@@ -6,7 +6,7 @@
  * strategy: mergeById with a callable merge, or promptOnConflict with no merge.
  *
  * Groceries converges by nested record merge (catalog, lists, lines); see
- * ADR 0110.
+ * ADR 0112.
  */
 
 import { VaultBlobType } from '@myorganizer/app-api-client';

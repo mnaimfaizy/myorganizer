@@ -20,7 +20,7 @@ import {
  * the local record. Delete Grocery List and Delete From Catalog are exceptions
  * to the usual Deletion Log rule — a later edit does not restore them, and
  * the absence covers the List Lines that belonged to them
- * ([ADR 0110](../../../../../docs/adr/0110-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
+ * ([ADR 0112](../../../../../docs/adr/0112-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
  * Delete List Line is not an exception: a line changed after its deletion
  * survives.
  *

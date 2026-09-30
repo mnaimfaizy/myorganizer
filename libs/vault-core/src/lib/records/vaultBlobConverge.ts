@@ -29,7 +29,7 @@ export type VaultBlobMerge = (
  * `promptOnConflict` remains a strategy a type may be pinned to. Groceries
  * is not pinned to it: a Catalog Item, a Grocery List, and a List Line each
  * merge on their own
- * ([ADR 0110](../../../../../docs/adr/0110-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
+ * ([ADR 0112](../../../../../docs/adr/0112-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
  */
 export type VaultBlobConvergeStrategy =
   | {
