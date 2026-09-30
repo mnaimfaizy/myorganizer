@@ -79,20 +79,17 @@ function overRecords<TRecord>(
  * against `Record<VaultBlobType, …>`, so a member added to one union and not
  * the other fails to compile there.
  *
- * The `Record<VaultRecordType, …>` annotation is the guard: a sixth type
- * fails to compile here until somebody decides how it converges. It cannot
- * inherit a strategy from whichever arm an `else` happened to be — the shape
- * that destroyed grocery Ciphertext in
+ * The `as const satisfies Record<VaultRecordType, …>` clause is the guard:
+ * a sixth type fails to compile here until somebody decides how it
+ * converges. It cannot inherit a strategy from whichever arm an `else`
+ * happened to be — the shape that destroyed grocery Ciphertext in
  * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512).
  *
  * The table says which strategy, never when to apply it. Each runtime decides
  * that in exactly one place: `convergeVaultBlob` on web, `pushVaultBlob` on
  * mobile.
  */
-export const VAULT_BLOB_CONVERGE_STRATEGIES: Record<
-  VaultRecordType,
-  VaultBlobConvergeStrategy
-> = {
+export const VAULT_BLOB_CONVERGE_STRATEGIES = {
   addresses: { strategy: 'mergeById', merge: overRecords(mergeAddresses) },
   groceries: {
     strategy: 'mergeById',
@@ -107,7 +104,7 @@ export const VAULT_BLOB_CONVERGE_STRATEGIES: Record<
     merge: overRecords(mergeSubscriptions),
   },
   tasks: { strategy: 'mergeById', merge: overRecords(mergeTasks) },
-};
+} as const satisfies Record<VaultRecordType, VaultBlobConvergeStrategy>;
 
 /**
  * Both halves of a decrypted payload, whichever shape it was written in.

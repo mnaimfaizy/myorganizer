@@ -110,7 +110,9 @@ Despite E2EE, the server retains limited metadata: the blob type identifier (`'g
 ## Vault Blob Schema (developer reference)
 
 ```typescript
-// Stored as an encrypted GroceriesVaultPayload
+// The Ciphertext decrypts to an envelope. `records` is the payload below.
+// `deletions` is the Deletion Log (id → ISO timestamp). A blob written before
+// that envelope still decrypts as the bare payload; readers accept both.
 interface GroceriesVaultPayload {
   catalog: CatalogItem[]; // Item identities, shared across lists
   lists: GroceryList[];

@@ -10,12 +10,24 @@
  */
 
 import { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core';
+import type {
+  VaultBlobConvergeStrategy,
+  VaultBlobEnvelope,
+} from '@myorganizer/vault-core';
 
 import {
   VAULT_BLOB_CONVERGE_STRATEGIES,
   VAULT_BLOB_TYPES,
 } from './vaultBlobFields';
+
+function isPromptOnConflict(
+  strategy: VaultBlobConvergeStrategy,
+): strategy is Extract<
+  VaultBlobConvergeStrategy,
+  { strategy: 'promptOnConflict' }
+> {
+  return strategy.strategy === 'promptOnConflict';
+}
 
 describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
   test('should have exactly one entry per VaultBlobType when enumerating strategies', () => {
@@ -65,9 +77,8 @@ describe('VAULT_BLOB_CONVERGE_STRATEGIES', () => {
   });
 
   test('should carry no merge function when strategy is promptOnConflict', () => {
-    const promptTypes = VAULT_BLOB_TYPES.filter(
-      (type) =>
-        VAULT_BLOB_CONVERGE_STRATEGIES[type].strategy === 'promptOnConflict',
+    const promptTypes = VAULT_BLOB_TYPES.filter((type) =>
+      isPromptOnConflict(VAULT_BLOB_CONVERGE_STRATEGIES[type]),
     );
 
     for (const type of promptTypes) {
