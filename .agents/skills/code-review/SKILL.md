@@ -151,7 +151,8 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 - inferred caps at should-fix. Smell-baseline findings are inferred, and every
   `smell-*` rule caps at should-fix on its own.
 - a Spec finding with executed or cited evidence whose `source` is an accepted ADR
-  (`docs/adr/NNNN-….md`) is blocking: the diff leaves a decided requirement unmet, and
+  (`docs/adr/NNNN-….md`), anchored as the blocking rule above requires, is blocking:
+  the diff leaves a decided requirement unmet, and
   changing the decision takes another ADR, not a lower severity (ADR 0111).
 - Anything tsc, ESLint, an existing test, or a WIRED *:check gate would already fail is NOT a
   finding. Count it in suppressedRedundant instead. A gate is wired only if something at <head>

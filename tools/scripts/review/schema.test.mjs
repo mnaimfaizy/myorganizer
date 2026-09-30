@@ -141,6 +141,41 @@ test('the ADR floor applies to the Spec axis and to evidenced findings only', ()
   );
 });
 
+// An executed Spec finding with no diff location cannot be blocking (below), so a
+// floor on it would leave no severity the validator accepts, and one such finding
+// would reject the whole report.
+test('the ADR floor does not apply to a finding that cannot be blocking', () => {
+  const executed = {
+    kind: 'executed',
+    command: 'git grep -n "requireFreshPassphrase" -- libs/mobile',
+    exitCode: 1,
+    outputExcerpt: '',
+    cwd: '/repo',
+  };
+  const unanchored = adrSpecFinding({
+    evidence: executed,
+    location: undefined,
+  });
+  const report = normalizeReport(envelope({ findings: [unanchored] }));
+  assert.equal(report.findings[0].severity, 'should-fix');
+  rejects(
+    envelope({ findings: [{ ...unanchored, severity: 'blocking' }] }),
+    /blocking requires a diff location or a quoted spec line/,
+  );
+  // With a location it may block, so the floor holds again.
+  rejects(
+    envelope({
+      findings: [
+        adrSpecFinding({
+          evidence: executed,
+          location: { file: 'libs/mobile/a.ts', startLine: 1, headSha: HEAD },
+        }),
+      ],
+    }),
+    /a Spec finding against an accepted ADR decision .* is blocking/,
+  );
+});
+
 test('blocking on inferred evidence is rejected', () => {
   rejects(
     envelope({ findings: [inferred({ severity: 'blocking' })] }),

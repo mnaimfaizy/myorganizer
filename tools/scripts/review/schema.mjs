@@ -279,11 +279,16 @@ export const FindingInputSchema = z
     // severity. #912's review quoted ADR 0108 decision 1 ("an unattended unlocked
     // session must not be enough") as should-fix; the implementer replaced the
     // requirement with a two-minute window of its own, and it shipped. Only
-    // evidenced findings: an inferred one cannot block at all, below.
+    // findings that may block at all, by the rules below: evidenced, and anchored
+    // to a diff location or a quoted spec line. A floor on a finding that cannot
+    // be blocking would leave it no valid severity and reject the whole report.
+    const anchoredToSpec =
+      f.evidence.kind === 'cited' && f.evidence.sourceKind === 'spec';
     if (
       f.axis === 'spec' &&
       ACCEPTED_ADR_SOURCE.test(f.source) &&
       f.evidence.kind !== 'inferred' &&
+      (f.location || anchoredToSpec) &&
       f.severity !== 'blocking'
     ) {
       issue(
@@ -330,8 +335,6 @@ export const FindingInputSchema = z
           ['severity'],
         );
       }
-      const anchoredToSpec =
-        f.evidence.kind === 'cited' && f.evidence.sourceKind === 'spec';
       if (!f.location && !anchoredToSpec) {
         issue('blocking requires a diff location or a quoted spec line', [
           'location',
