@@ -10,7 +10,7 @@ Supersedes the Groceries sentence in [ADR 0054](0054-a-vault-blob-converges-by-r
 
 ADR 0054 converges a Vault Blob by record and records absence in a Deletion Log. It left Groceries on `promptOnConflict` permanently, because a Groceries Vault Blob is a nested payload of Catalog Items, Grocery Lists, and List Lines, and bulk mutations were judged to merge badly. Two devices editing different lists or lines therefore still prompt, and the side the User does not pick is discarded.
 
-The nested records already carry `id` and `updatedAt`. Deletes are hard removals, so a stale device puts a removed line back. There is no Groceries Deletion Log. Mobile shares the strategy pin and fails closed on `promptOnConflict`, because no mobile screen writes Groceries and there is nothing to prompt (ADR 0107).
+The nested records already carry `id` and `updatedAt`. A web delete was a hard removal, so a stale device puts a removed line back. Mobile already writes Groceries: `GroceriesScreen` creates, renames, and deletes Grocery Lists, and `GroceryTripScreen` edits a trip, both through `useVaultBlob` and `pushVaultBlob`. Those edits already record a deletion. Before this decision a conflicting push failed closed, because the type was pinned to `promptOnConflict` and there was nothing to prompt (ADR 0107). This decision is what lets that push merge.
 
 ## Decision
 
