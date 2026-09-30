@@ -15,7 +15,7 @@ import {
 
 /**
  * E2E: multi-device groceries vault sync converges without a pick-a-side prompt
- * when each device creates a different trip (ADR 0110).
+ * when each device creates a different trip (ADR 0112).
  *
  * Test-only passphrase against fully stubbed backend — no real credential applies.
  */
@@ -389,24 +389,13 @@ test.describe('Groceries Vault Sync Convergence (E2E)', () => {
 
     await assertNoPickASideUI(page2);
 
+    // Page 1 already pushed trip A, so this pull takes the server blob and
+    // does not PUT it back. The etag therefore stays where page 2 left it.
     const page1BeforePull = await readOwnedVault(page1, E2E_USER_ID);
     await page1.evaluate(() => window.dispatchEvent(new Event('focus')));
     await expect
       .poll(() => readOwnedVault(page1, E2E_USER_ID), { timeout: 15000 })
       .not.toBe(page1BeforePull);
-
-    const etagAfterPage1Pull = serverBlobEtags.groceries;
-    await expect
-      .poll(() => serverBlobEtags.groceries !== etagAfterPage1Pull, {
-        timeout: 15000,
-      })
-      .toBeTruthy();
-
-    const page2BeforePull = await readOwnedVault(page2, E2E_USER_ID);
-    await page2.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await expect
-      .poll(() => readOwnedVault(page2, E2E_USER_ID), { timeout: 15000 })
-      .not.toBe(page2BeforePull);
 
     await waitForBothTripsOnPage(page1, passphrase, tripA, tripB, true);
     await waitForBothTripsOnPage(page2, passphrase, tripA, tripB, true);
