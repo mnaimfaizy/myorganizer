@@ -630,8 +630,10 @@ harness laid over it from the pull request
 
 Every case run of `review-golden-replay.yml` appends one JSON line to
 [`golden-replay-results.jsonl`](golden-replay-results.jsonl) — date, workflow
-run id, commit, case id, outcome (`caught`, `missed`, or `void` with its
-reason), recall, `total_cost_usd`, turns, and model — including voids, which
+run id, commit, case id, outcome (`caught`, `missed`, `clean-pass`,
+`clean-fail`, or `void` with its reason — issue #933 added the two clean
+outcomes, scored on a Blocking finding rather than a recall fraction),
+recall, `total_cost_usd`, turns, and model — including voids, which
 are recorded as voids and never as misses or catches
 ([ADR 0101](../adr/0101-a-replay-whose-answer-sheet-fails-its-check-measured-nothing.md)).
 Every run uploads its lines as an artifact; a scheduled run on `main` also
