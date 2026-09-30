@@ -4,6 +4,8 @@
 
 accepted
 
+> **Superseded in part by [ADR 0110](0110-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md).** Groceries no longer stays on `promptOnConflict`. The rest of this decision stands.
+
 ## Context
 
 A Vault Blob is the unit the server stores and the client synchronises: one Ciphertext per Vault
@@ -55,6 +57,8 @@ ships looking correct and surfaces as ghost rows in one widget.
 [ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md). `promptOnConflict` is
 a permanent strategy, not a stopgap: `groceries` is a nested payload of catalog, lists, and lines
 whose bulk mutations merge badly, and groceries remains the type that uses `promptOnConflict` for that reason.
+
+> **Superseded in part by [ADR 0110](0110-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md).** The sentence above no longer holds for Groceries. `promptOnConflict` remains a strategy a type may be pinned to. Groceries is not pinned to it.
 
 ## Consequences
 

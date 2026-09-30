@@ -64,6 +64,9 @@ Three facts decided its shape:
    `VaultBlobConflictError`, and the screen offers Reload. It never keeps
    either side on the User's behalf. The same error ends a push whose server
    copy kept moving under every retry.
+
+   > **Superseded in part by [ADR 0110](0110-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md).** Groceries is no longer pinned to `promptOnConflict`, so this branch does not apply to it. The branch still fails closed for any Vault Blob Type that is.
+
 5. **Offline blocks; nothing is held.** A failed push reverts the screen to
    the last server-confirmed copy and says why: a conflict, the network, or
    anything else. Retry re-applies the same edit function to the current

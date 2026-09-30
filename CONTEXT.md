@@ -68,8 +68,12 @@ _Avoid_: Clear checked, finish trip, delete purchased, clear list
 Removing one grocery line from a Grocery List (checked or not). Does not destroy the Catalog Item.
 _Avoid_: Delete item (ambiguous with catalog), remove forever, trash item
 
+**Delete Grocery List**:
+Permanently removing a Grocery List. Its List Lines go with it, and a later edit of that list on another device does not restore it. Catalog Items stay.
+_Avoid_: Clear list, delete trip, remove all items, delete list line
+
 **Delete From Catalog**:
-Permanently destroying a durable grocery item identity so it is gone from the catalog and from every Grocery List that referenced it. Requires strong confirmation.
+Permanently destroying a durable grocery item identity so it is gone from the catalog and from every Grocery List that referenced it. A later edit of that same Catalog Item does not restore it. Requires strong confirmation.
 _Avoid_: Clear, remove checked, delete list line
 
 **Catalog Item**:
