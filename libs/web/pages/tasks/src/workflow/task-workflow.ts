@@ -62,17 +62,25 @@ export async function addTaskToWorkflow(
   tasks: Task[],
   formData: TaskFormInput,
 ): Promise<{ tasks: Task[]; result: TaskWorkflowMutationResult }> {
-  const newTask: Task = {
-    id: randomId(),
-    title: formData.title,
-    description: formData.description,
-    priority: formData.priority,
-    status: formData.status,
-    context: formData.context,
-    dueDate: formData.dueDate,
-    archived: false,
-    createdAt: new Date().toISOString(),
-  };
+  const now = new Date().toISOString();
+  // A new Task starts open and moves to the form's status through
+  // `transitionTaskStatus`, so one created already `done` or `cancelled`
+  // gets its `closedAt` from the same place every other status change does.
+  const newTask = transitionTaskStatus(
+    {
+      id: randomId(),
+      title: formData.title,
+      description: formData.description,
+      priority: formData.priority,
+      status: 'pending',
+      context: formData.context,
+      dueDate: formData.dueDate,
+      archived: false,
+      createdAt: now,
+    },
+    formData.status,
+    now,
+  );
 
   const persisted = await persistTasks(adapter, [newTask, ...tasks]);
   if (persisted.error) {
