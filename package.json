@@ -313,9 +313,11 @@
     "http-proxy-middleware": "3.0.7",
     "ip-address": "10.4.0",
     "brace-expansion@5.0.6": "5.0.9",
-    "undici": "7.29.0",
+    "undici": "7.29.1",
     "svgo@^4.0.1": "4.1.0",
-    "smol-toml": "1.8.0"
+    "smol-toml": "1.8.0",
+    "joi": "17.13.8",
+    "webpack-dev-middleware": "7.4.6"
   },
   "overrides": {
     "@babel/plugin-transform-modules-systemjs": "7.29.4",
@@ -391,7 +393,9 @@
     "ws": "8.21.0",
     "http-proxy-middleware": "3.0.7",
     "svgo@^4.0.1": "4.1.0",
-    "smol-toml": "1.8.0"
+    "smol-toml": "1.8.0",
+    "joi": "17.13.8",
+    "webpack-dev-middleware": "7.4.6"
   },
   "pnpm": {
     "overrides": {
@@ -468,7 +472,9 @@
       "ws": "8.21.0",
       "http-proxy-middleware": "3.0.7",
       "svgo@^4.0.1": "4.1.0",
-      "smol-toml": "1.8.0"
+      "smol-toml": "1.8.0",
+      "joi": "17.13.8",
+      "webpack-dev-middleware": "7.4.6"
     }
   },
   "devDependencies": {
