@@ -85,6 +85,62 @@ test('a valid report is normalized with ids, verdict, and effective tier', () =>
   for (const f of report.findings) assert.match(f.id, /^[0-9a-f]{12}$/);
 });
 
+// ADR 0111. #912's review quoted ADR 0108 decision 1 as should-fix, and the
+// implementer replaced the requirement with its own two-minute window.
+const adrSpecFinding = (overrides = {}) =>
+  cited({
+    axis: 'spec',
+    severity: 'should-fix',
+    summary:
+      'Enabling Biometric Unlock does not ask for the passphrase again first.',
+    ruleId: 'spec-requirement-missing',
+    source:
+      'docs/adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md',
+    rule: 'ADR 0108 decision 1: an unattended unlocked session must not be enough.',
+    evidence: {
+      kind: 'cited',
+      sourceKind: 'spec',
+      quote:
+        'Turning it on later, from Account, asks for the passphrase again before the biometric check',
+      untrusted: true,
+    },
+    ...overrides,
+  });
+
+test('a Spec finding against an accepted ADR decision below blocking is rejected', () => {
+  rejects(
+    envelope({ findings: [adrSpecFinding()] }),
+    /findings\.0\.severity: a Spec finding against an accepted ADR decision .* is blocking/,
+  );
+});
+
+test('a Spec finding against an accepted ADR decision is accepted as blocking', () => {
+  const report = normalizeReport(
+    envelope({ findings: [adrSpecFinding({ severity: 'blocking' })] }),
+  );
+  assert.equal(report.findings[0].severity, 'blocking');
+  assert.equal(report.verdict, 'request-changes');
+});
+
+test('the ADR floor applies to the Spec axis and to evidenced findings only', () => {
+  // A Standards finding citing an ADR stays a judgement call.
+  normalizeReport(
+    envelope({
+      findings: [
+        cited({
+          severity: 'should-fix',
+          source:
+            'docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md',
+        }),
+      ],
+    }),
+  );
+  // A Spec finding whose source is not a repo ADR is unaffected.
+  normalizeReport(
+    envelope({ findings: [adrSpecFinding({ source: 'issue #912' })] }),
+  );
+});
+
 test('blocking on inferred evidence is rejected', () => {
   rejects(
     envelope({ findings: [inferred({ severity: 'blocking' })] }),
