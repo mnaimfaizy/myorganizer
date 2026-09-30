@@ -55,13 +55,6 @@ export function mergeGroceries(
   };
 }
 
-function recordChangedAt(record: {
-  updatedAt?: string;
-  createdAt?: string;
-}): string | undefined {
-  return record.updatedAt ?? record.createdAt;
-}
-
 function mergeCatalog(
   local: readonly CatalogItem[],
   remote: readonly CatalogItem[],
@@ -70,7 +63,7 @@ function mergeCatalog(
   const merged = mergeRecordsById(
     { records: [...local], deletions },
     { records: [...remote], deletions: {} },
-    recordChangedAt,
+    (item) => item.updatedAt ?? item.createdAt,
   );
   // Delete From Catalog wins over a later edit of that same Catalog Item.
   return merged.records.filter((item) => deletions[item.id] === undefined);
@@ -121,7 +114,7 @@ function mergeOneList(
   const lines = mergeRecordsById(
     { records: local?.lines ?? [], deletions },
     { records: remote?.lines ?? [], deletions: {} },
-    recordChangedAt,
+    (line) => line.updatedAt ?? line.createdAt,
   ).records.filter((line) => catalogIds.has(line.catalogItemId));
 
   return {
@@ -140,7 +133,8 @@ function newerList(
 ): GroceryList {
   if (local === undefined) return remote as GroceryList;
   if (remote === undefined) return local;
-  return toEpoch(recordChangedAt(remote)) > toEpoch(recordChangedAt(local))
+  return toEpoch(remote.updatedAt ?? remote.createdAt) >
+    toEpoch(local.updatedAt ?? local.createdAt)
     ? remote
     : local;
 }
