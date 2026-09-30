@@ -40,9 +40,12 @@ export function compareTasksByPriorityDueDateCreated(
     PRIORITY_ORDER[b.priority ?? 'medium'];
   if (priorityDelta !== 0) return priorityDelta;
 
-  const dueDelta =
-    timeOrFallback(a.dueDate, Infinity) - timeOrFallback(b.dueDate, Infinity);
-  if (dueDelta !== 0) return dueDelta;
+  // Compared rather than subtracted: two undated Tasks both fall back to
+  // Infinity, and Infinity - Infinity is NaN, which is not 0 and so would skip
+  // the createdAt tie-break below.
+  const aDue = timeOrFallback(a.dueDate, Infinity);
+  const bDue = timeOrFallback(b.dueDate, Infinity);
+  if (aDue !== bDue) return aDue < bDue ? -1 : 1;
 
   return timeOrFallback(a.createdAt, 0) - timeOrFallback(b.createdAt, 0);
 }
