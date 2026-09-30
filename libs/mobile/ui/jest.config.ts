@@ -4,7 +4,11 @@
 // `jest.preset.js`, where the same pin and its full reasoning live.
 process.env.NODE_ENV = 'test';
 
-export default {
+// CommonJS, as `apps/mobile/jest.config.ts` is: the mappers below need
+// `require.resolve` and `__dirname`. Where Node strips TypeScript natively
+// (22.18+), Jest imports this file directly, and `export default` would make
+// it an ES module in which neither exists.
+module.exports = {
   displayName: 'mobile-ui',
   // The React Native preset, not the workspace one: a spec here renders React
   // Native components, which needs the runtime's own Haste platform
