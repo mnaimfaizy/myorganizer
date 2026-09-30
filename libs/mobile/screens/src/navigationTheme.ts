@@ -56,7 +56,7 @@ function navigationFonts(
  * background behind a native stack transition, the area outside a screen's
  * safe-area container — and it takes them from its own theme, not from ours.
  * With no `theme` prop it falls back to `DefaultTheme`, a module-level
- * light-only constant: exactly the shape ADR 0109 removed from
+ * light-only constant: exactly the shape ADR 0110 removed from
  * `libs/mobile/ui`, and with the same consequence, a light seam in a dark app.
  *
  * Derived wholly from the `Theme` it is handed, with no module constant of its
