@@ -20,6 +20,7 @@ import {
   triggerLabelNames,
   syncSurfaceLabelChanges,
 } from './github-labels.mjs';
+import { NEEDS_HUMAN_LABEL } from './sandcastle-outcome.mjs';
 
 // ADR 0025 as amended by ADR 0049: `qa` moved to the Orchestration vocabulary, so it is no
 // longer a Surface Label and may not appear on a Pull Request. `grilling` was added there too.
@@ -61,6 +62,22 @@ test('qa and grilling are Orchestration Labels, not Surface Labels (ADR 0049)', 
   assert.deepEqual(rejectedPrLabels(['qa', 'grilling'], catalog), [
     'qa',
     'grilling',
+  ]);
+});
+
+// The orchestrator swaps ready-for-agent for this label on a held slice (ADR 0111).
+// Adding a label to an issue that the repo never provisioned fails, so the name the
+// orchestrator writes must be one the catalog provisions.
+test('the label a held slice takes is a provisioned Orchestration Label (ADR 0111)', () => {
+  const catalog = loadGithubLabelCatalog();
+  assert.equal(
+    catalog.orchestration.some((l) => l.name === NEEDS_HUMAN_LABEL),
+    true,
+  );
+  const provisioned = provisionLabels(catalog).map((label) => label.name);
+  assert.equal(provisioned.includes(NEEDS_HUMAN_LABEL), true);
+  assert.deepEqual(rejectedPrLabels([NEEDS_HUMAN_LABEL], catalog), [
+    NEEDS_HUMAN_LABEL,
   ]);
 });
 

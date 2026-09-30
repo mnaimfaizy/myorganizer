@@ -40,6 +40,10 @@ writes it.**
    only a _wired_ check suppresses — one a hook or a workflow actually invokes. The structure of this
    item is unchanged; the suppression condition is qualified there.
 
+   > **Amended by [ADR 0111](0111-a-prd-slice-closes-only-on-a-clean-outcome.md).** `blocking` is also
+   > a floor: a Spec-axis finding with `executed` or `cited` evidence whose source is an ADR under
+   > `docs/adr/` is rejected below `blocking`, because the decision it quotes was already made.
+
 2. **Evidence is an enum, not a sentence.** `executed` carries the command, its exit code, an output
    excerpt, and the working directory. `cited` carries the source — a repo standard by path and rule,
    or an issue by number — and the quoted rule. `inferred` carries only the reviewer's reasoning.

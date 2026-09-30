@@ -13,7 +13,7 @@ GitHub Issues
 | Label                | Meaning                                                 |
 | -------------------- | ------------------------------------------------------- |
 | `ready-for-agent`    | Orchestrator may pick this issue up                     |
-| `complexity:low`     | Route to Haiku — simple, well-scoped task               |
+| `complexity:low`     | Simple, well-scoped task — same model as medium         |
 | `complexity:medium`  | Route to Sonnet — moderate complexity                   |
 | `complexity:high`    | Route to Opus — complex, deep reasoning required        |
 | `gate:mechanical`    | Mechanical path — no specialist chains (ADR 0012)       |
