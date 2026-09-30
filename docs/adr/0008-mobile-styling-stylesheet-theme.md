@@ -14,7 +14,7 @@ ADR-0007 chose NativeWind v4 so mobile could reuse Tailwind authoring and the de
 ## Decision
 
 > **The clause naming a single `theme` is superseded by
-> [ADR 0110](./0110-a-mobile-theme-is-resolved-per-colour-mode-and-a-device-setting-is-not-vault-data.md).**
+> [ADR 0112](./0112-a-mobile-theme-is-resolved-per-colour-mode-and-a-device-setting-is-not-vault-data.md).**
 > The theme is now resolved per colour mode from the Semantic Roles and reached through a
 > provider; `theme.fonts` is gone. `StyleSheet` over a token-derived theme, and the rejection
 > of NativeWind, stand as written.
