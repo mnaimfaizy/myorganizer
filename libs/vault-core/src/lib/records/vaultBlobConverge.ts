@@ -1,6 +1,7 @@
 import type { VaultRecordType } from '../types';
 
 import { mergeAddresses, mergeMobileNumbers } from './contactRecordMerge';
+import { mergeGroceries } from './groceryMerge';
 import { mergeSubscriptions } from './subscriptionRecordMerge';
 import { mergeTasks } from './taskMerge';
 import {
@@ -25,11 +26,10 @@ export type VaultBlobMerge = (
  * How one Vault Blob Type converges when two writers have both changed it,
  * per [ADR 0054](../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md).
  *
- * `promptOnConflict` is a permanent strategy, not a stopgap and not a
- * deprecation notice. Groceries is a nested payload of catalog, lists and
- * lines whose bulk mutations — Uncheck All, Remove Checked From List — merge
- * badly under a union by id. It is not waiting for a record-level merge
- * to be written.
+ * `promptOnConflict` remains a strategy a type may be pinned to. Groceries
+ * is not pinned to it: a Catalog Item, a Grocery List, and a List Line each
+ * merge on their own
+ * ([ADR 0110](../../../../../docs/adr/0110-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
  */
 export type VaultBlobConvergeStrategy =
   | {
@@ -79,18 +79,25 @@ function overRecords<TRecord>(
  * against `Record<VaultBlobType, …>`, so a member added to one union and not
  * the other fails to compile there.
  *
- * The `satisfies` clause is the guard: a sixth type fails to compile here
- * until somebody decides how it converges. It cannot inherit a strategy from
- * whichever arm an `else` happened to be — the shape that destroyed grocery
- * Ciphertext in [#512](https://github.com/mnaimfaizy/myorganizer/issues/512).
+ * The `Record<VaultRecordType, …>` annotation is the guard: a sixth type
+ * fails to compile here until somebody decides how it converges. It cannot
+ * inherit a strategy from whichever arm an `else` happened to be — the shape
+ * that destroyed grocery Ciphertext in
+ * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512).
  *
  * The table says which strategy, never when to apply it. Each runtime decides
  * that in exactly one place: `convergeVaultBlob` on web, `pushVaultBlob` on
  * mobile.
  */
-export const VAULT_BLOB_CONVERGE_STRATEGIES = {
+export const VAULT_BLOB_CONVERGE_STRATEGIES: Record<
+  VaultRecordType,
+  VaultBlobConvergeStrategy
+> = {
   addresses: { strategy: 'mergeById', merge: overRecords(mergeAddresses) },
-  groceries: { strategy: 'promptOnConflict' },
+  groceries: {
+    strategy: 'mergeById',
+    merge: (local, remote) => mergeGroceries(local, remote),
+  },
   mobileNumbers: {
     strategy: 'mergeById',
     merge: overRecords(mergeMobileNumbers),
@@ -100,7 +107,7 @@ export const VAULT_BLOB_CONVERGE_STRATEGIES = {
     merge: overRecords(mergeSubscriptions),
   },
   tasks: { strategy: 'mergeById', merge: overRecords(mergeTasks) },
-} as const satisfies Record<VaultRecordType, VaultBlobConvergeStrategy>;
+};
 
 /**
  * Both halves of a decrypted payload, whichever shape it was written in.
