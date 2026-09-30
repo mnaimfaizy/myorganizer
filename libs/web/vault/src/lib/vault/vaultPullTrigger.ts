@@ -157,6 +157,17 @@ export type VaultPullTrigger = {
    * trigger for good. Returns a function that stops listening.
    */
   subscribe(listener: () => void): () => void;
+  /**
+   * Resolves once this trigger's first non-superseded pass has completed,
+   * whatever it found — including nothing to do. `requestCheck` is
+   * fire-and-forget by design, coalescing mount and focus into one debounced
+   * pass, so a caller with no pass of its own to await (a mount-settle
+   * reading with nothing else to watch) still needs a way to know the first
+   * pass has settled. Never resolves on a superseded pass — that pass
+   * answered nothing, and the one that superseded it is what this is
+   * actually waiting for.
+   */
+  firstSettled: Promise<void>;
 };
 
 const debounceAfterDelay: VaultPullTriggerScheduler = (run) => {
@@ -248,6 +259,10 @@ export function createVaultPullTrigger(options: {
    * long as the server stayed still.
    */
   let inventoryEtag: string | undefined;
+  let resolveFirstSettled: () => void = () => undefined;
+  const firstSettled = new Promise<void>((resolve) => {
+    resolveFirstSettled = resolve;
+  });
   /**
    * The pass this trigger currently speaks for, if any.
    *
@@ -362,6 +377,10 @@ export function createVaultPullTrigger(options: {
       // Vault Pull Stall reading — and a caller reading only on the next
       // `focus` would show a stale answer until the one after that.
       if (stopsNow || stalledChanged) notify();
+
+      // A no-op past the first pass — resolving an already-resolved promise
+      // does nothing, and `firstSettled` only ever means the first one.
+      resolveFirstSettled();
     }
     return result;
   }
@@ -390,5 +409,7 @@ export function createVaultPullTrigger(options: {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
+
+    firstSettled,
   };
 }

@@ -121,7 +121,22 @@ export function isDependencySatisfied(
 ) {
   if (completed.has(dependency)) return true;
   const issue = lookup(dependency);
-  return issue !== undefined && isCompleted(issue);
+  return issue !== undefined && isSatisfiedAsDependency(issue);
+}
+
+/**
+ * Whether a finished slice lets the slices after it go.
+ *
+ * Complete, and not held for a person. A slice whose run did not end clean is
+ * integrated and marked `status:done` so a re-run skips it (ADR 0045), but it
+ * stays open as `ready-for-human` with what it left undone (ADR 0111) — and a
+ * slice built on it would build on that gap, the way #918's keep-awake toggle
+ * had nothing to switch because #913 never shipped keep-awake. Closing it is
+ * how a person releases what depends on it.
+ */
+export function isSatisfiedAsDependency(issue) {
+  if (!isCompleted(issue)) return false;
+  return issue.state === 'CLOSED' || !hasLabel(issue, 'ready-for-human');
 }
 
 /** The `## Blocked by` entries of `issue` that still hold it back. */

@@ -145,7 +145,20 @@ runs:
         # AGENTS.md), so allow that bot to be reviewed like any human push. The
         # reviewer's job still holds only read scopes; nothing about the trust
         # boundary changes by reviewing a cursor-authored diff.
-        allowed_bots: cursor
+        #
+        # `github-actions` is the release Pull Request: the release workflow
+        # opens it as `github-actions[bot]`, and both v1.0.0 (#863) and v1.1.0
+        # (#923) got "no verdict" for it — on the one diff shape the golden set
+        # already knows the reviewer can miss (a version bump that leaves the
+        # generated client stale). The actor name is not the guard: a push made
+        # with any workflow's GITHUB_TOKEN, a fork's included, is attributed to
+        # github-actions[bot]. What bounds the grant is that a fork's
+        # pull_request run gets no repository secrets, so the preflight skips
+        # before this action runs, and Publish Review refuses a cross-repository
+        # Pull Request (same_repo). Here, release-pr.yml is the only workflow
+        # that opens a Pull Request, on a push to release/v* — asserted by
+        # tools/scripts/lib/review-tier-workflow.test.mjs.
+        allowed_bots: cursor,github-actions
         prompt: |
           /code-review
 
@@ -164,7 +177,7 @@ runs:
         claude_args: >-
           --model ${{ inputs.model }}
           --max-turns 80
-          --allowedTools "Read,Glob,Grep,Write(tmp/code-review/**),Edit(tmp/code-review/**),Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(find:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+          --allowedTools "Read,Glob,Grep,Write(tmp/code-review/**),Edit(tmp/code-review/**),Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree add:*),Bash(git worktree list:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
 
     # A reviewer stopped by the five-hour subscription window produces no
     # report, which is indistinguishable from a reviewer that read the diff and

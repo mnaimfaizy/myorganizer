@@ -697,6 +697,13 @@
   table.dtable tr.cap td {
     background: var(--sev-shouldfix-sf);
   }
+  table.dtable tr.floor td {
+    background: var(--sev-blocking-sf);
+  }
+  table.dtable td.must {
+    color: var(--sev-blocking);
+    font-weight: 600;
+  }
   table.dtable tr.drop td {
     background: var(--surface-2);
     color: var(--ink-3);
@@ -1462,7 +1469,7 @@
   <section class="panel" aria-labelledby="pb-h">
     <div class="phead">
       <h2 id="pb-h">Panel B — What earns <code>blocking</code></h2>
-      <span class="src">ADR 0071 item 1</span>
+      <span class="src">ADR 0071 item 1, ADR 0111 item 4</span>
     </div>
     <div class="pbody">
       <table class="dtable">
@@ -1483,6 +1490,25 @@
             <td>cited</td>
             <td>yes</td>
             <td class="yes">yes</td>
+          </tr>
+          <tr class="floor">
+            <td>
+              executed or cited, on the <em>Spec</em> axis, with an ADR under
+              <code>docs/adr/</code> as its source
+              (<a
+                href="../adr/0111-a-prd-slice-closes-only-on-a-clean-outcome.md"
+                >ADR 0111</a
+              >)
+            </td>
+            <td>yes</td>
+            <td class="must">
+              must be <code>blocking</code> &mdash; a floor, not a cap. Anything
+              lower rejects the report, so <code>Agent Review Ran</code> fails.
+              <span style="font-weight: 400; color: var(--ink-2)"
+                >An unanchored finding cannot block, so it keeps its stated
+                severity.</span
+              >
+            </td>
           </tr>
           <tr class="cap">
             <td>cited</td>
@@ -1557,7 +1583,7 @@
             <li>A third label set beside <code>orchestration</code> and <code>surface</code></li>
             <li>Lives on a Pull Request, never an Issue</li>
           </ul>
-          <p class="small muted"><code>tools/config/github-labels.json:3, :80</code>.</p>
+          <p class="small muted"><code>tools/config/github-labels.json:3, :85</code>.</p>
         </div>
       </div>
       <p class="small muted" style="margin-top: 12px">
@@ -1804,7 +1830,7 @@
         "file": "tools/config/github-labels.json",
         "start": "\"orchestration\": ["
       },
-      "tools/config/github-labels.json:80": {
+      "tools/config/github-labels.json:85": {
         "file": "tools/config/github-labels.json",
         "start": "\"review\": ["
       }

@@ -40,6 +40,11 @@ writes it.**
    only a _wired_ check suppresses — one a hook or a workflow actually invokes. The structure of this
    item is unchanged; the suppression condition is qualified there.
 
+   > **Amended by [ADR 0111](0111-a-prd-slice-closes-only-on-a-clean-outcome.md).** `blocking` is also
+   > a floor: a Spec-axis finding with `executed` or `cited` evidence whose source is an ADR under
+   > `docs/adr/`, and which is anchored as above, is rejected below `blocking`, because the decision
+   > it quotes was already made.
+
 2. **Evidence is an enum, not a sentence.** `executed` carries the command, its exit code, an output
    excerpt, and the working directory. `cited` carries the source — a repo standard by path and rule,
    or an issue by number — and the quoted rule. `inferred` carries only the reviewer's reasoning.
@@ -210,3 +215,7 @@ verdict as a required check can be written once the golden-set replay has a reco
 > `Golden Replay` is in no ruleset, which
 > [ADR 0072](0072-a-golden-case-earns-its-replay-frequency.md) makes deliberate. Noted here because
 > it sits beside a claim being corrected, not because ADR 0073 changed it.
+
+> **Superseded in part by [ADR 0109](0109-a-golden-replay-runs-on-a-schedule-and-on-request.md).**
+> The replay no longer runs on "any Pull Request touching" a reviewer input. It runs weekly on
+> `main` when one moved, on the `golden-replay` Request Label, and by dispatch.

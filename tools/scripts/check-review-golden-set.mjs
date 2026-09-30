@@ -7,9 +7,12 @@
 // Four things rot here and each is checked: the set's shape (ids, SHAs,
 // patterns, minimum recall), the commit ranges (both ends must exist and
 // the head must be reachable from main, or the replay reviews nothing),
-// and the replay workflow's path filter, which must cover every input ADR
-// 0070 names — the skill, the schema, the validator, the renderer, and the
-// review workflow — or a change to one of them ships without a replay.
+// and the replay workflow's triggers, which must be the ones ADR 0109 names —
+// a weekly schedule that asks which reviewer inputs moved, the golden-replay
+// Request Label, and dispatch — and never a push to a Pull Request, which
+// bought most of three weeks' replay spend on runs nobody asked to measure.
+// Which inputs the schedule watches is REPLAY_INPUT_PATHS in golden-tiers.mjs,
+// covered by its own tests.
 // And the replay checks the reviewer's obligation answer sheet before it
 // scores, as production does, or a run production would fail as a pipeline
 // fault is recorded as a miss (ADR 0101).
@@ -23,24 +26,11 @@ import {
   REVIEW_GOLDEN_SET_PATH,
   loadGoldenSet,
   replayObligationCheckFindings,
+  replayTriggerFindings,
 } from './review/golden.mjs';
+import { REPLAY_INPUT_PATHS } from './review/golden-tiers.mjs';
 
 const REPLAY_WORKFLOW = '.github/workflows/review-golden-replay.yml';
-/** Inputs a replay must cover (ADR 0071). Globs as the workflow spells them. */
-export const REPLAY_TRIGGER_PATHS = [
-  '.agents/skills/code-review/**',
-  'tools/scripts/review/**',
-  '.github/actions/code-reviewer/**',
-  '.github/workflows/code-review.yml',
-  '.github/workflows/review-golden-replay.yml',
-  'tools/config/review-golden-set.json',
-  // The obligation catalogue is an input to the review itself: the selector
-  // matches it against the diff and the reviewer answers what fired. A
-  // trigger edited here changes what every case is asked, so it must be
-  // measured like any other reviewer input.
-  'tools/config/review-obligations.json',
-];
-
 const fail = (msg) => {
   console.error(`review-golden-set: ${msg}`);
   process.exit(2);
@@ -100,12 +90,8 @@ if (shallow) {
 }
 
 const workflow = readFileSync(REPLAY_WORKFLOW, 'utf8');
-for (const path of REPLAY_TRIGGER_PATHS) {
-  if (!workflow.includes(`'${path}'`) && !workflow.includes(`"${path}"`))
-    findings.push(
-      `${REPLAY_WORKFLOW}: pull_request paths do not include '${path}'`,
-    );
-}
+for (const f of replayTriggerFindings(workflow))
+  findings.push(`${REPLAY_WORKFLOW}: ${f}`);
 
 for (const f of replayObligationCheckFindings(workflow))
   findings.push(`${REPLAY_WORKFLOW}: ${f}`);
@@ -118,5 +104,5 @@ if (findings.length) {
   process.exit(1);
 }
 console.log(
-  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + c.expected.length, 0)} expected finding(s), replay covers ${REPLAY_TRIGGER_PATHS.length} input path(s) and checks answer sheets before scoring`,
+  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + c.expected.length, 0)} expected finding(s), replay runs on schedule and request over ${REPLAY_INPUT_PATHS.length} input path(s) and checks answer sheets before scoring`,
 );

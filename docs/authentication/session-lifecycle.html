@@ -12683,12 +12683,12 @@
       "start": "export type AuthErrorCode =",
       "end": "  | 'unknown';"
     },
-    "cookieHelper.ts:27-28": {
+    "cookieHelper.ts:28-29": {
       "file": "apps/backend/src/helpers/cookieHelper.ts",
       "start": "export function setRefreshCookie(res: Response, refreshToken: string): void {",
       "end": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());"
     },
-    "cookieHelper.ts:28": {
+    "cookieHelper.ts:29": {
       "file": "apps/backend/src/helpers/cookieHelper.ts",
       "start": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());",
       "end": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());"
@@ -14181,7 +14181,7 @@ data:  { password: hash, reset_password_token: null }
                       class="text-muted"
                       style="font-size: 10.5px; margin-top: 6px"
                     >
-                      AuthController.ts:139 · cookieHelper.ts:27-28
+                      AuthController.ts:139 · cookieHelper.ts:28-29
                     </div>
                   </div>
                   <div
@@ -14570,8 +14570,8 @@ data:  { password: hash, reset_password_token: null }
           id: 'login', kicker: 'Scene 5 · POST /auth/login', title: 'Two tokens out, two trust models',
           settles: 'Where the refresh token lands.', state: 'authenticated',
           body: 'Access token 10m, refresh token 7d, signed by different secrets. Web receives the refresh token as an httpOnly cookie; mobile receives it in the JSON body and puts it in the OS keychain. Same endpoint, forked by client_type.',
-          code: "setRefreshCookieIfPresent(req, refreshToken)  // AuthController.ts:139 · cookieHelper.ts:27-28",
-          refs: ['AuthController.ts:139', 'cookieHelper.ts:27-28'],
+          code: "setRefreshCookieIfPresent(req, refreshToken)  // AuthController.ts:139 · cookieHelper.ts:28-29",
+          refs: ['AuthController.ts:139', 'cookieHelper.ts:28-29'],
           flow: [{ t: 'credentials' }, { t: 'access 10m', good: true }, { t: 'refresh 7d', good: true }],
           tokens: [
             tok('access', 'access #1', 30, 42, 'live', 'iat recorded — this timestamp decides its fate in scene 10'),
@@ -14595,7 +14595,7 @@ data:  { password: hash, reset_password_token: null }
           settles: 'What comes back from a refresh.', state: 'authenticated',
           body: 'The running handler mints a new access token AND a new refresh token, then resets the cookie. AuthController does none of this, and the README does not mention it — so the generated client and the docs both describe a system that only returns an access token.',
           code: 'setRefreshCookieIfPresent(req, newRefreshToken)  // AuthController.ts:268',
-          refs: ['AuthController.ts:268', 'cookieHelper.ts:28'],
+          refs: ['AuthController.ts:268', 'cookieHelper.ts:29'],
           flow: [{ t: 'refresh #1' }, { t: 'access #2', good: true }, { t: 'refresh #2', good: true }],
           tokens: [
             tok('access', 'access #2', 44, 56, 'live', 'fresh iat'),

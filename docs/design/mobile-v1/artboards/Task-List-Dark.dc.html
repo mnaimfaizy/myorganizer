@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tasks</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;background:#030711;color:#E2E8F0;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;margin:0;cursor:pointer}
+input{font-family:inherit;margin:0}
+a{color:#E2E8F0}a:hover{color:#A78BFA}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #030711; color: #E2E8F0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; display: flex; flex-direction: column">
+<div style="height: 54px; flex-shrink: 0; background: transparent"></div><div style="width: 390px; height: 100px; box-sizing: border-box; padding: 4px 8px 8px 16px; display: flex; flex-direction: column; background: #030711">
+<div style="height: 44px; display: flex; justify-content: flex-end"><button type="button" aria-label="Lock vault" style="width: 44px; height: 44px; border: 0; border-radius: 22px; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; "><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#A78BFA" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V7a4 4 0 0 1 8 0v4"></path></svg></button></div>
+<h1 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 34px; line-height: 40px; font-weight: 800; letter-spacing: -0.02em; color: #E2E8F0">Tasks</h1>
+</div>
+<div style="flex-shrink: 0; padding: 4px 16px 8px 16px; display: flex; flex-direction: column; gap: 10px; background: #030711">
+<div role="tablist" style="width: 358px; height: 44px; box-sizing: border-box; padding: 4px; border-radius: 10px; background: #0F172A; display: flex; gap: 2px; "><button type="button" role="tab" aria-selected="true" style="flex-grow: 1; flex-basis: 0; height: 36px; box-sizing: border-box; border: 1px solid #1D283A; border-radius: 7px; background: #1D283A;  color: #F8FAFC; font-size: 15px; line-height: 20px; font-weight: 600; ">All</button><button type="button" role="tab" aria-selected="false" style="flex-grow: 1; flex-basis: 0; height: 36px; box-sizing: border-box; border: 0; border-radius: 7px; background: transparent;  color: #F8FAFC; font-size: 15px; line-height: 20px; font-weight: 500; ">Personal</button><button type="button" role="tab" aria-selected="false" style="flex-grow: 1; flex-basis: 0; height: 36px; box-sizing: border-box; border: 0; border-radius: 7px; background: transparent;  color: #F8FAFC; font-size: 15px; line-height: 20px; font-weight: 500; ">Work</button></div>
+<div style="height: 36px; display: flex; align-items: center; justify-content: space-between"><span style="font-size: 13px; line-height: 18px; color: #7F8EA3">8 open</span><button type="button" aria-pressed="false" style="height: 36px; box-sizing: border-box; padding: 0 12px 0 10px; border: 1px solid #7F8EA3; border-radius: 8px; background: #030711; color: #E2E8F0; display: flex; align-items: center; gap: 6px; font-size: 15px; line-height: 20px; font-weight: 500; white-space: nowrap;   "><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#E2E8F0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg>Show done</button></div>
+</div><div style="flex-grow: 1; overflow: hidden; display: flex; flex-direction: column"><div style="height: 40px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px 6px 16px; display: flex; align-items: flex-end; border-bottom: 1px solid #1D283A; background: #030711"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #FBBD23">Overdue · 1</span></div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Pay water bill"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="High priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #E2E8F0"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: #E2E8F0"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: #E2E8F0"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Pay water bill</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis"><span style="color: #FBBD23; font-weight: 600">2 days overdue</span><span style="color: #7F8EA3"> · </span>Personal</span></span>
+</button>
+</div>
+
+</div><div style="height: 8px; flex-shrink: 0"></div><div style="height: 40px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px 6px 16px; display: flex; align-items: flex-end; border-bottom: 1px solid #1D283A; background: #030711"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #7F8EA3">Today · 3</span></div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Send Q3 report"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="Medium priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #7F8EA3"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: #7F8EA3"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Send Q3 report</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis"><span style="color: #7F8EA3; font-weight: 400">Today</span><span style="color: #7F8EA3"> · </span>Work<span style="color: #7F8EA3"> · </span>60 min</span><span style="height: 24px; box-sizing: border-box; padding: 0 10px; border: 1px solid #1D283A; border-radius: 9999px; background: #0F172A; color: #F8FAFC; display: inline-flex; align-items: center; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap">In progress</span></span>
+</button>
+</div>
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #1D283A"></div>
+</div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Renew passport"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="High priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #E2E8F0"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: #E2E8F0"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: #E2E8F0"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Renew passport</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis"><span style="color: #7F8EA3; font-weight: 400">Today</span><span style="color: #7F8EA3"> · </span>Personal<span style="color: #7F8EA3"> · </span>45 min</span><span style="height: 24px; box-sizing: border-box; padding: 0 10px; border: 0; border-radius: 9999px; background: #FBBD23; color: #0F172A; display: inline-flex; align-items: center; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; white-space: nowrap">Blocked</span></span>
+</button>
+</div>
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #1D283A"></div>
+</div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Book dentist"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="Low priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #7F8EA3"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Book dentist</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis"><span style="color: #7F8EA3; font-weight: 400">Today</span><span style="color: #7F8EA3"> · </span>Personal</span></span>
+</button>
+</div>
+
+</div><div style="height: 8px; flex-shrink: 0"></div><div style="height: 40px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px 6px 16px; display: flex; align-items: flex-end; border-bottom: 1px solid #1D283A; background: #030711"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #7F8EA3">Upcoming · 2</span></div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Call the plumber"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="Medium priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #7F8EA3"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: #7F8EA3"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Call the plumber</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis"><span style="color: #7F8EA3; font-weight: 400">Tue 29 Sep</span><span style="color: #7F8EA3"> · </span>Personal</span></span>
+</button>
+</div>
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #1D283A"></div>
+</div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Prep sprint review"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="High priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #E2E8F0"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: #E2E8F0"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: #E2E8F0"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Prep sprint review</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis"><span style="color: #7F8EA3; font-weight: 400">Thu 1 Oct</span><span style="color: #7F8EA3"> · </span>Work<span style="color: #7F8EA3"> · </span>30 min</span></span>
+</button>
+</div>
+
+</div><div style="height: 8px; flex-shrink: 0"></div><div style="height: 40px; flex-shrink: 0; box-sizing: border-box; padding: 0 16px 6px 16px; display: flex; align-items: flex-end; border-bottom: 1px solid #1D283A; background: #030711"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #7F8EA3">No date · 2</span></div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Sort the garage"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="Low priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #7F8EA3"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sort the garage</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis">Personal<span style="color: #7F8EA3"> · </span>2 h</span></span>
+</button>
+</div>
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #1D283A"></div>
+</div><div style="position: relative; height: 72px; overflow: hidden; background: #030711; flex-shrink: 0">
+
+<div style="position: absolute; inset: 0; transform: translateX(0px); box-sizing: border-box; padding: 0 16px 0 6px; display: flex; align-items: center; gap: 4px; background: #030711">
+<button type="button" role="checkbox" aria-checked="false" aria-label="Done: Update team wiki"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #7F8EA3;   display: flex; align-items: center; justify-content: center"></span>
+</button>
+<button type="button" style="flex-grow: 1; min-width: 0; height: 72px; border: 0; background: transparent; padding: 0; display: flex; flex-direction: column; justify-content: center; gap: 4px; text-align: left">
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0"><span role="img" aria-label="Low priority" style="flex-shrink: 0; width: 14px; height: 12px; display: inline-flex; align-items: flex-end; gap: 2px"><span style="width: 3px; height: 5px; border-radius: 1px; background: #7F8EA3"></span><span style="width: 3px; height: 8px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span><span style="width: 3px; height: 11px; border-radius: 1px; background: rgba(127, 142, 163, 0.3)"></span></span><span style="font-size: 17px; line-height: 24px; color: #E2E8F0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Update team wiki</span></span>
+<span style="display: flex; align-items: center; gap: 8px; min-width: 0; padding-left: 22px; font-size: 13px; line-height: 18px; color: #7F8EA3; white-space: nowrap"><span style="overflow: hidden; text-overflow: ellipsis">Work</span></span>
+</button>
+</div>
+
+</div></div><div style="flex-shrink: 0; box-sizing: border-box; padding: 8px 16px; background: #030711; border-top: 1px solid #1D283A"><button type="button" style="width: 100%; height: 48px; box-sizing: border-box; padding: 0 14px; border: 1px solid #7F8EA3; border-radius: 8px; background: #030711; color: #7F8EA3; display: flex; align-items: center; gap: 10px; font-size: 17px; line-height: 24px; text-align: left"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#E2E8F0" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M12 5v14"></path><path d="M5 12h14"></path></svg>Add a task</button></div><nav aria-label="Main" style="width: 390px; box-sizing: border-box; padding: 0 4px; background: #030711; border-top: 1px solid #1D283A; display: flex"><button type="button" aria-label="Groceries"  style="flex-grow: 1; flex-basis: 0; min-width: 0; height: 60px; border: 0; background: transparent; padding: 6px 0 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 10px; ">
+<span style="width: 56px; height: 30px; border-radius: 10px; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M3 4h2l2.2 10.2a2 2 0 0 0 2 1.6h7.6a2 2 0 0 0 2-1.5L20.5 8H6.2"></path><circle cx="10" cy="20" r="1.3"></circle><circle cx="17" cy="20" r="1.3"></circle></svg></span>
+<span style="font-size: 11px; line-height: 14px; font-weight: 500; color: #7F8EA3; white-space: nowrap">Groceries</span>
+</button><button type="button" aria-label="Tasks" aria-selected="true" style="flex-grow: 1; flex-basis: 0; min-width: 0; height: 60px; border: 0; background: transparent; padding: 6px 0 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 10px; ">
+<span style="width: 56px; height: 30px; border-radius: 10px; background: #22D3EE; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><rect x="4" y="4" width="16" height="16" rx="3"></rect><path d="M8.5 12l2.5 2.5 4.5-5"></path></svg></span>
+<span style="font-size: 11px; line-height: 14px; font-weight: 700; color: #E2E8F0; white-space: nowrap">Tasks</span>
+</button><button type="button" aria-label="Subscriptions"  style="flex-grow: 1; flex-basis: 0; min-width: 0; height: 60px; border: 0; background: transparent; padding: 6px 0 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 10px; ">
+<span style="width: 56px; height: 30px; border-radius: 10px; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M4 12a8 8 0 0 1 13.7-5.6L20 8.5"></path><path d="M20 4v4.5h-4.5"></path><path d="M20 12a8 8 0 0 1-13.7 5.6L4 15.5"></path><path d="M4 20v-4.5h4.5"></path></svg></span>
+<span style="font-size: 11px; line-height: 14px; font-weight: 500; color: #7F8EA3; white-space: nowrap">Subscriptions</span>
+</button><button type="button" aria-label="Details"  style="flex-grow: 1; flex-basis: 0; min-width: 0; height: 60px; border: 0; background: transparent; padding: 6px 0 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 10px; ">
+<span style="width: 56px; height: 30px; border-radius: 10px; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><rect x="3" y="5" width="18" height="14" rx="2"></rect><circle cx="9" cy="11" r="2"></circle><path d="M6 16c.6-1.5 1.7-2.2 3-2.2s2.4.7 3 2.2"></path><path d="M15 10h3"></path><path d="M15 14h3"></path></svg></span>
+<span style="font-size: 11px; line-height: 14px; font-weight: 500; color: #7F8EA3; white-space: nowrap">Details</span>
+</button><button type="button" aria-label="Account"  style="flex-grow: 1; flex-basis: 0; min-width: 0; height: 60px; border: 0; background: transparent; padding: 6px 0 0 0; display: flex; flex-direction: column; align-items: center; gap: 4px; border-radius: 10px; ">
+<span style="width: 56px; height: 30px; border-radius: 10px; background: transparent; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="10" r="3"></circle><path d="M6.5 18.2c1.3-2 3.2-3 5.5-3s4.2 1 5.5 3"></path></svg></span>
+<span style="font-size: 11px; line-height: 14px; font-weight: 500; color: #7F8EA3; white-space: nowrap">Account</span>
+</button></nav><div style="height: 34px; flex-shrink: 0; background: #030711"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

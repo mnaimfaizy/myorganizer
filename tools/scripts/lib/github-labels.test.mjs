@@ -3,9 +3,14 @@
  */
 
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import test from 'node:test';
 
 import {
+  GITHUB_LABEL_DESCRIPTION_MAX,
+  GITHUB_LABELS_CATALOG_PATH,
   loadGithubLabelCatalog,
   normalizeLabelArgs,
   provisionLabels,
@@ -15,6 +20,7 @@ import {
   triggerLabelNames,
   syncSurfaceLabelChanges,
 } from './github-labels.mjs';
+import { NEEDS_HUMAN_LABEL } from './sandcastle-outcome.mjs';
 
 // ADR 0025 as amended by ADR 0049: `qa` moved to the Orchestration vocabulary, so it is no
 // longer a Surface Label and may not appear on a Pull Request. `grilling` was added there too.
@@ -59,6 +65,22 @@ test('qa and grilling are Orchestration Labels, not Surface Labels (ADR 0049)', 
   ]);
 });
 
+// The orchestrator swaps ready-for-agent for this label on a held slice (ADR 0111).
+// Adding a label to an issue that the repo never provisioned fails, so the name the
+// orchestrator writes must be one the catalog provisions.
+test('the label a held slice takes is a provisioned Orchestration Label (ADR 0111)', () => {
+  const catalog = loadGithubLabelCatalog();
+  assert.equal(
+    catalog.orchestration.some((l) => l.name === NEEDS_HUMAN_LABEL),
+    true,
+  );
+  const provisioned = provisionLabels(catalog).map((label) => label.name);
+  assert.equal(provisioned.includes(NEEDS_HUMAN_LABEL), true);
+  assert.deepEqual(rejectedPrLabels([NEEDS_HUMAN_LABEL], catalog), [
+    NEEDS_HUMAN_LABEL,
+  ]);
+});
+
 test('review:* is a third set: provisioned, never a Surface Label, never accepted from --label (ADR 0070)', () => {
   const catalog = loadGithubLabelCatalog();
   const review = [...reviewTierLabelNames(catalog)].sort();
@@ -75,16 +97,21 @@ test('review:* is a third set: provisioned, never a Surface Label, never accepte
   for (const name of review) assert.equal(provisioned.includes(name), true);
 });
 
-test('agent-review is a trigger: provisioned, not a Surface Label, accepted from --label, never a tier', () => {
+test('agent-review and golden-replay are triggers: provisioned, not Surface Labels, accepted from --label, never a tier', () => {
   const catalog = loadGithubLabelCatalog();
-  assert.deepEqual([...triggerLabelNames(catalog)], ['agent-review']);
-  assert.equal(surfaceLabelNames(catalog).has('agent-review'), false);
-  assert.equal(reviewTierLabelNames(catalog).has('agent-review'), false);
-  assert.deepEqual(rejectedPrLabels(['agent-review', 'tooling'], catalog), []);
-  assert.equal(
-    provisionLabels(catalog).some((l) => l.name === 'agent-review'),
-    true,
+  assert.deepEqual(
+    [...triggerLabelNames(catalog)],
+    ['agent-review', 'golden-replay'],
   );
+  for (const name of ['agent-review', 'golden-replay']) {
+    assert.equal(surfaceLabelNames(catalog).has(name), false);
+    assert.equal(reviewTierLabelNames(catalog).has(name), false);
+    assert.deepEqual(rejectedPrLabels([name, 'tooling'], catalog), []);
+    assert.equal(
+      provisionLabels(catalog).some((l) => l.name === name),
+      true,
+    );
+  }
 });
 
 test('provision list includes orchestration and surface labels', () => {
@@ -142,4 +169,28 @@ test('sync to an empty draft removes Surface Labels only', () => {
       toRemove: ['documentation'],
     },
   );
+});
+
+// GitHub refuses a label description over 100 characters with a bare HTTP
+// 422, which `ai:create-labels` can only report as "Validation Failed". The
+// golden-replay label first shipped at 124 and was caught only when the
+// labels were provisioned; the catalog loader is the place to refuse it.
+test('every label description fits GitHub’s 100-character limit', () => {
+  const catalog = loadGithubLabelCatalog();
+  for (const label of provisionLabels(catalog))
+    assert.ok(
+      label.description.length <= GITHUB_LABEL_DESCRIPTION_MAX,
+      `${label.name}: description is ${label.description.length} characters`,
+    );
+});
+
+test('a catalog with an over-long description is refused on load', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'labels-'));
+  const path = join(dir, 'github-labels.json');
+  const catalog = JSON.parse(readFileSync(GITHUB_LABELS_CATALOG_PATH, 'utf8'));
+  catalog.triggers[0].description = 'x'.repeat(
+    GITHUB_LABEL_DESCRIPTION_MAX + 1,
+  );
+  writeFileSync(path, JSON.stringify(catalog));
+  assert.throws(() => loadGithubLabelCatalog(path), /100 characters/);
 });

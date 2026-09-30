@@ -24,10 +24,15 @@ jest.mock('./WorkerLeaseService', () => {
 
 jest.mock('./YouTubeSyncService', () => {
   const __mockSync = jest.fn().mockResolvedValue(5);
+  const __mockMarkRevoked = jest.fn().mockResolvedValue(false);
   return {
     __esModule: true,
-    default: { syncVideosForUser: __mockSync },
+    default: {
+      syncVideosForUser: __mockSync,
+      markRevokedIfTokenError: __mockMarkRevoked,
+    },
     __mockSync,
+    __mockMarkRevoked,
   };
 });
 
@@ -232,18 +237,18 @@ describe('YouTubeSyncWorkerService', () => {
         owner: 'owner-1',
         cursor: null,
       };
+      const revokedError = new Error('invalid_grant');
       (mockLeases.acquire as jest.Mock).mockResolvedValue(mockLease);
       mockBatch([{ userId: 'user-1' }]);
-      (mockSync.syncVideosForUser as jest.Mock).mockRejectedValue(
-        new Error('invalid_grant'),
-      );
+      (mockSync.syncVideosForUser as jest.Mock).mockRejectedValue(revokedError);
+      (mockSync.markRevokedIfTokenError as jest.Mock).mockResolvedValue(true);
 
       await service.runSyncWorker();
 
-      expect(workerMockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
-        data: { status: 'revoked' },
-      });
+      expect(mockSync.markRevokedIfTokenError).toHaveBeenCalledWith(
+        'user-1',
+        revokedError,
+      );
     });
 
     it('should mark integration revoked on revoked token error', async () => {
@@ -252,18 +257,18 @@ describe('YouTubeSyncWorkerService', () => {
         owner: 'owner-1',
         cursor: null,
       };
+      const revokedError = new Error('Token has been expired or revoked');
       (mockLeases.acquire as jest.Mock).mockResolvedValue(mockLease);
       mockBatch([{ userId: 'user-1' }]);
-      (mockSync.syncVideosForUser as jest.Mock).mockRejectedValue(
-        new Error('Token has been expired or revoked'),
-      );
+      (mockSync.syncVideosForUser as jest.Mock).mockRejectedValue(revokedError);
+      (mockSync.markRevokedIfTokenError as jest.Mock).mockResolvedValue(true);
 
       await service.runSyncWorker();
 
-      expect(workerMockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
-        where: { userId: 'user-1' },
-        data: { status: 'revoked' },
-      });
+      expect(mockSync.markRevokedIfTokenError).toHaveBeenCalledWith(
+        'user-1',
+        revokedError,
+      );
     });
   });
 });

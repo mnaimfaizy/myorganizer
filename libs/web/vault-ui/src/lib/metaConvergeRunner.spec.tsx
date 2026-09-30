@@ -3,6 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 const mockToast = jest.fn();
 const mockSettleVaultMeta = jest.fn();
+const mockReportMountSettled = jest.fn();
 
 jest.mock('@myorganizer/web-ui', () => {
   const actual = jest.requireActual('@myorganizer/web-ui');
@@ -21,6 +22,10 @@ jest.mock('@myorganizer/web-vault', () => ({
 
 jest.mock('./session', () => ({
   useOptionalVaultSession: jest.fn(),
+}));
+
+jest.mock('./vaultMountSettle', () => ({
+  useReportVaultMountSettle: jest.fn(() => mockReportMountSettled),
 }));
 
 import type {
@@ -683,6 +688,43 @@ describe('VaultMetaConvergeRunner', () => {
     // Wait for user-b's converge to be called (should run because they are a different owner)
     await waitFor(() => {
       expect(mockSettleVaultMeta).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('reports the mount-settle signal once the first pass finishes, prompt or not', async () => {
+    const mockHandle = createMockHandle('user-a');
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    arrangeNoPromptMetaConverge();
+
+    render(<VaultMetaConvergeRunner />);
+
+    await waitFor(() => {
+      expect(mockReportMountSettled).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  test('reports the mount-settle signal again on a later pass, still a no-op signal-wise', async () => {
+    const mockHandle = createMockHandle('user-a');
+    (useOptionalVaultSession as jest.Mock).mockReturnValue({
+      handle: mockHandle,
+    });
+
+    arrangeNoPromptMetaConverge();
+    render(<VaultMetaConvergeRunner />);
+
+    await waitFor(() => {
+      expect(mockReportMountSettled).toHaveBeenCalledTimes(1);
+    });
+
+    // A second pass — e.g. a focus event — reports again. Idempotent from
+    // the marker's point of view, but this runner does not gate the call to
+    // "first pass only".
+    fireEvent.focus(window);
+    await waitFor(() => {
+      expect(mockReportMountSettled).toHaveBeenCalledTimes(2);
     });
   });
 

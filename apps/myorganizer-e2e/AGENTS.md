@@ -42,6 +42,16 @@ would report itself as production while testing something else. If a production 
 `http://localhost:4200 is already used`, that is this guard: stop the server holding the port and
 re-run, rather than setting `reuseExistingServer: true`.
 
+`E2E_LIVE_BACKEND=1` also starts the built API (`tools/scripts/e2e-live-backend.mjs`)
+on port 3000, migrates, and seeds one verified user so `auth-logout-live.spec.ts`
+can call `POST /auth/logout` instead of the stub in `multiUserVault.ts`. The
+three Chromium shards leave the flag unset, so they stay stubbed; the separate
+`e2e-live-logout` job sets it and runs only that spec. Without the flag the spec
+is skipped. The API process is not reused: stop anything already listening on
+3000, and run `yarn build:backend` first. `NODE_ENV` for that process is
+`development` so `refresh_cookie` is not `Secure` on http. Pairing the flag with
+`E2E_DEV_SERVER=1` keeps the frontend on `development` too.
+
 The `E2E_DEV_SERVER=1` loop still reuses, because there the already-running server is the point —
 but it listens on **4201**, not 4200, so the only thing it can adopt is a dev server a previous
 dev run started. Sharing the port meant a dev run would adopt a leftover _production_ server and
@@ -53,6 +63,7 @@ for manual work on 4200.
 
 - **Blocking** — Chromium, on pull requests that `nx affected` says touch `myorganizer-e2e`,
   split across 3 shards in `.github/workflows/ci.yml`. Keeps `retries: 2` and passes on retry.
+  The live logout spec is a fourth job, `e2e-live-logout`, not one of the shards.
 - **Nightly** — all three browsers as a matrix in `.github/workflows/nightly-e2e.yml`, run with
   `--fail-on-flaky-tests`. Failures open or comment on a single tracking issue.
 
@@ -91,8 +102,8 @@ and a value typed then never reaches React state. `waitForLoginFormInteractive` 
 sleeps that papered over it are gone. That helper is login-specific — another server-rendered
 controlled form needs its own probe.
 
-`src/e2e/helpers/auth.ts` also carries `submitLoginForm` and `waitForDashboardReady`. Use them
-rather than growing a seventh copy of the login helper.
+`src/e2e/helpers/auth.ts` also carries `submitLoginForm`, `waitForDashboardReady`, and
+`waitForVaultMountSettled`. Use them rather than growing a seventh copy of the login helper.
 
 ## Do
 

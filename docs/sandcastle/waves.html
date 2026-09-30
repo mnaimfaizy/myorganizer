@@ -1240,7 +1240,12 @@
       (<a href="../adr/0045-a-prd-is-gated-once-on-the-assembled-feature-branch.md"
         >ADR&nbsp;0045</a
       >). It records the wave, runs the rest, gates once, and leaves a summary
-      you read in the morning.
+      you read in the morning. A slice whose agent did not finish cleanly is
+      <b>held for a person</b> &mdash; integrated, but left open &mdash; and the
+      slices behind it are not dispatched until a person closes it
+      (<a href="../adr/0111-a-prd-slice-closes-only-on-a-clean-outcome.md"
+        >ADR&nbsp;0111</a
+      >).
     </p>
   </div>
 
@@ -1343,8 +1348,10 @@
               After the last wave the driver invokes the orchestrator once more
               in gate-only mode, the verdict is commented onto the PRD issue, a
               run summary is printed, and the process exits non-zero if the gate
-              failed or any wave was incomplete. Nothing is pushed and nothing is
-              discarded.
+              failed, any wave was incomplete, or any slice is held for a
+              person. A held slice is integrated and counts as done for its own
+              wave, but it does not release the slices that depend on it.
+              Nothing is pushed and nothing is discarded.
             </desc>
 
             <defs>
@@ -1682,7 +1689,7 @@
               <circle class="tipdot" cx="407" cy="694" r="3" />
               <text class="nl" x="412" y="710">Re-read; verify isDone()</text>
               <text class="nc" x="412" y="727">every slice this wave dispatched must</text>
-              <text class="nc" x="412" y="741">now be closed or status:done</text>
+              <text class="nc" x="412" y="741">now be closed or status:done (held counts)</text>
             </g>
             <line class="fl" x1="565" y1="670" x2="565" y2="682" marker-end="url(#ah)" />
 
@@ -1777,9 +1784,10 @@
               <rect class="box" x="400" y="924" width="330" height="84" rx="5" />
               <circle class="tipdot" cx="407" cy="932" r="3" />
               <text class="nl" x="412" y="948">The run summary</text>
-              <text class="nc mono" x="412" y="965">waves attempted</text>
-              <text class="nc mono" x="412" y="979">incomplete waves</text>
-              <text class="nc mono" x="412" y="993">feature gate PASS / FAIL</text>
+              <text class="nc mono" x="412" y="961">waves attempted</text>
+              <text class="nc mono" x="412" y="973">incomplete waves</text>
+              <text class="nc mono" x="412" y="985">held for a person</text>
+              <text class="nc mono" x="412" y="997">feature gate PASS / FAIL</text>
             </g>
             <line class="fl" x1="565" y1="900" x2="565" y2="920" marker-end="url(#ah)" />
 
@@ -1795,9 +1803,10 @@
               <rect class="box" x="766" y="924" width="390" height="84" rx="5" />
               <circle class="tipdot" cx="773" cy="932" r="3" />
               <text class="nl" x="778" y="948">Exit code</text>
-              <text class="nc" x="778" y="965">0 only when the gate passed AND no wave</text>
-              <text class="nc" x="778" y="979">was incomplete &mdash; after everything has</text>
-              <text class="nc" x="778" y="993">been integrated and reported</text>
+              <text class="nc" x="778" y="961">0 only when the gate passed AND no wave was</text>
+              <text class="nc" x="778" y="973">incomplete AND no slice is held for a person</text>
+              <text class="nc" x="778" y="985">&mdash; computed after everything has been</text>
+              <text class="nc" x="778" y="997">integrated and reported</text>
             </g>
             <line class="fl" x1="734" y1="966" x2="762" y2="966" marker-end="url(#ah)" />
 
@@ -1847,8 +1856,10 @@
           <code>--limit 100</code>. Of those, the driver keeps the issues whose
           body contains <code>PRD: #&lt;n&gt;</code>. <code>all</code> and not
           <code>open</code> is deliberate: the orchestrator <em>closes</em> a
-          slice when it integrates, and a closed slice still has to be visible
-          for blocker resolution and for the completeness check.
+          slice when it integrates it and its run ended clean, and a closed
+          slice still has to be visible for blocker resolution and for the
+          completeness check. A slice held for a person stays open, so it is
+          listed either way.
         </li>
         <li>
           <b>Read the edges.</b> Each body is matched for a
@@ -2211,14 +2222,15 @@
     </div>
     <div class="pbody">
       <p class="small">
-        This block is the deliverable of an unattended run. Three lines, and each
+        This block is the deliverable of an unattended run. Four lines, and each
         one answers a different question you will have before coffee.
       </p>
       <pre class="term">
 PRD #446 &mdash; run summary
 
   waves attempted   3
-  incomplete waves  wave 1 (#101, #102)
+  incomplete waves  wave 2 (#103, #104)
+  held for a person #101
   feature gate      FAIL
 
 Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
@@ -2234,7 +2246,20 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
           <code>none</code>, or every recorded wave with the slice numbers that
           did not reach <code>status:done</code>. Start your triage here, at the
           <em>lowest-numbered</em> wave: later ones may have failed only because
-          this one did.
+          this one did &mdash; and a slice held for a person is a common reason
+          the wave behind it is here.
+        </dd>
+        <dt>held for a person</dt>
+        <dd>
+          <code>none</code>, or every slice that is still open and labelled
+          <code>ready-for-human</code>. These are slices whose agent did not
+          finish cleanly: its last iteration did not print the completion
+          promise, or it listed something <code>OUTSTANDING:</code>. Each one
+          carries a comment listing what it left undone. It is integrated and
+          marked <code>status:done</code>, so it does not make its <em>own</em>
+          wave incomplete &mdash; but it is not a satisfied dependency, so the
+          slices behind it were deferred and <em>their</em> wave is the one
+          reported incomplete.
         </dd>
         <dt>feature gate</dt>
         <dd>
@@ -2245,9 +2270,12 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
         </dd>
       </dl>
       <p class="small">
-        The process exits non-zero if the gate failed <em>or</em> any wave was
-        incomplete &mdash; but only after everything has been integrated and
-        reported. When both are clean, the closing message is the hand-off:
+        The process exits non-zero if the gate failed, <em>or</em> any wave was
+        incomplete, <em>or</em> any slice is held for a person &mdash; but only
+        after everything has been integrated and reported. To release the slices
+        behind a held one, resolve the items in its comment and close the
+        issue; the next run picks them up. When all three are clear, the
+        closing message is the hand-off:
         QA the local feature branch, then
         <code>git push -u origin &lt;feature-branch&gt;</code> and open one pull
         request to <code>main</code> by hand. Re-running skips slices already
@@ -2314,7 +2342,7 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
           <dt>gh issue list --label type:afk</dt>
           <dd id="note-issuelist">
             <code>--state all</code>, not <code>open</code>. The orchestrator
-            <b>closes</b> a slice when it integrates it, so a completed slice has
+            <b>closes</b> a slice when it integrates it cleanly, so a completed slice has
             to stay visible &mdash; otherwise a blocker that already shipped would
             look unsatisfiable and a re-run could not tell a finished wave from a
             missing one. The repository is hard-coded to
@@ -2433,9 +2461,15 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
           <dt>Re-read; verify isDone()</dt>
           <dd id="note-verify">
             A third read of the tracker, after the wave. The driver does not trust
-            its own bookkeeping here: the orchestrator is the thing that closes
-            slices and applies <code>status:done</code>, so the tracker is the only
-            honest answer to &ldquo;did this wave finish?&rdquo;
+            its own bookkeeping here: the orchestrator is the thing that applies
+            <code>status:done</code> and, for a clean run, closes the slice, so the
+            tracker is the only honest answer to &ldquo;did this wave
+            finish?&rdquo; A slice held for a person is <code>status:done</code>
+            and open: <code>isDone</code> is unchanged (closed, or
+            <code>status:done</code>), so it counts as done here. It is not a
+            satisfied <em>dependency</em>, though &mdash; the orchestrator defers
+            whatever depends on it, and that later wave is the one reported
+            incomplete.
           </dd>
 
           <dt>incompleteByWave.push(&hellip;)</dt>
@@ -2445,6 +2479,8 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
             <b>continues</b>. The warning says so explicitly: later waves that
             depend on these may fail too, and everything is reported at the end. A
             PRD that runs to the end and reports beats one that stopped at wave 1.
+            A slice held for a person is a common cause: it leaves its dependents
+            undispatched, so the wave behind it lands here.
           </dd>
 
           <dt>Gate once, at the end</dt>
@@ -2468,13 +2504,19 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
           <dd id="note-summary">
             Written whether the run went well or badly &mdash; unless the
             orchestrator exited non-zero, which ends the process before this point.
-            If you have a summary at all, every wave was attempted.
+            If you have a summary at all, every wave was attempted. Its
+            <code>held for a person</code> line lists the open
+            <code>ready-for-human</code> slices, read from the tracker after the
+            gate.
           </dd>
 
           <dt>Exit code</dt>
           <dd id="note-exitcode">
-            Non-zero when the gate failed <em>or</em> any wave was incomplete, so a
-            wrapper script can still tell a bad night from a good one. The
+            Non-zero when the gate failed, <em>or</em> any wave was incomplete,
+            <em>or</em> any slice is held for a person, so a wrapper script can
+            still tell a bad night from a good one. A green gate is not enough:
+            a held slice means work was integrated that its own agent said was
+            not finished. The
             difference from the old behaviour is <em>when</em>: the code is
             computed after everything has been integrated and reported, not
             instead of it.
@@ -2543,10 +2585,11 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
       <a href="resume.html">resume</a>
     </nav>
     <div>
-      <b>Read from source on 2026-08-23</b>, from
+      <b>Read from source on 2026-09-30</b>, from
       <code>.sandcastle/dispatch-waves.mts</code>,
       <code>.sandcastle/main.mts</code>,
-      <code>tools/scripts/lib/sandcastle-resume.mjs</code>, and
+      <code>tools/scripts/lib/sandcastle-resume.mjs</code>,
+      <code>tools/scripts/lib/sandcastle-outcome.mjs</code>, and
       <code>package.json</code>. Where a document and the source disagreed, the
       source won &mdash; including
       <code>docs/sandcastle/RUNBOOK.md</code>, which predates ADR 0045.
@@ -2583,8 +2626,10 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
 <script type="application/json" id="sandcastle-waves-manifest">
   {
     "id": "sandcastle-waves-manifest",
-    "generatedFrom": ".sandcastle/dispatch-waves.mts, .sandcastle/main.mts, tools/scripts/lib/sandcastle-resume.mjs, package.json",
+    "generatedFrom": ".sandcastle/dispatch-waves.mts, .sandcastle/main.mts, tools/scripts/lib/sandcastle-resume.mjs, tools/scripts/lib/sandcastle-outcome.mjs, package.json",
     "assertedFromExports": {
+      "outcomeOutstandingMarker": "OUTSTANDING:",
+      "outcomeNeedsHumanLabel": "ready-for-human",
       "wavesForwardingRefusedFlag": "--fresh",
       "wavesForwardingDriverOwnedFlags": ["--prd", "--plan"],
       "packageSandcastleVersion": "0.12.0"
@@ -2864,13 +2909,13 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
       8: 'And OFF every other slice of the PRD — future waves and finished ones alike. This is the half people forget.',
       9: 'One orchestrator pass, with --defer-gate. Everything it finishes fast-forwards into the local feature branch.',
       10: 'Branch: the orchestrator process itself returned non-zero. This still ends the run.',
-      11: 'A third read of the tracker. Did every slice this wave dispatched actually reach done?',
+      11: 'A third read of the tracker. Did every slice this wave dispatched actually reach done? Done means closed or status:done, so a slice held for a person counts.',
       12: 'No. And the driver carries on anyway — the wave is recorded in incompleteByWave and the loop continues.',
       13: 'Next wave, cut from the head the last wave left behind — including a wave that only partly landed.',
       14: 'After the last wave: one gate, on the assembled branch, via --gate-only. It needs no agent credential.',
       15: 'The verdict is commented onto the PRD issue, because terminal scrollback is gone by morning.',
-      16: 'The summary: waves attempted, incomplete waves, feature gate PASS or FAIL.',
-      17: 'Non-zero if the gate failed or any wave was incomplete — computed after everything was integrated and reported.',
+      16: 'The summary: waves attempted, incomplete waves, slices held for a person, feature gate PASS or FAIL.',
+      17: 'Non-zero if the gate failed, any wave was incomplete, or any slice is held for a person — computed after everything was integrated and reported.',
       18: 'And on every path out, including the failures: nothing pushed, nothing discarded.',
     };
 
@@ -2921,7 +2966,7 @@ Nothing is pushed and nothing was discarded. Every slice branch is intact.</pre
     const CARRY = {
       12: {
         title: 'The driver does NOT stop — incomplete wave',
-        body: 'A slice this wave dispatched never reached <code>status:done</code>. Before ADR 0045 the run ended here, and that is exactly what turned an unattended PRD into a wasted night. Now the wave is recorded in <code>incompleteByWave</code>, a warning naming the slices is printed, and the loop continues. Later waves may depend on this one and may fail too — that is the accepted price, because nothing is pushed and every slice branch survives.',
+        body: 'A slice this wave dispatched never reached <code>status:done</code>. Before ADR 0045 the run ended here, and that is exactly what turned an unattended PRD into a wasted night. Now the wave is recorded in <code>incompleteByWave</code>, a warning naming the slices is printed, and the loop continues. A slice held for a person does reach <code>status:done</code>, so it does not land here; the wave behind it does, because its dependents are deferred. Later waves may depend on this one and may fail too — that is the accepted price, because nothing is pushed and every slice branch survives.',
       },
     };
 

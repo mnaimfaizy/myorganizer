@@ -1420,7 +1420,7 @@
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
       <h2 id="hero-h">One gate, two callers</h2>
-      <span class="src">main.mts:1695-1925</span>
+      <span class="src">main.mts:1722-1952</span>
     </div>
     <div class="pbody">
       <div class="chips">
@@ -1505,7 +1505,9 @@
               dispatch: slices integrate unconditionally with no gate at all,
               every wave defers, the driver gates the assembled feature branch
               once against origin slash main, and a red verdict is posted as a
-              comment on the PRD issue while every slice stays integrated.
+              comment on the PRD issue while every slice stays integrated. A
+              slice is closed only when its own run ended clean; otherwise it
+              is integrated and marked done but held open for a person.
             </desc>
 
             <defs>
@@ -1925,12 +1927,16 @@
                 rx="5"
               />
               <circle class="tipdot" cx="675" cy="640" r="3" />
-              <text class="nl" x="680" y="653">
+              <text class="nl" x="680" y="651">
                 NO GATE HERE &#8212; integration is unconditional
               </text>
-              <text class="nc mono" x="680" y="669">
+              <text class="nc mono" x="680" y="664">
                 gatePassed = hasWork &#183; the only test is &ldquo;did it
                 commit anything&rdquo;
+              </text>
+              <text class="nc" x="680" y="677">
+                status:done always &#183; closed only if the run ended clean,
+                else held for a person
               </text>
             </g>
             <g
@@ -2028,8 +2034,8 @@
                 RED &#8212; and nothing stops
               </text>
               <text class="nc" x="680" y="903">
-                no stop bar to draw: every slice is already integrated and
-                already closed
+                no stop bar to draw: every slice is already integrated, and
+                every clean one already closed
               </text>
             </g>
 
@@ -2112,7 +2118,7 @@
   <section class="panel" aria-labelledby="scope-h">
     <div class="phead">
       <h2 id="scope-h">Two scopes, because the targets have different blast radii</h2>
-      <span class="src">main.mts:157-167, :206-209, :1708-1722</span>
+      <span class="src">main.mts:165-175, :214-217, :1735-1749</span>
     </div>
     <div class="pbody">
       <p>
@@ -2282,7 +2288,7 @@
   <section class="panel" aria-labelledby="modes-h">
     <div class="phead">
       <h2 id="modes-h">The two modes, side by side</h2>
-      <span class="src">main.mts:1806-1824, :1904-1908, :1912-1920</span>
+      <span class="src">main.mts:1833-1851, :1931-1935, :1939-1947</span>
     </div>
     <div class="pbody">
       <div class="scrollx">
@@ -2324,7 +2330,7 @@
               <td>
                 <b>Reports only</b>
                 <span class="mk mk-report">REPORTS ONLY</span>. Slices stay
-                integrated and stay closed
+                integrated; a closed slice stays closed and a held one stays held
               </td>
             </tr>
             <tr>
@@ -2350,7 +2356,7 @@
         on the PR &mdash; while costing one container install per slice.
         <span class="small muted"
           >&mdash; <code>runFeatureGate</code> docblock,
-          <code>main.mts:1915-1917</code></span
+          <code>main.mts:1942-1944</code></span
         >
       </blockquote>
 
@@ -2381,6 +2387,12 @@
           is reversible, and human QA before the PR was always the real gate for
           a local branch. It also weakens <code>status:done</code> from
           &ldquo;verified and integrated&rdquo; to &ldquo;integrated&rdquo;.
+          <b>Closed</b> is the stronger claim: since
+          <a href="../adr/0111-a-prd-slice-closes-only-on-a-clean-outcome.md"
+            >ADR&nbsp;0111</a
+          >
+          a PRD slice is closed only when it is integrated <em>and</em> its run
+          ended clean, and one that did not is held open instead.
         </p>
       </div>
 
@@ -2420,7 +2432,7 @@
   <section class="panel" aria-labelledby="red-h">
     <div class="phead">
       <h2 id="red-h">Reading a red gate</h2>
-      <span class="src">main.mts:1881-1882, :2891-2913</span>
+      <span class="src">main.mts:1908-1909, :2892-2964, :3049-3071</span>
     </div>
     <div class="pbody">
       <ol class="chain">
@@ -2479,7 +2491,7 @@
   <section class="panel" aria-labelledby="tier-h">
     <div class="phead">
       <h2 id="tier-h">Two different things are called a gate</h2>
-      <span class="src">main.mts:1925 &middot; ADR 0012</span>
+      <span class="src">main.mts:1952 &middot; ADR 0012</span>
     </div>
     <div class="pbody">
       <p>
@@ -2664,11 +2676,24 @@
             In PRD mode the value fed to the integration step is not a gate
             verdict at all: it is <code>hasWork</code>, which asks only whether
             the slice produced commits. Any slice that did fast-forwards into
-            the local feature branch and is closed
+            the local feature branch and is marked
             <code>status:done</code>. <code>status:done</code> therefore means
             <b>integrated</b>, not <b>verified</b> &mdash; and that is what
             keeps a re-run idempotent, because the skip has to key on something
             that is actually true.
+            <b>Closed</b> is a separate, stronger claim, and the gate is not
+            what decides it. Before closing, the orchestrator judges the run
+            (<code>judgeRunOutcome</code>): clean means the <b>last
+            iteration</b> printed <code>&lt;promise&gt;COMPLETE&lt;/promise&gt;</code>
+            and printed no <code>OUTSTANDING:</code> line. The
+            <code>/code-review</code> verdict is not read. A clean slice is
+            closed as completed and releases the slices that depend on it.
+            A slice that is not clean is <b>held</b>: still integrated and
+            still <code>status:done</code>, so a re-run skips it, but its issue
+            stays <b>open</b>, <code>ready-for-agent</code> becomes
+            <code>ready-for-human</code>, a comment lists what it left
+            outstanding, and it does <b>not</b> satisfy its dependents until a
+            person resolves the items and closes it.
           </dd>
 
           <dt>--defer-gate &times; every wave, then --gate-only once</dt>
@@ -2704,7 +2729,8 @@
             integrated, every slice branch intact, nothing discarded and nothing
             pushed, and hands over
             <code>git log --oneline origin/main..feat/&lt;slug&gt;</code> as the
-            bisect. Slices stay closed either way.
+            bisect. Slices keep whatever state they had either way &mdash; closed stays
+            closed, held stays held.
           </dd>
         </dl>
       </div>
@@ -2773,8 +2799,9 @@
       <a href="resume.html">resume</a>
     </nav>
     <div>
-      <b>Read from source on 2026-08-23</b>, from
+      <b>Read from source on 2026-09-30</b>, from
       <code>.sandcastle/main.mts</code>,
+      <code>tools/scripts/lib/sandcastle-outcome.mjs</code>,
       <code>.github/workflows/ci.yml</code>, and
       <code>package.json</code>, with
       <a href="../adr/0010-sandcastle-local-only-integration.md"
@@ -2812,8 +2839,11 @@
 <script type="application/json" id="sandcastle-gates-manifest">
   {
     "id": "sandcastle-gates-manifest",
-    "generatedFrom": ".sandcastle/main.mts, .github/workflows/ci.yml, package.json",
+    "generatedFrom": ".sandcastle/main.mts, tools/scripts/lib/sandcastle-outcome.mjs, .github/workflows/ci.yml, package.json",
     "assertedFromExports": {
+      "outcomeCompletionPromise": "<promise>COMPLETE</promise>",
+      "outcomeOutstandingMarker": "OUTSTANDING:",
+      "outcomeNeedsHumanLabel": "ready-for-human",
       "packageSandcastleVersion": "0.12.0",
       "gateCiLintCommand": "nx affected -t lint",
       "gateCiTestCommand": "nx affected -t test"
@@ -3108,11 +3138,11 @@
       7: 'Standalone: the gate runs per slice, against the ref the branch was cut from.',
       8: 'RED. This is a wall, and the walkthrough will not advance past it until you use a control — because neither will the run.',
       9: 'Whichever way it went, this is the end of a standalone run. Nothing is integrated anywhere, because there is nowhere to integrate to.',
-      10: 'PRD: the slice is already in the feature branch. Nothing gated it. The only question asked was whether it produced commits.',
+      10: 'PRD: the slice is already in the feature branch. Nothing gated it. The only question asked was whether it produced commits. Whether it is also closed is decided separately, by whether the agent’s run ended clean: an unclean slice is held open as ready-for-human.',
       11: 'Two flags carry "once at the end" across a driver that invokes main.mts once per wave.',
       12: 'The gate finally runs — on the assembled branch, against the ref the PR will target.',
       13: 'RED, and notice what did not happen: no halt, no stop bar, no refusal. This walkthrough is not taking a shortcut. There is nothing left to block.',
-      14: 'The verdict becomes a comment on the PRD issue. Every slice stays integrated and stays closed. Nothing is pushed.',
+      14: 'The verdict becomes a comment on the PRD issue. Every slice stays integrated, closed stays closed and held stays held. Nothing is pushed.',
     };
 
     /* The one halt. Standalone only, and modelled on the code: a red verdict
@@ -3353,59 +3383,64 @@
 
 <script type="application/json" id="citation-anchors">
 {
-  "note": "Citation anchors for docs/sandcastle/gates.html, re-verified on 2026-09-17 against .sandcastle/main.mts. Every continuation range is written as a bare :NNN so findCitations sees it — a comma-separated number without a leading colon is a claim nothing checks.",
+  "note": "Citation anchors for docs/sandcastle/gates.html, re-verified on 2026-09-30 against .sandcastle/main.mts. Every continuation range is written as a bare :NNN so findCitations sees it — a comma-separated number without a leading colon is a claim nothing checks.",
   "anchors": {
-    "main.mts:1695-1925": {
+    "main.mts:1722-1952": {
       "file": ".sandcastle/main.mts",
       "start": "function runGate(",
       "end": "return runGate(featureBranch, prdGateBase, featureBranch);"
     },
-    "main.mts:157-167": {
+    "main.mts:165-175": {
       "file": ".sandcastle/main.mts",
       "start": "* Maps the files a slice changed (between base and head) to the Nx projects that",
       "end": "* `affectedProjects` instead."
     },
-    "main.mts:206-209": {
+    "main.mts:214-217": {
       "file": ".sandcastle/main.mts",
       "start": "* The Nx projects a slice affects: the projects whose own files changed PLUS every",
       "end": "* and that consumer's own files never changed."
     },
-    "main.mts:1708-1722": {
+    "main.mts:1735-1749": {
       "file": ".sandcastle/main.mts",
       "start": "const targets = (process.env.SLICE_GATE_TARGETS || 'lint test build').trim();",
       "end": "const changed = changedProjects(base, head);"
     },
-    "main.mts:1806-1824": {
+    "main.mts:1833-1851": {
       "file": ".sandcastle/main.mts",
       "start": "// Validate this slice INSIDE the Linux container (cross-platform: WSL2, native",
       "end": "'docker',"
     },
-    "main.mts:1904-1908": {
+    "main.mts:1931-1935": {
       "file": ".sandcastle/main.mts",
       "start": "* Gate ONE slice against its base. Retained for standalone runs, where the work",
       "end": "return runGate(`#${issue.number}`, baseRef, sliceBranch, issue.number);"
     },
-    "main.mts:1912-1920": {
+    "main.mts:1939-1947": {
       "file": ".sandcastle/main.mts",
       "start": "* Gate the whole PRD once, on the integrated feature branch, against the ref the",
       "end": "function runFeatureGate(featureBranch: string): boolean {"
     },
-    "main.mts:1915-1917": {
+    "main.mts:1942-1944": {
       "file": ".sandcastle/main.mts",
       "start": "* This is the gate that matters. A per-slice gate can only see one slice against",
       "end": "* and fail on the PR — while costing one container install per slice. Gating"
     },
-    "main.mts:1881-1882": {
+    "main.mts:1908-1909": {
       "file": ".sandcastle/main.mts",
       "start": "const ok = gate.status === 0;",
       "end": "console.log(`  [${label}] gate: ${ok ? 'PASS' : 'FAIL'}.`);"
     },
-    "main.mts:2891-2913": {
+    "main.mts:2892-2964": {
+      "file": ".sandcastle/main.mts",
+      "start": "const outcome = judgeRunOutcome(",
+      "end": "unblockDependents(issue);"
+    },
+    "main.mts:3049-3071": {
       "file": ".sandcastle/main.mts",
       "start": "'edit',",
       "end": ");"
     },
-    "main.mts:1925": {
+    "main.mts:1952": {
       "file": ".sandcastle/main.mts",
       "start": "return runGate(featureBranch, prdGateBase, featureBranch);"
     }

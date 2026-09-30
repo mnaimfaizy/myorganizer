@@ -1710,4 +1710,98 @@ describe('createVaultPullTrigger', () => {
     // Listener should still NOT have been called (no new state change)
     expect(listener).toHaveBeenCalledTimes(0);
   });
+
+  describe('firstSettled', () => {
+    test('resolves once check() completes a pass', async () => {
+      const handle = await setupHandle('user-1');
+      const api = createApiDouble(handle);
+      api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+      const trigger = createVaultPullTrigger({
+        api,
+        prompt: jest.fn(),
+        schedule: jest.fn(),
+      });
+
+      let settled = false;
+      void trigger.firstSettled.then(() => {
+        settled = true;
+      });
+      expect(settled).toBe(false);
+
+      await trigger.check(handle);
+      await Promise.resolve();
+      expect(settled).toBe(true);
+    });
+
+    test('resolves from the fire-and-forget requestCheck path, not just check()', async () => {
+      // This is the shape VaultPullRunner actually uses: requestCheck() never
+      // hands back the pass it schedules, so firstSettled is the only way a
+      // caller with no promise of its own can know that pass finished.
+      const handle = await setupHandle('user-1');
+      const api = createApiDouble(handle);
+      api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+      const scheduledCallbacks: Array<() => void> = [];
+      const schedule: VaultPullTriggerScheduler = (cb) => {
+        scheduledCallbacks.push(cb);
+      };
+
+      const trigger = createVaultPullTrigger({
+        api,
+        prompt: jest.fn(),
+        schedule,
+      });
+
+      let settled = false;
+      void trigger.firstSettled.then(() => {
+        settled = true;
+      });
+
+      trigger.requestCheck(handle);
+      expect(settled).toBe(false);
+
+      // Fire the debounced callback the way the default scheduler eventually
+      // would, then let the pass it starts actually run.
+      scheduledCallbacks[0]();
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      await Promise.resolve();
+
+      expect(settled).toBe(true);
+    });
+
+    test('does not resolve on a superseded pass — only on the pass that actually finished', async () => {
+      const handle = await setupHandle('user-1');
+      const api = createApiDouble(handle);
+      setupHangThenAnswerInventory(api);
+      api.getVaultBlob.mockRejectedValue({ response: { status: 404 } });
+
+      const trigger = createVaultPullTrigger({
+        api,
+        prompt: jest.fn(),
+        schedule: jest.fn(),
+      });
+
+      let settled = false;
+      void trigger.firstSettled.then(() => {
+        settled = true;
+      });
+
+      // First pass hangs on inventory.
+      const promise1 = trigger.check(handle);
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      expect(settled).toBe(false);
+
+      // Second pass supersedes the first and actually completes.
+      const result2 = await trigger.check(handle);
+      expect(result2.superseded).toBe(false);
+      await Promise.resolve();
+      expect(settled).toBe(true);
+
+      // The superseded first pass settling afterward changes nothing —
+      // firstSettled already resolved from the pass that finished.
+      const result1 = await promise1;
+      expect(result1.superseded).toBe(true);
+    }, 3000);
+  });
 });

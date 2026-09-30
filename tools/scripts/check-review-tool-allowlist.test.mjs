@@ -16,17 +16,25 @@
 // and nothing else; the refusal came from an `ask` rule in the repository's own
 // project settings, which outranks the grant (ADR 0099). A suite that only
 // proved direction 1 would still be green today.
+//
+// Direction 3 is the same mechanism on a grant no document instructs. Direction
+// 2 stays green there: it only sees a command a document names. The suite has
+// to fail a grant an ask rule repeats, fail a grant an ask rule narrows, and
+// stay green on `git merge-base` against `git merge`, which a character-prefix
+// comparison would call an override.
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
 import {
   NOT_THE_REVIEWERS_TO_RUN,
   PROGRAMS,
+  assertGrantRetractions,
   assertToolAllowlist,
   commandsFrom,
   extractInstructions,
   formatFinding,
   formatInterception,
+  formatRetraction,
   matchesEntry,
   nearestEntry,
   parseAllowedTools,
@@ -674,5 +682,154 @@ test('a suppressed command is not reported as intercepted', () => {
     ],
   });
   assert.deepEqual(result.intercepted, []);
+  assert.equal(result.ok, true);
+});
+
+// --- direction 3: a grant a project rule retracts, instructed or not ---------
+
+const retractionsBetween = (grants, askRules, exemptions = []) =>
+  assertGrantRetractions({
+    entries: grants.map(entry),
+    interposed: parseInterposedRules(
+      JSON.stringify({ permissions: { ask: askRules } }),
+    ),
+    exemptions,
+  });
+
+test('a grant an ask rule repeats is wholly retracted', () => {
+  // `Bash(find:*)` in both files: the grant permits nothing the rule does not
+  // take back. Direction 2 cannot see it, because no document instructs `find`.
+  const result = retractionsBetween(['Bash(find:*)'], ['Bash(find:*)']);
+  assert.equal(result.ok, false);
+  assert.equal(result.retractions.length, 1);
+  assert.equal(result.retractions[0].extent, 'wholly');
+  const report = formatRetraction(result.retractions[0]);
+  assert.match(report, /wholly/);
+  assert.match(report, /Bash\(find:\*\)/);
+  assert.match(report, /permissions\.ask/);
+  assert.match(report, /\.claude\/settings\.json/);
+});
+
+test('a grant an ask rule narrows is partly retracted', () => {
+  // The damaging case. `Bash(node:*)` still looks granted, and `node -e` is
+  // the form taken out from under it. Both narrowings are reported.
+  const result = retractionsBetween(
+    ['Bash(node:*)'],
+    ['Bash(node -e:*)', 'Bash(node --eval:*)'],
+  );
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.retractions.map((retraction) => retraction.extent),
+    ['partly', 'partly'],
+  );
+  assert.deepEqual(
+    result.retractions.map((retraction) => retraction.rule.raw),
+    ['Bash(node -e:*)', 'Bash(node --eval:*)'],
+  );
+});
+
+test('a broader ask rule retracts a narrower grant wholly', () => {
+  const result = retractionsBetween(['Bash(node -e:*)'], ['Bash(node:*)']);
+  assert.equal(result.retractions[0].extent, 'wholly');
+});
+
+test('git merge-base is not retracted by a git merge rule', () => {
+  // Token-wise, `merge-base` is not `merge`. A character prefix would flag
+  // this pair, and the grant is a real one.
+  const result = retractionsBetween(
+    ['Bash(git merge-base:*)'],
+    ['Bash(git merge *)'],
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.retractions, []);
+});
+
+test('the scratch rm grant is not retracted by the rm -rf deny rule', () => {
+  const result = assertGrantRetractions({
+    entries: ['Bash(rm -f tmp/code-review/*)'].map(entry),
+    interposed: parseInterposedRules(
+      JSON.stringify({ permissions: { deny: ['Bash(rm -rf *)'] } }),
+    ),
+    exemptions: [],
+  });
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.retractions, []);
+});
+
+test('a glob rule retracts only the part of a prefix grant it matches', () => {
+  const result = assertGrantRetractions({
+    entries: ['Bash(git push:*)'].map(entry),
+    interposed: parseInterposedRules(
+      JSON.stringify({
+        permissions: { deny: ['Bash(git push *--force*)'] },
+      }),
+    ),
+    exemptions: [],
+  });
+  assert.equal(result.retractions.length, 1);
+  assert.equal(result.retractions[0].extent, 'partly');
+  assert.equal(result.retractions[0].rule.list, 'deny');
+  assert.match(formatRetraction(result.retractions[0]), /permissions\.deny/);
+});
+
+test('a rule whose first token is a glob still retracts a prefix grant it can match', () => {
+  const result = retractionsBetween(['Bash(git push:*)'], ['Bash(*--force*)']);
+  assert.equal(result.ok, false);
+  assert.equal(result.retractions[0].extent, 'partly');
+});
+
+test('a worktree grant is partly retracted by the remove rule, and add and list are not', () => {
+  const whole = retractionsBetween(
+    ['Bash(git worktree:*)'],
+    ['Bash(git worktree remove *)'],
+  );
+  assert.equal(whole.retractions[0].extent, 'partly');
+
+  const narrowed = retractionsBetween(
+    ['Bash(git worktree add:*)', 'Bash(git worktree list:*)'],
+    ['Bash(git worktree remove *)'],
+  );
+  assert.equal(narrowed.ok, true);
+  assert.deepEqual(narrowed.retractions, []);
+});
+
+test('an exempted pair is kept, and an exemption that names nothing is stale', () => {
+  const exemptions = [
+    {
+      grant: 'Bash(node:*)',
+      rule: 'Bash(node -e:*)',
+      reason:
+        'The ask stays for a developer at a keyboard. The reviewer is told to run a file under tmp/code-review instead of node -e.',
+    },
+  ];
+  const kept = retractionsBetween(
+    ['Bash(node:*)'],
+    ['Bash(node -e:*)'],
+    exemptions,
+  );
+  assert.equal(kept.ok, true);
+  assert.deepEqual(kept.retractions, []);
+  assert.equal(kept.exempted.length, 1);
+  assert.equal(kept.staleExemptions.length, 0);
+
+  const stale = retractionsBetween(['Bash(node:*)'], [], exemptions);
+  assert.equal(stale.ok, false);
+  assert.equal(stale.staleExemptions.length, 1);
+  assert.deepEqual(stale.retractions, []);
+});
+
+test('a PowerShell ask rule retracts no Bash grant', () => {
+  const result = assertGrantRetractions({
+    entries: ['Bash(find:*)'].map(entry),
+    interposed: parseInterposedRules(
+      JSON.stringify({ permissions: { ask: ['PowerShell(find *)'] } }),
+    ),
+    exemptions: [],
+  });
+  assert.equal(result.ok, true);
+});
+
+test('a non-Bash grant cannot be retracted', () => {
+  const result = retractionsBetween(['Read', 'Glob'], ['Bash(find:*)']);
   assert.equal(result.ok, true);
 });

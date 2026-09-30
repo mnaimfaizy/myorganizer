@@ -6,6 +6,7 @@ import {
   videoKindWhere,
   type VideoKind,
 } from '../helpers/videoKind';
+import { isRevokedTokenError } from '../helpers/youtubeSyncErrors';
 import { Prisma, PrismaClient, createPrismaClient } from '../prisma';
 import {
   EncryptedToken,
@@ -334,6 +335,26 @@ function getSyncErrorCode(error: unknown): string {
 
 class YouTubeSyncService {
   constructor(private prisma: PrismaClient) {}
+
+  /**
+   * Mark the YouTube Connection Revoked when Google rejected the refresh grant.
+   * Shared by the cron worker and every user-initiated Sync Run.
+   *
+   * @returns true when the Connection was marked Revoked
+   */
+  async markRevokedIfTokenError(
+    userId: string,
+    error: unknown,
+  ): Promise<boolean> {
+    if (!isRevokedTokenError(error)) {
+      return false;
+    }
+    await this.prisma.youTubeIntegration.update({
+      where: { userId },
+      data: { status: 'revoked' },
+    });
+    return true;
+  }
 
   /** Generate OAuth consent URL */
   getAuthUrl(state: string): string {
@@ -783,6 +804,7 @@ class YouTubeSyncService {
           `YouTube channel sync failed for user ${userId}`,
           error,
         );
+        await this.markRevokedIfTokenError(userId, error);
         const status: YouTubeChannelSyncStatus = isQuotaExceededError(error)
           ? 'quota_exceeded'
           : 'failed';
@@ -845,6 +867,7 @@ class YouTubeSyncService {
           `YouTube upload sync failed for user ${userId}`,
           error,
         );
+        await this.markRevokedIfTokenError(userId, error);
         const status: YouTubeSyncStatus = isQuotaExceededError(error)
           ? 'quota_exceeded'
           : 'failed';

@@ -56,6 +56,111 @@ test('each marker in the vocabulary names a Pull Request', () => {
   }
 });
 
+// A marker a sentence denies is the opposite of attribution. The first
+// measurement with `gh` (2026-09-28) counted #902 as escaping from #745 on
+// "**Not a regression from #745:** The same hole existed before that PR".
+test('a negated marker is not attribution', () => {
+  const denied = {
+    'root-cause': 'The root cause is not #590.',
+    'introduced-in': 'This was not introduced in #590.',
+    'caused-by': "It wasn't caused by #590.",
+    'regression-from': '**Not a regression from #590:** the hole predates it.',
+    'broke-in': 'It never broke in #590.',
+    'dates-to': 'It has not had it since #590.',
+  };
+  for (const marker of ROOT_CAUSE_MARKERS) {
+    const text = denied[marker.id];
+    assert.ok(text, `no negated fixture for marker ${marker.id}`);
+    assert.equal(
+      parseRootCause(text),
+      null,
+      `negated marker ${marker.id} was read as attribution`,
+    );
+  }
+});
+
+// Denying one origin and naming another is the common shape of the sentence;
+// the negation must not reach past its own clause.
+test('a negation does not suppress a later, affirmed marker', () => {
+  const found = parseRootCause(
+    'Not a regression from #745. The hole was introduced in #590.',
+  );
+  assert.equal(found?.marker, 'introduced-in');
+  assert.deepEqual(found.ref, { kind: 'pull-request', number: 590 });
+  assert.equal(
+    parseRootCause('The test did not run in CI; it was introduced in #590.')
+      ?.ref.number,
+    590,
+  );
+});
+
+// The code review of #928 ran these against the first version, which knew a
+// short list of negations and only the curly forms of two of them.
+test('any n’t contraction, with either apostrophe, is a negation', () => {
+  for (const neg of [
+    "isn't",
+    "wasn't",
+    "aren't",
+    "weren't",
+    "doesn't",
+    "didn't",
+    "hasn't",
+    "hadn't",
+    "won't",
+    "don't",
+    "can't",
+  ])
+    for (const word of [neg, neg.replace("'", '’')])
+      assert.equal(
+        parseRootCause(`It ${word} caused by #590.`),
+        null,
+        `"${word}" was not read as a negation`,
+      );
+  assert.equal(
+    parseRootCause("This doesn't look like it was introduced by #590."),
+    null,
+  );
+  assert.equal(parseRootCause("It hasn't been caused by #590."), null);
+});
+
+// A comma joins clauses as often as it sets off an aside, so a negation does
+// not reach across one: "was not, in fact, introduced by #590" stays
+// attribution. Declined deliberately in the review of #928 — a comma splice
+// hiding a real origin is worse than an aside that counts one.
+test('a negation does not reach across a comma', () => {
+  assert.equal(
+    parseRootCause('The test did not run in CI, it was introduced in #590.')
+      ?.ref.number,
+    590,
+  );
+});
+
+// "no" is a negation only when it denies: "no doubt", "no denying", "no
+// question", "no less", "no more" affirm what follows (review of #928).
+test('an affirming "no" idiom is not a negation', () => {
+  for (const text of [
+    'There is no doubt this was caused by #590.',
+    "There's no denying this was caused by #590.",
+    'It is no question it was introduced in #590.',
+    'It was no less clearly introduced by #590 than anything else.',
+  ])
+    assert.equal(parseRootCause(text)?.ref.number, 590, text);
+  assert.equal(parseRootCause('No regression from #590 here.'), null);
+});
+
+// A blank line starts a new paragraph, and a negation does not reach into
+// it. A single line break does not stop it: commit bodies wrap mid-sentence
+// at 72 columns, so "was not\nintroduced in #590" is one clause.
+test('a negation stops at a paragraph break but not at a wrapped line', () => {
+  assert.equal(
+    parseRootCause(
+      'Not a regression from anything\n\nintroduced in #590 is the cause.',
+    )?.ref.number,
+    590,
+  );
+  assert.equal(parseRootCause('This was not\nintroduced in #590.'), null);
+});
+
 // The acceptance criterion this file exists for: a fix that names no root
 // cause must be visible, not absent. Returning null is what lands it in
 // `unattributed` rather than dropping it from the denominator.

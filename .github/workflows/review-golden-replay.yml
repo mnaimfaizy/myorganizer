@@ -2,21 +2,21 @@ name: Golden Replay
 
 # Replays the code reviewer against the golden set (ADR 0071, Consequences):
 # commit ranges from this repository's own history in which a documented
-# incident was merged, and the finding a reviewer should have raised. Runs
-# on every Pull Request that changes how reviews are produced — the skill,
-# the schema, the validator, the renderer, the review workflow, the shared
-# reviewer action, or the set — so a prompt or contract change is measured
-# before it reaches a real Pull Request. One reviewer run per case; the job
-# named "Golden Replay" fails when any case's recall falls below its minimum.
+# incident was merged, and the finding a reviewer should have raised. One
+# reviewer run per case; the job named "Golden Replay" fails when any case's
+# recall falls below its minimum.
 #
-# Two things keep that from being paid on every push (ADR 0072). Cases are
-# tiered: frontier cases, the ones the reviewer misses, run on any of the
-# paths above; guard cases, the ones it catches reliably, run only when the
-# brief or the finding contract changes. And `[skip replay]` in the head
-# commit message skips the whole replay for that push, which the path filter
-# cannot do — GitHub matches a pull_request path filter against the entire
-# PR diff, so a docs-only push to a branch that touched the skill ten commits
-# ago still satisfies it. `workflow_dispatch` replays a tier on demand.
+# When it runs is ADR 0109, which replaced a pull_request path filter that
+# bought 88% of three weeks' replay spend on pushes nobody asked to measure:
+#
+#   - schedule: weekly on main, and only when a reviewer input moved — the
+#     frontier tier when one moved that week, every case in the first week of
+#     a month in which one moved (golden-tiers.mjs --scheduled decides).
+#   - the `golden-replay` Request Label on a Pull Request: measures that
+#     Pull Request's reviewer before it merges. A button, like agent-review:
+#     the workflow removes it when the run ends. Guards run too when the brief
+#     or the finding contract changed in that Pull Request (ADR 0072 item 1).
+#   - workflow_dispatch: a tier on demand, one repetition per dispatch.
 #
 # The reviewer step is the composite action at .github/actions/code-reviewer,
 # shared with code-review.yml. Same credential rules; CODE_REVIEW_ENABLED=false
@@ -24,21 +24,10 @@ name: Golden Replay
 
 on:
   pull_request:
-    paths:
-      - '.agents/skills/code-review/**'
-      - 'tools/scripts/review/**'
-      - '.github/actions/code-reviewer/**'
-      - '.github/workflows/code-review.yml'
-      - '.github/workflows/review-golden-replay.yml'
-      - 'tools/config/review-golden-set.json'
-      - 'tools/config/review-obligations.json'
-      - 'tools/config/review-rules.json'
-      # The rest of the harness the replay lays over each case tree (ADR
-      # 0102): the permission rules and hooks the session loads, and the
-      # module those hooks import.
-      - '.claude/**'
-      - 'tools/scripts/copilot-hooks/**'
-      - '.agents/skills/upstream-brief/**'
+    types: [labeled]
+  # Mondays 03:00 UTC, clear of the maintainer's working window.
+  schedule:
+    - cron: '0 3 * * 1'
   workflow_dispatch:
     inputs:
       tier:
@@ -61,8 +50,12 @@ permissions:
   pull-requests: read
   actions: read
 
+# Every label reaches this workflow, and a run's concurrency group is decided
+# before any job if: is read. A label other than golden-replay is sent to a
+# group of its own, or adding `bug` would cancel a replay in flight — the
+# failure review:concurrency:check exists for on the Code Review workflow.
 concurrency:
-  group: golden-replay-${{ github.event.pull_request.number || github.ref }}
+  group: golden-replay-${{ github.event.pull_request.number || github.ref }}${{ github.event.action == 'labeled' && github.event.label.name != 'golden-replay' && format('-inert-{0}', github.run_id) || '' }}
   cancel-in-progress: true
 
 jobs:
@@ -70,36 +63,44 @@ jobs:
     name: Golden cases
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # A label other than the Request Label is not a request.
+    if: github.event_name != 'pull_request' || github.event.label.name == 'golden-replay'
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
       has_key: ${{ steps.list.outputs.has_key }}
     steps:
+      # Full history: the schedule reads a month of the reviewer inputs' log.
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
 
-      # Which tiers this run replays (ADR 0072). A frontier case is one the
-      # reviewer misses, so it runs whenever anything that produces a review
-      # changes — the workflow's own path filter already decided that. A
-      # guard case is one the reviewer catches reliably; it runs only when
-      # the brief or the finding contract changes, because those are what
-      # could silently undo the instruction the guard protects.
+      # Which tiers this run replays (ADR 0072, ADR 0109).
       #
-      # The path filter cannot make this distinction itself: on a
-      # pull_request event GitHub matches paths against the whole PR diff,
-      # not the push, so once any commit in the PR touches a filtered path
-      # every later push re-satisfies the filter. That is also why the
-      # [skip replay] escape below exists.
+      # By hand: the tier asked for. On the schedule: golden-tiers.mjs reads
+      # the reviewer inputs' history and names a tier, or none when the
+      # reviewer did not move. On the Request Label: a guard case is one the
+      # reviewer catches reliably, so it runs only when the Pull Request
+      # changes the brief or the finding contract, which are what could
+      # silently undo the instruction it protects; frontier cases always run.
       - name: Choose the tiers
         id: tiers
         env:
           GH_TOKEN: ${{ github.token }}
+          EVENT: ${{ github.event_name }}
           DISPATCH_TIER: ${{ inputs.tier }}
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -euo pipefail
-          if [ -n "${DISPATCH_TIER:-}" ]; then
+          if [ "$EVENT" = 'workflow_dispatch' ]; then
             echo "tiers=$DISPATCH_TIER" >> "$GITHUB_OUTPUT"
             echo "run by hand: $DISPATCH_TIER"
+            exit 0
+          fi
+          if [ "$EVENT" = 'schedule' ]; then
+            TIER="$(node tools/scripts/review/golden-tiers.mjs --scheduled)"
+            echo "tiers=${TIER:-none}" >> "$GITHUB_OUTPUT"
+            echo "scheduled: ${TIER:-no reviewer input moved, nothing to measure}"
             exit 0
           fi
           CHANGED="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR}/files" \
@@ -124,8 +125,6 @@ jobs:
           HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
           ENABLED: ${{ vars.CODE_REVIEW_ENABLED }}
           TIERS: ${{ steps.tiers.outputs.tiers }}
-          GH_TOKEN: ${{ github.token }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           MODEL: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
         run: |
           set -euo pipefail
@@ -135,6 +134,13 @@ jobs:
             echo "$1"
             exit 0
           }
+
+          # The schedule found no reviewer input that moved. An empty matrix
+          # would fail the replay job's strategy, so stop before building one.
+          if [ "$TIERS" = 'none' ]; then
+            echo 'matrix=[]' >> "$GITHUB_OUTPUT"
+            skip 'No reviewer input changed since the last scheduled window, so there is nothing new to measure (ADR 0109).'
+          fi
 
           # golden-tiers.mjs, not the scorer: this job installs nothing, and
           # the scorer reaches schema.mjs, which imports zod. That script is
@@ -147,31 +153,9 @@ jobs:
 
           # The same off switch as code-review.yml: CODE_REVIEW_ENABLED=false
           # stops the replay too, which matters at roughly one reviewer run
-          # per case per push.
+          # per case.
           if [ "${ENABLED:-true}" = 'false' ]; then
             skip 'The CODE_REVIEW_ENABLED repository variable is false.'
-          fi
-
-          # The per-push escape. Read the head commit's message from the API
-          # rather than the checkout: on a pull_request event the default
-          # checkout is a synthetic merge commit, whose message is "Merge X
-          # into Y" and never the author's. Never interpolate the message
-          # into the script — it is somebody's text, matched, not run.
-          #
-          # The marker is read from the SUBJECT LINE only, not the whole
-          # message. A substring match over the body means a commit that merely
-          # writes about the escape triggers it: dd8da1df said "No [skip
-          # replay]: this changes how a review is produced, and the replay is
-          # the measurement" and skipped its own measurement, reporting success
-          # in 19 seconds. A skip that looks exactly like a pass is the failure
-          # mode this whole workflow exists to measure, so it does not get to
-          # live in the workflow itself.
-          if [ -n "${HEAD_SHA:-}" ]; then
-            MESSAGE="$(gh api "repos/${GITHUB_REPOSITORY}/commits/${HEAD_SHA}" --jq .commit.message)"
-            SUBJECT="$(head -n 1 <<<"$MESSAGE")"
-            if grep -qiF '[skip replay]' <<<"$SUBJECT"; then
-              skip 'The head commit subject contains `[skip replay]`. The reviewer itself still ran; only the golden replay was skipped.'
-            fi
           fi
 
           if [ "$MATRIX" = '[]' ]; then
@@ -462,7 +446,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     needs: [cases, replay]
-    if: always()
+    # A label other than golden-replay skipped the cases job; that is not a
+    # run that failed to measure, so this check does not report one.
+    if: always() && (github.event_name != 'pull_request' || github.event.label.name == 'golden-replay')
     steps:
       - name: Combine
         run: |
@@ -475,7 +461,7 @@ jobs:
             exit 1
           fi
           if [ '${{ needs.cases.outputs.has_key }}' != 'true' ]; then
-            # Off switch, [skip replay], an empty tier, or no credential.
+            # Off switch, an unmoved reviewer, an empty tier, or no credential.
             # The Golden cases job's summary says which. None of them is a
             # measurement, so none of them is a failure.
             echo 'nothing replayed; see the Golden cases summary for why'
@@ -485,3 +471,22 @@ jobs:
             echo '::error::at least one golden case fell below its minimum recall or measured nothing (a void: rate limit, turn ceiling, prevented, or an answer sheet that failed its check); see the Replay jobs'
             exit 1
           fi
+
+  # The Request Label is a button: remove it so it can be pressed again. Its
+  # own job, because removing a label is a write and no replay job holds one —
+  # the reviewer runs in those, and its job token stays read-only (ADR 0071
+  # item 8). A fork's token could not remove it anyway, hence the || true.
+  reset-label:
+    name: Reset the golden-replay label
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [cases, replay]
+    if: always() && github.event_name == 'pull_request' && github.event.label.name == 'golden-replay'
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Remove the label
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR: ${{ github.event.pull_request.number }}
+        run: gh pr edit "$PR" --repo "$GITHUB_REPOSITORY" --remove-label golden-replay || true

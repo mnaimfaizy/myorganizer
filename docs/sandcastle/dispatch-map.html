@@ -1373,7 +1373,7 @@
       If your change adds an arrow leaving the <b>Host</b> zone toward
       <b>GitHub</b>, it may only be one of four things: <b>read an issue</b>,
       <b>add or remove an Issue Orchestration Label</b>, <b>post a comment</b>,
-      or <b>close a slice</b>. A push, a PR, or a merge from inside a dispatch
+      or <b>close a slice</b> (and only a slice whose run ended clean). A push, a PR, or a merge from inside a dispatch
       is a violation of
       <a href="../adr/0010-sandcastle-local-only-integration.md">ADR&nbsp;0010</a>.
     </p>
@@ -1887,7 +1887,7 @@
               <circle class="tipdot" cx="357" cy="584" r="3" />
               <text class="nl mono" x="362" y="597">buildPrompt()</text>
               <text class="nc" x="362" y="612">
-                + maintainer notes, + the resume brief when a checkpoint exists
+                + maintainer notes, parent PRD, Design + Outcome sections, resume brief
               </text>
             </g>
             <g data-step="10" class="n host">
@@ -2031,13 +2031,14 @@
                 <text x="33" y="9.6">FAIL-CLOSED</text>
               </g>
             </g>
-            <g data-step="17" class="n gh" data-tip="writeback" tabindex="0" role="button" aria-label="PRD: + status:done, close" aria-describedby="note-writeback">
+            <g data-step="17" class="n gh" data-tip="writeback" tabindex="0" role="button" aria-label="PRD: + status:done always; close and unblock only on a clean outcome" aria-describedby="note-writeback">
               <rect class="box" x="22" y="976" width="260" height="52" rx="5" />
               <circle class="tipdot" cx="29" cy="984" r="3" />
-              <text class="nl mono" x="34" y="997">
-                PRD: + status:done, close
+              <text class="nl mono" x="34" y="995">
+                PRD: + status:done
               </text>
-              <text class="nc" x="34" y="1013">the work is integrated</text>
+              <text class="nc" x="34" y="1009">closed only on a clean outcome;</text>
+              <text class="nc" x="34" y="1021">otherwise held: ready-for-human</text>
               <g class="mk mk-write" transform="translate(222,969.5)">
                 <rect
                   class="halo"
@@ -2088,8 +2089,11 @@
                 height="44"
                 rx="5"
               />
-              <text class="nl" x="362" y="1029">
+              <text class="nl" x="362" y="1027">
                 GitHub writeback &mdash; and it differs by mode
+              </text>
+              <text class="nc" x="362" y="1042">
+                PRD: clean &#8594; close + unblock &#183; not clean &#8594; HELD, stays open
               </text>
             </g>
             <g data-step="18" class="n gh">
@@ -2103,7 +2107,7 @@
               />
               <text class="nl mono" x="34" y="1129">unblockDependents</text>
               <text class="nc mono" x="34" y="1144">
-                &minus; status:blocked when clear
+                clean only &minus; status:blocked when clear
               </text>
               <g class="mk mk-write" transform="translate(222,1101.5)">
                 <rect
@@ -2153,7 +2157,7 @@
                 PRD only &middot; PASS or FAIL, commented
               </text>
               <text class="nc" x="34" y="1220">
-                on the PRD issue &mdash; slices stay closed
+                on the PRD issue &mdash; slices keep their state
               </text>
               <g class="mk mk-write" transform="translate(222,1165.5)">
                 <rect
@@ -2799,7 +2803,16 @@
             in ordinary comments. When a checkpoint exists the resume brief is
             prepended; the checkpoint <b>diff</b> is deliberately not inlined,
             because the agent reads it from git in one command and inlining
-            spends the context that resuming exists to conserve.
+            spends the context that resuming exists to conserve. Three more
+            sections were added by ADR&nbsp;0111. <code>## Parent PRD</code>
+            carries the PRD body, read on the host because the sandbox has no
+            <code>gh</code> credentials. <code>## Design</code> says approved
+            designs are committed under <code>docs/design/</code>, that hosted
+            designs and GitHub cannot be opened from the sandbox, and that a
+            device or visual criterion is not met there.
+            <code>## Outcome (required)</code> tells the agent to print one
+            <code>OUTSTANDING:</code> line per thing it did not do or could not
+            verify, before it prints <code>&lt;promise&gt;COMPLETE&lt;/promise&gt;</code>.
           </dd>
 
           <dt>yarn install --immutable</dt>
@@ -2856,13 +2869,30 @@
             a PRD slice that produced work integrates.
           </dd>
 
-          <dt>PRD: + status:done, close</dt>
+          <dt>PRD: + status:done; close only if clean</dt>
           <dd id="note-writeback">
-            PRD closes the slice as completed, which is what makes a re-run
-            idempotent: both this orchestrator's filter and the wave driver
-            treat a closed slice as done. Standalone and sweep only comment and
-            leave the issue open &mdash; marking work done that exists on an
-            unpushed local branch would be a claim nobody can check.
+            <b>Integration is unchanged, closing is not.</b> A PRD slice with
+            commits is fast-forwarded and given <code>status:done</code>, which
+            is what makes a re-run idempotent: this orchestrator's filter and
+            the wave driver both skip it. What the orchestrator now does first
+            is judge the run: <code>judgeRunOutcome</code> reads the slice's run
+            log and calls it clean only if the <b>last iteration</b> printed
+            <code>&lt;promise&gt;COMPLETE&lt;/promise&gt;</code> and printed no
+            <code>OUTSTANDING:</code> line (&ldquo;none&rdquo; is not an item).
+            The <code>/code-review</code> verdict is deliberately not read.
+            <b>Clean</b>: the issue is closed as completed with a comment, its
+            dependents are unblocked, and it counts as completed.
+            <b>Not clean</b>: the slice is <b>held</b>. It stays integrated and
+            <code>status:done</code>, but the issue stays <b>open</b>,
+            <code>ready-for-agent</code> is swapped for
+            <code>ready-for-human</code>, a comment lists every outstanding
+            item, and its dependents are <b>not</b> unblocked. The run reports
+            it as <code>integrated, held for a person</code>. A person releases
+            the slices behind it by resolving the items and closing the issue.
+            Standalone and sweep only comment and leave the issue open &mdash;
+            marking work done that exists on an unpushed local branch would be a
+            claim nobody can check &mdash; and, when the run was not clean, the
+            comment appends the outstanding list.
           </dd>
 
           <dt>reportFeatureGate</dt>
@@ -2873,7 +2903,8 @@
             the notification that reaches a phone. A red one names its own
             bisect:
             <code>git log --oneline origin/main..feat/&lt;slug&gt;</code>.
-            Slices stay closed either way: the failure is a fact about the
+            Slices keep whatever state they had either way &mdash; closed stays
+            closed and a held slice stays held: the failure is a fact about the
             assembly, not about any one slice.
           </dd>
 
@@ -2920,7 +2951,7 @@
   <section class="panel" aria-labelledby="modes-h">
     <div class="phead">
       <h2 id="modes-h">Three modes</h2>
-      <span class="src">main.mts:700-820, :762-768</span>
+      <span class="src">main.mts:708-828, :770-776, :2892-2964</span>
     </div>
     <div class="pbody">
       <div class="scrollx">
@@ -2998,11 +3029,15 @@
             <tr>
               <th scope="row">On success</th>
               <td>
-                <code>status:done</code> + <b>issue closed</b> as completed
+                <code>status:done</code> always. <b>Issue closed</b> as
+                completed only on a <b>clean</b> outcome; otherwise
+                <b>held</b>: stays open, <code>ready-for-agent</code> &rarr;
+                <code>ready-for-human</code>, dependents not unblocked
               </td>
               <td>
                 <code>status:in-progress</code> removed + a comment. Issue stays
-                <b>open</b>, <b>not</b> <code>status:done</code>
+                <b>open</b>, <b>not</b> <code>status:done</code>. The comment
+                lists what the agent left outstanding when the run was not clean
               </td>
               <td>same as standalone</td>
             </tr>
@@ -3018,9 +3053,13 @@
       <div class="callout" style="margin: 0">
         <div class="ctitle">The asymmetry is the point</div>
         <p>
-          PRD slices close because their work is integrated. Standalone runs
-          stay open because marking them done would assert completion of work
-          that exists only on an unpushed local branch.
+          PRD slices are marked <code>status:done</code> because their work is
+          integrated, but they close only when the agent finished cleanly: its
+          last iteration printed the completion promise and listed nothing
+          <code>OUTSTANDING:</code>. A slice that did not is held open as
+          <code>ready-for-human</code> with that list, and the slices behind it
+          wait. Standalone runs stay open because marking them done would assert
+          completion of work that exists only on an unpushed local branch.
         </p>
       </div>
       <p class="small muted">
@@ -3036,7 +3075,7 @@
   <section class="panel" aria-labelledby="gate-h">
     <div class="phead">
       <h2 id="gate-h">The gate &mdash; two project scopes</h2>
-      <span class="src">main.mts:153-205, :1629-1700</span>
+      <span class="src">main.mts:161-213, :1656-1727</span>
     </div>
     <div class="pbody">
       <p>
@@ -3391,7 +3430,7 @@
     <div class="phead">
       <h2 id="cont-h">What crosses the container boundary</h2>
       <span class="src"
-        >main.mts:1077-1099, :2343-2357 &middot; .sandcastle/Dockerfile</span
+        >main.mts:1086-1108, :2441-2455 &middot; .sandcastle/Dockerfile</span
       >
     </div>
     <div class="pbody">
@@ -3525,7 +3564,7 @@
   <section class="panel" aria-labelledby="routing-h">
     <div class="phead">
       <h2 id="routing-h">Routing: labels in, behaviour out</h2>
-      <span class="src">main.mts:1192-1198, :1266-1290, :2026-2030</span>
+      <span class="src">main.mts:1201-1207, :1275-1299, :2053-2057</span>
     </div>
     <div class="pbody">
       <p class="small">
@@ -3537,7 +3576,9 @@
           <dl class="kv" style="margin-top: 8px">
             <dt>low</dt>
             <dd>
-              <code>claude-haiku-4-5</code> &mdash; the default when unlabelled
+              <code>claude-sonnet-5</code> &mdash; the same as medium, and the
+              default when unlabelled. Complexity is size, not risk, so nothing
+              implements on the smallest model (ADR&nbsp;0111)
             </dd>
             <dt>medium</dt>
             <dd><code>claude-sonnet-5</code></dd>
@@ -3658,10 +3699,11 @@
       <a href="resume.html">resume</a>
     </nav>
     <div>
-      <b>Read from source on 2026-08-23</b>, from
+      <b>Read from source on 2026-09-30</b>, from
       <code>.sandcastle/main.mts</code>,
       <code>.sandcastle/dispatch-waves.mts</code>,
       <code>tools/scripts/lib/sandcastle-resume.mjs</code>,
+      <code>tools/scripts/lib/sandcastle-outcome.mjs</code>,
       <code>tools/config/agent-model-policy.json</code>, and
       <code>package.json</code>. Where a document and the source disagreed, the
       source won.
@@ -3685,7 +3727,11 @@
         >ADR&nbsp;0045</a
       >
       is what moved the PRD gate off the slice and onto the assembled branch,
-      and is why this page now routes instead of drawing that gate itself.
+      and is why this page now routes instead of drawing that gate itself;
+      <a href="../adr/0111-a-prd-slice-closes-only-on-a-clean-outcome.md"
+        >ADR&nbsp;0111</a
+      >
+      is why a PRD slice closes only on a clean outcome.
     </div>
   </footer>
 </div>
@@ -3695,7 +3741,7 @@
 <script type="application/json" id="sandcastle-dispatch-manifest">
   {
     "id": "sandcastle-dispatch-manifest",
-    "generatedFrom": ".sandcastle/main.mts, .sandcastle/dispatch-waves.mts, tools/scripts/lib/sandcastle-resume.mjs, tools/config/agent-model-policy.json, package.json",
+    "generatedFrom": ".sandcastle/main.mts, .sandcastle/dispatch-waves.mts, tools/scripts/lib/sandcastle-resume.mjs, tools/scripts/lib/sandcastle-outcome.mjs, tools/config/agent-model-policy.json, package.json",
     "assertedFromExports": {
       "resumeQuotaMaxWaitsPerRun": 2,
       "resumeQuotaMaxWaitMs": 21600000,
@@ -3708,7 +3754,10 @@
       "resumeLimitMatcherCountClaude": 3,
       "resumeLimitMatcherCountCursor": 0,
       "resumeLimitMatcherCountCopilot": 0,
-      "policySandcastleClaudeModelLow": "claude-haiku-4-5",
+      "outcomeCompletionPromise": "<promise>COMPLETE</promise>",
+      "outcomeOutstandingMarker": "OUTSTANDING:",
+      "outcomeNeedsHumanLabel": "ready-for-human",
+      "policySandcastleClaudeModelLow": "claude-sonnet-5",
       "policySandcastleClaudeModelMedium": "claude-sonnet-5",
       "policySandcastleClaudeModelHigh": "claude-opus-5",
       "policySandcastleCursorDefault": "composer-2.5",
@@ -3734,49 +3783,54 @@
 
 <script type="application/json" id="citation-anchors">
   {
-    "note": "Expected-content anchors for file:line citations on this page, verified 2026-09-16 against .sandcastle/main.mts, .sandcastle/dispatch-waves.mts, and tools/scripts/lib/sandcastle-resume.mjs. See ADR 0085.",
+    "note": "Expected-content anchors for file:line citations on this page, verified 2026-09-30 against .sandcastle/main.mts, .sandcastle/dispatch-waves.mts, and tools/scripts/lib/sandcastle-resume.mjs. See ADR 0085.",
     "anchors": {
-      "main.mts:700-820": {
+      "main.mts:708-828": {
         "file": ".sandcastle/main.mts",
         "start": "`  [#${completed.number}] #${dependentNumber} still blocked by ${unfinished",
         "end": "// label is NOT explained that way stays out: it means something this code cannot"
       },
-      "main.mts:762-768": {
+      "main.mts:770-776": {
         "file": ".sandcastle/main.mts",
         "start": "'issue',",
         "end": "'title,body',"
       },
-      "main.mts:153-205": {
+      "main.mts:161-213": {
         "file": ".sandcastle/main.mts",
         "start": "}",
         "end": "/**"
       },
-      "main.mts:1629-1700": {
+      "main.mts:1656-1727": {
         "file": ".sandcastle/main.mts",
         "start": "`Refs #${issue.number}`,",
         "end": "): boolean {"
       },
-      "main.mts:1077-1099": {
+      "main.mts:1086-1108": {
         "file": ".sandcastle/main.mts",
         "start": "// run whose sub-agent behaviour you most want to read. A mount sidesteps the ordering",
         "end": "// Absent, no mount is added and CodeExplorer falls back to Glob/Grep as already"
       },
-      "main.mts:2343-2357": {
+      "main.mts:2441-2455": {
         "file": ".sandcastle/main.mts",
         "start": "* Sessions are selected by mtime against the moment this run started rather than by id.",
         "end": "'.sandcastle',"
       },
-      "main.mts:1192-1198": {
+      "main.mts:1201-1207": {
         "file": ".sandcastle/main.mts",
         "start": "function modelFor(issue: Issue): string {",
         "end": "return sandcastleModels.claudeByComplexity.low;"
       },
-      "main.mts:1266-1290": {
+      "main.mts:1275-1299": {
         "file": ".sandcastle/main.mts",
         "start": "// does, not merely which issue it came from — see AGENTS.md \"Branch naming\". First",
         "end": "return 'chore';"
       },
-      "main.mts:2026-2030": {
+      "main.mts:2892-2964": {
+        "file": ".sandcastle/main.mts",
+        "start": "const outcome = judgeRunOutcome(",
+        "end": "unblockDependents(issue);"
+      },
+      "main.mts:2053-2057": {
         "file": ".sandcastle/main.mts",
         "start": "function resolveGate(issue: Issue): 'mechanical' | 'standard' | 'full' {",
         "end": "return 'standard';"
@@ -4047,7 +4101,7 @@
       6: 'The slice is popped and labelled in progress. This is the first thing sandcastle writes to GitHub.',
       7: 'Resume is the default. Destroying preserved work is the deliberate act, never the fallback.',
       8: 'Three dispositions. Only one of them deletes anything.',
-      9: 'Maintainer notes are read — but only what sits under a ## Maintainer Review heading.',
+      9: 'Maintainer notes are read — but only what sits under a ## Maintainer Review heading. The parent PRD is read here too, on the host, and the prompt gains PRD, Design, and Outcome sections.',
       10: 'A worktree is created or reused on the host. All git lives here.',
       11: 'The container starts and installs the slice tree before the agent wakes up.',
       12: 'The agent runs. Two iterations are cold restarts, not continuations.',
@@ -4055,8 +4109,8 @@
       14: 'Anything the agent left uncommitted is swept in. Zero commits ahead means no work, and fails.',
       15: 'The gate, and it forks by mode: standalone runs it here and a red gate blocks; PRD defers it to one gate on the assembled branch. gates.html draws both.',
       16: 'A local fast-forward of a branch that is not checked out. It refuses a non-descendant — and in PRD mode nothing else refuses it.',
-      17: 'Writeback, and it differs by mode: PRD closes the slice, standalone only comments.',
-      18: 'Dependents are unblocked, and the loop moves to the next slice.',
+      17: 'Writeback, and it differs by mode. PRD marks the slice status:done, then closes it only if the run ended clean; otherwise it holds it open as ready-for-human with the agent’s list. Standalone only comments.',
+      18: 'Dependents are unblocked only when the slice closed clean — a held slice releases nothing. The loop moves to the next slice either way.',
       19: 'The run ends. In PRD mode the gate verdict is commented on the PRD issue — the seventh GitHub write. Nothing has been pushed.',
       20: 'Alternative branch, taken from step 12: the agent threw. For an overnight run this is the expected path, not the exception.',
       21: 'The in-progress label comes off, and the catch preserves before it reports.',

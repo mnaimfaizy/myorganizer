@@ -191,6 +191,11 @@ Subtract step 2 from step 3. What remains is the plan. Residue usually clusters 
 - **Destructive and irreversible actions.** What survives a failed attempt, and what the blast
   radius of a successful one is.
 - **Judgement.** Whether copy is honest, whether an error is actionable, whether a flow feels safe.
+- **Design fidelity.** When the work builds to a design committed under `docs/design/` (ADR 0110),
+  nothing automated compares the running app to it — the Sandcastle sandbox cannot run a device
+  or show a screen (ADR 0111). That comparison is always residue: one scenario per page, walking
+  its artboards on a real device or simulator (both platforms for the mobile app, light and dark),
+  naming the artboard file each step is checked against.
 
 When the residue includes something automation _should_ cover and does not, say so in the scenario
 and file it, rather than silently converting a coverage gap into permanent manual labour.

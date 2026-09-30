@@ -9,7 +9,7 @@
     {
       "name": "complexity:low",
       "color": "c5def5",
-      "description": "Route to Haiku — simple, well-scoped task"
+      "description": "Simple, well-scoped task — routes to the same model as medium (ADR 0111)"
     },
     {
       "name": "complexity:medium",
@@ -62,6 +62,11 @@
       "description": "Agent finished; slice integrated into the local feature branch"
     },
     {
+      "name": "ready-for-human",
+      "color": "0e8a16",
+      "description": "Needs a person next: triaged as unsuitable for an agent, or a slice held open (ADR 0111)"
+    },
+    {
       "name": "prd",
       "color": "6f42c1",
       "description": "Product Requirements Document — parent issue for a planned feature"
@@ -99,6 +104,11 @@
       "name": "agent-review",
       "color": "5319e7",
       "description": "Request an automated code review now; the workflow removes the label when the run finishes"
+    },
+    {
+      "name": "golden-replay",
+      "color": "5319e7",
+      "description": "Request a Golden Set replay now; the workflow removes the label when the run finishes"
     }
   ],
   "surface": {

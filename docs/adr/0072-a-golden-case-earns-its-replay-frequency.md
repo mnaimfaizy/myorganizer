@@ -171,6 +171,14 @@ caught`): a case that always passes and a case that never passes both carry less
 > the case that matters, a promotion whose `tierEvidence` is properly cited, which is the one that
 > looks correct on its way past review.
 
+> **Superseded in part by [ADR 0109](0109-a-golden-replay-runs-on-a-schedule-and-on-request.md).**
+> Item 1's "runs on any change to the paths that produce a review" and item 3's `[skip replay]`
+> are gone: the replay runs on a weekly schedule when a reviewer input moved, on the
+> `golden-replay` Request Label, and by dispatch, and never on a push. The first alternative below —
+> rejecting a schedule because "the replay's input changes a few times a year" — did not survive the
+> record: those inputs took 53 commits in the three weeks after this decision, and pushes paid 88% of
+> the replay's spend. The tiers, promotion and demotion, and items 4 to 8 stand.
+
 ## Alternatives considered
 
 - **Move the replay to a nightly or 48-hourly schedule.** Rejected. The replay's input changes a
