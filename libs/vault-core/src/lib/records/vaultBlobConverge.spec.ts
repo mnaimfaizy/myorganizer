@@ -28,10 +28,12 @@ describe('vaultBlobConverge', () => {
       }
     });
 
-    it('groceries uses promptOnConflict with no merge', () => {
+    it('groceries uses mergeById with merge function', () => {
       const strategy = VAULT_BLOB_CONVERGE_STRATEGIES.groceries;
-      expect(strategy.strategy).toBe('promptOnConflict');
-      expect('merge' in strategy).toBe(false);
+      expect(strategy.strategy).toBe('mergeById');
+      if (isMergeById(strategy)) {
+        expect(typeof strategy.merge).toBe('function');
+      }
     });
   });
 
