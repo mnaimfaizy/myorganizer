@@ -77,7 +77,7 @@ export const VAULT_SYNC_DRAIN_DELAY_MS = 1_000;
  * long the wait is.
  */
 export type VaultSyncRetryScheduler = (
-  retry: () => void,
+  retry: () => void | Promise<unknown>,
   attempt: number,
 ) => void;
 
@@ -384,7 +384,8 @@ export function createVaultSyncQueue(options: {
     notify();
     retrySchedule(() => {
       retryScheduled = false;
-      void drain(handle);
+      // Return the drain so awaiting this retry waits for that attempt.
+      return drain(handle);
     }, attempt);
   }
 
