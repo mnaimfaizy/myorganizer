@@ -99,6 +99,11 @@ A branch whose name carries no issue number carries one in its first commit inst
 it (`AGENTS.md`, Branch naming). That is why an agent-authored pull request resolves a spec without
 any new discovery step.
 
+**Recording a waiver.** If a requirement's precondition is being deliberately left unmet, record that
+decision in the issue itself. The Spec sub-agent reads only the issue text it is handed as spec; a
+waiver written solely into a linked ADR is invisible to it, and the same precondition comes back as a
+Blocking finding on every run (PR #852).
+
 ### 3. Spawn both sub-agents in parallel
 
 Dispatch as your first substantive action after steps 1 and 2 — before you read
@@ -142,6 +147,13 @@ A finding is:
   "confidence"?: "high" | "medium" | "low",
   "wouldBlock"?: true   (only on should-fix: "this would block if I could verify it")
 }
+
+One axis per defect: when one defect is both a standards violation and a spec miss, it is reported on
+the Spec axis only. Neither sub-agent sees the other's findings while running (step 3), so this is
+not a live judgment call for either of them — each still reports everything it finds under its own
+axis. The drop happens at assembly (step 5): before the envelope is written, a Standards finding
+whose location names the same defect as a Spec finding is dropped, keeping the Spec one. PR #819
+raised one wrong citation anchor on both axes, so the author answered the same defect twice.
 
 Rules the validator enforces — a report that breaks one is rejected whole:
 - "ruleId" must be one of the ids in the rule catalogue, and it must be one the
@@ -233,7 +245,10 @@ step 4 answers, never as prose here; that dilution is what two measurements reje
 place the diff violates a documented standard — `ruleId` is the catalogue id that names the defect,
 `source` is the file, `rule` is that file's own wording, evidence is `cited` with
 `sourceKind: standard` — and every baseline smell under its own `smell-*` id with
-`source: smell-baseline`, `inferred`. Run the reach-through checks before you write findings. You may run existing targets on
+`source: smell-baseline`, `inferred`. When a finding is a pattern — the same defect shape recurring
+in more than one hunk — search the whole diff for every other instance and list them together in
+that one finding rather than the first hunk alone: on PRs #777 and #789 the maintainer fixed five more
+of the same shape the review did not reach. Run the reach-through checks before you write findings. You may run existing targets on
 affected projects to turn a suspicion into `executed` evidence. Set `axis: standards` on every
 finding."
 
@@ -296,7 +311,11 @@ implemented but wrong (`spec-requirement-implemented-wrong`) — those three ids
 vocabulary and there is no fallback, because the axis has no fourth kind of defect. `source` is the
 issue ref or path, `rule` is the requirement, evidence is
 `cited` with `sourceKind: spec`, `untrusted: true`, quoting the requirement. A missing requirement
-may be `blocking` with no location. Set `axis: spec` on every finding."
+may be `blocking` with no location. Treat a precondition the spec source explicitly waives as
+satisfied, not missing or wrong — only a waiver recorded in the issue itself counts; a waiver
+recorded solely in a linked ADR does not, because the issue is the only thing this axis reads as
+spec. PR #852 re-raised a precondition waived in ADR 0003 rather than in the issue as Blocking in seven
+wordings across eleven runs. Set `axis: spec` on every finding."
 
 If the spec is `none`, skip the Spec sub-agent.
 
@@ -378,7 +397,10 @@ whatever the two sub-agents already returned — an unanswered obligation fails 
 
 Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 0041). Use the
 Standards sub-agent's own `standardsSources` from step 3 for the envelope field of the same name —
-do not recompute it:
+do not recompute it. First apply the one-axis-per-defect rule from the finding contract: for each
+Standards finding whose `location.file` and line range overlap a Spec finding's, drop the Standards
+one and keep the Spec one — this is the one point in the process where both axes' findings are in the
+same hands, which is why the rule is applied here and not asked of either sub-agent (PR #819).
 
 ```json
 {
