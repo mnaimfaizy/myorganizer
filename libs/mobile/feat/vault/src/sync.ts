@@ -1,7 +1,7 @@
-import type {
-  PutVaultBlobResponse,
-  VaultApi,
+import {
   VaultBlobType,
+  type PutVaultBlobResponse,
+  type VaultApi,
 } from '@myorganizer/app-api-client';
 import {
   toVaultBlobEnvelope,
@@ -62,21 +62,10 @@ function httpStatus(error: unknown): number | undefined {
   return typeof status === 'number' ? status : undefined;
 }
 
-/**
- * True when a vault request never got an answer from the server — the device
- * is offline or the host is unreachable — as against the server answering
- * with an error, or the answer failing to decrypt.
- */
-export function isNetworkError(error: unknown): boolean {
-  const e = error as {
-    response?: unknown;
-    isAxiosError?: boolean;
-    code?: string;
-  };
-  return (
-    !e?.response && (e?.isAxiosError === true || e?.code === 'ERR_NETWORK')
-  );
-}
+// Re-exported for existing callers. `networkError.ts` is the module without a
+// react-native-quick-crypto import, so a caller outside this feature can
+// depend on it and stay loadable in a plain Node Jest environment.
+export { isNetworkError } from './networkError';
 
 /**
  * Reads one Vault Blob and decrypts it on device with the Master Key.
@@ -89,6 +78,22 @@ export function isNetworkError(error: unknown): boolean {
  * — the network, the server, a Ciphertext this Master Key cannot open — is
  * thrown; none of them is evidence the blob is empty.
  */
+/**
+ * A Vault Blob Type's records before its first write, in the shape its
+ * readers and edits expect — the web's shape for the same blob. Groceries
+ * holds an object, `{ catalog, lists }`; the other four hold a list. Every
+ * type once got a list here, which `createGroceryList` rightly declines to
+ * edit, so a new account's first Grocery List saved as nothing at all — and
+ * saved that empty list as the blob, which is why a read repairs it too.
+ */
+const EMPTY_RECORDS = {
+  [VaultBlobType.Addresses]: () => [],
+  [VaultBlobType.Groceries]: () => ({ catalog: [], lists: [] }),
+  [VaultBlobType.MobileNumbers]: () => [],
+  [VaultBlobType.Subscriptions]: () => [],
+  [VaultBlobType.Tasks]: () => [],
+} as const satisfies Record<VaultBlobType, () => unknown>;
+
 export async function readVaultBlob(params: {
   vaultApi: VaultApi;
   masterKey: Uint8Array;
@@ -99,7 +104,10 @@ export async function readVaultBlob(params: {
     response = await params.vaultApi.getVaultBlob({ type: params.type });
   } catch (err) {
     if (httpStatus(err) === 404) {
-      return { envelope: { records: [], deletions: {} }, etag: null };
+      return {
+        envelope: { records: EMPTY_RECORDS[params.type](), deletions: {} },
+        etag: null,
+      };
     }
     throw err;
   }
@@ -111,8 +119,17 @@ export async function readVaultBlob(params: {
     iv: base64ToBytes(blob.iv),
   });
 
+  const envelope = toVaultBlobEnvelope(JSON.parse(bytesToUtf8(plaintext)));
   return {
-    envelope: toVaultBlobEnvelope(JSON.parse(bytesToUtf8(plaintext))),
+    envelope: {
+      ...envelope,
+      // A blob saved empty in the wrong shape reads as empty in the right
+      // one: an empty list holds nothing to lose.
+      records:
+        Array.isArray(envelope.records) && envelope.records.length === 0
+          ? EMPTY_RECORDS[params.type]()
+          : envelope.records,
+    },
     etag,
   };
 }

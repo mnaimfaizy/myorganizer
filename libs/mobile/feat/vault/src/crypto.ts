@@ -7,23 +7,17 @@ import {
 } from 'react-native-quick-crypto';
 import { Buffer } from '@craftzdog/react-native-buffer';
 
+// Re-exported for existing callers. `bytes.ts` is the module without a
+// react-native-quick-crypto import, so `unlock.ts` can depend on it and stay
+// loadable in a plain Node Jest environment.
+export {
+  bytesToBase64,
+  base64ToBytes,
+  utf8ToBytes,
+  bytesToUtf8,
+} from './bytes';
+
 type AesGcmKey = Uint8Array;
-
-export function bytesToBase64(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('base64');
-}
-
-export function base64ToBytes(base64: string): Uint8Array {
-  return new Uint8Array(Buffer.from(base64, 'base64'));
-}
-
-export function utf8ToBytes(text: string): Uint8Array {
-  return new Uint8Array(Buffer.from(text, 'utf8'));
-}
-
-export function bytesToUtf8(bytes: Uint8Array): string {
-  return Buffer.from(bytes).toString('utf8');
-}
 
 function deriveKeyFromPassphraseSync(params: {
   passphrase: string;

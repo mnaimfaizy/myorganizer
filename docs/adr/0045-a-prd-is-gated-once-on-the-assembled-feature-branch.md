@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted. Amends [0010](0010-sandcastle-local-only-integration.md).
+accepted. Amends [0010](0010-sandcastle-local-only-integration.md). Amended by [0111](0111-a-prd-slice-closes-only-on-a-clean-outcome.md): a PRD slice is still integrated and marked `status:done` on any commit, but it is closed, and releases its dependents, only when its run ended clean; otherwise it is held open as `ready-for-human`.
 
 ## Context
 

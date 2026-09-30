@@ -78,6 +78,18 @@ android {
     compileSdk rootProject.ext.compileSdkVersion
 
     namespace "com.mobile"
+
+    // The bundled app fonts live with the rest of the app's source, not under
+    // android/. Pointing the asset source set at apps/mobile/src/assets puts
+    // this repo's `fonts/` directory at `assets/fonts/` in the APK, which is
+    // where React Native's font manager looks — and keeps one copy of each
+    // .ttf instead of one per platform. See src/assets/fonts/README.md.
+    sourceSets {
+        main {
+            assets.srcDirs += ["../../src/assets"]
+        }
+    }
+
     defaultConfig {
         applicationId "com.mobile"
         minSdkVersion rootProject.ext.minSdkVersion
@@ -110,6 +122,18 @@ android {
 dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
+
+    // BiometricPrompt with a CryptoObject for the Biometric Unlock keystore
+    // (com.mobile.biometrickeystore). The same version react-native-keychain
+    // already brings in, declared here because that one is not on this
+    // module's compile classpath.
+    implementation("androidx.biometric:biometric:1.1.0")
+
+    // The Material 3 app theme (res/values/styles.xml) that the Material date
+    // dialog reads its calendar theme from. The same version
+    // @react-native-community/datetimepicker already brings in, declared here
+    // because that one is not on this module's compile classpath.
+    implementation("com.google.android.material:material:1.12.0")
 
     if (hermesEnabled.toBoolean()) {
         implementation("com.facebook.react:hermes-android")

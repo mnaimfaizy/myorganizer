@@ -120,7 +120,7 @@ export interface GroceriesDeletion {
  *
  * A bare `{ catalog, lists }` save drops every deletion another device
  * recorded, and the next merge puts those records back
- * ([ADR 0112](../../../../../../docs/adr/0112-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
+ * ([ADR 0113](../../../../../../docs/adr/0113-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
  * `deleteVaultRecord` cannot do this: it refuses a non-array payload.
  */
 export async function saveGroceriesPayload(

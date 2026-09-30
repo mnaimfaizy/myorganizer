@@ -1,0 +1,1585 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Acct-Android.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Account · Android",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "Acct-Autolock.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Auto-lock picker",
+      "w": 390,
+      "x": 0,
+      "y": 1707
+    },
+    "Acct-BioOff-Confirm.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Biometric Unlock · turn off",
+      "w": 390,
+      "x": 470,
+      "y": 1707
+    },
+    "Acct-BioOff.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Biometric Unlock · off",
+      "w": 390,
+      "x": 940,
+      "y": 1707
+    },
+    "Acct-BioUnavailable.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Biometric Unlock · not set up on the device",
+      "w": 390,
+      "x": 1410,
+      "y": 1707
+    },
+    "Acct-Dark.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Account · dark",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "Acct-Full.dc.html": {
+      "h": 1287,
+      "page": "account",
+      "title": "Account · full length",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Acct-LockNow.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Lock Vault now · pressed",
+      "w": 390,
+      "x": 1880,
+      "y": 1707
+    },
+    "Acct-Logout-Dark.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Log out · confirm · dark",
+      "w": 390,
+      "x": 470,
+      "y": 2971
+    },
+    "Acct-Logout.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Log out · confirm",
+      "w": 390,
+      "x": 0,
+      "y": 2971
+    },
+    "Acct-Scrolled.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Account · scrolled to Log out",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "Acct.dc.html": {
+      "h": 844,
+      "page": "account",
+      "title": "Account · iOS",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Controls.dc.html": {
+      "h": 2782,
+      "title": "Components · Controls",
+      "w": 1440,
+      "x": 3040,
+      "y": 5082
+    },
+    "Det-Address-Copied.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Address · field copied",
+      "w": 390,
+      "x": 470,
+      "y": 1264
+    },
+    "Det-Address-CopyAll.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Address · Copy all",
+      "w": 390,
+      "x": 940,
+      "y": 1264
+    },
+    "Det-Address-Dark.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Address · dark",
+      "w": 390,
+      "x": 2350,
+      "y": 1264
+    },
+    "Det-Address-Full.dc.html": {
+      "h": 1231,
+      "page": "details",
+      "title": "Address · full length",
+      "w": 390,
+      "x": 1410,
+      "y": 1264
+    },
+    "Det-Address-Legacy.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Address · legacy single line",
+      "w": 390,
+      "x": 1880,
+      "y": 1264
+    },
+    "Det-Address.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Address · Home",
+      "w": 390,
+      "x": 0,
+      "y": 1264
+    },
+    "Det-List-Dark.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "List · Addresses · dark",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Det-List-Empty.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "List · no Addresses yet",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "Det-List-Mobiles.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "List · Mobile Numbers",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "Det-List-Old.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "List · Old expanded",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "Det-List.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "List · Addresses",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Det-Mobile-Copied.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Mobile · number copied",
+      "w": 390,
+      "x": 470,
+      "y": 2915
+    },
+    "Det-Mobile-Dark.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Mobile · dark",
+      "w": 390,
+      "x": 1410,
+      "y": 2915
+    },
+    "Det-Mobile-Legacy.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Mobile · legacy single field",
+      "w": 390,
+      "x": 940,
+      "y": 2915
+    },
+    "Det-Mobile.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Mobile · Personal",
+      "w": 390,
+      "x": 0,
+      "y": 2915
+    },
+    "Det-UL-AllDone.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Usage Locations · all notified",
+      "w": 390,
+      "x": 1880,
+      "y": 4179
+    },
+    "Det-UL-Dark.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Usage Locations · dark",
+      "w": 390,
+      "x": 2350,
+      "y": 4179
+    },
+    "Det-UL-Full.dc.html": {
+      "h": 986,
+      "page": "details",
+      "title": "Usage Locations · full length",
+      "w": 390,
+      "x": 470,
+      "y": 4179
+    },
+    "Det-UL-Reverted.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Usage Locations · reverted with Retry",
+      "w": 390,
+      "x": 1410,
+      "y": 4179
+    },
+    "Det-UL-Unconfirmed.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Usage Locations · ticked, Unconfirmed",
+      "w": 390,
+      "x": 940,
+      "y": 4179
+    },
+    "Det-UL.dc.html": {
+      "h": 844,
+      "page": "details",
+      "title": "Usage Locations · checklist",
+      "w": 390,
+      "x": 0,
+      "y": 4179
+    },
+    "Entry-Cover-Dark.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Privacy cover · dark",
+      "w": 390,
+      "x": 470,
+      "y": 7584
+    },
+    "Entry-Cover.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Privacy cover · light",
+      "w": 390,
+      "x": 0,
+      "y": 7584
+    },
+    "Entry-Forgot-Sent.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Forgot password · sent",
+      "w": 390,
+      "x": 470,
+      "y": 1264
+    },
+    "Entry-Forgot.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Forgot password",
+      "w": 390,
+      "x": 0,
+      "y": 1264
+    },
+    "Entry-Locked.dc.html": {
+      "h": 1124,
+      "page": "entry-unlock",
+      "title": "Locked · from a tab back to Unlock",
+      "w": 2206,
+      "x": 0,
+      "y": 8848
+    },
+    "Entry-Login-Disabled.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Login · disabled account",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "Entry-Login-Offline.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Login · offline",
+      "w": 390,
+      "x": 2350,
+      "y": 0
+    },
+    "Entry-Login-Signing.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Login · signing in",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Entry-Login-Unverified.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Login · unverified email",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "Entry-Login-Wrong.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Login · wrong credentials",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "Entry-Login.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Login",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Entry-NoVault-Checking.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "No Vault · checking again",
+      "w": 390,
+      "x": 470,
+      "y": 2528
+    },
+    "Entry-NoVault-Still.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "No Vault · still none",
+      "w": 390,
+      "x": 940,
+      "y": 2528
+    },
+    "Entry-NoVault.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "No Vault yet",
+      "w": 390,
+      "x": 0,
+      "y": 2528
+    },
+    "Entry-Offer-FaceID-Dark.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Biometric offer · iOS · dark",
+      "w": 390,
+      "x": 940,
+      "y": 6320
+    },
+    "Entry-Offer-FaceID.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Biometric offer · iOS",
+      "w": 390,
+      "x": 0,
+      "y": 6320
+    },
+    "Entry-Offer-Fingerprint.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Biometric offer · Android",
+      "w": 390,
+      "x": 470,
+      "y": 6320
+    },
+    "Entry-Recovery-Filled.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Recovery Key · filled",
+      "w": 390,
+      "x": 470,
+      "y": 5056
+    },
+    "Entry-Recovery-Wrong.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Recovery Key · wrong key",
+      "w": 390,
+      "x": 940,
+      "y": 5056
+    },
+    "Entry-Recovery.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Recovery Key · empty",
+      "w": 390,
+      "x": 0,
+      "y": 5056
+    },
+    "Entry-Unlock-BioCancelled.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · Face ID cancelled",
+      "w": 390,
+      "x": 2820,
+      "y": 3792
+    },
+    "Entry-Unlock-BioInvalid.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · biometrics changed",
+      "w": 390,
+      "x": 3290,
+      "y": 3792
+    },
+    "Entry-Unlock-Deriving.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · deriving",
+      "w": 390,
+      "x": 1410,
+      "y": 3792
+    },
+    "Entry-Unlock-FaceID-Dark.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · Face ID on · dark",
+      "w": 390,
+      "x": 3760,
+      "y": 3792
+    },
+    "Entry-Unlock-FaceID.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · Face ID on (iOS)",
+      "w": 390,
+      "x": 470,
+      "y": 3792
+    },
+    "Entry-Unlock-Fingerprint.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · fingerprint on (Android)",
+      "w": 390,
+      "x": 940,
+      "y": 3792
+    },
+    "Entry-Unlock-Offline.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · offline",
+      "w": 390,
+      "x": 2350,
+      "y": 3792
+    },
+    "Entry-Unlock-Passphrase.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · passphrase (Biometric Unlock off)",
+      "w": 390,
+      "x": 0,
+      "y": 3792
+    },
+    "Entry-Unlock-Wrong.dc.html": {
+      "h": 844,
+      "page": "entry-unlock",
+      "title": "Unlock · wrong passphrase",
+      "w": 390,
+      "x": 1880,
+      "y": 3792
+    },
+    "Groc-Add-Added.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Add · just added",
+      "w": 390,
+      "x": 470,
+      "y": 4103
+    },
+    "Groc-Add-Create.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Add · create, pick a category",
+      "w": 390,
+      "x": 940,
+      "y": 4103
+    },
+    "Groc-Add-Results-Dark.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Add · results · dark",
+      "w": 390,
+      "x": 1410,
+      "y": 4103
+    },
+    "Groc-Add-Results.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Add · type-ahead results",
+      "w": 390,
+      "x": 0,
+      "y": 4103
+    },
+    "Groc-Lists-Actions.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Lists · press and hold",
+      "w": 390,
+      "x": 0,
+      "y": 1264
+    },
+    "Groc-Lists-ConfirmDelete.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Lists · confirm delete",
+      "w": 390,
+      "x": 1880,
+      "y": 1264
+    },
+    "Groc-Lists-Create.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Lists · create list",
+      "w": 390,
+      "x": 940,
+      "y": 1264
+    },
+    "Groc-Lists-Empty.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Lists · empty",
+      "w": 390,
+      "x": 2350,
+      "y": 1264
+    },
+    "Groc-Lists-Rename.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Lists · rename",
+      "w": 390,
+      "x": 470,
+      "y": 1264
+    },
+    "Groc-Lists-Swipe.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Lists · swiped to delete",
+      "w": 390,
+      "x": 1410,
+      "y": 1264
+    },
+    "Groc-Shell-Dark.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Shell · dark",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Groc-Shell.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Shell · Groceries tab selected",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Groc-Trip-AllDone.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · all checked",
+      "w": 390,
+      "x": 470,
+      "y": 5367
+    },
+    "Groc-Trip-Amount.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · editing an amount",
+      "w": 390,
+      "x": 2350,
+      "y": 2528
+    },
+    "Groc-Trip-CheckedOpen.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · Checked expanded",
+      "w": 390,
+      "x": 1880,
+      "y": 2528
+    },
+    "Groc-Trip-ConfirmRemove.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · confirm Remove Checked From List",
+      "w": 390,
+      "x": 4700,
+      "y": 2528
+    },
+    "Groc-Trip-ConfirmUncheck.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · confirm Uncheck All",
+      "w": 390,
+      "x": 4230,
+      "y": 2528
+    },
+    "Groc-Trip-Conflict.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · changed on another device",
+      "w": 390,
+      "x": 6110,
+      "y": 2528
+    },
+    "Groc-Trip-Dark.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · dark (poor light)",
+      "w": 390,
+      "x": 470,
+      "y": 2528
+    },
+    "Groc-Trip-EmptyList.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · no lines",
+      "w": 390,
+      "x": 0,
+      "y": 5367
+    },
+    "Groc-Trip-Full.dc.html": {
+      "h": 1155,
+      "page": "groceries",
+      "title": "Trip · full length, Checked collapsed",
+      "w": 390,
+      "x": 1410,
+      "y": 2528
+    },
+    "Groc-Trip-Menu.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · list actions",
+      "w": 390,
+      "x": 3760,
+      "y": 2528
+    },
+    "Groc-Trip-Reverted.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · reverted with Retry (offline)",
+      "w": 390,
+      "x": 5640,
+      "y": 2528
+    },
+    "Groc-Trip-Scrolled.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · scrolled, sticky header",
+      "w": 390,
+      "x": 940,
+      "y": 2528
+    },
+    "Groc-Trip-Swipe.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · swiped: Delete List Line",
+      "w": 390,
+      "x": 2820,
+      "y": 2528
+    },
+    "Groc-Trip-Unconfirmed.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · Unconfirmed Edit",
+      "w": 390,
+      "x": 5170,
+      "y": 2528
+    },
+    "Groc-Trip-Undo.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · line deleted, Undo",
+      "w": 390,
+      "x": 3290,
+      "y": 2528
+    },
+    "Groc-Trip.dc.html": {
+      "h": 844,
+      "page": "groceries",
+      "title": "Trip · in the shop",
+      "w": 390,
+      "x": 0,
+      "y": 2528
+    },
+    "Inputs.dc.html": {
+      "h": 2052,
+      "title": "Components · TextField",
+      "w": 1440,
+      "x": 4560,
+      "y": 5082
+    },
+    "Lists.dc.html": {
+      "h": 3870,
+      "title": "Components · Lists",
+      "w": 1440,
+      "x": 1520,
+      "y": 5082
+    },
+    "Main.dc.html": {
+      "h": 4610,
+      "title": "Colour sheet",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Motion.dc.html": {
+      "h": 3124,
+      "title": "Motion notes",
+      "w": 1440,
+      "x": 0,
+      "y": 9472
+    },
+    "Navigation.dc.html": {
+      "h": 2346,
+      "title": "Components · Screen, header, tabs",
+      "w": 1440,
+      "x": 0,
+      "y": 5082
+    },
+    "Overlays.dc.html": {
+      "h": 3584,
+      "title": "Components · Sheets and feedback",
+      "w": 1440,
+      "x": 6080,
+      "y": 5082
+    },
+    "Platform.dc.html": {
+      "h": 2300,
+      "title": "Platform notes",
+      "w": 1440,
+      "x": 1520,
+      "y": 9472
+    },
+    "Sub-Detail-Cancelled.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Detail · a cancelled Subscription",
+      "w": 390,
+      "x": 1410,
+      "y": 1545
+    },
+    "Sub-Detail-Dark.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Detail · dark",
+      "w": 390,
+      "x": 940,
+      "y": 1545
+    },
+    "Sub-Detail-Full.dc.html": {
+      "h": 1176,
+      "page": "subscriptions",
+      "title": "Detail · full length",
+      "w": 390,
+      "x": 470,
+      "y": 1545
+    },
+    "Sub-Detail-Saving.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Detail · after Save, Unconfirmed",
+      "w": 390,
+      "x": 1880,
+      "y": 1545
+    },
+    "Sub-Detail.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Detail · Netflix",
+      "w": 390,
+      "x": 0,
+      "y": 1545
+    },
+    "Sub-Edit-Cancel.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Edit · Mark cancelled sheet",
+      "w": 390,
+      "x": 1410,
+      "y": 3141
+    },
+    "Sub-Edit-Dark.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Edit · dark",
+      "w": 390,
+      "x": 1880,
+      "y": 3141
+    },
+    "Sub-Edit-Error.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Edit · amount error",
+      "w": 390,
+      "x": 470,
+      "y": 3141
+    },
+    "Sub-Edit-Saving.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Edit · saving",
+      "w": 390,
+      "x": 940,
+      "y": 3141
+    },
+    "Sub-Edit.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "Edit",
+      "w": 390,
+      "x": 0,
+      "y": 3141
+    },
+    "Sub-List-Cancelled.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "List · Cancelled filter",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "Sub-List-Dark.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "List · Active · dark",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Sub-List-Empty.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "List · no Subscriptions yet",
+      "w": 390,
+      "x": 2820,
+      "y": 0
+    },
+    "Sub-List-Expired.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "List · Expired filter, none",
+      "w": 390,
+      "x": 2350,
+      "y": 0
+    },
+    "Sub-List-Explainer.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "List · Monthly Equivalent explained",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "Sub-List-Full.dc.html": {
+      "h": 1125,
+      "page": "subscriptions",
+      "title": "List · full length",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "Sub-List.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "List · Active",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Sub-New-Currency.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "New · choose currency",
+      "w": 390,
+      "x": 1410,
+      "y": 4405
+    },
+    "Sub-New-Errors.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "New · errors",
+      "w": 390,
+      "x": 940,
+      "y": 4405
+    },
+    "Sub-New-Filled.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "New · filled",
+      "w": 390,
+      "x": 470,
+      "y": 4405
+    },
+    "Sub-New.dc.html": {
+      "h": 844,
+      "page": "subscriptions",
+      "title": "New · empty",
+      "w": 390,
+      "x": 0,
+      "y": 4405
+    },
+    "Task-Capture-Chips.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Capture · chips chosen",
+      "w": 390,
+      "x": 940,
+      "y": 1264
+    },
+    "Task-Capture-Collapsed.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Capture · collapsed",
+      "w": 390,
+      "x": 0,
+      "y": 1264
+    },
+    "Task-Capture-Dark.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Capture · focused · dark",
+      "w": 390,
+      "x": 1880,
+      "y": 1264
+    },
+    "Task-Capture-Focused.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Capture · focused",
+      "w": 390,
+      "x": 470,
+      "y": 1264
+    },
+    "Task-Capture-Saved.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Capture · saved, Unconfirmed",
+      "w": 390,
+      "x": 1410,
+      "y": 1264
+    },
+    "Task-Detail-ConfirmDelete.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Detail · confirm delete",
+      "w": 390,
+      "x": 2820,
+      "y": 2528
+    },
+    "Task-Detail-Dark.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Detail · dark",
+      "w": 390,
+      "x": 940,
+      "y": 2528
+    },
+    "Task-Detail-Date.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Detail · due date picker",
+      "w": 390,
+      "x": 2350,
+      "y": 2528
+    },
+    "Task-Detail-Full.dc.html": {
+      "h": 1172,
+      "page": "tasks",
+      "title": "Detail · full length",
+      "w": 390,
+      "x": 470,
+      "y": 2528
+    },
+    "Task-Detail-Reverted.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Detail · Priority reverted",
+      "w": 390,
+      "x": 1880,
+      "y": 2528
+    },
+    "Task-Detail-Saving.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Detail · Status Unconfirmed",
+      "w": 390,
+      "x": 1410,
+      "y": 2528
+    },
+    "Task-Detail.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "Detail",
+      "w": 390,
+      "x": 0,
+      "y": 2528
+    },
+    "Task-List-AllClear.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · all clear",
+      "w": 390,
+      "x": 4230,
+      "y": 0
+    },
+    "Task-List-Archived.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · archived, Undo",
+      "w": 390,
+      "x": 2820,
+      "y": 0
+    },
+    "Task-List-Dark.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · All · dark",
+      "w": 390,
+      "x": 470,
+      "y": 0
+    },
+    "Task-List-Done.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · Show done (recent first)",
+      "w": 390,
+      "x": 3290,
+      "y": 0
+    },
+    "Task-List-Empty.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · no Tasks yet",
+      "w": 390,
+      "x": 3760,
+      "y": 0
+    },
+    "Task-List-SwipeArchive.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · swiped left: Archive",
+      "w": 390,
+      "x": 2350,
+      "y": 0
+    },
+    "Task-List-SwipeDone.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · swiped right: Done",
+      "w": 390,
+      "x": 1880,
+      "y": 0
+    },
+    "Task-List-Ticked.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · ticked done (before it leaves)",
+      "w": 390,
+      "x": 1410,
+      "y": 0
+    },
+    "Task-List-Work.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · Work",
+      "w": 390,
+      "x": 940,
+      "y": 0
+    },
+    "Task-List.dc.html": {
+      "h": 844,
+      "page": "tasks",
+      "title": "List · All",
+      "w": 390,
+      "x": 0,
+      "y": 0
+    },
+    "Type.dc.html": {
+      "h": 1884,
+      "title": "Type scale",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-09-27T03:24:52Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "notes": {
+    "account1": {
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "account",
+      "text": "1 · Account",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "account2": {
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "account",
+      "text": "2 · Security",
+      "w": 240,
+      "x": 0,
+      "y": 1407
+    },
+    "account3": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "account",
+      "text": "3 · Log out",
+      "w": 240,
+      "x": 0,
+      "y": 2671
+    },
+    "details1": {
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "details",
+      "text": "1 · Details list",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "details2": {
+      "kind": "title1",
+      "maxW": 2740,
+      "page": "details",
+      "text": "2 · Address detail",
+      "w": 240,
+      "x": 0,
+      "y": 964
+    },
+    "details3": {
+      "kind": "title1",
+      "maxW": 1800,
+      "page": "details",
+      "text": "3 · Mobile Number detail",
+      "w": 240,
+      "x": 0,
+      "y": 2615
+    },
+    "details4": {
+      "kind": "title1",
+      "maxW": 2740,
+      "page": "details",
+      "text": "4 · Usage Locations",
+      "w": 240,
+      "x": 0,
+      "y": 3879
+    },
+    "entry1": {
+      "kind": "title1",
+      "maxW": 2740,
+      "page": "entry-unlock",
+      "text": "1 · Login",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "entry2": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "entry-unlock",
+      "text": "2 · Forgot password",
+      "w": 240,
+      "x": 0,
+      "y": 964
+    },
+    "entry3": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "entry-unlock",
+      "text": "3 · No Vault yet",
+      "w": 240,
+      "x": 0,
+      "y": 2228
+    },
+    "entry4": {
+      "kind": "title1",
+      "maxW": 4150,
+      "page": "entry-unlock",
+      "text": "4 · Unlock",
+      "w": 240,
+      "x": 0,
+      "y": 3492
+    },
+    "entry5": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "entry-unlock",
+      "text": "5 · Recovery Key unlock",
+      "w": 240,
+      "x": 0,
+      "y": 4756
+    },
+    "entry6": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "entry-unlock",
+      "text": "6 · Biometric Unlock offer",
+      "w": 240,
+      "x": 0,
+      "y": 6020
+    },
+    "entry7": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "entry-unlock",
+      "text": "7 · Privacy cover",
+      "w": 240,
+      "x": 0,
+      "y": 7284
+    },
+    "entry8": {
+      "kind": "title1",
+      "maxW": 2206,
+      "page": "entry-unlock",
+      "text": "8 · Locked",
+      "w": 240,
+      "x": 0,
+      "y": 8548
+    },
+    "groc1": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "groceries",
+      "text": "1 · Tab shell",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "groc2": {
+      "kind": "title1",
+      "maxW": 2740,
+      "page": "groceries",
+      "text": "2 · Grocery Lists",
+      "w": 240,
+      "x": 0,
+      "y": 964
+    },
+    "groc3": {
+      "kind": "title1",
+      "maxW": 6500,
+      "page": "groceries",
+      "text": "3 · Trip view",
+      "w": 240,
+      "x": 0,
+      "y": 2228
+    },
+    "groc4": {
+      "kind": "title1",
+      "maxW": 1800,
+      "page": "groceries",
+      "text": "4 · Add to list",
+      "w": 240,
+      "x": 0,
+      "y": 3803
+    },
+    "groc5": {
+      "kind": "title1",
+      "maxW": 1600,
+      "page": "groceries",
+      "text": "5 · Empty trips",
+      "w": 240,
+      "x": 0,
+      "y": 5067
+    },
+    "row0": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Foundations",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "row1": {
+      "kind": "title1",
+      "maxW": 7520,
+      "text": "Components",
+      "w": 240,
+      "x": 0,
+      "y": 4782
+    },
+    "row2": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Motion and platform",
+      "w": 240,
+      "x": 0,
+      "y": 9172
+    },
+    "subs1": {
+      "kind": "title1",
+      "maxW": 3210,
+      "page": "subscriptions",
+      "text": "1 · Subscriptions list",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "subs2": {
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "subscriptions",
+      "text": "2 · Subscription detail",
+      "w": 240,
+      "x": 0,
+      "y": 1245
+    },
+    "subs3": {
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "subscriptions",
+      "text": "3 · Edit",
+      "w": 240,
+      "x": 0,
+      "y": 2841
+    },
+    "subs4": {
+      "kind": "title1",
+      "maxW": 1800,
+      "page": "subscriptions",
+      "text": "4 · New Subscription",
+      "w": 240,
+      "x": 0,
+      "y": 4105
+    },
+    "tasks1": {
+      "kind": "title1",
+      "maxW": 4620,
+      "page": "tasks",
+      "text": "1 · Task list",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "tasks2": {
+      "kind": "title1",
+      "maxW": 2270,
+      "page": "tasks",
+      "text": "2 · Quick capture",
+      "w": 240,
+      "x": 0,
+      "y": 964
+    },
+    "tasks3": {
+      "kind": "title1",
+      "maxW": 3210,
+      "page": "tasks",
+      "text": "3 · Task detail",
+      "w": 240,
+      "x": 0,
+      "y": 2228
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Type.dc.html",
+    "Navigation.dc.html",
+    "Lists.dc.html",
+    "Controls.dc.html",
+    "Inputs.dc.html",
+    "Overlays.dc.html",
+    "Motion.dc.html",
+    "Platform.dc.html",
+    "Entry-Login.dc.html",
+    "Entry-Login-Signing.dc.html",
+    "Entry-Login-Wrong.dc.html",
+    "Entry-Login-Unverified.dc.html",
+    "Entry-Login-Disabled.dc.html",
+    "Entry-Login-Offline.dc.html",
+    "Entry-Forgot.dc.html",
+    "Entry-Forgot-Sent.dc.html",
+    "Entry-NoVault.dc.html",
+    "Entry-NoVault-Checking.dc.html",
+    "Entry-NoVault-Still.dc.html",
+    "Entry-Unlock-Passphrase.dc.html",
+    "Entry-Unlock-FaceID.dc.html",
+    "Entry-Unlock-Fingerprint.dc.html",
+    "Entry-Unlock-Deriving.dc.html",
+    "Entry-Unlock-Wrong.dc.html",
+    "Entry-Unlock-Offline.dc.html",
+    "Entry-Unlock-BioCancelled.dc.html",
+    "Entry-Unlock-BioInvalid.dc.html",
+    "Entry-Unlock-FaceID-Dark.dc.html",
+    "Entry-Recovery.dc.html",
+    "Entry-Recovery-Filled.dc.html",
+    "Entry-Recovery-Wrong.dc.html",
+    "Entry-Offer-FaceID.dc.html",
+    "Entry-Offer-Fingerprint.dc.html",
+    "Entry-Offer-FaceID-Dark.dc.html",
+    "Entry-Cover.dc.html",
+    "Entry-Cover-Dark.dc.html",
+    "Entry-Locked.dc.html",
+    "Groc-Shell.dc.html",
+    "Groc-Shell-Dark.dc.html",
+    "Groc-Lists-Actions.dc.html",
+    "Groc-Lists-Rename.dc.html",
+    "Groc-Lists-Create.dc.html",
+    "Groc-Lists-Swipe.dc.html",
+    "Groc-Lists-ConfirmDelete.dc.html",
+    "Groc-Lists-Empty.dc.html",
+    "Groc-Trip.dc.html",
+    "Groc-Trip-Dark.dc.html",
+    "Groc-Trip-Scrolled.dc.html",
+    "Groc-Trip-Full.dc.html",
+    "Groc-Trip-CheckedOpen.dc.html",
+    "Groc-Trip-Amount.dc.html",
+    "Groc-Trip-Swipe.dc.html",
+    "Groc-Trip-Undo.dc.html",
+    "Groc-Trip-Menu.dc.html",
+    "Groc-Trip-ConfirmUncheck.dc.html",
+    "Groc-Trip-ConfirmRemove.dc.html",
+    "Groc-Trip-Unconfirmed.dc.html",
+    "Groc-Trip-Reverted.dc.html",
+    "Groc-Trip-Conflict.dc.html",
+    "Groc-Add-Results.dc.html",
+    "Groc-Add-Added.dc.html",
+    "Groc-Add-Create.dc.html",
+    "Groc-Add-Results-Dark.dc.html",
+    "Groc-Trip-EmptyList.dc.html",
+    "Groc-Trip-AllDone.dc.html",
+    "Task-List.dc.html",
+    "Task-List-Dark.dc.html",
+    "Task-List-Work.dc.html",
+    "Task-List-Ticked.dc.html",
+    "Task-List-SwipeDone.dc.html",
+    "Task-List-SwipeArchive.dc.html",
+    "Task-List-Archived.dc.html",
+    "Task-List-Done.dc.html",
+    "Task-List-Empty.dc.html",
+    "Task-List-AllClear.dc.html",
+    "Task-Capture-Collapsed.dc.html",
+    "Task-Capture-Focused.dc.html",
+    "Task-Capture-Chips.dc.html",
+    "Task-Capture-Saved.dc.html",
+    "Task-Capture-Dark.dc.html",
+    "Task-Detail.dc.html",
+    "Task-Detail-Full.dc.html",
+    "Task-Detail-Dark.dc.html",
+    "Task-Detail-Saving.dc.html",
+    "Task-Detail-Reverted.dc.html",
+    "Task-Detail-Date.dc.html",
+    "Task-Detail-ConfirmDelete.dc.html",
+    "Sub-List.dc.html",
+    "Sub-List-Dark.dc.html",
+    "Sub-List-Full.dc.html",
+    "Sub-List-Explainer.dc.html",
+    "Sub-List-Cancelled.dc.html",
+    "Sub-List-Expired.dc.html",
+    "Sub-List-Empty.dc.html",
+    "Sub-Detail.dc.html",
+    "Sub-Detail-Full.dc.html",
+    "Sub-Detail-Dark.dc.html",
+    "Sub-Detail-Cancelled.dc.html",
+    "Sub-Detail-Saving.dc.html",
+    "Sub-Edit.dc.html",
+    "Sub-Edit-Error.dc.html",
+    "Sub-Edit-Saving.dc.html",
+    "Sub-Edit-Cancel.dc.html",
+    "Sub-Edit-Dark.dc.html",
+    "Sub-New.dc.html",
+    "Sub-New-Filled.dc.html",
+    "Sub-New-Errors.dc.html",
+    "Sub-New-Currency.dc.html",
+    "Det-List.dc.html",
+    "Det-List-Dark.dc.html",
+    "Det-List-Old.dc.html",
+    "Det-List-Mobiles.dc.html",
+    "Det-List-Empty.dc.html",
+    "Det-Address.dc.html",
+    "Det-Address-Copied.dc.html",
+    "Det-Address-CopyAll.dc.html",
+    "Det-Address-Full.dc.html",
+    "Det-Address-Legacy.dc.html",
+    "Det-Address-Dark.dc.html",
+    "Det-Mobile.dc.html",
+    "Det-Mobile-Copied.dc.html",
+    "Det-Mobile-Legacy.dc.html",
+    "Det-Mobile-Dark.dc.html",
+    "Det-UL.dc.html",
+    "Det-UL-Full.dc.html",
+    "Det-UL-Unconfirmed.dc.html",
+    "Det-UL-Reverted.dc.html",
+    "Det-UL-AllDone.dc.html",
+    "Det-UL-Dark.dc.html",
+    "Acct.dc.html",
+    "Acct-Full.dc.html",
+    "Acct-Dark.dc.html",
+    "Acct-Android.dc.html",
+    "Acct-Scrolled.dc.html",
+    "Acct-Autolock.dc.html",
+    "Acct-BioOff-Confirm.dc.html",
+    "Acct-BioOff.dc.html",
+    "Acct-BioUnavailable.dc.html",
+    "Acct-LockNow.dc.html",
+    "Acct-Logout.dc.html",
+    "Acct-Logout-Dark.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "foundation",
+      "name": "0 · Foundation"
+    },
+    {
+      "id": "entry-unlock",
+      "name": "1 · Entry and unlock"
+    },
+    {
+      "id": "groceries",
+      "name": "2 · Groceries"
+    },
+    {
+      "id": "tasks",
+      "name": "3 · Tasks"
+    },
+    {
+      "id": "subscriptions",
+      "name": "4 · Subscriptions"
+    },
+    {
+      "id": "details",
+      "name": "5 · Details"
+    },
+    {
+      "id": "account",
+      "name": "6 · Account"
+    }
+  ],
+  "title": "MyOrganizer Mobile v1"
+}

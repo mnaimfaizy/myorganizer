@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Use your Recovery Key</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;background:#F8FAFC;color:#0F172A;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;margin:0;cursor:pointer}
+input,textarea{font-family:inherit;margin:0}
+a{color:#0F172A}a:hover{color:#7C3AED}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; position: relative; overflow: hidden; background: #F8FAFC; color: #0F172A; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; display: flex; flex-direction: column">
+<div style="height: 54px; flex-shrink: 0"></div>
+
+<main style="flex-grow: 1; box-sizing: border-box; padding: 0 16px; display: flex; flex-direction: column; "><div style="height: 44px; box-sizing: border-box; padding: 0 8px 0 0; margin-left: -12px; display: flex; align-items: center"><button type="button" style="height: 44px; border: 0; background: transparent; display: flex; align-items: center; gap: 2px; padding: 0 4px; color: #0F172A; font-size: 17px; line-height: 22px"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M15 5l-7 7 7 7"></path></svg>Unlock</button></div>
+<div style="padding-top: 24px; display: flex; flex-direction: column; gap: 6px"><h1 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 28px; line-height: 34px; font-weight: 700; letter-spacing: -0.02em; color: #0F172A; ">Use your Recovery Key</h1><p style="margin: 0; font-size: 15px; line-height: 20px; color: #64748B; ">Enter the Recovery Key you saved when you set up your Vault.</p></div>
+<div style="padding-top: 28px"><div style="display: flex; flex-direction: column; gap: 6px">
+<label for="rk-light" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Recovery Key</label>
+<textarea id="rk-light" readonly rows="2" spellcheck="false" autocapitalize="off" placeholder="xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx xxxx"  style="height: 84px; box-sizing: border-box; resize: none; border: 1px solid #64748B; border-radius: 8px; background: #FFFFFF; color: #0F172A; padding: 12px 14px; font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 17px; line-height: 28px; letter-spacing: 0.04em; word-spacing: 0.2em; outline: none"></textarea>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">44 characters in groups of four. Capitals matter; spaces don’t.</div>
+</div></div>
+<div style="padding-top: 24px"><button type="button" disabled  style="position: relative; height: 48px; width: 100%; box-sizing: border-box; padding: 0 20px; border: 0; border-radius: 8px; background: #7C3AED; color: #FFFFFF; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; font-size: 16px; line-height: 20px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px; white-space: nowrap; flex-shrink: 0;   opacity: 0.4;">Unlock</button></div>
+<div style="padding-top: 20px"><div role="status" style="display: flex; align-items: flex-start; gap: 8px; font-size: 15px; line-height: 20px; color: #64748B"><span style="padding-top: 1px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 7.5v.01"></path></svg></span><span>To set a new passphrase, use the web app.</span></div></div></main>
+
+<div style="height: 34px; flex-shrink: 0"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

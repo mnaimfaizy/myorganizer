@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-09-21.
+> Last synced from `package.json` on 2026-09-30.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -91,7 +91,7 @@
 
 | Package | Version | Purpose                                      |
 | ------- | ------- | -------------------------------------------- |
-| `axios` | 1.16.0  | HTTP client used by the generated API client |
+| `axios` | 1.18.1  | HTTP client used by the generated API client |
 
 ---
 
@@ -101,21 +101,28 @@
 > `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
 > NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
 
-| Package                          | Version  | Purpose                                                     |
-| -------------------------------- | -------- | ----------------------------------------------------------- |
-| `react-native`                   | ~0.79.3  | Mobile app runtime                                          |
-| `@nx/react-native`               | 22.7.7   | Nx plugin for React Native apps/libs                        |
-| `@react-navigation/native`       | 7.2.5    | Navigation core                                             |
-| `@react-navigation/native-stack` | 7.16.0   | Native stack navigator                                      |
-| `react-native-screens`           | 4.11.1   | Native screen primitives (pinned for RN 0.79)               |
-| `react-native-safe-area-context` | 5.8.0    | Safe-area insets                                            |
-| `react-native-keychain`          | 10.0.0   | Secure token storage (mobile auth)                          |
-| `react-native-quick-base64`      | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                   |
-| `react-native-quick-crypto`      | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)             |
-| `react-native-nitro-modules`     | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)            |
-| `@craftzdog/react-native-buffer` | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own) |
-| `react-native-url-polyfill`      | 3.0.0    | URL polyfill for fetch/API client on RN                     |
-| `react-native-svg`               | ~15.11.2 | SVG rendering                                               |
+| Package                                  | Version  | Purpose                                                                                                    |
+| ---------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
+| `react-native`                           | ~0.79.3  | Mobile app runtime                                                                                         |
+| `@nx/react-native`                       | 22.7.7   | Nx plugin for React Native apps/libs                                                                       |
+| `@react-navigation/native`               | 7.2.5    | Navigation core                                                                                            |
+| `@react-navigation/native-stack`         | 7.16.0   | Native stack navigator                                                                                     |
+| `@react-navigation/bottom-tabs`          | 7.16.2   | Bottom tab navigator (the app's five-tab shell)                                                            |
+| `react-native-screens`                   | 4.11.1   | Native screen primitives (pinned for RN 0.79)                                                              |
+| `react-native-safe-area-context`         | 5.8.0    | Safe-area insets                                                                                           |
+| `react-native-keychain`                  | 10.0.0   | Secure token storage (mobile auth)                                                                         |
+| `react-native-mmkv`                      | 3.3.3    | Per-device settings storage (appearance, last used tab)                                                    |
+| `react-native-quick-base64`              | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                                                                  |
+| `react-native-quick-crypto`              | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)                                                            |
+| `react-native-nitro-modules`             | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)                                                           |
+| `@craftzdog/react-native-buffer`         | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own)                                                |
+| `react-native-url-polyfill`              | 3.0.0    | URL polyfill for fetch/API client on RN                                                                    |
+| `react-native-svg`                       | ~15.11.2 | SVG rendering — the UI Primitives' icon set is drawn in it                                                 |
+| `react-native-gesture-handler`           | 2.32.0   | Native-thread gestures (the swipeable list row); held at 2.32.0 — 2.33.0's codegen needs React Native 0.80 |
+| `react-native-reanimated`                | 3.19.5   | UI-thread animation (row swipe, skeleton pulse)                                                            |
+| `@react-native-community/datetimepicker` | 8.6.0    | Native date/time pickers (iOS UIDatePicker, Android DatePickerDialog)                                      |
+| `@react-native-community/netinfo`        | 12.0.1   | Connectivity, read by the offline banner                                                                   |
+| `react-native-haptic-feedback`           | 3.0.0    | Tick and untick haptics                                                                                    |
 
 ### Metro & React Native Tooling
 
@@ -182,7 +189,7 @@
 
 | Package      | Version | Purpose        |
 | ------------ | ------- | -------------- |
-| `nodemailer` | 9.1.1   | Email delivery |
+| `nodemailer` | 10.0.10 | Email delivery |
 
 ### Google Integration
 
@@ -236,27 +243,31 @@
 
 ## Testing
 
-| Package                         | Version | Purpose                                                |
-| ------------------------------- | ------- | ------------------------------------------------------ |
-| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice    |
-| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                    |
-| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests              |
-| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                     |
-| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                       |
-| `babel-jest`                    | 30.2.0  | Babel transform for Jest                               |
-| `@testing-library/react`        | 16.3.1  | React component testing utilities                      |
-| `@testing-library/react-native` | ~13.2.0 | React Native component testing utilities               |
-| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                  |
-| `react-test-renderer`           | 19.0.0  | Test renderer for React Native/Jest tests (deprecated) |
-| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                         |
-| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)             |
-| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                      |
-| `@playwright/test`              | 1.57.0  | End-to-end test runner                                 |
-| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests   |
+| Package                         | Version | Purpose                                                                           |
+| ------------------------------- | ------- | --------------------------------------------------------------------------------- |
+| `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice                               |
+| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                                               |
+| `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests                                         |
+| `jest-environment-node`         | 30.2.0  | Node environment for backend tests                                                |
+| `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                                                  |
+| `babel-jest`                    | 30.2.0  | Babel transform for Jest                                                          |
+| `@testing-library/react`        | 16.3.1  | React component testing utilities                                                 |
+| `@testing-library/react-native` | 14.0.1  | React Native component testing utilities                                          |
+| `@testing-library/dom`          | 10.4.1  | DOM testing utilities                                                             |
+| `test-renderer`                 | 1.3.0   | React test renderer RNTL 14 uses in place of the deprecated `react-test-renderer` |
+| `jsdom`                         | ~22.1.0 | DOM environment for Jest tests                                                    |
+| `vitest`                        | 4.1.8   | Vite-native test runner (via `@nx/vitest`)                                        |
+| `@vitest/ui`                    | 4.1.8   | Vitest browser UI                                                                 |
+| `@playwright/test`              | 1.57.0  | End-to-end test runner                                                            |
+| `supertest`                     | 7.2.2   | HTTP assertion library for Express integration tests                              |
 
 > **Note**: Jest is the canonical unit test runner for web and mobile. Vitest is installed for Vite-based projects via `@nx/vitest`.
 
-> **Mobile Test Toolchain Note**: This repo's mobile test infrastructure is unresolved, and the reason is `react-test-renderer`, not a React version range. The installed `@testing-library/react-native` (13.2.2) declares `react: >=18.2.0` with no upper bound, which React 19.2.3 satisfies — but it also declares **`react-test-renderer` as a peer dependency**, and React has deprecated that package outright. RNTL v14 is the line that drops the peer. Compounding it, `react-test-renderer` is pinned `19.0.0` against React `19.2.3`, a skew in a package React publishes in lockstep with itself. Before adding the first Jest test to mobile, the toolchain must be resolved and this note removed. No package bumps are planned until the gate tier decision is made.
+> **Mobile Test Toolchain Note**: **Rendering a mobile component in a test works**, as of #910. It was blocked by `react-test-renderer` — a package React deprecated outright, pinned at `19.0.0` against React `19.2.3`, and declared as a peer by `@testing-library/react-native` 13. RNTL **14** is the line that drops it, for `test-renderer@1`, and that is the version installed; `react-test-renderer` is gone from the tree.
+>
+> `libs/mobile/ui` is the project that renders: `preset: 'react-native'`, the native modules stubbed once in its `jest.setup.ts`, and React mapped to `react-for-native` because React Native 0.79's own renderer asserts an exact version match against it and `findNodeHandle` loads that renderer. **`render` is async in RNTL 14** — `await` it, or `screen` throws "`render` function has not been called", which reads as a broken component rather than a missing `await`. See [the Mobile UI Agent Guide](libs/mobile/ui/AGENTS.md).
+>
+> `libs/mobile/core` and `libs/mobile/screens` still run pure logic in a `node` environment and have no renderer configured, so a spec in either must still import neither `react-native`, `react`, nor `@testing-library/react-native`.
 
 ---
 
@@ -319,21 +330,26 @@
 
 These transitive dependencies are explicitly resolved to patched versions via Yarn resolutions, npm overrides, and pnpm overrides.
 
-| Package                     | Resolved Version | Reason                                                                                                                                                         | Vulnerability ID                   |
-| --------------------------- | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- |
-| `adm-zip`                   | 0.6.1            | Patches DoS via uncontrolled memory allocation from declared uncompressed size (GHSA-7q85-xj36-vmfc); pulled by `@module-federation/dts-plugin`                | 1239030                            |
-| `shell-quote`               | 1.8.4            | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                                                                                           | CVE-2024-XXXXX                     |
-| `browserslist`              | 4.28.8           | Patches unbounded cache growth and untrusted custom-stats crash (GHSA-c83g-rgw3-j3cx, GHSA-73wf-gq98-2v4g)                                                     | 1153171, 1153172                   |
-| `fast-uri`                  | 3.1.6            | Patches host confusion and SSRF via URI normalization (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp)                     | 1158521, 1158524, 1158527, 1158530 |
-| `mysql2`                    | 3.23.1           | Patches auth downgrade credential leakage and compressed-protocol decompression DoS (GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3); Prisma 7.2.0 still pins 3.15.3 | 1153173                            |
-| `fast-xml-parser`           | 5.7.3            | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                                                                                               | CVE-2026-41650                     |
-| `deepmerge-ts`              | 8.0.1            | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                                    | GHSA-ggr8-5vv4-36mx                |
-| `react-native-quick-base64` | 3.0.0            | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                              | —                                  |
-| `nanoid`                    | 3.3.17           | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                                                  | 1138811, 1138813                   |
-| `js-yaml`                   | 3.15.2, 4.3.2    | Patches unbounded CPU use from empty merge sources despite `maxTotalMergeKeys` (GHSA-2883-xcg3-v3hh)                                                           | 1193726, 1193727                   |
-| `sharp`                     | 0.35.4           | Patches bundled libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c); pulled by `next`                                                                                | 1193725                            |
-| `smol-toml`                 | 1.8.0            | Patches DoS via malformed TOML documents (GHSA-7w5x-hrqm-74c2); `nx@22.7.7` pins 1.6.1 exactly                                                                 | 1193945                            |
-| `svgo`                      | 3.3.5, 4.1.0     | Patches `removeScripts` bypass via namespace and control characters (GHSA-w27v-7q3p-w38r)                                                                      | 1193735, 1193736                   |
+| Package                     | Resolved Version      | Reason                                                                                                                                                                                                                                                 | Vulnerability ID                                     |
+| --------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
+| `adm-zip`                   | 0.6.1                 | Patches DoS via uncontrolled memory allocation from declared uncompressed size (GHSA-7q85-xj36-vmfc); pulled by `@module-federation/dts-plugin`                                                                                                        | 1239030                                              |
+| `shell-quote`               | 1.8.4                 | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                                                                                                                                                                                   | CVE-2024-XXXXX                                       |
+| `browserslist`              | 4.28.8                | Patches unbounded cache growth and untrusted custom-stats crash (GHSA-c83g-rgw3-j3cx, GHSA-73wf-gq98-2v4g)                                                                                                                                             | 1153171, 1153172                                     |
+| `fast-uri`                  | 3.1.8                 | Patches authority injection via unvalidated port (GHSA-qw65-cvwx-89v3), host confusion via unclosed bracket (GHSA-58mr-gqgx-xq4g), and SSRF via URI normalization (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) | 1239943, 1239946, 1158521, 1158524, 1158527, 1158530 |
+| `mysql2`                    | 3.23.1                | Patches auth downgrade credential leakage and compressed-protocol decompression DoS (GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3); Prisma 7.2.0 still pins 3.15.3                                                                                         | 1153173                                              |
+| `fast-xml-parser`           | 5.7.3                 | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                                                                                                                                                                                       | CVE-2026-41650                                       |
+| `deepmerge-ts`              | 8.0.1                 | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                                                                                                                            | GHSA-ggr8-5vv4-36mx                                  |
+| `react-native-quick-base64` | 3.0.0                 | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                                                                                                                      | —                                                    |
+| `nanoid`                    | 3.3.17                | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                                                                                                                                          | 1138811, 1138813                                     |
+| `js-yaml`                   | 3.15.2, 4.3.2         | Patches unbounded CPU use from empty merge sources despite `maxTotalMergeKeys` (GHSA-2883-xcg3-v3hh)                                                                                                                                                   | 1193726, 1193727                                     |
+| `sharp`                     | 0.35.4                | Patches bundled libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c); pulled by `next`                                                                                                                                                                        | 1193725                                              |
+| `smol-toml`                 | 1.8.0                 | Patches DoS via malformed TOML documents (GHSA-7w5x-hrqm-74c2); `nx@22.7.7` pins 1.6.1 exactly                                                                                                                                                         | 1193945                                              |
+| `svgo`                      | 3.3.5, 4.1.0          | Patches `removeScripts` bypass via namespace and control characters (GHSA-w27v-7q3p-w38r)                                                                                                                                                              | 1193735, 1193736                                     |
+| `brace-expansion`           | 1.1.21, 2.1.7, 5.0.12 | Patches stack exhaustion from uncontrolled recursion on nested brace groups and in `parseCommaParts` (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p); pulled by `minimatch` 3.x/9.x and `nx@22.7.7`                                                         | 1240104, 1240105, 1240107, 1240108, 1240109, 1240111 |
+| `nodemailer`                | 10.0.10 (direct)      | Patches quadratic backtracking in the addressparser free-text fallback (GHSA-v53p-9fqp-m79j); the only breaking change in 10.0.0 is Node ≥ 20, and the repo runs Node 22                                                                               | 1240114                                              |
+| `joi`                       | 17.13.8               | Patches quadratic ReDoS in `Joi.string().isoDate()` (GHSA-6h2x-m376-mqjq); pulled by `@react-native-community/cli-config@18.0.1`                                                                                                                       | 1240057                                              |
+| `undici`                    | 7.29.1                | Patches WebSocket subprotocol DoS and BalancedPool TLS validation bypass (GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3); pulled by `@module-federation/dts-plugin@2.8.1`                                                                                   | 1240041, 1240050                                     |
+| `webpack-dev-middleware`    | 7.4.6                 | Patches path traversal via non-slash-terminated `publicPath` (GHSA-g84c-rxfj-3j2c); pulled by `webpack-dev-server@5.2.3`                                                                                                                               | 1240027                                              |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
 

@@ -15,7 +15,7 @@ import {
 
 /**
  * E2E: multi-device groceries vault sync converges without a pick-a-side prompt
- * when each device creates a different trip (ADR 0112).
+ * when each device creates a different trip (ADR 0113).
  *
  * Test-only passphrase against fully stubbed backend — no real credential applies.
  */

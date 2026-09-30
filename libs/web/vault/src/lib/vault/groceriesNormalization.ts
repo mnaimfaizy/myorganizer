@@ -1,5 +1,6 @@
 import { randomId } from '@myorganizer/core';
 import {
+  GROCERY_PREDEFINED_CATEGORIES,
   readVaultBlobRecords,
   type GroceriesVaultPayload,
   type CatalogItem,
@@ -10,26 +11,11 @@ import {
 } from '@myorganizer/vault-core';
 import { z } from 'zod';
 
-const VALID_CATEGORIES = [
-  'produce',
-  'dairy',
-  'meat',
-  'seafood',
-  'bakery',
-  'frozen',
-  'beverages',
-  'snacks',
-  'condiments',
-  'household',
-  'personal-care',
-  'other',
-] as const;
-
 // Helper to validate and coerce category
 function normalizeCategory(value: unknown): GroceryCategoryType {
   if (
     typeof value === 'string' &&
-    (VALID_CATEGORIES as readonly string[]).includes(value)
+    (GROCERY_PREDEFINED_CATEGORIES as readonly string[]).includes(value)
   ) {
     return value as GroceryCategoryType;
   }

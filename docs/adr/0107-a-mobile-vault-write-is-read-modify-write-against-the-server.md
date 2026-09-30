@@ -65,7 +65,7 @@ Three facts decided its shape:
    either side on the User's behalf. The same error ends a push whose server
    copy kept moving under every retry.
 
-   > **Superseded in part by [ADR 0112](0112-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md).** Groceries is no longer pinned to `promptOnConflict`, so this branch does not apply to it. The branch still fails closed for any Vault Blob Type that is.
+   > **Superseded in part by [ADR 0113](0113-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md).** Groceries is no longer pinned to `promptOnConflict`, so this branch does not apply to it. The branch still fails closed for any Vault Blob Type that is.
 
 5. **Offline blocks; nothing is held.** A failed push reverts the screen to
    the last server-confirmed copy and says why: a conflict, the network, or

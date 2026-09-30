@@ -117,6 +117,14 @@ export function normalizeTasks(payload: unknown): NormalizeResult<Task[]> {
       task.dueDate = raw['dueDate'] as string;
     }
 
+    // closedAt: optional — silently omit when absent or invalid (no change
+    // marker). Carried through the same way as updatedAt/dueDate: dropping it
+    // here would erase a Task's close date the next time normalization
+    // triggers a resave (#915).
+    if (raw['closedAt'] !== undefined && isIso8601(raw['closedAt'])) {
+      task.closedAt = raw['closedAt'] as string;
+    }
+
     // estimatedMinutes: optional — only include when > 0, silently drop otherwise
     if (
       raw['estimatedMinutes'] !== undefined &&

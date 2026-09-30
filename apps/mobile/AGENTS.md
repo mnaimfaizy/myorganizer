@@ -23,6 +23,10 @@ The autonomous verification gate for mobile is lint + typecheck + format. Do not
 - Put feature code in `libs/mobile/*`.
 - Store the refresh token in the OS keychain and send it in the refresh body (ADR 0006).
 - Keep vault plaintext and the Master Key on the device.
+- Keep the home-screen name and the registered component name separate. The home-screen name is **MyOrganizer** (iOS `CFBundleDisplayName`, Android `app_name`, `app.json` `displayName`); the registered component name stays **Mobile** (`AppDelegate` `withModuleName`, `MainActivity.getMainComponentName`, `app.json` `name`), and renaming it breaks startup for no visible gain.
+- Keep one copy of each bundled font, in `src/assets/fonts`. Android reaches it through the asset source set in `android/app/build.gradle`; iOS through `UIAppFonts` plus the Xcode Resources phase. Adding a weight means all three plus the Type Scale table — see [src/assets/fonts/README.md](src/assets/fonts/README.md).
+- Run `yarn nx run mobile:pod-install` after adding a native dependency, and commit the lockfile.
+- Keep `GestureHandlerRootView` as the outermost element of `App`, and `import 'react-native-gesture-handler'` as the first line of `src/main.tsx`. Both are ordering requirements rather than style: the gesture handler installs its touch pipeline at import time, and a tree mounted outside its root view receives no gesture at all on Android — which looks like a broken component, not like missing wiring.
 
 ## Do Not
 

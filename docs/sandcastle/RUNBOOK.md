@@ -278,8 +278,12 @@ locally → the host runs the **gate** (a Docker container that installs the sli
 onto the slice. No per-slice push, no per-slice PR.
 
 GitHub is touched only to **read** the PRD/slice issues and **write** status labels + a completion
-comment back to each slice, then **close** each slice that integrates successfully (reason:
-completed). The PRD issue stays open until you merge the manual PRD PR.
+comment back to each slice, then **close** each integrated slice whose run ended clean (reason:
+completed). A slice whose agent did not signal completion, or listed anything as `OUTSTANDING:`, is
+integrated and marked `status:done` but **held open** as `ready-for-human` with that list as a
+comment, and the slices that depend on it stay blocked until you resolve it and close it
+([ADR 0111](../adr/0111-a-prd-slice-closes-only-on-a-clean-outcome.md)). The PRD issue stays open
+until you merge the manual PRD PR.
 
 Standalone runs follow the same rule with the last step removed: agent → commit → gate → **stop**.
 There is no integration branch to fast-forward into, so the work branch is the deliverable and the

@@ -33,7 +33,8 @@ Break a PRD Issue into independently-grabbable Slice Issues using tracer-bullet 
 - Apply `status:blocked` when creating any slice whose `## Blocked by` is non-empty. `dispatch-agents` skips `status:blocked` until dependents are unblocked.
 - After publishing all slices, update the PRD Issue `## Slices` section with links to each created issue.
 - Do NOT close or modify the PRD Issue body beyond the `## Slices` section.
-- Do not include specific file paths or code snippets in issue bodies — they go stale. Exception: decision-rich prototype snippets (schema shape, state machine, type) — trim to the essential parts only.
+- **A slice that builds to a design points at the committed copy** (ADR 0110). If the PRD's design is only a link, stop: it must be committed under `docs/design/` first. Each such slice has a `## Design` section naming the design folder, the artboards it covers by path, and the design tool's link beside them — not a transcription of the design, which is lossy by construction and is where Mobile v1 drifted. Before publishing, read those artboards against the slice text and fix every disagreement **in the text**: a builder handed a slice that contradicts its design builds the slice, faithfully, and it is wrong.
+- Do not include specific file paths or code snippets in issue bodies — they go stale. Exception: the design artboard paths above, which are the design of record and do not go stale. Exception: decision-rich prototype snippets (schema shape, state machine, type) — trim to the essential parts only.
 - For each slice, assign a `gate:*` tier (ADR 0012) and detect which **Gated Pipelines** apply under that gate (ComponentBuilder, TestScaffold, StorybookCurator). One-shot Specialists (PrismaWriter, ApiWriter, ApiSync) do not count. If a `gate:full` slice would invoke two or more Gated Pipelines, **split it by default** — keep it together only when the quiz explicitly says so. Vertical completeness still wins: do not split into schema-only or UI-only layers.
 - When an acceptance criterion involves creating test files, suffix it with `(via TestScaffold — do not write directly)`. This removes the agent's rationalization surface for writing tests inline.
 
@@ -62,11 +63,11 @@ In both sections, only the issue a list item **starts with** is a dependency (`-
 
 Sandcastle does this automatically after a successful integrate. `/implement` must do the same when finishing a GitHub issue (see that skill).
 
-1. Mark the completed issue `status:done` (and close with reason `completed` for AFK slices).
+1. Mark the completed issue `status:done`. An AFK slice is closed with reason `completed` only when its run ended clean; otherwise it stays open as `ready-for-human` with what it left, and is not complete for its dependents until a person closes it ([ADR 0111](../../../docs/adr/0111-a-prd-slice-closes-only-on-a-clean-outcome.md)).
 2. Read its `## Blocks` list (fallback: search open issues whose `## Blocked by` cites this number).
 3. For each dependent still labelled `status:blocked`:
    - Re-read that dependent’s `## Blocked by`.
-   - If **every** blocker is `CLOSED` or has `status:done`, remove `status:blocked` and comment that it was unblocked.
+   - If **every** blocker is `CLOSED`, or has `status:done` without `ready-for-human`, remove `status:blocked` and comment that it was unblocked.
    - If any blocker remains open/incomplete, leave `status:blocked` on.
 
 HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to flip to `type:afk` (or otherwise unblock). Dependency blocking uses `status:blocked` + `## Blocked by` only.

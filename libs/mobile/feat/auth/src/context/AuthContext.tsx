@@ -39,10 +39,24 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 interface AuthProviderProps {
+  /**
+   * What else belongs to this User on this device and must go when they log
+   * out. Called with the User id before the session is cleared, and awaited,
+   * so a local teardown cannot race the re-render that takes the User to
+   * Login. Nothing it throws stops the logout — a keystore that refused a
+   * delete must not leave the User signed in.
+   *
+   * It exists because Logout is the one choke point every sign-out passes
+   * through, and the things it has to clean up — the Biometric Unlock keystore
+   * item (ADR 0108 decision 3) among them — live in libraries this one must
+   * not depend on. The app shell supplies it.
+   */
+  onLogout?: (userId: string) => void | Promise<void>;
   children: ReactNode;
 }
 
 export function AuthProvider({
+  onLogout,
   children,
 }: AuthProviderProps): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -162,6 +176,15 @@ export function AuthProvider({
   );
 
   const logout = useCallback(async (): Promise<void> => {
+    const userId = session?.user.id;
+    if (userId && onLogout) {
+      try {
+        await onLogout(userId);
+      } catch {
+        // Continue with local logout even if the teardown failed.
+      }
+    }
+
     try {
       if (session?.user.id) {
         const authApi = createAuthApi();
@@ -177,7 +200,7 @@ export function AuthProvider({
       // Continue with local logout even if server logout fails
     }
     await clearSession();
-  }, [session, clearSession]);
+  }, [session, clearSession, onLogout]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

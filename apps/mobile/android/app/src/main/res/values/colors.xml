@@ -1,0 +1,13 @@
+<resources>
+    <!-- Light-mode Semantic Roles, copied from
+         libs/design-tokens/src/generated/roles.ts for the system dialogs the
+         app theme styles. Android resources cannot import the token build. -->
+    <color name="background">#F8FAFC</color>
+    <color name="primary">#0F172A</color>
+    <color name="primary_foreground">#FFFFFF</color>
+    <!-- popover -->
+    <color name="sheet_surface">#FFFFFF</color>
+    <color name="foreground">#0F172A</color>
+    <color name="muted_foreground">#64748B</color>
+    <color name="border">#E2E8F0</color>
+</resources>

@@ -14,24 +14,39 @@ typography, radius, shadow). Based on the **Secure Modernism** spec in
   - `roles.css` — Semantic Role variables for both colour modes, as bare HSL
     triples. Imported by the web application stylesheet; every Tailwind colour
     utility resolves through it.
+  - `roles.ts` — the same Semantic Roles as two TS maps, `roleLight` and
+    `roleDark`. For a consumer with no stylesheet to resolve a CSS variable
+    through, which here means the Mobile App theme. `roleDark` is declared
+    `satisfies Record<keyof typeof roleLight, string>`, so a role present in one
+    mode and missing from the other fails the build rather than rendering as
+    `undefined` on one device.
 
 ## Two tiers
 
 `tokens.json` holds two tiers, and they are not interchangeable.
 
-- **Brand Primitives** and the **Neutral Ramp** are values. The landing page, the
-  email shell, and the Mobile App theme read them directly, as TS constants or
-  `--color-*` / `--neutral-*` custom properties.
+- **Brand Primitives** and the **Neutral Ramp** are values. The landing page and
+  the email shell read them directly, as TS constants or `--color-*` /
+  `--neutral-*` custom properties.
 - **Semantic Roles** (under `mode.light` / `mode.dark`) are slots. Each aliases a
   primitive, once per colour mode. Adding a Semantic Role is the only way to add a
-  web colour utility — the Tailwind configs read roles as `hsl(var(--role))`.
+  web colour utility — the Tailwind configs read roles as `hsl(var(--role))` —
+  but it is not sufficient: a utility also needs the role named in
+  `apps/myorganizer/tailwind.config.js`. A role with no entry there is a slot
+  nothing on the web resolves yet, which is a legitimate state.
+
+The **Mobile App theme reads roles, not primitives** (`roleLight` / `roleDark`).
+A primitive has one value and a themed app needs the pair, so a theme built out
+of primitives can only ever be light.
 
 The Neutral Ramp is deliberately **not** exposed as Tailwind utilities. Dark mode
 cannot be expressed without an ordered greyscale, but a second elevation vocabulary
 next to the roles is what [issue #632](https://github.com/mnaimfaizy/myorganizer/issues/632)
 was about. See [ADR 0065](../../docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md).
 
-Dark mode is maintained here but not shipped: nothing applies the `dark` class yet.
+Dark mode is shipped on mobile and not yet on the web: the Mobile App theme
+resolves `roleDark` from the device colour scheme, while nothing in the web app
+applies the `dark` class.
 
 ## Workflow
 

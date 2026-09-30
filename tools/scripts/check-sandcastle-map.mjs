@@ -47,6 +47,7 @@ import { readFileSync, existsSync } from 'node:fs';
 
 const RESUME = 'tools/scripts/lib/sandcastle-resume.mjs';
 const TRACE = 'tools/scripts/lib/sandcastle-subagent-trace.mjs';
+const OUTCOME = 'tools/scripts/lib/sandcastle-outcome.mjs';
 const POLICY = 'tools/config/agent-model-policy.json';
 const PKG = 'package.json';
 const MAIN = '.sandcastle/main.mts';
@@ -67,7 +68,17 @@ const fail = (msg) => {
   process.exit(2);
 };
 
-for (const f of [RESUME, TRACE, POLICY, PKG, MAIN, WAVES, CI, SELECTION]) {
+for (const f of [
+  RESUME,
+  TRACE,
+  OUTCOME,
+  POLICY,
+  PKG,
+  MAIN,
+  WAVES,
+  CI,
+  SELECTION,
+]) {
   if (!existsSync(f)) fail(`${f} not found`);
 }
 for (const [page] of PAGES) {
@@ -86,6 +97,9 @@ const resume = await import(`../../${RESUME}`).catch((err) =>
 );
 const trace = await import(`../../${TRACE}`).catch((err) =>
   fail(`could not import ${TRACE}: ${err.message}`),
+);
+const outcome = await import(`../../${OUTCOME}`).catch((err) =>
+  fail(`could not import ${OUTCOME}: ${err.message}`),
 );
 
 const sandcastlePolicy = policy?.orchestrators?.sandcastle;
@@ -164,6 +178,11 @@ const EXPORT_RESOLVERS = {
   resumeGuardrailCountGateFailure: () => resume.GATE_FAILURE_GUARDRAILS?.length,
   resumeGuardrailCountPerBrief: () =>
     resume.resumeGuardrails?.(resume.PRIOR_RUN_KINDS?.interrupted)?.length,
+
+  // outcome lib — what a run must print, and what a held slice is labelled (ADR 0111)
+  outcomeCompletionPromise: () => outcome.COMPLETION_PROMISE,
+  outcomeOutstandingMarker: () => outcome.OUTSTANDING_MARKER,
+  outcomeNeedsHumanLabel: () => outcome.NEEDS_HUMAN_LABEL,
 
   // resume lib — markers and caps
   resumeHandoffMarker: () => resume.HANDOFF_MARKER,
@@ -807,7 +826,7 @@ if (findings.length > 0) {
   );
   for (const f of findings) console.error(`  - ${f}`);
   console.error(
-    `\nRead the constants out of ${MAIN}, ${WAVES}, ${RESUME} and ${TRACE}, then update the page and its manifest.`,
+    `\nRead the constants out of ${MAIN}, ${WAVES}, ${RESUME}, ${TRACE} and ${OUTCOME}, then update the page and its manifest.`,
   );
   process.exit(1);
 }

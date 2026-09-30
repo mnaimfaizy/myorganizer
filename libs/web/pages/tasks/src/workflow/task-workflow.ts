@@ -1,4 +1,5 @@
 import type { Task } from '@myorganizer/vault-core';
+import { transitionTaskStatus } from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
 import { normalizeTasks } from '@myorganizer/web-vault';
 
@@ -61,17 +62,25 @@ export async function addTaskToWorkflow(
   tasks: Task[],
   formData: TaskFormInput,
 ): Promise<{ tasks: Task[]; result: TaskWorkflowMutationResult }> {
-  const newTask: Task = {
-    id: randomId(),
-    title: formData.title,
-    description: formData.description,
-    priority: formData.priority,
-    status: formData.status,
-    context: formData.context,
-    dueDate: formData.dueDate,
-    archived: false,
-    createdAt: new Date().toISOString(),
-  };
+  const now = new Date().toISOString();
+  // A new Task starts open and moves to the form's status through
+  // `transitionTaskStatus`, so one created already `done` or `cancelled`
+  // gets its `closedAt` from the same place every other status change does.
+  const newTask = transitionTaskStatus(
+    {
+      id: randomId(),
+      title: formData.title,
+      description: formData.description,
+      priority: formData.priority,
+      status: 'pending',
+      context: formData.context,
+      dueDate: formData.dueDate,
+      archived: false,
+      createdAt: now,
+    },
+    formData.status,
+    now,
+  );
 
   const persisted = await persistTasks(adapter, [newTask, ...tasks]);
   if (persisted.error) {
@@ -89,13 +98,18 @@ export async function updateTaskInWorkflow(
   taskId: string,
   values: TaskUpdateInput,
 ): Promise<{ tasks: Task[]; result: TaskWorkflowMutationResult }> {
+  const now = new Date().toISOString();
+  // `transitionTaskStatus` reads `status` as the *previous* status, so the
+  // other fields from `values` are applied first and the task's own status
+  // is carried over until the transition itself decides `closedAt`
+  // (CONTEXT.md) — the same shared function mobile's status changes use.
   const next = tasks.map((t) =>
     t.id === taskId
-      ? {
-          ...t,
-          ...values,
-          updatedAt: new Date().toISOString(),
-        }
+      ? transitionTaskStatus(
+          { ...t, ...values, status: t.status },
+          values.status,
+          now,
+        )
       : t,
   );
 
