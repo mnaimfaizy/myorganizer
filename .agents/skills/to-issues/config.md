@@ -13,7 +13,7 @@ GitHub Issues
 | Label                | Meaning                                                 |
 | -------------------- | ------------------------------------------------------- |
 | `ready-for-agent`    | Orchestrator may pick this issue up                     |
-| `complexity:low`     | Route to Haiku — simple, well-scoped task               |
+| `complexity:low`     | Simple, well-scoped task — same model as medium         |
 | `complexity:medium`  | Route to Sonnet — moderate complexity                   |
 | `complexity:high`    | Route to Opus — complex, deep reasoning required        |
 | `gate:mechanical`    | Mechanical path — no specialist chains (ADR 0012)       |
@@ -68,7 +68,7 @@ yarn dispatch-agents --prd <prd-issue-number>
 - Reads `complexity:*` label to select model for each slice.
 - Reads `gate:*` label to select pipeline depth (default `gate:standard`); see ADR 0012.
 - Skips issues labelled `status:blocked` until dependents are unblocked after blockers complete.
-- On successful integrate: labels `status:done`, closes the slice, and removes `status:blocked` from dependents whose `## Blocked by` deps are all done.
+- On successful integrate: labels `status:done`. On a clean outcome it closes the slice and removes `status:blocked` from dependents whose `## Blocked by` deps are all done; otherwise it holds the slice open as `ready-for-human` and its dependents stay blocked (ADR 0111).
 - Posts a comment on each slice issue when the agent completes.
 - Sends a desktop notification when the full batch is done.
 

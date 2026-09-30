@@ -14,7 +14,9 @@
  * three-state theme block. Globbing would fail them all on day one and teach
  * everyone to pass --no-verify. Every page under docs/ is therefore either in
  * ROSTER or in LEGACY with a written reason, and a page in neither is a finding
- * — so a new page cannot escape the gate by being new (ADR 0043).
+ * — so a new page cannot escape the gate by being new (ADR 0043). The one
+ * exception is a directory, not a page: docs/design/ holds approved design
+ * exports, kept as approved (ADR 0110).
  *
  * A LEGACY reason buys an exemption from mechanical-hygiene rules only — none of
  * the five written reasons are about being wrong — so a LEGACY page still runs
@@ -49,6 +51,7 @@ import {
 // roster grew.
 import {
   CANONICAL_FONT_PAGE,
+  DESIGN_EXPORTS_DIR,
   LEGACY,
   ROSTER,
 } from './lib/design-page-roster.mjs';
@@ -278,9 +281,12 @@ const results = [];
 
 // A page under docs/ that is in neither list is unclassified: nobody decided
 // whether it follows the convention, which is how the convention stops spreading.
+// An approved design under docs/design/ is decided already (ADR 0110): it is an
+// export kept as approved, not a page written to this convention.
 if (options.all) {
   for (const page of htmlPagesUnderDocs()) {
     if (ROSTER.includes(page) || page in LEGACY) continue;
+    if (page.startsWith(DESIGN_EXPORTS_DIR)) continue;
     results.push({
       file: page,
       findings: [

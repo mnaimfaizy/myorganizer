@@ -227,7 +227,7 @@
   "orchestrators": {
     "sandcastle": {
       "claudeByComplexity": {
-        "low": "claude-haiku-4-5",
+        "low": "claude-sonnet-5",
         "medium": "claude-sonnet-5",
         "high": "claude-opus-5"
       },

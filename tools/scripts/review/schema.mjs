@@ -104,6 +104,9 @@ export const SPEC_FOUND_BY = /** @type {const} */ ([
  */
 export const SMELL_BASELINE_SOURCE = 'smell-baseline';
 
+/** An ADR under docs/adr/, as a finding's `source` names it. */
+const ACCEPTED_ADR_SOURCE = /^docs\/adr\/\d{4}-[a-z0-9-]+\.md$/;
+
 /**
  * Pinned display tables. Each covers every member of its enum and is asserted
  * at module load, so a new axis or verdict cannot render as `undefined`
@@ -270,6 +273,30 @@ export const FindingInputSchema = z
       }
     }
 
+    // A Spec finding that shows the diff leaving an accepted ADR decision unmet is
+    // blocking, not the reviewer's judgement call (ADR 0111). The decision was
+    // already made, and the only way to change it is another ADR — not a quieter
+    // severity. #912's review quoted ADR 0108 decision 1 ("an unattended unlocked
+    // session must not be enough") as should-fix; the implementer replaced the
+    // requirement with a two-minute window of its own, and it shipped. Only
+    // findings that may block at all, by the rules below: evidenced, and anchored
+    // to a diff location or a quoted spec line. A floor on a finding that cannot
+    // be blocking would leave it no valid severity and reject the whole report.
+    const anchoredToSpec =
+      f.evidence.kind === 'cited' && f.evidence.sourceKind === 'spec';
+    if (
+      f.axis === 'spec' &&
+      ACCEPTED_ADR_SOURCE.test(f.source) &&
+      f.evidence.kind !== 'inferred' &&
+      (f.location || anchoredToSpec) &&
+      f.severity !== 'blocking'
+    ) {
+      issue(
+        `a Spec finding against an accepted ADR decision (${f.source}) is blocking — the decision is made, and changing it takes another ADR (ADR 0111)`,
+        ['severity'],
+      );
+    }
+
     if (f.evidence.kind === 'cited') {
       // A Standards finding cites a repo standard; a Spec finding cites the
       // spec. Crossing them lets untrusted issue text stand behind a
@@ -308,8 +335,6 @@ export const FindingInputSchema = z
           ['severity'],
         );
       }
-      const anchoredToSpec =
-        f.evidence.kind === 'cited' && f.evidence.sourceKind === 'spec';
       if (!f.location && !anchoredToSpec) {
         issue('blocking requires a diff location or a quoted spec line', [
           'location',

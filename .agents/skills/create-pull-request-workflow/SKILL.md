@@ -38,6 +38,7 @@ Humans (or CI) may still run `yarn ai:create-pr` with no `--title` / `--body-fil
 - If the user does not specify reviewers, leave the reviewer list empty.
 - If the user specifies one or more reviewers, pass them explicitly with `--reviewer`.
 - If an open PR already exists for the current branch, the runner reuses it, overwrites title and body, and syncs Surface Labels to the draft (other labels such as `needs-e2e-review` are left untouched).
+- When the branch builds to a design committed under `docs/design/`, the body links **both** the committed folder and the design tool's link (ADR 0110). Ask `PrAuthor` for it if the draft omits it.
 - Keep the final user-facing output terse: success, the title, and the PR URL. Do not dump the full body.
 
 ## Workflow

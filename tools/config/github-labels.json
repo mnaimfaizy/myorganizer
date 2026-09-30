@@ -9,7 +9,7 @@
     {
       "name": "complexity:low",
       "color": "c5def5",
-      "description": "Route to Haiku — simple, well-scoped task"
+      "description": "Simple, well-scoped task — routes to the same model as medium (ADR 0111)"
     },
     {
       "name": "complexity:medium",
@@ -60,6 +60,11 @@
       "name": "status:done",
       "color": "0e8a16",
       "description": "Agent finished; slice integrated into the local feature branch"
+    },
+    {
+      "name": "ready-for-human",
+      "color": "0e8a16",
+      "description": "Needs a person next: triaged as unsuitable for an agent, or a slice held open (ADR 0111)"
     },
     {
       "name": "prd",

@@ -85,6 +85,97 @@ test('a valid report is normalized with ids, verdict, and effective tier', () =>
   for (const f of report.findings) assert.match(f.id, /^[0-9a-f]{12}$/);
 });
 
+// ADR 0111. #912's review quoted ADR 0108 decision 1 as should-fix, and the
+// implementer replaced the requirement with its own two-minute window.
+const adrSpecFinding = (overrides = {}) =>
+  cited({
+    axis: 'spec',
+    severity: 'should-fix',
+    summary:
+      'Enabling Biometric Unlock does not ask for the passphrase again first.',
+    ruleId: 'spec-requirement-missing',
+    source:
+      'docs/adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md',
+    rule: 'ADR 0108 decision 1: an unattended unlocked session must not be enough.',
+    evidence: {
+      kind: 'cited',
+      sourceKind: 'spec',
+      quote:
+        'Turning it on later, from Account, asks for the passphrase again before the biometric check',
+      untrusted: true,
+    },
+    ...overrides,
+  });
+
+test('a Spec finding against an accepted ADR decision below blocking is rejected', () => {
+  rejects(
+    envelope({ findings: [adrSpecFinding()] }),
+    /findings\.0\.severity: a Spec finding against an accepted ADR decision .* is blocking/,
+  );
+});
+
+test('a Spec finding against an accepted ADR decision is accepted as blocking', () => {
+  const report = normalizeReport(
+    envelope({ findings: [adrSpecFinding({ severity: 'blocking' })] }),
+  );
+  assert.equal(report.findings[0].severity, 'blocking');
+  assert.equal(report.verdict, 'request-changes');
+});
+
+test('the ADR floor applies to the Spec axis and to evidenced findings only', () => {
+  // A Standards finding citing an ADR stays a judgement call.
+  normalizeReport(
+    envelope({
+      findings: [
+        cited({
+          severity: 'should-fix',
+          source:
+            'docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md',
+        }),
+      ],
+    }),
+  );
+  // A Spec finding whose source is not a repo ADR is unaffected.
+  normalizeReport(
+    envelope({ findings: [adrSpecFinding({ source: 'issue #912' })] }),
+  );
+});
+
+// An executed Spec finding with no diff location cannot be blocking (below), so a
+// floor on it would leave no severity the validator accepts, and one such finding
+// would reject the whole report.
+test('the ADR floor does not apply to a finding that cannot be blocking', () => {
+  const executed = {
+    kind: 'executed',
+    command: 'git grep -n "requireFreshPassphrase" -- libs/mobile',
+    exitCode: 1,
+    outputExcerpt: '',
+    cwd: '/repo',
+  };
+  const unanchored = adrSpecFinding({
+    evidence: executed,
+    location: undefined,
+  });
+  const report = normalizeReport(envelope({ findings: [unanchored] }));
+  assert.equal(report.findings[0].severity, 'should-fix');
+  rejects(
+    envelope({ findings: [{ ...unanchored, severity: 'blocking' }] }),
+    /blocking requires a diff location or a quoted spec line/,
+  );
+  // With a location it may block, so the floor holds again.
+  rejects(
+    envelope({
+      findings: [
+        adrSpecFinding({
+          evidence: executed,
+          location: { file: 'libs/mobile/a.ts', startLine: 1, headSha: HEAD },
+        }),
+      ],
+    }),
+    /a Spec finding against an accepted ADR decision .* is blocking/,
+  );
+});
+
 test('blocking on inferred evidence is rejected', () => {
   rejects(
     envelope({ findings: [inferred({ severity: 'blocking' })] }),

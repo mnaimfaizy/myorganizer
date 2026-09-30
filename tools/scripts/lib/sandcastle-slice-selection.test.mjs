@@ -9,6 +9,7 @@ import {
   findDependencyCycles,
   isCompleted,
   isDependencySatisfied,
+  isSatisfiedAsDependency,
   selectPrdSlices,
   slicesOfPrd,
   unfinishedDependencies,
@@ -323,6 +324,42 @@ test('an open or unknown dependency is not satisfied', () => {
     true,
     'completing in this run satisfies a dependency GitHub has not caught up on',
   );
+});
+
+// ADR 0111: a slice whose run did not end clean is integrated and status:done,
+// but held open as ready-for-human — and what depends on it stays blocked.
+test('a slice held for a person does not satisfy its dependents', () => {
+  const held = {
+    number: 913,
+    state: 'OPEN',
+    labels: [{ name: 'status:done' }, { name: 'ready-for-human' }],
+    body: '',
+  };
+  const lookup = (n) => (n === 913 ? held : undefined);
+  assert.equal(isCompleted(held), true, 'still skipped on a re-run');
+  assert.equal(isSatisfiedAsDependency(held), false);
+  assert.equal(isDependencySatisfied(913, { lookup }), false);
+  const account = slice(918, { body: blockedBySection(913) });
+  assert.deepEqual(unfinishedDependencies(account, { lookup }), [913]);
+});
+
+test('closing a held slice releases its dependents', () => {
+  const released = {
+    number: 913,
+    state: 'CLOSED',
+    labels: [{ name: 'status:done' }, { name: 'ready-for-human' }],
+    body: '',
+  };
+  assert.equal(isSatisfiedAsDependency(released), true);
+});
+
+test('a done slice that is not held satisfies its dependents', () => {
+  const done = {
+    number: 912,
+    state: 'OPEN',
+    labels: [{ name: 'status:done' }],
+  };
+  assert.equal(isSatisfiedAsDependency(done), true);
 });
 
 test('a two-slice cycle is found once, whichever slice the walk starts from', () => {

@@ -37,3 +37,8 @@ apps/backend/src/swagger/swagger.yaml
 apps/myorganizer/next-env.d.ts
 libs/api-specs/src/api-specs.openapi.yaml
 libs/app-api-client/src
+
+# Approved design exports (ADR 0110). Kept byte for byte as approved: formatting
+# them would change the design of record, and a canvas re-export would undo it.
+docs/design/*/artboards/
+docs/design/*/canvas.json

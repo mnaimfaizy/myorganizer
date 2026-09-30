@@ -337,6 +337,18 @@ const gate = spawnSync(
 );
 const gateOk = gate.status === 0;
 
+// Slices whose run did not end clean: integrated and status:done, so the waves
+// above counted them, but held open as ready-for-human with what they left (ADR
+// 0111). The PRD is not finished while any remain, whatever the gate says.
+const heldSlices = fetchSlices()
+  .filter(
+    (s) =>
+      s.state !== 'CLOSED' &&
+      s.labels.some((l) => l.name === 'ready-for-human'),
+  )
+  .map((s) => s.number)
+  .sort((a, b) => a - b);
+
 console.log(`\n${'─'.repeat(55)}`);
 console.log(`PRD #${prdNumber} — run summary\n`);
 console.log(`  waves attempted   ${waves.length}`);
@@ -352,17 +364,31 @@ console.log(
           .join('; ')
   }`,
 );
+console.log(
+  `  held for a person ${
+    heldSlices.length === 0 ? 'none' : heldSlices.map((n) => `#${n}`).join(', ')
+  }`,
+);
 console.log(`  feature gate      ${gateOk ? 'PASS' : 'FAIL'}`);
 console.log(
   `\nNothing is pushed and nothing was discarded. Every slice branch is intact.`,
 );
 
-if (!gateOk || incompleteByWave.length > 0) {
+const needsAttention =
+  !gateOk || incompleteByWave.length > 0 || heldSlices.length > 0;
+
+if (needsAttention) {
   console.log(
     `\nThis run needs attention, but it did NOT stop early — later waves still ran.\n` +
       `The gate verdict is also on PRD #${prdNumber} as a comment, so it reaches you\n` +
       `without the terminal. Re-running skips slices already marked status:done.`,
   );
+  if (heldSlices.length > 0) {
+    console.log(
+      `\nEach held slice carries a comment listing what it left undone. Resolve it,\n` +
+        `then close the issue: that releases the slices blocked behind it for the next run.`,
+    );
+  }
 } else {
   console.log(
     `\nThe local feature branch contains every slice and is green. QA it, then push it\n` +
@@ -371,4 +397,4 @@ if (!gateOk || incompleteByWave.length > 0) {
   );
 }
 
-process.exit(gateOk && incompleteByWave.length === 0 ? 0 : 1);
+process.exit(needsAttention ? 1 : 0);
