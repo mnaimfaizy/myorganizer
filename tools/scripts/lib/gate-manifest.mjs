@@ -112,6 +112,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'review:golden:results:check',
+    npmScript: 'review:golden:results:check',
+    script: 'tools/scripts/check-review-golden-results.mjs',
+    args: [],
+  },
+  {
     id: 'review:rules:check',
     npmScript: 'review:rules:check',
     script: 'tools/scripts/check-review-rules.mjs',

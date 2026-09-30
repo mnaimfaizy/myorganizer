@@ -68,6 +68,13 @@ jobs:
     outputs:
       matrix: ${{ steps.list.outputs.matrix }}
       has_key: ${{ steps.list.outputs.has_key }}
+      # Computed once, here, rather than per matrix job in `replay`: cases
+      # run one at a time (max-parallel: 1) and a `tier: all` dispatch can
+      # span hours, so one date per job would let two records sharing one
+      # run_id disagree if the run crossed UTC midnight — which
+      # golden-results.mjs's groupRuns() reads as a corrupted file, not a
+      # slow run (issue #932).
+      date: ${{ steps.list.outputs.date }}
     steps:
       # Full history: the schedule reads a month of the reviewer inputs' log.
       - name: Checkout repository
@@ -128,6 +135,10 @@ jobs:
           MODEL: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
         run: |
           set -euo pipefail
+          # One date for every case this run replays, computed once before
+          # any case starts (issue #932) — see the `date` job output above.
+          echo "date=$(date -u +%F)" >> "$GITHUB_OUTPUT"
+
           skip() {
             echo 'has_key=false' >> "$GITHUB_OUTPUT"
             { echo '## Golden replay skipped'; echo; echo "$1"; } >> "$GITHUB_STEP_SUMMARY"
@@ -204,6 +215,10 @@ jobs:
     env:
       # Required for Prisma v7 config loading if a reviewer runs backend tests.
       DATABASE_URL: postgresql://localhost:5432/myorganizer
+      # One source for the model id this job runs, shared by the reviewer
+      # call below and by "Record the result" (issue #932), so the results
+      # record can never disagree with what actually ran.
+      MODEL: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
     steps:
       # The Pull Request head, for the tooling: today's skill and scripts
       # review yesterday's range. Full history so both ends of the case exist.
@@ -309,7 +324,7 @@ jobs:
             - these paths on disk are the reviewing pull request's, not the head's: ${{ steps.tree.outputs.overlay }}. They are your harness, not the subject. If the diff touches one, read it with `git show <head>:<path>`.
             - run the validator as `node ${{ steps.tree.outputs.tooling }}/tools/scripts/review/validate-review-report.mjs tmp/code-review/report.json --out tmp/code-review/normalized.json` instead of `corepack yarn review:validate`: this head's package.json predates the `review:*` scripts. That directory is tooling, not the tree under review; do not read it for anything else.
             - tier is null: write `"tier": null` in the envelope
-          model: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          model: ${{ env.MODEL }}
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           github-token: ${{ github.token }}
@@ -378,6 +393,7 @@ jobs:
       # run-from-tooling gives it the tooling as its working directory and
       # the workspace's repository as its git (ADR 0102).
       - name: Check the obligation answers
+        id: obligations-check
         env:
           TOOLING: ${{ steps.tree.outputs.tooling }}
         run: |
@@ -401,6 +417,10 @@ jobs:
           status=$?
           set -e
           if [ "$status" -ne 0 ]; then
+            # Recorded before the exit, so "Record the result" (issue #932)
+            # can tell this void apart from a rate limit or a turn ceiling
+            # without re-running the check.
+            echo 'failed=true' >> "$GITHUB_OUTPUT"
             echo "::error::case ${{ matrix.case }}: the obligation answer sheet does not hold up against the case head (review-obligations-check exit $status). Production fails Agent Review Ran on this (ADR 0078), so the run measured nothing: it is a void, not a miss, and was not scored (ADR 0101)"
             exit 1
           fi
@@ -414,11 +434,69 @@ jobs:
       # golden set is the pull request's: the workspace is the case head now,
       # and its package.json and set predate this one (ADR 0102).
       - name: Score the case
+        id: score
         working-directory: ${{ steps.tree.outputs.tooling }}
         run: |
           node tools/scripts/review/score-golden-case.mjs --case '${{ matrix.case }}' \
             --normalized "$GITHUB_WORKSPACE/tmp/code-review/normalized.json" \
             --out "$GITHUB_WORKSPACE/tmp/code-review/score.json"
+
+      # One line for this case, appended to the run's results record
+      # regardless of how the case ended, so a void is recorded as a void
+      # and never silently dropped or read as a miss (issue #932, ADR 0101).
+      # `if: always()` and no re-scoring: every fact it needs already exists
+      # in a prior step's output or in score.json, in the same precedence
+      # "Require a validated report" already used to write its own message.
+      #
+      # Branches on whether score.json exists, never on steps.score.outcome:
+      # score-golden-case.mjs writes score.json before it exits, but it
+      # exits 1 on an ordinary miss (recall below minimum) same as on an
+      # inability to score, so the step's own outcome is `failure` on a
+      # miss too — reading that as void would read every miss as a void and
+      # defeat the tier mechanism ADR 0072 and ADR 0101 both rest on a
+      # truthful miss/void distinction for.
+      - name: Record the result
+        id: record
+        if: always()
+        working-directory: ${{ steps.tree.outputs.tooling }}
+        env:
+          RUN_ID: ${{ github.run_id }}
+          COMMIT: ${{ github.sha }}
+          CASE: ${{ matrix.case }}
+          OBLIGATIONS_FAILED: ${{ steps.obligations-check.outputs.failed }}
+          PREVENTED: ${{ steps.reviewer.outputs.prevented }}
+          TURN_EXHAUSTED: ${{ steps.reviewer.outputs.turn-exhausted }}
+          RATE_LIMITED: ${{ steps.reviewer.outputs.rate-limited }}
+          TOTAL_COST_USD: ${{ steps.reviewer.outputs.total-cost-usd }}
+          TURNS: ${{ steps.reviewer.outputs.turns }}
+          SCORE_FILE: ${{ github.workspace }}/tmp/code-review/score.json
+          OUT_FILE: ${{ github.workspace }}/tmp/code-review/golden-results.jsonl
+        run: |
+          set -euo pipefail
+          ARGS=(--out "$OUT_FILE" --date "${{ needs.cases.outputs.date }}" --run-id "$RUN_ID" \
+            --commit "$COMMIT" --case "$CASE" --model "$MODEL")
+          if [ -f "$SCORE_FILE" ]; then
+            PASS="$(jq -r '.pass' "$SCORE_FILE")"
+            RECALL="$(jq -r '.recall' "$SCORE_FILE")"
+            if [ "$PASS" = 'true' ]; then ARGS+=(--outcome caught); else ARGS+=(--outcome missed); fi
+            ARGS+=(--recall "$RECALL")
+          else
+            ARGS+=(--outcome void)
+            if [ "$OBLIGATIONS_FAILED" = 'true' ]; then
+              ARGS+=(--void-reason answer-sheet-check-failed)
+            elif [ "$PREVENTED" = 'true' ]; then
+              ARGS+=(--void-reason prevented)
+            elif [ "$TURN_EXHAUSTED" = 'true' ]; then
+              ARGS+=(--void-reason turn-ceiling)
+            elif [ "$RATE_LIMITED" = 'true' ] || [ "$RATE_LIMITED" = 'unknown' ]; then
+              ARGS+=(--void-reason rate-limit)
+            else
+              ARGS+=(--void-reason unknown)
+            fi
+          fi
+          if [ -n "${TOTAL_COST_USD:-}" ]; then ARGS+=(--total-cost-usd "$TOTAL_COST_USD"); fi
+          if [ -n "${TURNS:-}" ]; then ARGS+=(--turns "$TURNS"); fi
+          node tools/scripts/review/record-golden-result.mjs "${ARGS[@]}"
 
       # The obligation files ride along with the report. Run 45 asked whether a
       # miss on a case whose obligation fired was answered-and-wrong or never
@@ -427,6 +505,11 @@ jobs:
       # collectable, because only normalized.json and score.json were kept.
       # code-review.yml had carried these three since c6f7117c; the replay,
       # which is where the measurement actually happens, had not.
+      #
+      # golden-results.jsonl rides along too (issue #932): every run uploads
+      # its case's result line as an artifact; only a scheduled run also
+      # commits it to docs/review/golden-replay-results.jsonl, in the
+      # "Record golden replay results" job below.
       - name: Keep the report, the score, and the obligations
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
@@ -438,6 +521,7 @@ jobs:
             tmp/code-review/obligations.json
             tmp/code-review/obligations.answers.json
             tmp/code-review/obligations.report.json
+            tmp/code-review/golden-results.jsonl
           if-no-files-found: ignore
           retention-days: 30
 
@@ -471,6 +555,75 @@ jobs:
             echo '::error::at least one golden case fell below its minimum recall or measured nothing (a void: rate limit, turn ceiling, prevented, or an answer sheet that failed its check); see the Replay jobs'
             exit 1
           fi
+
+  # Every run uploads each case's result line as a 30-day artifact (the
+  # "Keep the report..." step above); only a scheduled run also commits the
+  # accumulated lines to docs/review/golden-replay-results.jsonl, so they
+  # outlive that retention window (issue #932). A label or dispatch run
+  # already made its point by passing or failing; committing on those too
+  # would make every button press a permanent entry for a run nobody asked
+  # recorded, so this job is schedule-only, mirroring the same restraint
+  # ADR 0109 already applies to when the replay runs at all.
+  #
+  # `contents: write` sits on this job alone and not on `replay`, which runs
+  # the reviewer over an untrusted diff-shaped range (ADR 0071 item 8's
+  # reasoning, applied here to a commit rather than a GitHub API token).
+  record-results:
+    name: Record golden replay results
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [cases, replay]
+    if: always() && github.event_name == 'schedule' && needs.cases.outputs.has_key == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download every case's result line
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          pattern: golden-*
+          path: tmp/golden-artifacts
+
+      # A case that never wrote a line (the reviewer crashed before "Record
+      # the result" could run at all) is silently skipped here rather than
+      # failing this job: the `verdict` job above already failed loudly for
+      # that case, and this job's purpose is to persist whatever lines exist,
+      # not to re-adjudicate a case it never scored.
+      - name: Append this run's lines to the results record
+        run: |
+          set -euo pipefail
+          RECORD=docs/review/golden-replay-results.jsonl
+          FOUND=0
+          shopt -s nullglob
+          for f in tmp/golden-artifacts/golden-*/golden-results.jsonl; do
+            cat "$f" >> "$RECORD"
+            FOUND=1
+          done
+          if [ "$FOUND" -eq 0 ]; then
+            echo 'no case produced a result line this run; nothing to append'
+          fi
+
+      - name: Commit the results record
+        run: |
+          set -euo pipefail
+          RECORD=docs/review/golden-replay-results.jsonl
+          if git diff --quiet -- "$RECORD"; then
+            echo 'no change to commit'
+            exit 0
+          fi
+          # main may have moved during the hours this replay ran; rebase the
+          # one file this job ever touches before pushing.
+          git fetch origin main
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              add "$RECORD"
+          git -c user.name='github-actions[bot]' \
+              -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
+              commit -m "chore(golden-replay): record run ${{ github.run_id }}"
+          git rebase origin/main
+          git push origin HEAD:main
 
   # The Request Label is a button: remove it so it can be pressed again. Its
   # own job, because removing a label is a write and no replay job holds one —

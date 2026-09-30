@@ -611,6 +611,33 @@ tree is now the case head, standards included, with only the reviewer's
 harness laid over it from the pull request
 ([ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)).
 
+### Recorded runs
+
+Every case run of `review-golden-replay.yml` appends one JSON line to
+[`golden-replay-results.jsonl`](golden-replay-results.jsonl) — date, workflow
+run id, commit, case id, outcome (`caught`, `missed`, or `void` with its
+reason), recall, `total_cost_usd`, turns, and model — including voids, which
+are recorded as voids and never as misses or catches
+([ADR 0101](../adr/0101-a-replay-whose-answer-sheet-fails-its-check-measured-nothing.md)).
+Every run uploads its lines as an artifact; a scheduled run on `main` also
+commits them here, so they outlive the artifact's 30-day retention. The table
+below is generated from that record by
+`tools/scripts/review/golden-results.mjs`, and asserted against it by
+`yarn review:golden:results:check` — the same shape as the other
+generated-page checks (`review:pages:check`, `agents:map:check`): generate
+from source, diff against what is committed, fail on drift. Do not hand-edit
+between the markers; edit the record and regenerate with
+`node tools/scripts/check-review-golden-results.mjs --print` instead. The
+table above this section is historical, hand-written, and untouched by the
+check — the generated table starts from the first recorded line (issue
+#932).
+
+<!-- GENERATED:golden-runs:START -->
+
+_No recorded runs yet._
+
+<!-- GENERATED:golden-runs:END -->
+
 ## Reproduce
 
 ```bash

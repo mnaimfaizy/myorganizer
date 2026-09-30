@@ -91,6 +91,19 @@ outputs:
       can fix by editing the allowlist or the instructions; a window lockout
       and a case the reviewer genuinely read and missed are not.
     value: ${{ steps.limits.outputs.prevented }}
+  total-cost-usd:
+    description: >-
+      The `total_cost_usd` the transcript's last `result` event reports, or
+      empty when there is no transcript to read. Read from the same event
+      the rate-limit and turn-ceiling detection already reads, so a caller
+      (the golden replay's results record, issue #932) gets it from one
+      place regardless of how the run ended.
+    value: ${{ steps.limits.outputs.total_cost_usd }}
+  turns:
+    description: >-
+      The `num_turns` the transcript's last `result` event reports, or empty
+      when there is no transcript to read.
+    value: ${{ steps.limits.outputs.turns }}
 
 runs:
   using: composite
@@ -194,6 +207,16 @@ runs:
         EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
       run: |
         set -uo pipefail
+        # The last `result` event carries the run's own accounting
+        # regardless of how it ended — cleanly, rate limited, or turn
+        # exhausted — so read it once here rather than leaving every caller
+        # to parse the transcript itself. Tolerant like the reads below: an
+        # unreadable transcript or a `result` event with neither field
+        # leaves both outputs empty, never a wrong number.
+        RESULT="$(jq -c '[.[] | select(type == "object") | select(.type == "result")][-1] // {}' "$EXECUTION_FILE" 2>/dev/null || echo '{}')"
+        echo "total_cost_usd=$(jq -r '.total_cost_usd // empty' <<<"$RESULT" 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+        echo "turns=$(jq -r '.num_turns // empty' <<<"$RESULT" 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
+
         # Three answers, not two. A detector that cannot read the transcript
         # must not answer "no rate limit": that is the reading which lets a
         # lockout be scored as a miss, and it is the whole failure this step
