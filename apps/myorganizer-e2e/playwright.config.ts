@@ -37,6 +37,14 @@ const baseURL = process.env['BASE_URL'] || `http://localhost:${port}`;
  * keeps stubbing `/auth/logout`. The API listens on :3000 and is never reused —
  * a leftover server would skip migrate and the verified-user seed.
  */
+function cloneDefinedEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) env[key] = value;
+  }
+  return env;
+}
+
 function liveBackendWebServers(
   frontend: {
     command: string;
@@ -49,19 +57,13 @@ function liveBackendWebServers(
 ): PlaywrightTestConfig['webServer'] {
   if (process.env['E2E_LIVE_BACKEND'] !== '1') return frontend;
 
-  const env: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined) env[key] = value;
-  }
+  const env = cloneDefinedEnv();
   env['NODE_ENV'] = 'development';
   env['PORT'] = '3000';
   env['E2E_LIVE_AUTH_EMAIL'] = LIVE_AUTH_EMAIL;
   env['E2E_LIVE_AUTH_PASSWORD'] = LIVE_AUTH_PASSWORD;
 
-  const frontendEnv: Record<string, string> = {};
-  for (const [key, value] of Object.entries(process.env)) {
-    if (value !== undefined) frontendEnv[key] = value;
-  }
+  const frontendEnv = cloneDefinedEnv();
   // `next start` is the production server. `E2E_DEV_SERVER=1` must keep
   // development, or `next dev` inherits production and the fast loop is a lie.
   // The API process above stays development so the refresh cookie is not Secure on http.

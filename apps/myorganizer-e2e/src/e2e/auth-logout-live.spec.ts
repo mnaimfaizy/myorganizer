@@ -22,10 +22,10 @@ test('logs out against the real backend', async ({ page }) => {
   });
 
   const cookiesBeforeLogout = await page.context().cookies();
-  const refreshBefore = cookiesBeforeLogout.find(
-    (cookie) => cookie.name === 'refresh_cookie',
-  );
-  expect(refreshBefore?.value ?? '').not.toBe('');
+  const refreshToken =
+    cookiesBeforeLogout.find((cookie) => cookie.name === 'refresh_cookie')
+      ?.value ?? '';
+  expect(refreshToken).not.toBe('');
 
   const logoutResponsePromise = page.waitForResponse(
     (response) =>
@@ -45,6 +45,15 @@ test('logs out against the real backend', async ({ page }) => {
   expect(
     cookiesAfterLogout.some((cookie) => cookie.name === 'refresh_cookie'),
   ).toBe(false);
+
+  const revoked = await page.request.post(
+    'http://localhost:3000/api/v1/auth/refresh',
+    {
+      headers: { Cookie: `refresh_cookie=${refreshToken}` },
+      data: {},
+    },
+  );
+  expect(revoked.status()).toBe(401);
 
   await page.goto('/dashboard');
   await expect(page).toHaveURL(/\/login/);
