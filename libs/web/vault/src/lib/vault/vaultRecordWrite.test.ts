@@ -1,4 +1,7 @@
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core';
+import type {
+  GroceriesVaultPayload,
+  VaultBlobEnvelope,
+} from '@myorganizer/vault-core';
 
 import {
   type EditableVaultRecordType,
@@ -349,11 +352,21 @@ describe('vaultRecordWrite', () => {
   });
 
   describe('saveGroceriesPayload', () => {
+    const samplePayload = {
+      catalog: [
+        {
+          id: 'cat-1',
+          name: 'Produce',
+          category: 'produce' as const,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      lists: [],
+    } satisfies GroceriesVaultPayload;
+
     test('should save envelope with empty deletions when store holds bare legacy payload', async () => {
-      const payload = {
-        catalog: [{ id: 'cat-1', name: 'Produce' }],
-        lists: [] as unknown[],
-      };
+      const payload = samplePayload;
       loadDecryptedDataMock.mockResolvedValue([{ id: 'legacy' }]);
 
       await saveGroceriesPayload(store, payload);
@@ -372,10 +385,7 @@ describe('vaultRecordWrite', () => {
     });
 
     test('should merge deletedIds with existing deletion log', async () => {
-      const payload = {
-        catalog: [{ id: 'cat-1', name: 'Produce' }],
-        lists: [] as unknown[],
-      };
+      const payload = samplePayload;
       const deletedAt = '2026-02-01T12:00:00.000Z';
 
       const storedEnvelope: VaultBlobEnvelope<unknown> = {
