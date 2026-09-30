@@ -1078,3 +1078,87 @@ jobs:
 
       - name: Build frontend
         run: corepack yarn nx build myorganizer
+
+  # Not a shard of the hermetic lane (ADR 0050). That lane stubs /auth/logout.
+  # Starting the real API beside those stubs makes unmocked calls hit it and
+  # the shard times out. This job runs only the live logout spec.
+  e2e-live-logout:
+    name: E2E live logout
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer-e2e') }}
+    needs:
+      - setup
+      - lint
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_HOST_AUTH_METHOD: trust
+          POSTGRES_DB: myorganizer
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      NX_DAEMON: 'false'
+      E2E_LIVE_BACKEND: '1'
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
+      ACCESS_JWT_SECRET: e2e-access-jwt
+      REFRESH_JWT_SECRET: e2e-refresh-jwt
+      VERIFY_JWT_SECRET: e2e-verify-jwt
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Restore dependency cache
+        id: dependency-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .yarn/install-state.gz
+            node_modules
+          key: ${{ runner.os }}-node-22-deps-${{ hashFiles('yarn.lock', 'package.json', '.yarnrc.yml', 'apps/**/package.json', 'libs/**/package.json') }}
+
+      - name: Install dependencies
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: corepack yarn install --immutable
+
+      - name: Verify frozen lockfile
+        if: steps.dependency-cache.outputs.cache-hit != 'true'
+        run: git diff --exit-code -- yarn.lock
+
+      - name: Restore Nx computation cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .nx/cache
+          key: ${{ runner.os }}-nx-22-e2e-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-nx-22-e2e-
+            ${{ runner.os }}-nx-22-
+
+      - name: Install Playwright Chromium
+        run: corepack yarn playwright install --with-deps chromium
+
+      - name: Build frontend for E2E
+        run: corepack yarn nx build myorganizer
+
+      - name: Build backend for live logout
+        run: corepack yarn nx build backend
+
+      - name: Run live logout spec
+        run: corepack yarn nx e2e myorganizer-e2e --grep="logs out against the real backend"

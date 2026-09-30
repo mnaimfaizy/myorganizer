@@ -15,7 +15,10 @@ Two facts shape the answer.
 
 **The suite is hermetic.** Auth, `/admin/users`, and vault sync are stubbed with `routeApi`; it needs
 only the Next.js app. No backend, no Docker, no seeded database. Running it in CI is cheap in
-infrastructure terms.
+infrastructure terms. One spec is outside that suite: `auth-logout-live.spec.ts` is skipped unless
+`E2E_LIVE_BACKEND=1`. The three blocking shards leave the flag unset. A separate job,
+`e2e-live-logout`, sets it, starts Postgres, and serves the built API so that spec can log out for
+real. It is not a shard, and it does not change what the shards need.
 
 **It is expensive in wall-clock.** Playwright recommends `workers: 1` in CI "to prioritize stability
 and reproducibility", and `nxE2EPreset` already sets that. Serially, the suite costs roughly 5–6

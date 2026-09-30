@@ -17,6 +17,7 @@ export const getExpiry = () => {
 
 export function refreshCookieOptions(): CookieOptions {
   return {
+    path: '/',
     expires: getExpiry(),
     httpOnly: true,
     sameSite: 'lax',
@@ -29,7 +30,10 @@ export function setRefreshCookie(res: Response, refreshToken: string): void {
 }
 
 export function clearRefreshCookie(res: Response): void {
-  res.clearCookie(REFRESH_COOKIE_NAME);
+  // Browsers drop a cookie only when the clear matches the attributes used to
+  // set it (path, httpOnly, sameSite, secure). expires is not part of that match.
+  const { expires: _expires, ...options } = refreshCookieOptions();
+  res.clearCookie(REFRESH_COOKIE_NAME, options);
 }
 
 export function setRefreshCookieIfPresent(
