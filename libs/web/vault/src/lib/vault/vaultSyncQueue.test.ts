@@ -979,8 +979,7 @@ describe('createVaultSyncQueue', () => {
     }
   });
 
-  test('deferred conflict keeps type marked for next drain', async () => {
-    // Test that a deferred conflict does not silently drop the mark
+  test('groceries 409 conflict merges and clears mark after successful retry', async () => {
     const handle = await setupHandle(
       'user-1',
       { catalog: [], lists: [] },
@@ -988,20 +987,17 @@ describe('createVaultSyncQueue', () => {
     );
     await handle.recordPushSuccess({ type: 'groceries', etag: 'etag-1' });
 
-    // Make dirty
     const dirtyEnvelope: VaultBlobEnvelope<unknown> = {
       records: { catalog: [{ id: 'cat-1', name: 'Produce' }], lists: [] },
       deletions: {},
     };
     await handle.saveEncryptedData({ type: 'groceries', value: dirtyEnvelope });
 
-    // Create a conflicting remote blob (different Ciphertext)
     const remoteEnvelope: VaultBlobEnvelope<unknown> = {
       records: { catalog: [{ id: 'cat-2', name: 'Dairy' }], lists: [] },
       deletions: {},
     };
 
-    // Temporarily save remote to capture its blob
     await handle.saveEncryptedData({
       type: 'groceries',
       value: remoteEnvelope,
@@ -1010,7 +1006,6 @@ describe('createVaultSyncQueue', () => {
     const remoteBlob = remoteVault?.data.groceries;
     if (!remoteBlob) throw new Error('Failed to capture remote blob');
 
-    // Restore local dirty state
     await handle.saveEncryptedData({ type: 'groceries', value: dirtyEnvelope });
 
     const api = createApiDouble();
@@ -1018,13 +1013,11 @@ describe('createVaultSyncQueue', () => {
     api.putVaultBlob.mockImplementation(async () => {
       putCount++;
       if (putCount === 1) {
-        // First attempt fails with 409 (conflict)
         const error = Object.assign(new Error('conflict'), {
           response: { status: 409 },
         });
         throw error;
       }
-      // Should not reach here in this test
       return formatPutVaultBlobResponse('etag-new');
     });
 
@@ -1045,7 +1038,7 @@ describe('createVaultSyncQueue', () => {
       config: { headers: {} as any },
     } as unknown as AxiosResponse);
 
-    const prompt = jest.fn().mockResolvedValue('defer' as const);
+    const prompt = jest.fn();
 
     const queue = createVaultSyncQueue({
       api,
@@ -1060,25 +1053,37 @@ describe('createVaultSyncQueue', () => {
 
     queue.vaultBlobChanged({ type: VaultBlobType.Groceries, handle });
 
-    // First drain encounters conflict, user defers
     const result = await queue.drain(handle);
 
-    // Verify the outcome
     expect(result.converged).toHaveLength(1);
     expect(result.converged[0]?.outcome).toEqual(
-      expect.objectContaining({
-        kind: 'asked',
-        reason: 'strategy',
-        decision: 'defer',
-      }),
+      expect.objectContaining({ kind: 'merged', etag: 'etag-new' }),
     );
     expect(result.failed).toHaveLength(0);
+    expect(prompt).not.toHaveBeenCalled();
+    expect(api.putVaultBlob).toHaveBeenCalledTimes(2);
+    expect(queue.unsentTypes()).not.toContain(VaultBlobType.Groceries);
 
-    // CRITICAL: Type must still be marked, not silently dropped
-    expect(queue.unsentTypes()).toContain(VaultBlobType.Groceries);
-
-    // Verify prompt was called once (deferred type not retried forever)
-    expect(prompt).toHaveBeenCalledTimes(1);
+    const decrypted = await handle.loadDecryptedData({
+      type: 'groceries',
+      defaultValue: null,
+    });
+    if (
+      !decrypted ||
+      typeof decrypted !== 'object' ||
+      !('records' in decrypted)
+    ) {
+      throw new Error('Failed to decrypt merged groceries');
+    }
+    const records = (decrypted as VaultBlobEnvelope<unknown>).records as {
+      catalog: Array<{ id: string; name: string }>;
+    };
+    expect(records.catalog).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ id: 'cat-1', name: 'Produce' }),
+        expect.objectContaining({ id: 'cat-2', name: 'Dairy' }),
+      ]),
+    );
   });
 
   test('successful send clears marks (does not re-mark)', async () => {

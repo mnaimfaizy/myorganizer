@@ -10,7 +10,15 @@
 */
 
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-vault');
+jest.mock('@myorganizer/web-vault', () => {
+  const actual = jest.requireActual<typeof import('@myorganizer/web-vault')>(
+    '@myorganizer/web-vault',
+  );
+  return {
+    ...actual,
+    normalizeGroceries: jest.fn(actual.normalizeGroceries),
+  };
+});
 
 jest.mock('@myorganizer/core', () => {
   let counter = 0;
@@ -32,6 +40,20 @@ import { useGroceriesVault } from '../useGroceriesVault';
 const mockNormalizeGroceries = normalizeGroceries as jest.Mock;
 const mockLoadDecryptedData = jest.fn();
 const mockSaveEncryptedData = jest.fn();
+
+/** Shape written by saveGroceriesPayload for assertions. */
+function groceriesEncryptedSave(
+  records: GroceriesVaultPayload,
+  deletions: Record<string, string> = {},
+) {
+  return {
+    type: 'groceries',
+    value: {
+      records,
+      deletions,
+    },
+  };
+}
 
 describe('useGroceriesVault', () => {
   const handle = {
@@ -167,12 +189,9 @@ describe('useGroceriesVault', () => {
         expect(listBResult?.lines).toHaveLength(1);
         expect(listBResult?.lines[0].catalogItemId).toBe(catalogItemId);
         expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            type: 'groceries',
-            value: {
-              catalog: result.current.catalog,
-              lists: result.current.lists,
-            },
+          groceriesEncryptedSave({
+            catalog: result.current.catalog,
+            lists: result.current.lists,
           }),
         );
       });
@@ -290,12 +309,9 @@ describe('useGroceriesVault', () => {
         });
         expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
         expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
-          expect.objectContaining({
-            type: 'groceries',
-            value: {
-              catalog: result.current.catalog,
-              lists: result.current.lists,
-            },
+          groceriesEncryptedSave({
+            catalog: result.current.catalog,
+            lists: result.current.lists,
           }),
         );
       });
@@ -495,6 +511,16 @@ describe('useGroceriesVault', () => {
         expect(
           result.current.lists.find((l) => l.id === 'listC')?.lines,
         ).toEqual([otherLine]);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: expect.objectContaining({
+              deletions: expect.objectContaining({
+                'cat-1': expect.any(String),
+              }),
+            }),
+          }),
+        );
       });
     });
 
@@ -512,6 +538,16 @@ describe('useGroceriesVault', () => {
         expect(
           result.current.lists.find((l) => l.id === 'listA')?.lines,
         ).toEqual([]);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: expect.objectContaining({
+              deletions: expect.objectContaining({
+                'cat-1': expect.any(String),
+              }),
+            }),
+          }),
+        );
       });
     });
   });
@@ -580,9 +616,8 @@ describe('useGroceriesVault', () => {
         expect(result.current.lists).toEqual(initialPayload.lists);
 
         expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
-        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith({
-          type: 'groceries',
-          value: {
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          groceriesEncryptedSave({
             catalog: [
               {
                 ...catalogItem,
@@ -596,8 +631,8 @@ describe('useGroceriesVault', () => {
               otherCatalogItem,
             ],
             lists: initialPayload.lists,
-          },
-        });
+          }),
+        );
       });
     });
 
@@ -723,9 +758,8 @@ describe('useGroceriesVault', () => {
         expect(result.current.lists[0].lines[1]).toEqual(otherLine);
         expect(result.current.lists[1]).toEqual(listB);
         expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
-        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith({
-          type: 'groceries',
-          value: {
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          groceriesEncryptedSave({
             catalog: initialPayload.catalog,
             lists: [
               {
@@ -738,12 +772,13 @@ describe('useGroceriesVault', () => {
                   },
                   otherLine,
                 ],
-                updatedAt: expect.any(String),
+                updatedAt: listA.updatedAt,
               },
               listB,
             ],
-          },
-        });
+          }),
+        );
+        expect(result.current.lists[0].updatedAt).toBe(listA.updatedAt);
       });
     });
 
@@ -827,12 +862,73 @@ describe('useGroceriesVault', () => {
     });
   });
 
+  describe('renameList', () => {
+    it('renames the list, bumps its updatedAt, and persists an empty Deletion Log', async () => {
+      const listA = makeList({
+        id: 'listA',
+        name: 'Old',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      });
+      const listB = makeList({ id: 'listB', name: 'B' });
+      const result = await setup({ catalog: [], lists: [listA, listB] });
+
+      await act(async () => {
+        await result.current.renameList('listA', 'New');
+      });
+
+      await waitFor(() => {
+        const renamed = result.current.lists.find((l) => l.id === 'listA');
+        expect(renamed?.name).toBe('New');
+        expect(renamed?.updatedAt).not.toBe(listA.updatedAt);
+        expect(result.current.lists.find((l) => l.id === 'listB')).toEqual(
+          listB,
+        );
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          groceriesEncryptedSave({
+            catalog: [],
+            lists: result.current.lists,
+          }),
+        );
+      });
+    });
+  });
+
+  describe('deleteList', () => {
+    it('removes the list from records and records the list id in deletions', async () => {
+      const listA = makeList({ id: 'listA', name: 'A' });
+      const listB = makeList({ id: 'listB', name: 'B' });
+      const result = await setup({ catalog: [], lists: [listA, listB] });
+
+      await act(async () => {
+        await result.current.deleteList('listA');
+      });
+
+      await waitFor(() => {
+        expect(result.current.lists.map((l) => l.id)).toEqual(['listB']);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: expect.objectContaining({
+              deletions: expect.objectContaining({
+                listA: expect.any(String),
+              }),
+              records: expect.objectContaining({
+                lists: [listB],
+              }),
+            }),
+          }),
+        );
+      });
+    });
+  });
+
   describe('regression: pre-existing trip lifecycle actions never destroy Catalog Items', () => {
     it('toggleLineChecked flips only the target line, catalog and other lines untouched', async () => {
       const catalogItem = makeCatalogItem({ id: 'cat-1', name: 'Milk' });
       const line = makeLine({ id: 'ln-1', catalogItemId: 'cat-1' });
       const listA = makeList({ id: 'listA', name: 'A', lines: [line] });
       const result = await setup({ catalog: [catalogItem], lists: [listA] });
+      const listUpdatedAtBefore = listA.updatedAt;
 
       await act(async () => {
         await result.current.toggleLineChecked('listA', 'ln-1');
@@ -840,9 +936,10 @@ describe('useGroceriesVault', () => {
 
       await waitFor(() => {
         expect(result.current.catalog).toEqual([catalogItem]);
-        expect(
-          result.current.lists.find((l) => l.id === 'listA')?.lines[0].checked,
-        ).toBe(true);
+        const resultList = result.current.lists.find((l) => l.id === 'listA');
+        expect(resultList?.lines[0].checked).toBe(true);
+        expect(resultList?.updatedAt).toBe(listUpdatedAtBefore);
+        expect(resultList?.lines[0].updatedAt).not.toBe(line.updatedAt);
       });
     });
 
@@ -883,12 +980,23 @@ describe('useGroceriesVault', () => {
         removed = await result.current.removeCheckedLines('listA');
       });
 
+      const listUpdatedAtBefore = listA.updatedAt;
+
       await waitFor(() => {
         expect(removed).toHaveLength(1);
         expect(
           result.current.lists.find((l) => l.id === 'listA')?.lines,
         ).toEqual([]);
         expect(result.current.catalog).toEqual([catalogItem]);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            value: expect.objectContaining({
+              deletions: expect.objectContaining({
+                'ln-1': expect.any(String),
+              }),
+            }),
+          }),
+        );
       });
 
       await act(async () => {
@@ -896,9 +1004,17 @@ describe('useGroceriesVault', () => {
       });
 
       await waitFor(() => {
-        expect(
-          result.current.lists.find((l) => l.id === 'listA')?.lines,
-        ).toEqual([line]);
+        const restored = result.current.lists.find((l) => l.id === 'listA');
+        expect(restored?.lines).toHaveLength(1);
+        expect(restored?.lines[0]).toMatchObject({
+          id: line.id,
+          catalogItemId: line.catalogItemId,
+          checked: line.checked,
+          createdAt: line.createdAt,
+          updatedAt: expect.any(String),
+        });
+        expect(restored?.lines[0].updatedAt).not.toBe(line.updatedAt);
+        expect(restored?.updatedAt).toBe(listUpdatedAtBefore);
         expect(result.current.catalog).toEqual([catalogItem]);
       });
     });
@@ -908,16 +1024,36 @@ describe('useGroceriesVault', () => {
       const line = makeLine({ id: 'ln-1', catalogItemId: 'cat-1' });
       const listA = makeList({ id: 'listA', name: 'A', lines: [line] });
       const result = await setup({ catalog: [catalogItem], lists: [listA] });
+      const listUpdatedAtBefore = listA.updatedAt;
 
       await act(async () => {
         await result.current.deleteListLine('listA', 'ln-1');
       });
 
       await waitFor(() => {
-        expect(
-          result.current.lists.find((l) => l.id === 'listA')?.lines,
-        ).toEqual([]);
+        const resultList = result.current.lists.find((l) => l.id === 'listA');
+        expect(resultList?.lines).toEqual([]);
+        expect(resultList?.updatedAt).toBe(listUpdatedAtBefore);
         expect(result.current.catalog).toEqual([catalogItem]);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          expect.objectContaining({
+            type: 'groceries',
+            value: expect.objectContaining({
+              records: expect.objectContaining({
+                lists: [
+                  expect.objectContaining({
+                    id: 'listA',
+                    lines: [],
+                    updatedAt: listUpdatedAtBefore,
+                  }),
+                ],
+              }),
+              deletions: expect.objectContaining({
+                'ln-1': expect.any(String),
+              }),
+            }),
+          }),
+        );
       });
     });
   });

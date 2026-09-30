@@ -39,7 +39,10 @@ import {
   VaultApi,
   VaultBlobType,
 } from '@myorganizer/app-api-client';
-import { toVaultBlobEnvelope } from '@myorganizer/vault-core';
+import {
+  toVaultBlobEnvelope,
+  type VaultBlobConvergeStrategy,
+} from '@myorganizer/vault-core';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
@@ -442,7 +445,11 @@ async function decideConflict(
     return ask('undecryptable-remote');
   }
 
-  const strategy = VAULT_BLOB_CONVERGE_STRATEGIES[type];
+  // The pin is `as const`, so every current member is `mergeById`. Reading it
+  // as the wide strategy keeps the prompt arm reachable for a later pin.
+  const strategy = VAULT_BLOB_CONVERGE_STRATEGIES[
+    type
+  ] as VaultBlobConvergeStrategy;
   if (strategy.strategy === 'promptOnConflict') return ask('strategy');
 
   let localPayload: unknown;

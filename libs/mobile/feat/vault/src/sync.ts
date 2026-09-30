@@ -6,6 +6,7 @@ import {
 import {
   toVaultBlobEnvelope,
   VAULT_BLOB_CONVERGE_STRATEGIES,
+  type VaultBlobConvergeStrategy,
   type VaultBlobEnvelope,
 } from '@myorganizer/vault-core/portable';
 
@@ -157,7 +158,9 @@ function converge(
   local: VaultBlobEnvelope<unknown>,
   remote: VaultBlobEnvelope<unknown>,
 ): VaultBlobEnvelope<unknown> {
-  const strategy = VAULT_BLOB_CONVERGE_STRATEGIES[type];
+  const strategy = VAULT_BLOB_CONVERGE_STRATEGIES[
+    type
+  ] as VaultBlobConvergeStrategy;
   if (strategy.strategy === 'promptOnConflict') {
     throw new VaultBlobConflictError(type, 'strategy');
   }

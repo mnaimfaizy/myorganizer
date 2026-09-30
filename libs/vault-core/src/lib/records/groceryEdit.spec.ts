@@ -986,17 +986,17 @@ describe('groceryEdit', () => {
   });
 
   describe('undo round trip with deletion log merging', () => {
-    it('no production grocery merge: Groceries use promptOnConflict strategy, not union-by-id', () => {
-      expect(VAULT_BLOB_CONVERGE_STRATEGIES.groceries.strategy).toBe(
-        'promptOnConflict',
-      );
+    it('Groceries converge with mergeById', () => {
+      const strategy = VAULT_BLOB_CONVERGE_STRATEGIES.groceries;
+      expect(strategy.strategy).toBe('mergeById');
+      if (strategy.strategy === 'mergeById') {
+        expect(typeof strategy.merge).toBe('function');
+      }
     });
 
     it('deletion log + line mutation preserve re-added state under any union-by-id merge', () => {
-      // Groceries converge by promptOnConflict, not by mergeById. This test simulates
-      // what a union-by-id merge would do to verify that deleteListLine records the
-      // deletion properly and putListLine restores the line correctly — properties
-      // the Deletion Log leverages if any hypothetical merge ever did union by id.
+      // deleteListLine records the deletion and putListLine restores the line,
+      // which is what a union-by-id merge needs in order not to resurrect it.
 
       // Start: a line on the list
       let envelope: VaultBlobEnvelope<unknown> = {

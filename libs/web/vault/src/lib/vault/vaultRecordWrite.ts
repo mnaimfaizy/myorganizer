@@ -1,6 +1,9 @@
 import {
   deleteVaultRecord,
+  mergeDeletionLogs,
   readDeletionLog,
+  type DeletionLog,
+  type GroceriesVaultPayload,
   type IdentifiedRecord,
   type IsoDateTimeString,
   type VaultBlobEnvelope,
@@ -101,4 +104,44 @@ export async function deleteVaultRecordAndSave<
   const remaining = records.filter((record) => record.id !== id);
   await saveVaultRecords(store, type, remaining, { deletedId: id, deletedAt });
   return remaining;
+}
+
+/** Ids to record as absent in the same Groceries save. */
+export interface GroceriesDeletion {
+  /** Catalog Item, Grocery List, or List Line ids. */
+  deletedIds: readonly string[];
+  /** When they were deleted. Defaults to now. One instant covers the whole set. */
+  deletedAt?: IsoDateTimeString;
+}
+
+/**
+ * Saves a Groceries payload as an envelope, writing the stored Deletion Log
+ * back beside it.
+ *
+ * A bare `{ catalog, lists }` save drops every deletion another device
+ * recorded, and the next merge puts those records back
+ * ([ADR 0113](../../../../../../docs/adr/0113-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
+ * `deleteVaultRecord` cannot do this: it refuses a non-array payload.
+ */
+export async function saveGroceriesPayload(
+  store: VaultRecordStore,
+  payload: GroceriesVaultPayload,
+  deletion?: GroceriesDeletion,
+): Promise<void> {
+  const stored = await store.loadDecryptedData<unknown>({
+    type: 'groceries',
+    defaultValue: null,
+  });
+  const additions: DeletionLog = {};
+  if (deletion !== undefined) {
+    const deletedAt = deletion.deletedAt ?? new Date().toISOString();
+    for (const id of deletion.deletedIds) {
+      additions[id] = deletedAt;
+    }
+  }
+  const envelope: VaultBlobEnvelope<GroceriesVaultPayload> = {
+    records: payload,
+    deletions: mergeDeletionLogs(readDeletionLog(stored), additions),
+  };
+  await store.saveEncryptedData({ type: 'groceries', value: envelope });
 }

@@ -7,14 +7,29 @@ import type {
   GroceriesVaultPayload,
   ListLine,
 } from '@myorganizer/vault-core';
+import { readDeletionLog, toEpoch } from '@myorganizer/vault-core';
 import { randomId } from '@myorganizer/core';
-import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
+import {
+  normalizeGroceries,
+  saveGroceriesPayload,
+  type VaultHandle,
+} from '@myorganizer/web-vault';
 import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { validateAddCatalogItemAndLineInput } from '../utils';
 
 interface UseGroceriesVaultOptions {
   handle: VaultHandle;
+}
+
+/**
+ * A restored List Line has to be strictly newer than the deletion that
+ * removed it, or the next merge buries it again. The Deletion Log is not
+ * shrunk.
+ */
+function newerThanDeletion(deletedAt: string | undefined, now: string): string {
+  if (deletedAt === undefined || toEpoch(now) > toEpoch(deletedAt)) return now;
+  return new Date(toEpoch(deletedAt) + 1).toISOString();
 }
 
 /** Fields a caller may supply when adding an item to a Grocery List. */
@@ -172,10 +187,7 @@ export function useGroceriesVault({
         });
         // Re-save if data was normalized (data migration or repair)
         if (normalized.changed) {
-          await handle.saveEncryptedData({
-            type: 'groceries',
-            value: normalized.value,
-          });
+          await saveGroceriesPayload(handle, normalized.value);
         }
         setLoading(false);
       })
@@ -188,13 +200,19 @@ export function useGroceriesVault({
 
   // Persist full payload to vault
   const persistPayload = useCallback(
-    async (nextPayload: GroceriesVaultPayload) => {
+    async (
+      nextPayload: GroceriesVaultPayload,
+      deletedIds?: readonly string[],
+    ) => {
       setError(null);
       try {
-        await handle.saveEncryptedData({
-          type: 'groceries',
-          value: nextPayload,
-        });
+        await saveGroceriesPayload(
+          handle,
+          nextPayload,
+          deletedIds !== undefined && deletedIds.length > 0
+            ? { deletedIds }
+            : undefined,
+        );
         setPayload(nextPayload);
       } catch (err) {
         console.error('Failed to save grocery lists to vault:', err);
@@ -258,7 +276,7 @@ export function useGroceriesVault({
           ...payload,
           lists: nextLists,
         };
-        await persistPayload(nextPayload);
+        await persistPayload(nextPayload, [listId]);
         if (selectedListId === listId) {
           setSelectedListId(nextLists.length > 0 ? nextLists[0].id : null);
         }
@@ -288,7 +306,6 @@ export function useGroceriesVault({
                         }
                       : line,
                   ),
-                  updatedAt: new Date().toISOString(),
                 }
               : list,
           ),
@@ -321,7 +338,6 @@ export function useGroceriesVault({
                         }
                       : line,
                   ),
-                  updatedAt: new Date().toISOString(),
                 }
               : list,
           ),
@@ -355,12 +371,14 @@ export function useGroceriesVault({
               ? {
                   ...l,
                   lines: l.lines.filter((line) => !line.checked),
-                  updatedAt: new Date().toISOString(),
                 }
               : l,
           ),
         };
-        await persistPayload(nextPayload);
+        await persistPayload(
+          nextPayload,
+          removed.map((line) => line.id),
+        );
         return removed;
       } catch (err) {
         console.error('Failed to remove checked list lines:', err);
@@ -375,16 +393,28 @@ export function useGroceriesVault({
     async (listId: string, lines: ListLine[]) => {
       if (lines.length === 0) return;
       try {
+        const stored = await handle.loadDecryptedData<unknown>({
+          type: 'groceries',
+          defaultValue: null,
+        });
+        const deletions = readDeletionLog(stored);
+        const now = new Date().toISOString();
         const nextPayload: GroceriesVaultPayload = {
           ...payload,
           lists: payload.lists.map((list) => {
             if (list.id !== listId) return list;
             const existingIds = new Set(list.lines.map((line) => line.id));
-            const toRestore = lines.filter((line) => !existingIds.has(line.id));
+            const toRestore = lines
+              .filter((line) => !existingIds.has(line.id))
+              .map((line) => ({
+                ...line,
+                // A restored line has to be newer than its deletion, or the
+                // next merge buries it again. The log itself is not shrunk.
+                updatedAt: newerThanDeletion(deletions[line.id], now),
+              }));
             return {
               ...list,
               lines: [...list.lines, ...toRestore],
-              updatedAt: new Date().toISOString(),
             };
           }),
         };
@@ -393,7 +423,7 @@ export function useGroceriesVault({
         console.error('Failed to restore list lines:', err);
       }
     },
-    [payload, persistPayload],
+    [handle, payload, persistPayload],
   );
 
   /** Deletes one List Line only; the referenced Catalog Item remains. */
@@ -407,12 +437,11 @@ export function useGroceriesVault({
               ? {
                   ...list,
                   lines: list.lines.filter((line) => line.id !== lineId),
-                  updatedAt: new Date().toISOString(),
                 }
               : list,
           ),
         };
-        await persistPayload(nextPayload);
+        await persistPayload(nextPayload, [lineId]);
       } catch (err) {
         console.error('Failed to delete list line:', err);
         throw err;
@@ -467,7 +496,6 @@ export function useGroceriesVault({
                       ? { ...line, amount: input.amount, updatedAt: now }
                       : line,
                   ),
-                  updatedAt: now,
                 }
               : currentList,
           ),
@@ -558,7 +586,6 @@ export function useGroceriesVault({
               ? {
                   ...list,
                   lines: [...list.lines, newLine],
-                  updatedAt: now,
                 }
               : list,
           ),
@@ -655,7 +682,6 @@ export function useGroceriesVault({
             return {
               ...list,
               lines: [...list.lines, newLine],
-              updatedAt: now,
             };
           }),
         };
@@ -713,7 +739,6 @@ export function useGroceriesVault({
             return {
               ...list,
               lines: [...list.lines, newLine],
-              updatedAt: now,
             };
           }),
         };
@@ -747,11 +772,10 @@ export function useGroceriesVault({
               lines: list.lines.filter(
                 (line) => line.catalogItemId !== catalogItemId,
               ),
-              updatedAt: new Date().toISOString(),
             };
           }),
         };
-        await persistPayload(nextPayload);
+        await persistPayload(nextPayload, [catalogItemId]);
       } catch (err) {
         console.error('Failed to delete catalog item:', err);
         throw err;

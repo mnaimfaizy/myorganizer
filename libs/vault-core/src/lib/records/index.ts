@@ -4,6 +4,7 @@ export * from './currencyCode';
 export * from './grocery';
 export * from './groceryCategories';
 export * from './groceryEdit';
+export * from './groceryMerge';
 export * from './mergeVaultRecords';
 export * from './subscriptionMonthlyEquivalent';
 export * from './subscriptionRecordMerge';

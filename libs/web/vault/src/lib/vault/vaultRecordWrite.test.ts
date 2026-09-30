@@ -1,9 +1,13 @@
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core';
+import type {
+  GroceriesVaultPayload,
+  VaultBlobEnvelope,
+} from '@myorganizer/vault-core';
 
 import {
   type EditableVaultRecordType,
   type VaultRecordStore,
   deleteVaultRecordAndSave,
+  saveGroceriesPayload,
   saveVaultRecords,
 } from './vaultRecordWrite';
 
@@ -344,6 +348,68 @@ describe('vaultRecordWrite', () => {
         deleteVaultRecordAndSave(store, type, records, 'task-1', deletedAt),
       ).rejects.toThrow('Decryption failed');
       expect(saveEncryptedDataMock).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('saveGroceriesPayload', () => {
+    const samplePayload = {
+      catalog: [
+        {
+          id: 'cat-1',
+          name: 'Produce',
+          category: 'produce' as const,
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+      ],
+      lists: [],
+    } satisfies GroceriesVaultPayload;
+
+    test('should save envelope with empty deletions when store holds bare legacy payload', async () => {
+      const payload = samplePayload;
+      loadDecryptedDataMock.mockResolvedValue([{ id: 'legacy' }]);
+
+      await saveGroceriesPayload(store, payload);
+
+      expect(loadDecryptedDataMock).toHaveBeenCalledWith({
+        type: 'groceries',
+        defaultValue: null,
+      });
+      expect(saveEncryptedDataMock).toHaveBeenCalledWith({
+        type: 'groceries',
+        value: {
+          records: payload,
+          deletions: {},
+        },
+      });
+    });
+
+    test('should merge deletedIds with existing deletion log', async () => {
+      const payload = samplePayload;
+      const deletedAt = '2026-02-01T12:00:00.000Z';
+
+      const storedEnvelope: VaultBlobEnvelope<unknown> = {
+        records: { catalog: [], lists: [] },
+        deletions: { 'old-delete': '2026-01-01T10:00:00.000Z' },
+      };
+      loadDecryptedDataMock.mockResolvedValue(storedEnvelope);
+
+      await saveGroceriesPayload(store, payload, {
+        deletedIds: ['line-1', 'line-2'],
+        deletedAt,
+      });
+
+      expect(saveEncryptedDataMock).toHaveBeenCalledWith({
+        type: 'groceries',
+        value: {
+          records: payload,
+          deletions: {
+            'old-delete': '2026-01-01T10:00:00.000Z',
+            'line-1': deletedAt,
+            'line-2': deletedAt,
+          },
+        },
+      });
     });
   });
 });

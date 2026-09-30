@@ -14,11 +14,11 @@ import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
  * The design draws only the offline revert; `failed` follows its shape
  * without the cause, which nothing on the device can name.
  *
- * Groceries is pinned to `promptOnConflict`, so a conflict is never retried:
- * re-applying an edit to a newer copy would apply it to state the User has
- * not seen (ADR 0107 decision 4). The way forward is to look, which is why the
- * offer is Reload and not Retry — the other two are ordinary failures and
- * resend the edit.
+ * A `conflict` here is `retries-exhausted`: the server moved again under every
+ * merged retry (ADR 0107). No Vault Blob Type is pinned to `promptOnConflict`,
+ * so the `strategy` reason is not reached. The way forward is to look, which
+ * is why the offer is Reload and not Retry — the other two are ordinary
+ * failures and resend the edit.
  */
 export const VAULT_WRITE_ERROR_COPY = {
   conflict: {
