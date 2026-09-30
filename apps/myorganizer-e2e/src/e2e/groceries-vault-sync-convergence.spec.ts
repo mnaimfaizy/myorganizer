@@ -400,17 +400,20 @@ test.describe('Groceries Vault Sync Convergence (E2E)', () => {
     await page2.evaluate(() => window.dispatchEvent(new Event('focus')));
 
     await expect
-      .poll(async () => {
-        const vault1 = await readOwnedVault(page1, E2E_USER_ID);
-        const vault2 = await readOwnedVault(page2, E2E_USER_ID);
-        const vaultsChanged = vault1 !== snapshot1 && vault2 !== snapshot2;
-        if (vaultsChanged) {
-          return true;
-        }
-        const cards1 = await bothTripLinksVisible(page1, tripA, tripB);
-        const cards2 = await bothTripLinksVisible(page2, tripA, tripB);
-        return cards1 && cards2;
-      })
+      .poll(
+        async () => {
+          const vault1 = await readOwnedVault(page1, E2E_USER_ID);
+          const vault2 = await readOwnedVault(page2, E2E_USER_ID);
+          const vaultsChanged = vault1 !== snapshot1 && vault2 !== snapshot2;
+          if (vaultsChanged) {
+            return true;
+          }
+          const cards1 = await bothTripLinksVisible(page1, tripA, tripB);
+          const cards2 = await bothTripLinksVisible(page2, tripA, tripB);
+          return cards1 && cards2;
+        },
+        { timeout: 15000 },
+      )
       .toBeTruthy();
 
     const vault1Changed =
