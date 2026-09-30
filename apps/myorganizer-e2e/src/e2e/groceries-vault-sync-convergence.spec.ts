@@ -80,22 +80,6 @@ async function createTripViaUI(
   ).toBeVisible({ timeout: 60000 });
 }
 
-async function bothTripLinksVisible(
-  page: import('@playwright/test').Page,
-  tripA: string,
-  tripB: string,
-) {
-  const a = await page
-    .getByRole('link', { name: tripA, exact: true })
-    .isVisible()
-    .catch(() => false);
-  const b = await page
-    .getByRole('link', { name: tripB, exact: true })
-    .isVisible()
-    .catch(() => false);
-  return a && b;
-}
-
 async function waitForBothTripsOnPage(
   page: import('@playwright/test').Page,
   passphrase: string,
@@ -390,51 +374,42 @@ test.describe('Groceries Vault Sync Convergence (E2E)', () => {
 
     await assertNoPickASideUI(page1);
 
+    const etagAfterA = serverBlobEtags.groceries;
     const tripB = `Trip B ${Date.now()}`;
     await createTripViaUI(page2, tripB);
 
-    const snapshot1 = await readOwnedVault(page1, E2E_USER_ID);
-    const snapshot2 = await readOwnedVault(page2, E2E_USER_ID);
-
-    await page1.evaluate(() => window.dispatchEvent(new Event('focus')));
-    await page2.evaluate(() => window.dispatchEvent(new Event('focus')));
-
+    // Page 2's push drains a second after the save. A focus before that
+    // pull reads a server that still has only trip A, and that pass does
+    // not run again.
     await expect
-      .poll(
-        async () => {
-          const vault1 = await readOwnedVault(page1, E2E_USER_ID);
-          const vault2 = await readOwnedVault(page2, E2E_USER_ID);
-          const vaultsChanged = vault1 !== snapshot1 && vault2 !== snapshot2;
-          if (vaultsChanged) {
-            return true;
-          }
-          const cards1 = await bothTripLinksVisible(page1, tripA, tripB);
-          const cards2 = await bothTripLinksVisible(page2, tripA, tripB);
-          return cards1 && cards2;
-        },
-        { timeout: 15000 },
-      )
+      .poll(() => serverBlobEtags.groceries !== etagAfterA, {
+        timeout: 15000,
+      })
       .toBeTruthy();
 
-    const vault1Changed =
-      (await readOwnedVault(page1, E2E_USER_ID)) !== snapshot1;
-    const vault2Changed =
-      (await readOwnedVault(page2, E2E_USER_ID)) !== snapshot2;
+    await assertNoPickASideUI(page2);
 
-    await waitForBothTripsOnPage(
-      page1,
-      passphrase,
-      tripA,
-      tripB,
-      vault1Changed,
-    );
-    await waitForBothTripsOnPage(
-      page2,
-      passphrase,
-      tripA,
-      tripB,
-      vault2Changed,
-    );
+    const page1BeforePull = await readOwnedVault(page1, E2E_USER_ID);
+    await page1.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect
+      .poll(() => readOwnedVault(page1, E2E_USER_ID), { timeout: 15000 })
+      .not.toBe(page1BeforePull);
+
+    const etagAfterPage1Pull = serverBlobEtags.groceries;
+    await expect
+      .poll(() => serverBlobEtags.groceries !== etagAfterPage1Pull, {
+        timeout: 15000,
+      })
+      .toBeTruthy();
+
+    const page2BeforePull = await readOwnedVault(page2, E2E_USER_ID);
+    await page2.evaluate(() => window.dispatchEvent(new Event('focus')));
+    await expect
+      .poll(() => readOwnedVault(page2, E2E_USER_ID), { timeout: 15000 })
+      .not.toBe(page2BeforePull);
+
+    await waitForBothTripsOnPage(page1, passphrase, tripA, tripB, true);
+    await waitForBothTripsOnPage(page2, passphrase, tripA, tripB, true);
 
     await assertNoPickASideUI(page1);
     await assertNoPickASideUI(page2);
