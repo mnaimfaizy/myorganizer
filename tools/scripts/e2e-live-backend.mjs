@@ -13,9 +13,13 @@
  */
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { existsSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+
+import {
+  requireBackendBuild,
+  spawnBackendMain,
+} from './lib/spawn-backend-main.mjs';
 
 const require = createRequire(import.meta.url);
 const { config: loadEnv } = require('dotenv');
@@ -58,11 +62,7 @@ if (!process.env.DATABASE_URL) {
   fail('DATABASE_URL is required to migrate and seed the live logout user.');
 }
 
-if (!existsSync(mainPath)) {
-  fail(
-    `Backend build output not found at: ${mainPath}\nRun: yarn build:backend`,
-  );
-}
+requireBackendBuild(mainPath);
 
 function run(executable, args, options) {
   return new Promise((resolveRun, reject) => {
@@ -110,26 +110,8 @@ await run(
 );
 await seedVerifiedUser();
 
-const child = spawn(process.execPath, [mainPath], {
-  stdio: 'inherit',
-  env: {
-    ...process.env,
-    NODE_ENV: 'development',
-    PORT: process.env.PORT || '3000',
-  },
-});
-
-function stop() {
-  child.kill();
-}
-
-process.on('SIGTERM', stop);
-process.on('SIGINT', stop);
-
-child.on('exit', (code, signal) => {
-  if (signal) {
-    process.kill(process.pid, signal);
-    return;
-  }
-  process.exit(code ?? 0);
+spawnBackendMain(mainPath, {
+  ...process.env,
+  NODE_ENV: 'development',
+  PORT: process.env.PORT || '3000',
 });

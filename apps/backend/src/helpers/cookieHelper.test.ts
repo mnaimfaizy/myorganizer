@@ -14,11 +14,19 @@ function makeMockResponse(): Response {
   } as unknown as Response;
 }
 
-describe('setRefreshCookie', () => {
-  const originalNodeEnv = process.env.NODE_ENV;
+const originalNodeEnv = process.env.NODE_ENV;
 
+function restoreNodeEnv() {
+  if (originalNodeEnv === undefined) {
+    delete process.env.NODE_ENV;
+    return;
+  }
+  process.env.NODE_ENV = originalNodeEnv;
+}
+
+describe('setRefreshCookie', () => {
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv;
+    restoreNodeEnv();
   });
 
   test('calls res.cookie with refresh_cookie and lax httpOnly options including expires', () => {
@@ -70,10 +78,8 @@ describe('setRefreshCookie', () => {
 });
 
 describe('clearRefreshCookie', () => {
-  const originalNodeEnv = process.env.NODE_ENV;
-
   afterEach(() => {
-    process.env.NODE_ENV = originalNodeEnv;
+    restoreNodeEnv();
   });
 
   test('calls res.clearCookie with matching attributes and no expires when not production', () => {
