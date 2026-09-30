@@ -75,11 +75,13 @@ test('a well-formed set passes and the committed set loads', () => {
     committed.cases.some((c) => c.tier === 'frontier'),
     'the set has no frontier case left',
   );
-  // The narrowed set is six pattern cases plus three clean-diff cases (issue
-  // #933); the never-caught synchronisation case is parked, not retired, and
-  // its id stays reserved with a written condition for its return rather
-  // than a reason it cannot be won.
-  assert.equal(committed.cases.length, 9);
+  // The set is eight pattern cases plus three clean-diff cases (issue #933):
+  // the narrowed six, plus the two frontier cases issue #934 traced from
+  // attributed fixes (#745 and the second defect attributed to #77). Four
+  // candidates of that trace are parked, not retired, and each id stays
+  // reserved with a written condition for its return rather than a reason it
+  // cannot be won.
+  assert.equal(committed.cases.length, 11);
   assert.equal(committed.cases.filter((c) => c.expectsNoBlocking).length, 3);
   assert.ok(committed.parked?.length >= 1, 'the set has no parked case');
   for (const p of committed.parked) {
