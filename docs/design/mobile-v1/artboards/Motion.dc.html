@@ -1,0 +1,685 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Motion notes</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;background:#FFFFFF;color:#0F172A;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;margin:0}
+input{font-family:inherit;margin:0}
+a{color:#7C3AED}a:hover{color:#5B21B6}
+</style>
+</helmet>
+<div style="width: 1440px; height: 3124px; box-sizing: border-box; background: #FFFFFF; color: #0F172A; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; position: relative; overflow: hidden">
+<header style="height: 240px; box-sizing: border-box; padding: 56px 56px 0 56px; display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">MyOrganizer Mobile v1 · Motion</div>
+<h1 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 44px; line-height: 52px; font-weight: 800; letter-spacing: -0.02em">Tick and move to Checked</h1>
+<p style="margin: 0; font-size: 17px; line-height: 26px; color: #64748B; max-width: 980px">What happens when a grocery line is ticked, from touch to the row settling in Checked. Frames are drawn in light mode; timings are the same in dark. Every beat has a Reduce Motion alternative, and the haptic stays either way.</p>
+</header>
+<div style="height: 72px; box-sizing: border-box; padding: 24px 56px 0 56px; display: flex; align-items: baseline; gap: 16px; border-top: 1px solid #E2E8F0">
+<h2 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 26px; line-height: 32px; font-weight: 700; letter-spacing: -0.015em">Timeline</h2>
+
+</div>
+<div style="height: 310px; box-sizing: border-box; padding: 16px 56px 0 56px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; gap: 12px"><span style="font-size: 16px; line-height: 22px; font-weight: 700">Tick</span><span style="font-size: 14px; line-height: 20px; color: #64748B">standard</span></div>
+<div style="height: 250px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px"><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">0 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Press</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #ECEEF0; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div><div style="position: absolute; left: 6px; top: 10px; width: 44px; height: 44px; border-radius: 22px; background: #ECEEF0; display: flex; align-items: center; justify-content: center"><span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; border: 2px solid #64748B; transform: scale(0.92)"></span></div></div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Touch down. The box scales to 0.92 and the state layer appears (80 ms, ease-out). No haptic yet.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">80 ms</span><span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; font-weight: 700; color: #7C3AED"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><rect x="8" y="3" width="8" height="18" rx="2"></rect><path d="M4 8v8"></path><path d="M20 8v8"></path></svg>tick</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Commit</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div><div style="position: absolute; left: 16px; top: 20px; width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: rgba(15, 23, 42, 0.6); display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5"></path></svg></div></div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Touch up commits the tick. The haptic fires once, the fill fades in and the check draws over 160 ms.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">240 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Settle</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The title fades to muted-foreground and the strikethrough draws, 160 ms.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">240–840 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Dwell</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The row holds still for 600 ms, so a mis-tap can be unticked in place without chasing the row.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">840 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Leave</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="height: 30px; overflow: hidden; opacity: 0.45"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div></div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Height and opacity go to 0 over 220 ms (standard easing), and the rows below slide up.</div>
+</div></div>
+</div>
+<div style="height: 600px; box-sizing: border-box; padding: 16px 56px 0 56px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; gap: 12px"><span style="font-size: 16px; line-height: 22px; font-weight: 700">Move to Checked</span><span style="font-size: 14px; line-height: 20px; color: #64748B">standard · same run, whole list</span></div>
+<div style="height: 540px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px"><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">240 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Before</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="padding: 10px 0 0 0; background: #F8FAFC">
+<div style="padding: 0 12px 4px 12px"><div role="progressbar" aria-valuemin="0" aria-valuemax="12" aria-valuenow="7" aria-valuetext="7 of 12 checked" style="width: 208px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums">7 of 12</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B">checked</span>
+</div>
+<div style="height: 8px; border-radius: 4px; background: #ECEEF0; overflow: hidden"><div style="width: 58%; height: 8px; border-radius: 4px; background: #0F172A"></div></div>
+</div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">To buy · 2</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sourdough loaf</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Checked · 2</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Eggs</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Spinach</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Ticked, still in To buy</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">840 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Leaving</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="padding: 10px 0 0 0; background: #F8FAFC">
+<div style="padding: 0 12px 4px 12px"><div role="progressbar" aria-valuemin="0" aria-valuemax="12" aria-valuenow="7" aria-valuetext="7 of 12 checked" style="width: 208px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums">7 of 12</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B">checked</span>
+</div>
+<div style="height: 8px; border-radius: 4px; background: #ECEEF0; overflow: hidden"><div style="width: 58%; height: 8px; border-radius: 4px; background: #0F172A"></div></div>
+</div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">To buy · 2</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sourdough loaf</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style="height: 28px; overflow: hidden; opacity: 0.4"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Checked · 2</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Eggs</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Spinach</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Collapses out of To buy</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">950 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Entering</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="padding: 10px 0 0 0; background: #F8FAFC">
+<div style="padding: 0 12px 4px 12px"><div role="progressbar" aria-valuemin="0" aria-valuemax="12" aria-valuenow="8" aria-valuetext="8 of 12 checked" style="width: 208px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums">8 of 12</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B">checked</span>
+</div>
+<div style="height: 8px; border-radius: 4px; background: #ECEEF0; overflow: hidden"><div style="width: 67%; height: 8px; border-radius: 4px; background: #0F172A"></div></div>
+</div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">To buy · 1</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sourdough loaf</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Checked · 3</span></div><div style="border-top: 1px solid #E2E8F0"><div style="transform: translateY(-8px); opacity: 0.5"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Eggs</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Spinach</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Enters at the top of Checked: fades in and drops from −8 pt, 220 ms, ease-out. Counts update.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">1170 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Settled</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="padding: 10px 0 0 0; background: #F8FAFC">
+<div style="padding: 0 12px 4px 12px"><div role="progressbar" aria-valuemin="0" aria-valuemax="12" aria-valuenow="8" aria-valuetext="8 of 12 checked" style="width: 208px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums">8 of 12</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B">checked</span>
+</div>
+<div style="height: 8px; border-radius: 4px; background: #ECEEF0; overflow: hidden"><div style="width: 67%; height: 8px; border-radius: 4px; background: #0F172A"></div></div>
+</div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">To buy · 1</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sourdough loaf</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Checked · 3</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Eggs</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Spinach</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The ProgressMeter tweens 7 → 8 over the same 220 ms.</div>
+</div></div>
+</div>
+<div style="height: 600px; box-sizing: border-box; padding: 16px 56px 0 56px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; gap: 12px"><span style="font-size: 16px; line-height: 22px; font-weight: 700">Reduce Motion</span><span style="font-size: 14px; line-height: 20px; color: #64748B">same timeline without movement · the haptic still fires</span></div>
+<div style="height: 540px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px"><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">0 ms</span><span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; font-weight: 700; color: #7C3AED"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><rect x="8" y="3" width="8" height="18" rx="2"></rect><path d="M4 8v8"></path><path d="M20 8v8"></path></svg>tick</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Commit</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The fill, check and strikethrough appear at once, with no scale and no draw.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">0–600 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Dwell</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The dwell is kept. It gives time to undo, which is not motion.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">600 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Cross-fade</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="padding: 10px 0 0 0; background: #F8FAFC">
+<div style="padding: 0 12px 4px 12px"><div role="progressbar" aria-valuemin="0" aria-valuemax="12" aria-valuenow="7" aria-valuetext="7 of 12 checked" style="width: 208px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums">7 of 12</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B">checked</span>
+</div>
+<div style="height: 8px; border-radius: 4px; background: #ECEEF0; overflow: hidden"><div style="width: 58%; height: 8px; border-radius: 4px; background: #0F172A"></div></div>
+</div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">To buy · 2</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sourdough loaf</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style="height: 56px; overflow: hidden; opacity: 0.35"><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Checked · 2</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Eggs</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Spinach</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Opacity only, 150 ms. The height does not animate.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">750 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Done</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="padding: 10px 0 0 0; background: #F8FAFC">
+<div style="padding: 0 12px 4px 12px"><div role="progressbar" aria-valuemin="0" aria-valuemax="12" aria-valuenow="8" aria-valuetext="8 of 12 checked" style="width: 208px; display: flex; flex-direction: column; gap: 8px">
+<div style="display: flex; align-items: baseline; justify-content: space-between">
+<span style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A; font-variant-numeric: tabular-nums">8 of 12</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B">checked</span>
+</div>
+<div style="height: 8px; border-radius: 4px; background: #ECEEF0; overflow: hidden"><div style="width: 67%; height: 8px; border-radius: 4px; background: #0F172A"></div></div>
+</div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">To buy · 1</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Sourdough loaf</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+<div style="width: 232px; height: 44px; box-sizing: border-box; padding: 0 16px 8px 16px; display: flex; align-items: flex-end"><span style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Checked · 3</span></div><div style="border-top: 1px solid #E2E8F0"><div style=""><div style="position: relative; width: 232px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Eggs</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div><div style=""><div style="position: relative; width: 232px; height: 56px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 56px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Spinach</span>
+
+</div>
+
+</div>
+
+<div style="position: absolute; left: 56px; right: 0; bottom: 0; height: 1px; background: #E2E8F0"></div>
+</div></div></div>
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The list reflows in one step. The new row fades in over 150 ms and the meter jumps.</div>
+</div></div>
+</div>
+<div style="height: 390px; box-sizing: border-box; padding: 16px 56px 0 56px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; align-items: baseline; gap: 12px"><span style="font-size: 16px; line-height: 22px; font-weight: 700">Unconfirmed, then reverted</span><span style="font-size: 14px; line-height: 20px; color: #64748B">the push fails · ADR 0107</span></div>
+<div style="height: 330px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px"><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">0 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Unconfirmed</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative; width: 390px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="true" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: #0F172A; border: 2px solid #0F172A;   display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M5 12.5l4.5 4.5L19 7.5"></path></svg></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #64748B; text-decoration: line-through; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+<span style="display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 600; color: #B45309; white-space: nowrap"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2.5" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; display: block"><circle cx="12" cy="12" r="9" stroke-opacity="0.25"></circle><path d="M21 12a9 9 0 0 0-9-9"></path></svg>Saving…</span>
+</div>
+
+
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The move happens straight away. “Saving…” stays until the Vault Push returns.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">push fails</span><span style="display: flex; align-items: center; gap: 4px; font-size: 11px; line-height: 14px; font-weight: 700; color: #7C3AED"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><rect x="8" y="3" width="8" height="18" rx="2"></rect><path d="M4 8v8"></path><path d="M20 8v8"></path></svg>warning</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Revert</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative; width: 390px; height: 64px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+
+
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The same motion runs in reverse (220 ms), or as a cross-fade under Reduce Motion.</div>
+</div><div style="height: 100%; box-sizing: border-box; padding: 12px; border-radius: 12px; border: 1px solid #E2E8F0; background: #F8FAFC; display: flex; flex-direction: column; gap: 10px; min-width: 0">
+<div style="display: flex; align-items: center; justify-content: space-between"><span style="font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 12px; line-height: 16px; font-weight: 600; color: #0F172A">+150 ms</span></div>
+<div style="font-size: 14px; line-height: 18px; font-weight: 600; color: #0F172A">Reverted</div>
+<div style="border-radius: 8px; overflow: hidden; border: 1px solid #E2E8F0; background: #F8FAFC"><div style="position: relative; width: 390px; height: 124px; overflow: hidden; background: #FFFFFF; flex-shrink: 0; ">
+
+<div style="position: absolute; left: 0; right: 0; top: 0; height: 64px; transform: translateX(0px); box-sizing: border-box; padding: 0 16px; display: flex; align-items: center; gap: 12px; background: #FFFFFF; ">
+<div style="margin-left: -10px; margin-right: -6px"><button type="button" role="checkbox" aria-checked="false" aria-label="Oat milk"  style="width: 44px; height: 44px; padding: 0; border: 0; border-radius: 22px;  display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; ">
+<span style="width: 24px; height: 24px; box-sizing: border-box; border-radius: 6px; background: transparent; border: 2px solid #64748B;   display: flex; align-items: center; justify-content: center"></span>
+</button></div>
+<div style="flex-grow: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 17px; line-height: 24px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">Oat milk</span>
+<span style="font-size: 13px; line-height: 18px; color: #64748B; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">2 × 1 L</span>
+</div>
+
+</div>
+<div style="position: absolute; left: 0; right: 0; top: 64px; height: 60px; box-sizing: border-box; padding: 0 8px 8px 56px; display: flex; align-items: center; gap: 8px; background: #FFFFFF">
+<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#B45309" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M12 3.5L2.5 20h19L12 3.5z"></path><path d="M12 10v4.5"></path><path d="M12 17.5v.01"></path></svg>
+<span style="flex-grow: 1; font-size: 13px; line-height: 18px; color: #0F172A">Not saved — you’re offline. Showing the last saved copy.</span>
+<button type="button" style="height: 44px; padding: 0 12px; border: 1px solid #64748B; border-radius: 8px; background: transparent; color: #0F172A; display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; flex-shrink: 0"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F172A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M4 12a8 8 0 1 0 2.4-5.7L4 8.5"></path><path d="M4 4v4.5h4.5"></path></svg>Retry</button>
+</div>
+
+</div></div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The notice fades in with the reason. Retry reapplies the same edit to the current server copy.</div>
+</div></div>
+</div>
+<div style="height: 72px; box-sizing: border-box; padding: 24px 56px 0 56px; display: flex; align-items: baseline; gap: 16px; border-top: 1px solid #E2E8F0">
+<h2 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 26px; line-height: 32px; font-weight: 700; letter-spacing: -0.015em">Specification</h2>
+
+</div>
+<div style="height: 488px; box-sizing: border-box; padding: 16px 56px 0 56px">
+<div style="height: 40px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: end; border-bottom: 1px solid #E2E8F0; padding-bottom: 8px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B"><span>Beat</span><span>Standard</span><span>Reduce Motion</span></div>
+<div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Press</span><span>Scale 1 → 0.92 and a state layer, 80 ms, ease-out</span><span style="color: #64748B">State layer only</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Commit</span><span>Fill opacity 0 → 1 and the check path draws, 160 ms, cubic-bezier(0.2, 0, 0, 1)</span><span style="color: #64748B">Appears at once</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Strike and mute</span><span>Colour to muted-foreground and the strikethrough draws, 160 ms</span><span style="color: #64748B">At once</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Dwell</span><span>600 ms; an untick cancels it and the row stays</span><span style="color: #64748B">600 ms, unchanged</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Leave</span><span>Height and opacity → 0, 220 ms, cubic-bezier(0.4, 0, 0.2, 1)</span><span style="color: #64748B">Opacity → 0, 150 ms; reflow in one step</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Enter Checked</span><span>Opacity 0 → 1 and y −8 → 0, 220 ms, ease-out</span><span style="color: #64748B">Opacity 0 → 1, 150 ms</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">ProgressMeter</span><span>Width tweens over 220 ms; the text changes at once</span><span style="color: #64748B">Jumps</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Tick haptic</span><span>iOS: impact, light · Android: TOGGLE_ON (API 34+), CLOCK_TICK below that · untick: iOS selection, Android TOGGLE_OFF</span><span style="color: #64748B">Unchanged</span></div><div style="height: 48px; display: grid; grid-template-columns: 220px minmax(0, 1fr) 380px; column-gap: 24px; align-items: center; border-bottom: 1px solid #E2E8F0; font-size: 14px; line-height: 20px"><span style="font-weight: 600">Revert haptic</span><span>iOS: notification, warning · Android: REJECT (API 30+)</span><span style="color: #64748B">Unchanged</span></div>
+</div>
+<div style="height: 296px; box-sizing: border-box; padding: 16px 56px 0 56px"><div style="height: 36px; font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Rules</div><div style="height: 48px; display: flex; gap: 10px; font-size: 15px; line-height: 22px"><span style="color: #7C3AED">•</span><span>The haptic fires once, when the tick commits on touch up. It never fires on touch down, while a swipe reveals, or during a scroll.</span></div><div style="height: 48px; display: flex; gap: 10px; font-size: 15px; line-height: 22px"><span style="color: #7C3AED">•</span><span>The system haptic setting wins. Reduce Motion never removes a haptic, because a haptic is not motion.</span></div><div style="height: 48px; display: flex; gap: 10px; font-size: 15px; line-height: 22px"><span style="color: #7C3AED">•</span><span>Reduce Motion comes from AccessibilityInfo.isReduceMotionEnabled() and its reduceMotionChanged event. Android reports it as true when animations are removed.</span></div><div style="height: 48px; display: flex; gap: 10px; font-size: 15px; line-height: 22px"><span style="color: #7C3AED">•</span><span>No haptics or animation library is installed. React Native 0.79 ships Animated, LayoutAnimation and Vibration, and Vibration is not a haptic engine, so the haptics module is still to be chosen.</span></div><div style="height: 48px; display: flex; gap: 10px; font-size: 15px; line-height: 22px"><span style="color: #7C3AED">•</span><span>With Checked collapsed, the row still leaves To buy and only the Checked count changes.</span></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":3124}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>

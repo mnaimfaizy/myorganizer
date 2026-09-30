@@ -43,6 +43,17 @@ export const LEGACY = {
 };
 
 /**
+ * Where approved designs are committed (ADR 0110). A file under it is an export
+ * from a design tool — a Claude Design canvas artboard, say — kept byte for byte
+ * as it was approved, so it is not a House Explainer Page and is never rewritten
+ * to become one: the design is the record, and "fixing" it would change what was
+ * approved. Excluded by directory rather than listed in LEGACY page by page,
+ * because a canvas holds a hundred-odd artboards and every new design adds more;
+ * a per-page list would be a list nobody reads, kept only to satisfy the check.
+ */
+export const DESIGN_EXPORTS_DIR = 'docs/design/';
+
+/**
  * The page every sibling splices its @font-face block from. Named here rather than
  * pinned as a literal hash so the comparison stays a fact about two files, and so
  * the slicing convention has exactly one implementation (design-page-scan.mjs).

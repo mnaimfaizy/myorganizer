@@ -37,3 +37,8 @@
 .agents/skills/handoff/** linguist-generated=true whitespace=-trailing-space
 .agents/skills/modern-web-guidance/** linguist-generated=true whitespace=-trailing-space
 .agents/skills/prototype/** linguist-generated=true whitespace=-trailing-space
+
+# Approved design exports (ADR 0110): a design tool's output, reviewed as the design
+# it renders rather than line by line, so pull request diffs collapse them.
+docs/design/*/artboards/** linguist-generated=true
+docs/design/*/canvas.json linguist-generated=true

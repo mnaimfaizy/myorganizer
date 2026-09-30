@@ -29,6 +29,7 @@ Turn the current conversation context into a Product Requirements Document and p
 - Always present test seams to the user for approval before writing the full PRD. This is the only interactive step.
 - Apply labels `prd` and `ready-for-agent` to the published issue. No other labels.
 - Use domain vocabulary from `CONTEXT.md`. Do not use avoided terms.
+- If the feature has an approved design, it is committed under `docs/design/<design>/` before the PRD is published (ADR 0110), and the PRD links **both** the committed folder and the design tool's link. A design that exists only as a link is not approved yet for building: commit it first.
 - Do not include specific file paths or code snippets in the PRD body — they go stale. Exception: prototype snippets that encode a decision more precisely than prose can (state machine, schema shape, reducer) — inline only the decision-rich parts.
 
 ## Workflow

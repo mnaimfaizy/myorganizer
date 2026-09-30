@@ -185,6 +185,29 @@ test('an unclassified page under docs/ is a finding under --all', (t) => {
   assert.match(result.stdout, /ERROR unclassified-page/);
 });
 
+test('an approved design export under docs/design/ is not an unclassified page', (t) => {
+  const workspace = createWorkspace(t);
+  // A canvas artboard as exported: no theme block, no canonical fonts, a CDN
+  // stylesheet — everything the convention forbids, kept as it was approved.
+  write(
+    workspace,
+    'docs/design/mobile-v1/artboards/Task-List.dc.html',
+    '<!doctype html><html><head><link href="https://fonts.googleapis.com/css2?family=Inter" rel="stylesheet"></head><body><div style="width: 390px">Tasks</div></body></html>',
+  );
+  const result = run(workspace, '--all');
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /Task-List\.dc\.html/);
+});
+
+test('the design exclusion is the directory, not a name that starts like it', (t) => {
+  const workspace = createWorkspace(t);
+  write(workspace, 'docs/designs/overview.html', housePage('overview'));
+  const result = run(workspace, '--all');
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /docs\/designs\/overview\.html/);
+  assert.match(result.stdout, /ERROR unclassified-page/);
+});
+
 test('a legacy page is skipped rather than failed, with its reason', (t) => {
   const workspace = createWorkspace(t);
   const result = run(workspace, 'docs/agents/skill-atlas.html');

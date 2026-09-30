@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Input components</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;family=Plus+Jakarta+Sans:wght@600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter, ui-sans-serif, system-ui, -apple-system, sans-serif;background:#FFFFFF;color:#0F172A;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;margin:0}
+input{font-family:inherit;margin:0}
+a{color:#7C3AED}a:hover{color:#5B21B6}
+</style>
+</helmet>
+<div style="width: 1440px; height: 2052px; box-sizing: border-box; background: #FFFFFF; color: #0F172A; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; position: relative; overflow: hidden">
+<header style="height: 240px; box-sizing: border-box; padding: 56px 56px 0 56px; display: flex; flex-direction: column; gap: 12px">
+<div style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">MyOrganizer Mobile v1 · Components</div>
+<h1 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 44px; line-height: 52px; font-weight: 800; letter-spacing: -0.02em">TextField</h1>
+<p style="margin: 0; font-size: 17px; line-height: 26px; color: #64748B; max-width: 980px">Label above, helper or error below, with a 48 pt field. The edge uses control (P4) so the field meets 3:1. Focus thickens the edge to 2 pt of foreground. An error thickens it to 2 pt of destructive-text (P2) and adds an icon, so colour is not the only cue.</p>
+</header>
+<div style="height: 72px; box-sizing: border-box; padding: 24px 56px 0 56px; display: flex; align-items: baseline; gap: 16px; border-top: 1px solid #E2E8F0">
+<h2 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 26px; line-height: 32px; font-weight: 700; letter-spacing: -0.015em">TextField</h2>
+
+</div>
+<div style="height: 40px; box-sizing: border-box; padding: 8px 56px 0 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; align-items: end">
+<div></div><div style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Light</div><div style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Dark</div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Default</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Placeholder and helper</div>
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-1" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #64748B; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 14px 0 14px">
+<input id="f-light-1" type="text" value="" placeholder="e.g. Renew passport" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Only you can read it. It’s encrypted on this phone.</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-2" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #7F8EA3; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 14px 0 14px">
+<input id="f-dark-2" type="text" value="" placeholder="e.g. Renew passport" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #7F8EA3">Only you can read it. It’s encrypted on this phone.</div>
+</div></div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Focused</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Typing</div>
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-3" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #0F172A; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 13px 0 13px">
+<input id="f-light-3" type="text" value="Renew pass" placeholder="e.g. Renew passport" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Only you can read it. It’s encrypted on this phone.</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-4" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #E2E8F0; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 13px 0 13px">
+<input id="f-dark-4" type="text" value="Renew pass" placeholder="e.g. Renew passport" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #7F8EA3">Only you can read it. It’s encrypted on this phone.</div>
+</div></div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Filled</div>
+
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-5" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #64748B; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 14px 0 14px">
+<input id="f-light-5" type="text" value="Renew passport" placeholder="e.g. Renew passport" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Only you can read it. It’s encrypted on this phone.</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-6" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #7F8EA3; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 14px 0 14px">
+<input id="f-dark-6" type="text" value="Renew passport" placeholder="e.g. Renew passport" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #7F8EA3">Only you can read it. It’s encrypted on this phone.</div>
+</div></div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Error</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The message replaces the helper and is announced</div>
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-7" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #DC2626; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 13px 0 13px">
+<input id="f-light-7" type="text" value="" placeholder="e.g. Renew passport" readonly  aria-invalid="true" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+
+</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 500; color: #DC2626"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M12 3.5L2.5 20h19L12 3.5z"></path><path d="M12 10v4.5"></path><path d="M12 17.5v.01"></path></svg>Give the task a title</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-8" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #F87171; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 13px 0 13px">
+<input id="f-dark-8" type="text" value="" placeholder="e.g. Renew passport" readonly  aria-invalid="true" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+
+</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 500; color: #F8FAFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M12 3.5L2.5 20h19L12 3.5z"></path><path d="M12 10v4.5"></path><path d="M12 17.5v.01"></path></svg>Give the task a title</div>
+</div></div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Disabled</div>
+
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; opacity: 0.4;">
+<label for="f-light-9" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #64748B; border-radius: 8px; background: #ECEEF0; display: flex; align-items: center; padding: 0 14px 0 14px">
+<input id="f-light-9" type="text" value="Renew passport" placeholder="e.g. Renew passport" readonly disabled  style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Only you can read it. It’s encrypted on this phone.</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; opacity: 0.4;">
+<label for="f-dark-10" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Task title</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #7F8EA3; border-radius: 8px; background: #0F172A; display: flex; align-items: center; padding: 0 14px 0 14px">
+<input id="f-dark-10" type="text" value="Renew passport" placeholder="e.g. Renew passport" readonly disabled  style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #7F8EA3">Only you can read it. It’s encrypted on this phone.</div>
+</div></div>
+</div>
+<div style="height: 72px; box-sizing: border-box; padding: 24px 56px 0 56px; display: flex; align-items: baseline; gap: 16px; border-top: 1px solid #E2E8F0">
+<h2 style="margin: 0; font-family: 'Plus Jakarta Sans', Inter, ui-sans-serif, system-ui, sans-serif; font-size: 26px; line-height: 32px; font-weight: 700; letter-spacing: -0.015em">Secure entry</h2>
+<span style="font-size: 14px; line-height: 20px; color: #64748B">with reveal</span>
+</div>
+<div style="height: 40px; box-sizing: border-box; padding: 8px 56px 0 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px; align-items: end">
+<div></div><div style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Light</div><div style="font-size: 12px; line-height: 16px; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: #64748B">Dark</div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Hidden</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The reveal button is 44 × 44 with the label “Show passphrase”</div>
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-11" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #64748B; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 2px 0 14px">
+<input id="f-light-11" type="password" value="correct horse battery" placeholder="" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+<button type="button" aria-label="Show passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Unlocks your vault on this phone.</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-12" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #7F8EA3; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 2px 0 14px">
+<input id="f-dark-12" type="password" value="correct horse battery" placeholder="" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+<button type="button" aria-label="Show passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #7F8EA3">Unlocks your vault on this phone.</div>
+</div></div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Revealed</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">The label flips to “Hide passphrase”. Hidden again when the app goes to the background.</div>
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-13" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #64748B; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 2px 0 14px">
+<input id="f-light-13" type="text" value="correct horse battery" placeholder="" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+<button type="button" aria-label="Hide passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M3 3l18 18"></path><path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4"></path><path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg></button>
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Unlocks your vault on this phone.</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-14" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 1px solid #7F8EA3; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 2px 0 14px">
+<input id="f-dark-14" type="text" value="correct horse battery" placeholder="" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+<button type="button" aria-label="Hide passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M3 3l18 18"></path><path d="M10.6 5.1A10 10 0 0 1 12 5c6.4 0 10 7 10 7a17 17 0 0 1-3.2 4"></path><path d="M6.6 6.6C3.8 8.4 2 12 2 12s3.6 7 10 7a9.6 9.6 0 0 0 5.4-1.6"></path><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"></path></svg></button>
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #7F8EA3">Unlocks your vault on this phone.</div>
+</div></div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Secure · focused</div>
+
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-15" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #0F172A; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 2px 0 13px">
+<input id="f-light-15" type="password" value="correct horse" placeholder="" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+<button type="button" aria-label="Show passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #64748B">Unlocks your vault on this phone.</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-16" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #E2E8F0; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 2px 0 13px">
+<input id="f-dark-16" type="password" value="correct horse" placeholder="" readonly   style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+<button type="button" aria-label="Show passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+</div>
+<div style="font-size: 13px; line-height: 18px; color: #7F8EA3">Unlocks your vault on this phone.</div>
+</div></div>
+</div>
+<div style="height: 156px; box-sizing: content-box; padding: 0 56px 16px 56px; display: grid; grid-template-columns: 220px minmax(0, 1fr) minmax(0, 1fr); column-gap: 24px">
+<div style="padding-top: 12px; display: flex; flex-direction: column; gap: 6px">
+<div style="font-size: 15px; line-height: 20px; font-weight: 600">Secure · error</div>
+
+</div>
+<div style="height: 156px; box-sizing: border-box; background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #0F172A"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-light-17" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #0F172A">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #DC2626; border-radius: 8px; background: #FFFFFF; display: flex; align-items: center; padding: 0 2px 0 13px">
+<input id="f-light-17" type="password" value="wrong one" placeholder="" readonly  aria-invalid="true" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #0F172A; font-size: 17px; line-height: 24px; padding: 0; caret-color: #0F172A">
+<button type="button" aria-label="Show passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#64748B" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 500; color: #DC2626"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M12 3.5L2.5 20h19L12 3.5z"></path><path d="M12 10v4.5"></path><path d="M12 17.5v.01"></path></svg>That passphrase didn’t unlock the vault</div>
+</div></div><div style="height: 156px; box-sizing: border-box; background: #030711; border: 1px solid #1D283A; border-radius: 12px; padding: 24px; display: flex; align-items: center; justify-content: flex-start; overflow: hidden; color: #E2E8F0"><div style="width: 358px; display: flex; flex-direction: column; gap: 6px; ">
+<label for="f-dark-18" style="font-size: 15px; line-height: 20px; font-weight: 600; color: #E2E8F0">Passphrase</label>
+<div style="height: 48px; box-sizing: border-box; border: 2px solid #F87171; border-radius: 8px; background: #030711; display: flex; align-items: center; padding: 0 2px 0 13px">
+<input id="f-dark-18" type="password" value="wrong one" placeholder="" readonly  aria-invalid="true" style="flex-grow: 1; min-width: 0; height: 44px; border: 0; outline: none; background: transparent; color: #E2E8F0; font-size: 17px; line-height: 24px; padding: 0; caret-color: #E2E8F0">
+<button type="button" aria-label="Show passphrase" style="width: 44px; height: 44px; border: 0; background: transparent; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#7F8EA3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg></button>
+</div>
+<div style="display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 18px; font-weight: 500; color: #F8FAFC"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F87171" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex-shrink: 0; display: block"><path d="M12 3.5L2.5 20h19L12 3.5z"></path><path d="M12 10v4.5"></path><path d="M12 17.5v.01"></path></svg>That passphrase didn’t unlock the vault</div>
+</div></div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":2052}}'>
+class Component extends DCLogic {
+renderVals() {
+return {};
+}
+}
+</script>
+</body>
+</html>
