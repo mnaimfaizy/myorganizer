@@ -135,6 +135,15 @@ than added, each for a reason written into its own `reentryCondition`:
   admitted on its merged head's review having raised nothing, which is the
   opposite of what is on record here.
 
+The trace's sixth candidate gained no entry of its own and is not dropped
+either: PR #907 is the third fix attributed to PR #573, and its defect — a web
+write path for an array-shaped Vault Blob Type that recorded no deletion — is
+the same missing inverse `sync-bookmarks-without-restore-or-meta-push` already
+holds that range for. Its attribution went into that entry's incident line, and
+the reason a second case on the range is not warranted went into its
+`reentryCondition`: one trigger returns both, and the range is the largest in
+the set at 122 files.
+
 **Eight pattern cases remain**: four guard and four frontier — the two issue
 #934 added, plus `export-envelope-drops-tasks`, demoted a second time on
 2026-09-22, and `release-bump-leaves-generated-client-stale`, which has earned

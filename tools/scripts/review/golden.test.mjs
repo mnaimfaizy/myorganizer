@@ -77,10 +77,12 @@ test('a well-formed set passes and the committed set loads', () => {
   );
   // The set is eight pattern cases plus three clean-diff cases (issue #933):
   // the narrowed six, plus the two frontier cases issue #934 traced from
-  // attributed fixes (#745 and the second defect attributed to #77). Four
-  // candidates of that trace are parked, not retired, and each id stays
-  // reserved with a written condition for its return rather than a reason it
-  // cannot be won.
+  // attributed fixes (#745 and the second defect attributed to #77). Three
+  // more of that trace are parked, not retired; the fourth was folded into
+  // the parked entry already holding its range. The loop below is what
+  // asserts the property that matters — every parked entry keeps its id
+  // reserved and carries a written condition for its return rather than a
+  // reason it cannot be won — so the count above stays out of it.
   assert.equal(committed.cases.length, 11);
   assert.equal(committed.cases.filter((c) => c.expectsNoBlocking).length, 3);
   assert.ok(committed.parked?.length >= 1, 'the set has no parked case');
