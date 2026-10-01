@@ -38,6 +38,11 @@ entry has no reason to exist.
    already holds everything the reviewer legitimately writes: `report.json`,
    `obligations.answers.json`, and the throwaway `git worktree` ADR 0071 item 4 permits. Nothing the
    reviewer is asked to produce lives outside it.
+   **Corrected by [ADR 0118](0118-a-file-grant-is-anchored-where-the-session-started.md):** the
+   spelling above did not hold. A bare path is relative to the session's current directory, so a
+   reviewer that ran `cd` lost the grant for its own report, and a `Write(path)` rule is never
+   consulted at all. The grant is now the single rule `Edit(/tmp/code-review/**)`; the decision
+   itself is unchanged.
 
 2. **The interpreter stays unrestricted; the writable surface does not.** `Bash(node:*)` keeps its
    reach — executed evidence is the strongest evidence class ADR 0071 recognises, and narrowing where
@@ -68,4 +73,4 @@ entry has no reason to exist.
 - `tools/scripts/check-review-tool-allowlist.mjs` parses `Write(...)` and `Edit(...)` as opaque tool
   grants, the same as it already reads `Read` and `Agent`; it asserts instructed commands against
   `Bash(...)` entries and takes no position on a path-scoped grant, so this change needs no update
-  there.
+  there. (ADR 0118 item 2 has since given it a position on how such a grant is anchored.)

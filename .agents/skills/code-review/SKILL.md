@@ -61,7 +61,7 @@ finding and writes no verdict: the verdict is computed from the findings by
   report, the obligation answer sheet, and the throwaway worktree live. The harness allow-list
   anchors that grant at the workspace root, not at wherever the shell currently is, and refuses
   an edit anywhere else — there is no scratch file outside it to fall back to when a command is
-  refused (ADR 0071 item 4, corrected by ADR 0075).
+  refused (ADR 0071 item 4, corrected by ADR 0075; the anchoring is ADR 0118).
 
 ## Process
 

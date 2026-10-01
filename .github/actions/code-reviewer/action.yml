@@ -86,7 +86,8 @@ outputs:
       exhaustion with permission denials — the skill or the CI prompt
       disagreed with `--allowedTools`, and the disagreement, not the case,
       burned the turns. Two: a refused Write or Edit to one of the reviewer's
-      required outputs (`tmp/code-review/report.json`,
+      required outputs (`tmp/code-review/report.json` or the interactive
+      `<head>.report.json` the validate step also accepts, and
       `tmp/code-review/obligations.answers.json`), however the run ended —
       a run that ends `success` after being refused its own report measured
       nothing (issue #880). `false` otherwise. This can be `true` alongside
@@ -143,7 +144,8 @@ runs:
     # obligation answer sheet, and the throwaway worktree all live there. A
     # replay run found the gap an unscoped grant leaves: refused an inline
     # script, the reviewer wrote a scratch script outside its worktree and
-    # ran that instead (ADR 0071 item 4, corrected by ADR 0075). The
+    # ran that instead (ADR 0071 item 4, corrected by ADR 0075, whose grant
+    # spelling ADR 0118 corrects). The
     # interpreter (`node`) stays unrestricted in path — it is how executed
     # evidence gets produced — only the writable surface is narrowed.
     #
@@ -162,6 +164,7 @@ runs:
     #   - File permissions are checked against `Edit(path)` rules only; an
     #     Edit rule covers every built-in tool that edits files, Write
     #     included, and a `Write(path)` rule is accepted but never consulted.
+    # `yarn review:allowlist:check` fails either mistake (ADR 0118).
     - name: Run the reviewer
       id: reviewer
       continue-on-error: true

@@ -79,7 +79,7 @@ test('the turn ceiling with no denial is exhausted but not prevented', () => {
   assert.equal(run.outputs.prevented, 'false');
 });
 
-test('the denial count falls back to the list when the transcript carries no count', () => {
+test('the turn-ceiling ground reads only the transcript count, as before', () => {
   const run = classify([
     result({
       subtype: 'error_max_turns',
@@ -87,12 +87,16 @@ test('the denial count falls back to the list when the transcript carries no cou
       permission_denials: [{ tool_name: 'Bash', tool_input: { command: 'x' } }],
     }),
   ]);
-  assert.equal(run.outputs.prevented, 'true');
-  assert.match(errors(run)[0], /with 1 permission denial\(s\)/);
+  assert.equal(run.outputs.turn_exhausted, 'true');
+  assert.equal(run.outputs.prevented, 'false');
 });
 
 test('refusedOutputPath matches every required output in both path forms and nothing else', () => {
-  for (const output of REQUIRED_OUTPUTS) {
+  const outputs = REQUIRED_OUTPUTS.map((output) =>
+    output.replace('<head>', '5aaa40b3'),
+  );
+  assert.equal(outputs.length, 3);
+  for (const output of outputs) {
     for (const tool of ['Write', 'Edit']) {
       assert.equal(refusedOutputPath(denied(tool, output)), output);
       assert.equal(
@@ -107,6 +111,9 @@ test('refusedOutputPath matches every required output in both path forms and not
   }
   const notOutputs = [
     denied('Write', `${WORKSPACE}/tmp/code-review/scratch.mjs`),
+    denied('Write', `${WORKSPACE}/tmp/code-review/_permtest.json`),
+    denied('Write', `${WORKSPACE}/tmp/code-review/myreport.json`),
+    denied('Write', `${WORKSPACE}/tmp/code-review/worktree/x/report.json`),
     denied('Write', `${WORKSPACE}/report.json`),
     denied('Write', `${WORKSPACE}/not-tmp/code-review/report.json`),
     denied('Read', `${WORKSPACE}/tmp/code-review/report.json`),
@@ -120,6 +127,17 @@ test('refusedOutputPath matches every required output in both path forms and not
   for (const denial of notOutputs) {
     assert.equal(refusedOutputPath(denial), null, JSON.stringify(denial));
   }
+});
+
+test("a refused write to the skill's interactive report name is prevented, because the action accepts that name", () => {
+  const run = classify([
+    result({
+      permission_denials: [
+        denied('Write', `${WORKSPACE}/tmp/code-review/5aaa40b3.report.json`),
+      ],
+    }),
+  ]);
+  assert.equal(run.outputs.prevented, 'true');
 });
 
 test('a rejected rate-limit event is a lockout, and names the window', () => {

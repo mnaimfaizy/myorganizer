@@ -20,14 +20,23 @@ import { appendFileSync, readFileSync } from 'node:fs';
 import { cannotRun, isMain } from './cli.mjs';
 
 /**
- * The files the CI prompt tells the reviewer to write. A refused write to one
- * of these is the harness contradicting the reviewer's own instructions, on
- * the one action a run cannot finish without.
+ * The files the reviewer is told to write, as paths under the workspace. A
+ * refused write to one of these is the harness contradicting the reviewer's
+ * own instructions, on the one action a run cannot finish without.
+ *
+ * The report has two names because the action's "Validate the report" step
+ * accepts two: `report.json`, which the CI prompt asks for, and the skill's
+ * interactive `<head>.report.json`, which that step renames. A report name
+ * the action would have accepted is one whose refusal prevented the run.
  */
 export const REQUIRED_OUTPUTS = Object.freeze([
   'tmp/code-review/report.json',
+  'tmp/code-review/<head>.report.json',
   'tmp/code-review/obligations.answers.json',
 ]);
+
+const REQUIRED_OUTPUT_PATTERN =
+  /(?:^|\/)tmp\/code-review\/(?:(?:[^/]+\.)?report\.json|obligations\.answers\.json)$/;
 
 const FILE_WRITERS = new Set(['Write', 'Edit']);
 
@@ -46,10 +55,7 @@ export function refusedOutputPath(denial) {
   const path = denial.tool_input?.file_path;
   if (typeof path !== 'string') return null;
   const normalized = path.replaceAll('\\', '/').replace(/^(\.\/)+/, '');
-  const matched = REQUIRED_OUTPUTS.some(
-    (output) => normalized === output || normalized.endsWith(`/${output}`),
-  );
-  return matched ? path : null;
+  return REQUIRED_OUTPUT_PATTERN.test(normalized) ? path : null;
 }
 
 /**
@@ -117,10 +123,12 @@ export function classifyReviewerRun(text) {
   const denials = Array.isArray(result.permission_denials)
     ? result.permission_denials
     : [];
+  // The turn-ceiling ground reads the transcript's own count and nothing
+  // else, as it always has: no count is no denials.
   const denied =
     typeof result.permission_denials_count === 'number'
       ? result.permission_denials_count
-      : denials.length;
+      : 0;
 
   // 26 permission denials is not a hard case; it is the allowlist and the
   // instructions disagreeing about what the reviewer may do, and that
