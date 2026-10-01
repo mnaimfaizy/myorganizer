@@ -2396,7 +2396,11 @@ describe('createVaultSyncQueue - transient failures and retry scheduling', () =>
     await queue.drain(handle);
     expect(retryScheduleCalls[0]?.attempt).toBe(0);
 
-    // Invoke the first retry callback to trigger a second drain (this succeeds)
+    // Invoke the first retry callback to trigger a second drain (this succeeds).
+    // The retry function returns that drain, so awaiting it waits for the
+    // successful attempt — and its retryAttempt reset — before we dirty the
+    // vault again. A save during that drain is unmarked-before-converge and
+    // can fail in the same attempt, leaving retryAttempt at 1.
     const firstRetryCallback = retryScheduleCalls[0]!.retry;
     await firstRetryCallback();
 

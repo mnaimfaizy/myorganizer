@@ -40,6 +40,10 @@ _Avoid_: Admin, superuser, staff, operator, system admin
 A User blocked from authenticating. Disabling also ends their existing Sessions; re-enabling restores the ability to sign in but does not bring those Sessions back. Their Vault Ciphertext and profile remain until separately deleted or purged.
 _Avoid_: Banned user, suspended user, deactivated account, soft-deleted user
 
+**User Deletion**:
+A User's own, immediate, and irreversible removal of themselves and everything they own — Vault Ciphertext, Sessions, and third-party grants — offered after an Escape Copy. Not a Disabled User, and has no pending or recoverable state. The Admin Audit Log keeps its entries about the User, with the User removed from them.
+_Avoid_: account deletion (in domain language), deactivation, closing an account, soft delete
+
 **Admin Audit Log**:
 A durable record of Platform Admin actions on Users (who acted, what changed, which User was affected, when).
 _Avoid_: Activity log, admin history, audit trail, event log
@@ -733,7 +737,7 @@ The live deployment target Users use. Its backend is a distinct app root with it
 _Avoid_: live, prod (as the glossary name), staging (when you mean this)
 
 **Release**:
-A version of MyOrganizer that is live in Production, identified by a `vX.Y.Z` tag. Not the act of preparing one, and not the GitHub Release page that documents it.
+A version of MyOrganizer that is live in Production, identified by a `vX.Y.Z` tag. Not the act of preparing one, not the GitHub Release page that documents it, and not a Mobile Release, which is versioned on its own.
 _Avoid_: version, deployment, ship, build
 
 **Cut**:
@@ -755,6 +759,14 @@ _Avoid_: post-deploy sequence, go-live, activate, restart (as the whole thing)
 **Tag**:
 An annotated `vX.Y.Z` tag applied after Production Host Apply has succeeded. A receipt that a version shipped — never a trigger that ships it.
 _Avoid_: release tag (when you mean a trigger), version marker
+
+**Mobile Release**:
+A version of the Mobile App that an app store has approved and made available to Users, identified by a `mobile-vX.Y.Z` tag and numbered independently of Releases. Unlike a Release it is not live the moment it is approved — store review and rollout sit between the decision and the User — and earlier Mobile Releases stay in use alongside it.
+_Avoid_: store release, app release, mobile version, build (for the approved version)
+
+**Version Floor**:
+The lowest Mobile Release an environment's backend still serves. A Mobile App below it is refused and told to update, and must keep its unsynced changes on the device rather than treat the refusal as a rejection of its data.
+_Avoid_: minimum version, force update, kill switch, min supported version
 
 **Product Surface**:
 A fact MyOrganizer publishes by existing — its domains, its app store identity, the API origin its clients call. Public by nature: hiding one in git hides it from nobody who can use the app.
