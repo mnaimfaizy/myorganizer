@@ -33,27 +33,72 @@ of the Pull Requests the reviewer passed a later fix names as root cause.
 
 Recall is matched expected findings over expected findings, scored by
 `tools/scripts/review/score-golden-case.mjs` against the validated report of
-one reviewer run per case. A case passes at or above its `minRecall`. The
-reviewer is stochastic: a single run of a single case is not a measurement,
-which is why the baseline reports five runs of the same three cases and why
-promotion between tiers takes three consecutive catches.
+one reviewer run per case. A pattern case passes at or above its `minRecall`.
+The reviewer is stochastic: a single run of a single case is not a
+measurement, which is why the baseline reports five runs of the same three
+cases and why a case's tier is read from its last ten scored runs.
+
+A clean-diff case (issue #933) is the opposite measurement: a known-good
+merged pull request that carries `expectsNoBlocking: true` in place of
+`expected` and `minRecall`, and passes only when the report carries no
+Blocking finding. It has no recall — `scoreCase` reports it as `clean-pass`
+or `clean-fail`, never as a recall number, and the results record does the
+same (`OUTCOMES` in `tools/scripts/review/golden-results.mjs`). It measures
+false alarms rather than recall, and is selected by the same tier filter as
+every other case.
 
 ## Tiers
 
 A case's tier decides how often it is replayed
 ([ADR 0072](../adr/0072-a-golden-case-earns-its-replay-frequency.md)).
-Promotion to `guard` takes **three consecutive catches**; demotion to
-`frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
-promoted case is a detector that quietly stopped running.
+Since 2026-10-01 a case stands where its catch rate over its **last ten
+scored runs** puts it
+([ADR 0116](../adr/0116-a-golden-case-stands-on-its-catch-rate-over-its-last-ten-scored-runs.md)):
+**eight or more** catches at `guard`, **five or fewer** at `frontier`, six or
+seven where it was. Under ten scored runs nothing moves and the tier the set
+declares holds. A void is not a scored run. The table below is generated from
+the set and the [results record](golden-replay-results.jsonl) by
+`tools/scripts/review/golden-standing.mjs`, asserted by
+`yarn review:golden:results:check`, and is what the replay's tier filter
+reads.
 
-| Case                                         | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
-| -------------------------------------------- | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts`        | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak; caught in 35076286069 and 35156450789                                                                                                                                                                                                                                                                                                      |
-| `export-envelope-drops-tasks`                | `frontier` | 2026-09-22 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time**; caught in 35076286069 and 35156450789; **missed in 35723129169 — demoted a second time**, a clean miss ending a five-run streak; missed again in 35800528309                     |
-| `release-bump-leaves-generated-client-stale` | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486, 34673097908, 35076286069, 35156450789, 35723129169 and 35800528309 — **six consecutive, promotion earned and still not taken**: the no-empty-arm reason lapsed on 2026-09-22 when `export-envelope-drops-tasks` was demoted back to `frontier`, so the arm now holds another case and promotion is available; taking it is out of scope for #734 |
-| `signup-password-wrapper-inside-formcontrol` | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, six turns); caught in 35156450789                                                                                                                                                                                                                       |
-| `import-confirm-is-bare-window-confirm`      | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                         |
-| `mail-test-setup-assigns-undefined-to-env`   | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                                                                                    |
+<!-- GENERATED:golden-standing:START -->
+
+<!-- prettier-ignore-start -->
+| Case | Declared tier | Scored runs | Caught of last ten | Rate | Stands at | Why |
+| --- | --- | --- | --- | --- | --- | --- |
+| `groceries-blob-type-without-fanouts` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `export-envelope-drops-tasks` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `release-bump-leaves-generated-client-stale` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `signup-password-wrapper-inside-formcontrol` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `import-confirm-is-bare-window-confirm` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `mail-test-setup-assigns-undefined-to-env` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `npm-advisory-rekey-lands-clean` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `escaped-defect-negation-fix-lands-clean` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `trust-measurement-docs-land-clean` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `youtube-run-refresh-gated-on-polled-liveness` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `e2e-export-download-read-through-download-path` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+<!-- prettier-ignore-end -->
+
+<!-- GENERATED:golden-standing:END -->
+
+Before that, promotion to `guard` took three consecutive catches and demotion
+to `frontier` took one miss. The history below was written under that rule
+and is kept as written: it is where each declared tier came from.
+
+| Case                                             | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| ------------------------------------------------ | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts`            | `guard`    | 2026-09-07 | caught in every run, now eleven of eleven (34345667427, 34351285079, 34582767531, 34591297535); void in 34441162698 (turn ceiling), which neither extends nor breaks the streak; caught in 35076286069 and 35156450789                                                                                                                                                                                                                                                                                                      |
+| `export-envelope-drops-tasks`                    | `frontier` | 2026-09-22 | promoted on four catches, demoted on the miss in run 34105977391; missed again in 34171728640; caught again in 34215499508, the first run after retirement; caught in 34344266006, missed in 34345667427, 34351285079 and 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted a second time**; caught in 35076286069 and 35156450789; **missed in 35723129169 — demoted a second time**, a clean miss ending a five-run streak; missed again in 35800528309                     |
+| `release-bump-leaves-generated-client-stale`     | `frontier` | 2026-09-07 | caught once, in 34171728640; missed in 34344266006 and 34345667427; void in 34351285079 (rate limit); caught in 34441162698; missed in 34591297535; caught in 34663295486, 34673097908, 35076286069, 35156450789, 35723129169 and 35800528309 — **six consecutive, promotion earned and still not taken**: the no-empty-arm reason lapsed on 2026-09-22 when `export-envelope-drops-tasks` was demoted back to `frontier`, so the arm now holds another case and promotion is available; taking it is out of scope for #734 |
+| `signup-password-wrapper-inside-formcontrol`     | `guard`    | 2026-09-12 | missed in 34345667427; **first catch** in 34351285079, the first run with an obligation firing on its site; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, six turns); caught in 35156450789                                                                                                                                                                                                                       |
+| `import-confirm-is-bare-window-confirm`          | `guard`    | 2026-09-12 | first catch in 34345667427; void in 34351285079 (rate limit), which neither extends nor breaks the streak; missed in 34441162698; caught in 34591297535, 34663295486 and 34673097908 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                         |
+| `mail-test-setup-assigns-undefined-to-env`       | `guard`    | 2026-09-12 | missed in 34345667427; void in 34351285079 (rate limit); **first catch** in 34441162698, then 34591297535 and 34663295486 — **three consecutive, promoted**; void in 35076286069 (five-hour rate limit, one turn); caught in 35156450789                                                                                                                                                                                                                                                                                    |
+| `npm-advisory-rekey-lands-clean`                 | `frontier` | 2026-09-30 | clean-diff case (issue #933), added from PR #922; not yet replayed                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `escaped-defect-negation-fix-lands-clean`        | `frontier` | 2026-09-30 | clean-diff case (issue #933), added from PR #928; not yet replayed                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `trust-measurement-docs-land-clean`              | `frontier` | 2026-09-30 | clean-diff case (issue #933), added from PR #931; not yet replayed                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `youtube-run-refresh-gated-on-polled-liveness`   | `frontier` | 2026-09-30 | added from the fix attributed to PR #745 (issue #934); the only escaped defect in the 2026-09-28 measurement — the reviewer saw #745 and passed it — so the case starts from a recorded miss on the live pull request, not from a replay; not yet replayed                                                                                                                                                                                                                                                                  |
+| `e2e-export-download-read-through-download-path` | `frontier` | 2026-09-30 | added from the second fix attributed to PR #77 (issue #934); shares that pull request's range with `export-envelope-drops-tasks` for the reason its incident line gives, and no review ever saw the diff — #77 merged before the reviewer went live; not yet replayed                                                                                                                                                                                                                                                       |
 
 The tier and the evidence that earned it are in
 `tools/config/review-golden-set.json`, asserted by `yarn review:golden:check`.
@@ -97,30 +142,77 @@ item 7). It stays in the set under `parked`, id reserved the same way, with a
 `reentryCondition` in place of a `reason`: it returns to the replayed set the
 day the matching entry in `docs/review/REVIEW_CHECKLIST.md`'s Deferred
 candidates — "New persisted state has an inverse" — is promoted into
-`tools/config/review-obligations.json`. **Six cases remain**: five guard, one
-frontier — and the one frontier case has now earned promotion without taking it, for the reason recorded under Runs. Finding or writing a replacement frontier case is the open work.
+`tools/config/review-obligations.json`. Three more candidates joined it on
+2026-09-30, traced from attributed fixes under issue #934 and parked rather
+than added, each for a reason written into its own `reentryCondition`:
+
+- `mobile-native-program-declares-dom` (PR #159, fixed by #894 and #901) and
+  `youtube-sync-failure-collapsed-before-logging` (PR #357, fixed by #893)
+  are parked for the same reason, and it is the one
+  [ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)
+  item 2 creates: the defect is in the diff and citable, but no document at
+  either head names the rule, so there is no standard the range could have
+  broken and a replay would score the apparatus rather than the reviewer.
+  That ADR's Consequences name the way back — carry the lesson in the
+  harness — so each returns the day an obligation names its defect with a
+  `goldenCase` pointing at it. Both ranges are also far larger than any the
+  replay has scored inside its 80-turn ceiling, which is recorded beside the
+  condition so promotion checks the budget first.
+- `todos-removal-waiver-reraised-as-blocking` (PR #852) is the false-alarm
+  loop PRD #925 recorded: a precondition waived in ADR 0003 rather than in
+  the spec, raised as Blocking in seven wordings across eleven runs. The
+  pull request's own review data, read on 2026-10-01, bears that out: eleven
+  runs, the waived precondition Blocking under seven titles in runs 4 to 10,
+  and no Blocking finding in the last run at `7e01e9d`. It wants the
+  clean-diff shape. The two conditions it was parked on now hold — slice #938
+  put the waiver clause in the Spec brief, and the merged head's review raised
+  nothing Blocking — and it stays parked on a third: every case in the set
+  carries no spec source, so a replay would never reach the clause it
+  measures. Its entry says what returns it.
+
+The trace's sixth candidate gained no entry of its own and is not dropped
+either: PR #907 is the third fix attributed to PR #573, and its defect — a web
+write path for an array-shaped Vault Blob Type that recorded no deletion — is
+the same missing inverse `sync-bookmarks-without-restore-or-meta-push` already
+holds that range for. Its attribution went into that entry's incident line, and
+the reason a second case on the range is not warranted went into its
+`reentryCondition`: one trigger returns both, and the range is the largest in
+the set at 122 files.
+
+**Eight pattern cases remain**: four guard and four frontier — the two issue
+#934 added, plus `export-envelope-drops-tasks`, demoted a second time on
+2026-09-22, and `release-bump-leaves-generated-client-stale`, which has earned
+promotion without taking it for the reason recorded under Runs. (This sentence
+read "five guard, one frontier" until 2026-09-30; it had not been recounted
+since that demotion.) **Three clean-diff cases** (issue #933) join them, all
+`frontier` and not yet replayed.
 
 ## Authorship
 
 Each case's incident line already names the pull request that introduced its
-defect. Read against `git log` for that PR, four are human-authored and two
-are agent-authored — and the two agents are not the same model family as each
-other, which matters for the reviewer's own family (Claude, `claude-sonnet-5`
-by default per `CODE_REVIEW_MODEL`). The reasoning and the run-by-run ledger
+defect. Read against `git log` for that PR, five are human-authored and three
+are agent-authored — and the three agents are not all the same model family,
+which matters for the reviewer's own family (Claude, `claude-sonnet-5` by
+default per `CODE_REVIEW_MODEL`). Issue #934's two additions moved both
+counts by one, and the Claude side of the split is now two cases rather than
+one; the catch-rate table below is unchanged, because neither has been
+replayed. The reasoning and the run-by-run ledger
 these two tables summarize are in
 [the 2026-09-11 authorship brief](../research/2026-09-11-the-same-family-test-has-one-data-point.md),
 which is frozen at that date. These two tables are not: like the rest of this
 file, update them as new runs land or a case's classification needs
 correcting.
 
-| Case                                          | Introduced by                                                  | Author | Family                                                    |
-| --------------------------------------------- | -------------------------------------------------------------- | ------ | --------------------------------------------------------- |
-| `groceries-blob-type-without-fanouts` (guard) | PR #101                                                        | human  | —                                                         |
-| `export-envelope-drops-tasks`                 | PR #77                                                         | human  | —                                                         |
-| `release-bump-leaves-generated-client-stale`  | PR #379 (`yarn release:cut`, run by a human)                   | human  | —                                                         |
-| `import-confirm-is-bare-window-confirm`       | PR #40                                                         | human  | —                                                         |
-| `signup-password-wrapper-inside-formcontrol`  | PR #215 (`Co-authored-by: Cursor <cursoragent@cursor.com>`)    | agent  | Cursor (Composer)                                         |
-| `mail-test-setup-assigns-undefined-to-env`    | PR #415, carrying interrupted slice #396's TestScaffold output | agent  | Claude (Haiku 4.5, `test-scaffold` on the Claude harness) |
+| Case                                             | Introduced by                                                  | Author | Family                                                    |
+| ------------------------------------------------ | -------------------------------------------------------------- | ------ | --------------------------------------------------------- |
+| `groceries-blob-type-without-fanouts` (guard)    | PR #101                                                        | human  | —                                                         |
+| `export-envelope-drops-tasks`                    | PR #77                                                         | human  | —                                                         |
+| `release-bump-leaves-generated-client-stale`     | PR #379 (`yarn release:cut`, run by a human)                   | human  | —                                                         |
+| `import-confirm-is-bare-window-confirm`          | PR #40                                                         | human  | —                                                         |
+| `signup-password-wrapper-inside-formcontrol`     | PR #215 (`Co-authored-by: Cursor <cursoragent@cursor.com>`)    | agent  | Cursor (Composer)                                         |
+| `mail-test-setup-assigns-undefined-to-env`       | PR #415, carrying interrupted slice #396's TestScaffold output | agent  | Claude (Haiku 4.5, `test-scaffold` on the Claude harness) |
+| `e2e-export-download-read-through-download-path` | PR #77, the same range as `export-envelope-drops-tasks`        | human  | —                                                         |
+| `youtube-run-refresh-gated-on-polled-liveness`   | PR #745 (every commit `Co-Authored-By: Claude Opus 5`)         | agent  | Claude (Opus 5)                                           |
 
 Catch rate by authorship, across every valid replay of each case recorded in
 this file through Run 49 (2026-09-12). "Valid" excludes void runs (rate limit,
@@ -168,11 +260,15 @@ measurement, which is why the baseline above took five runs of the same three
 cases before drawing any conclusion. What changes here is only how the
 repetitions are spread out: three dispatches, read together once all three
 have landed, are what this record treats as one measurement. A single
-dispatch can still move a case's tier exactly as before — promotion on three
-consecutive catches, demotion on one miss, both mechanical rules ADR 0072
-already sets and this does not touch — but no narrative conclusion in this
-file ("the brief helped," "the cadence fixed it") should rest on one dispatch
-alone. See ADR 0072, item 8.
+run no longer moves a case's tier: since ADR 0116 a scheduled run is one
+scored run of the ten a standing is read over, and a label or dispatch run is
+not committed to the record at all, so it moves no tier. No narrative
+conclusion in this file ("the brief helped," "the cadence fixed it") should
+rest on one dispatch alone. See ADR 0072, item 8.
+
+The **scheduled** replay is the exception to one repetition: it runs each
+frontier case three times in one run, still one session at a time
+(ADR 0116). A guard runs once.
 
 ## Runs
 
@@ -610,6 +706,38 @@ Read that way, this run's result on the case is a void. And a replay's working
 tree is now the case head, standards included, with only the reviewer's
 harness laid over it from the pull request
 ([ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)).
+
+### Recorded runs
+
+Every case run of `review-golden-replay.yml` appends one JSON line to
+[`golden-replay-results.jsonl`](golden-replay-results.jsonl) — date, workflow
+run id, commit, case id, outcome (`caught`, `missed`, `clean-pass`,
+`clean-fail`, or `void` with its reason — issue #933 added the two clean
+outcomes, scored on a Blocking finding rather than a recall fraction),
+recall, `total_cost_usd`, turns, and model — including voids, which
+are recorded as voids and never as misses or catches
+([ADR 0101](../adr/0101-a-replay-whose-answer-sheet-fails-its-check-measured-nothing.md)).
+Every run uploads its lines as an artifact; a scheduled run on `main` also
+commits them here, so they outlive the artifact's 30-day retention. The table
+below is generated from that record by
+`tools/scripts/review/golden-results.mjs`, and asserted against it by
+`yarn review:golden:results:check` — the same shape as the other
+generated-page checks (`review:pages:check`, `agents:map:check`): generate
+from source, diff against what is committed, fail on drift. Do not hand-edit
+between the markers; edit the record and regenerate with
+`node tools/scripts/check-review-golden-results.mjs --write` instead, which
+is what the scheduled replay runs after it appends to the record. The
+table above this section is historical, hand-written, and untouched by the
+check — the generated table starts from the first recorded line (issue
+#932).
+
+<!-- GENERATED:golden-runs:START -->
+
+<!-- prettier-ignore-start -->
+_No recorded runs yet._
+<!-- prettier-ignore-end -->
+
+<!-- GENERATED:golden-runs:END -->
 
 ## Reproduce
 

@@ -9,8 +9,10 @@ import {
   CASE_TIERS,
   GOLDEN_SET_PATH,
   REPLAY_INPUT_PATHS,
+  SCHEDULED_FRONTIER_REPETITIONS,
   caseIdsInTier,
   isFirstWeekOfMonth,
+  replayMatrix,
   scheduledTier,
 } from './golden-tiers.mjs';
 
@@ -181,4 +183,91 @@ test('the first week of the month is days one to seven', () => {
   assert.equal(isFirstWeekOfMonth(new Date('2026-10-05T03:00:00Z')), true);
   assert.equal(isFirstWeekOfMonth(new Date('2026-10-07T03:00:00Z')), true);
   assert.equal(isFirstWeekOfMonth(new Date('2026-10-08T03:00:00Z')), false);
+});
+
+// ---------------------------------------------------------------------------
+// Standing by rate, and the scheduled repetitions (ADR 0116)
+// ---------------------------------------------------------------------------
+
+const tenRuns = (id, outcome) =>
+  Array.from({ length: 10 }, () => ({ case: id, outcome }));
+
+// The filter selects by where a case stands, not only by what the set
+// declares: ten scored runs in the record move it, and the weekly replay
+// follows without anyone editing the set.
+test('a tier selects the cases standing in it, read from the record', () => {
+  const records = [
+    ...tenRuns('a-guard', 'missed'),
+    ...tenRuns('b-frontier', 'caught'),
+  ];
+  assert.deepEqual(caseIdsInTier(set, 'guard', records), ['b-frontier']);
+  assert.deepEqual(caseIdsInTier(set, 'frontier', records), [
+    'a-guard',
+    'c-frontier',
+  ]);
+  // Every case is still every case.
+  assert.deepEqual(caseIdsInTier(set, ALL_TIERS, records), [
+    'a-guard',
+    'b-frontier',
+    'c-frontier',
+  ]);
+});
+
+test('under ten scored runs the declared tier selects', () => {
+  const records = tenRuns('a-guard', 'missed').slice(0, 9);
+  assert.deepEqual(caseIdsInTier(set, 'guard', records), ['a-guard']);
+});
+
+test('the scheduled replay runs each frontier case three times and each guard once', () => {
+  assert.equal(SCHEDULED_FRONTIER_REPETITIONS, 3);
+  assert.deepEqual(replayMatrix(set, ALL_TIERS, { event: 'schedule' }), [
+    { case: 'a-guard', repetition: 1 },
+    { case: 'b-frontier', repetition: 1 },
+    { case: 'b-frontier', repetition: 2 },
+    { case: 'b-frontier', repetition: 3 },
+    { case: 'c-frontier', repetition: 1 },
+    { case: 'c-frontier', repetition: 2 },
+    { case: 'c-frontier', repetition: 3 },
+  ]);
+});
+
+// ADR 0072 item 8: a label or a dispatch is one repetition, on any tier.
+test('a label and a dispatch stay one repetition per case', () => {
+  for (const event of ['pull_request', 'workflow_dispatch', undefined])
+    assert.deepEqual(replayMatrix(set, 'frontier', { event }), [
+      { case: 'b-frontier', repetition: 1 },
+      { case: 'c-frontier', repetition: 1 },
+    ]);
+});
+
+// The repetitions follow the standing, not the declaration: a case the
+// record promoted is a guard and runs once.
+test('a case promoted by the record is repeated as the guard it stands at', () => {
+  const records = tenRuns('b-frontier', 'caught');
+  assert.deepEqual(
+    replayMatrix(set, ALL_TIERS, { records, event: 'schedule' }).filter(
+      (m) => m.case === 'b-frontier',
+    ),
+    [{ case: 'b-frontier', repetition: 1 }],
+  );
+});
+
+test('the matrix CLI prints what the workflow reads, with nothing installed', () => {
+  const out = execFileSync(
+    process.execPath,
+    [
+      'tools/scripts/review/golden-tiers.mjs',
+      '--matrix',
+      '--tier',
+      'all',
+      '--event',
+      'workflow_dispatch',
+    ],
+    { encoding: 'utf8', env: { ...process.env, NODE_PATH: '' } },
+  );
+  const committed = JSON.parse(readFileSync(GOLDEN_SET_PATH, 'utf8'));
+  assert.deepEqual(
+    JSON.parse(out),
+    committed.cases.map((c) => ({ case: c.id, repetition: 1 })),
+  );
 });

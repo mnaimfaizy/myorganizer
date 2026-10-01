@@ -113,3 +113,8 @@ included, for the same reason: a line that disappears when the count is zero rea
 A citation check with nothing to compare against
 is the silent no-op shape this repository keeps rediscovering, and it would be indistinguishable
 from the state run 45 was in.
+
+`yarn review:test` covers `checkAnswers` and replays the two answer sheets from 2026-09-10 that
+justified building it: the recall gain the obligation worklist produced that day is only
+trustworthy because the sheets behind it were checked against the tree they claimed, not taken on
+faith.

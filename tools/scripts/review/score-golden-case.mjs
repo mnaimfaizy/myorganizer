@@ -13,13 +13,14 @@
 // narrowed to one tier (ADR 0072); `--show` prints the facts the reviewer
 // prompt needs for one case as JSON.
 //
-// Exit 0 = recall at or above the case's minimum. Exit 1 = below it.
-// Exit 2 = could not run.
+// Exit 0 = the case passed: recall at or above its minimum for a pattern
+// case, or no Blocking finding for a clean case (issue #933). Exit 1 = it
+// did not. Exit 2 = could not run.
 import { appendFileSync, writeFileSync } from 'node:fs';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
 import { loadGoldenSet, renderScore, scoreCase } from './golden.mjs';
-import { caseIdsInTier } from './golden-tiers.mjs';
+import { caseIdsInTier, loadGoldenRecords } from './golden-tiers.mjs';
 
 export const main = (argv) => {
   const bail = cannotRun('review-golden');
@@ -27,15 +28,17 @@ export const main = (argv) => {
   const set = loadGoldenSet();
 
   if ('list' in flags) {
-    // `--list --tier frontier` is the replay matrix for an ordinary push;
-    // `--tier guard` is the narrower one (ADR 0072). `all`, or no --tier,
-    // lists everything. The filter itself is golden-tiers.mjs and only
+    // `--list --tier frontier` lists the cases standing at frontier,
+    // `--tier guard` the ones standing at guard (ADR 0072, ADR 0116). `all`,
+    // or no --tier, lists everything. The filter itself is golden-tiers.mjs and only
     // golden-tiers.mjs: the replay workflow cannot call this script (its
     // `cases` job installs nothing, and the import above reaches zod), so
     // the one thing both callers must agree on lives where both can reach.
     try {
       const tier = typeof flags.tier === 'string' ? flags.tier : undefined;
-      process.stdout.write(`${JSON.stringify(caseIdsInTier(set, tier))}\n`);
+      process.stdout.write(
+        `${JSON.stringify(caseIdsInTier(set, tier, loadGoldenRecords()))}\n`,
+      );
     } catch (err) {
       bail(err.message);
     }

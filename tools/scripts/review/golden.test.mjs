@@ -8,6 +8,7 @@ import {
   loadGoldenSet,
   renderScore,
   replayObligationCheckFindings,
+  replayRepetitionFindings,
   replayTriggerFindings,
   scoreCase,
 } from './golden.mjs';
@@ -59,7 +60,11 @@ test('a well-formed set passes and the committed set loads', () => {
   // request that introduced it.
   for (const c of committed.cases) {
     assert.match(c.incident, /#\d+/, c.id);
-    assert.match(c.incident, /introduced by PR #\d+/, c.id);
+    // A clean case (issue #933) names a merged pull request that introduced
+    // no defect, so "introduced by PR" does not apply to it the way it does
+    // to every other case here.
+    if (!c.expectsNoBlocking)
+      assert.match(c.incident, /introduced by PR #\d+/, c.id);
   }
   // A guard runs on a narrower trigger than a frontier case (ADR 0072), so
   // the promotion has to cite the runs that earned it rather than assert it.
@@ -71,10 +76,16 @@ test('a well-formed set passes and the committed set loads', () => {
     committed.cases.some((c) => c.tier === 'frontier'),
     'the set has no frontier case left',
   );
-  // The narrowed set is six cases; the never-caught synchronisation case is
-  // parked, not retired, and its id stays reserved with a written condition
-  // for its return rather than a reason it cannot be won.
-  assert.equal(committed.cases.length, 6);
+  // The set is eight pattern cases plus three clean-diff cases (issue #933):
+  // the narrowed six, plus the two frontier cases issue #934 traced from
+  // attributed fixes (#745 and the second defect attributed to #77). Three
+  // more of that trace are parked, not retired; the fourth was folded into
+  // the parked entry already holding its range. The loop below is what
+  // asserts the property that matters — every parked entry keeps its id
+  // reserved and carries a written condition for its return rather than a
+  // reason it cannot be won — so the count above stays out of it.
+  assert.equal(committed.cases.length, 11);
+  assert.equal(committed.cases.filter((c) => c.expectsNoBlocking).length, 3);
   assert.ok(committed.parked?.length >= 1, 'the set has no parked case');
   for (const p of committed.parked) {
     assert.match(p.incident, /#\d+/, p.id);
@@ -218,6 +229,121 @@ test('malformed sets are named precisely', () => {
     bad((s) => s.cases.push({ ...s.cases[0] })),
     GoldenSetError,
   );
+});
+
+// ---------------------------------------------------------------------------
+// Clean-diff cases (issue #933): a known-good merged pull request, which
+// passes only when the report carries no Blocking finding. No expected
+// findings, no recall — the opposite shape from every case above.
+
+const cleanGoldenCase = {
+  id: 'clean-example',
+  title: 'A known-good merged pull request',
+  incident:
+    'PR #900, clean: merged 2026-09-20; no later fix names it as root cause',
+  tier: 'frontier',
+  base: sha('c'),
+  head: sha('d'),
+  expectsNoBlocking: true,
+  why: 'a small, focused diff whose own review raised no Blocking finding',
+};
+
+test('a well-formed clean case passes and loads', () => {
+  const set2 = { schemaVersion: 4, cases: [cleanGoldenCase] };
+  assert.equal(assertGoldenSet(set2), set2);
+});
+
+test('a malformed clean case is named precisely', () => {
+  const set2 = { schemaVersion: 4, cases: [cleanGoldenCase] };
+  const bad2 = (mutate) => {
+    const copy = JSON.parse(JSON.stringify(set2));
+    mutate(copy);
+    return () => assertGoldenSet(copy);
+  };
+  assert.throws(
+    bad2((s) => delete s.cases[0].why),
+    /must say why this merged pull request was chosen/,
+  );
+  assert.throws(
+    bad2((s) => (s.cases[0].why = '')),
+    /must say why this merged pull request was chosen/,
+  );
+  // A clean case has nothing to recall, so carrying the fields recall is
+  // computed from is a contradiction, not a widening.
+  assert.throws(
+    bad2((s) => {
+      s.cases[0].expected = [];
+    }),
+    /must not carry expected/,
+  );
+  assert.throws(
+    bad2((s) => {
+      s.cases[0].minRecall = 1;
+    }),
+    /must not carry minRecall/,
+  );
+  // A pattern case (the default shape) must not carry `why` — that field
+  // belongs to a clean case, and each pattern expectation has its own.
+  const bad = (mutate) => {
+    const copy = JSON.parse(JSON.stringify(set));
+    mutate(copy);
+    return () => assertGoldenSet(copy);
+  };
+  assert.throws(
+    bad((s) => {
+      s.cases[0].why = 'stray';
+    }),
+    /why belongs to a clean case/,
+  );
+});
+
+test('a clean case scores clean-pass with no Blocking finding, never a recall number', () => {
+  const score = scoreCase(cleanGoldenCase, { findings: [] });
+  assert.equal(score.outcome, 'clean-pass');
+  assert.equal(score.pass, true);
+  assert.equal(score.clean, true);
+  assert.deepEqual(score.blocking, []);
+  assert.equal('recall' in score, false);
+  assert.equal('minRecall' in score, false);
+});
+
+test('a should-fix or nit finding does not fail a clean case', () => {
+  for (const severity of ['should-fix', 'nit']) {
+    const score = scoreCase(cleanGoldenCase, {
+      findings: [finding({ severity })],
+    });
+    assert.equal(score.outcome, 'clean-pass', severity);
+    assert.equal(score.pass, true, severity);
+  }
+});
+
+test('a clean case scores clean-fail on one Blocking finding, and names it', () => {
+  const score = scoreCase(cleanGoldenCase, {
+    findings: [finding({ severity: 'blocking' })],
+  });
+  assert.equal(score.outcome, 'clean-fail');
+  assert.equal(score.pass, false);
+  assert.deepEqual(score.blocking, ['abcdefabcdef']);
+  assert.equal('recall' in score, false);
+});
+
+test('the rendered clean score reports clean-pass or clean-fail, never a recall count', () => {
+  const pass = renderScore(
+    cleanGoldenCase,
+    scoreCase(cleanGoldenCase, { findings: [] }),
+  );
+  assert.match(pass, /clean-pass/);
+  assert.doesNotMatch(pass, /Recall/);
+
+  const fail = renderScore(
+    cleanGoldenCase,
+    scoreCase(cleanGoldenCase, {
+      findings: [finding({ severity: 'blocking' })],
+    }),
+  );
+  assert.match(fail, /clean-fail/);
+  assert.match(fail, /abcdefabcdef/);
+  assert.doesNotMatch(fail, /Recall/);
 });
 
 test('a matching finding scores recall 1 and passes', () => {
@@ -626,6 +752,120 @@ test('a schedule that does not ask which inputs moved is refused', () => {
   );
   assert.ok(
     findings.some((f) => /--scheduled/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The scheduled repetitions (ADR 0116)
+// ---------------------------------------------------------------------------
+
+const repetitionSet = {
+  cases: [
+    { id: 'a-guard', tier: 'guard' },
+    { id: 'b-frontier', tier: 'frontier' },
+  ],
+};
+
+const repeating = ({
+  list = [
+    '          EVENT: ${{ github.event_name }}',
+    '        run: |',
+    '          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --matrix --tier "$TIERS" --event "$EVENT")"',
+  ],
+  matrix = '        include: ${{ fromJSON(needs.cases.outputs.matrix) }}',
+  transcript = '          transcript-artifact: golden-transcript-${{ matrix.case }}-r${{ matrix.repetition }}',
+  artifact = '          name: golden-${{ matrix.case }}-r${{ matrix.repetition }}',
+} = {}) =>
+  [
+    'jobs:',
+    '  cases:',
+    '    steps:',
+    '      - name: List the cases',
+    '        env:',
+    ...list,
+    '  replay:',
+    '    strategy:',
+    '      matrix:',
+    matrix,
+    '    steps:',
+    '      - name: Run the reviewer',
+    '        with:',
+    transcript,
+    '      - name: Keep the report',
+    '        with:',
+    artifact,
+    '',
+  ].join('\n');
+
+test('the replay workflow in the tree repeats a frontier case three times on the schedule', () => {
+  const workflow = readFileSync(
+    '.github/workflows/review-golden-replay.yml',
+    'utf8',
+  );
+  assert.deepEqual(replayRepetitionFindings(workflow, loadGoldenSet()), []);
+});
+
+test('a workflow that asks for the repetition matrix and keeps each result apart is sound', () => {
+  assert.deepEqual(replayRepetitionFindings(repeating(), repetitionSet), []);
+});
+
+// The matrix this replaced: a bare list of case ids, one session each. The
+// schedule then buys one run per case, and one run decides nothing.
+test('a matrix of case ids alone is refused', () => {
+  const findings = replayRepetitionFindings(
+    repeating({
+      list: [
+        '        run: |',
+        '          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --tier "$TIERS")"',
+      ],
+      matrix: '        case: ${{ fromJSON(needs.cases.outputs.matrix) }}',
+    }),
+    repetitionSet,
+  );
+  assert.ok(
+    findings.some((f) => /--matrix --event/.test(f)),
+    findings.join('\n'),
+  );
+  assert.ok(
+    findings.some((f) => /never becomes a reviewer session/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+test('a matrix built without the event is refused', () => {
+  const findings = replayRepetitionFindings(
+    repeating({
+      list: [
+        '        run: |',
+        '          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --matrix --tier "$TIERS")"',
+      ],
+    }),
+    repetitionSet,
+  );
+  assert.ok(
+    findings.some((f) => /--matrix --event/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+// upload-artifact refuses a name already taken in the run, so three
+// repetitions under one name keep one result line and lose two.
+test('an artifact not named for its repetition is refused', () => {
+  const findings = replayRepetitionFindings(
+    repeating({
+      artifact: '          name: golden-${{ matrix.case }}',
+      transcript:
+        '          transcript-artifact: golden-transcript-${{ matrix.case }}',
+    }),
+    repetitionSet,
+  );
+  assert.ok(
+    findings.some((f) => /result artifact is not named/.test(f)),
+    findings.join('\n'),
+  );
+  assert.ok(
+    findings.some((f) => /transcript artifact is not named/.test(f)),
     findings.join('\n'),
   );
 });

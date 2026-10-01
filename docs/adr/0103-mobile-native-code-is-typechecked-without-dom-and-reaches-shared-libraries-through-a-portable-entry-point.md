@@ -42,4 +42,10 @@ The grilling session for #882 found four facts that changed the question:
 - Native no longer loads `libs/auth/src/lib/auth.ts` at runtime, so the browser storage adapter is not constructed on Hermes.
 - `@myorganizer/<lib>/portable` is the first slash alias in `tsconfig.base.json` that does not name its own Nx project. The `/portable` suffix marks an entry point into an existing library, not a new project.
 - **`types: ["node"]` still over-admits.** The native program still accepts Node's global `crypto`, `Buffer`, and `process`, which Hermes does not provide. The Portable Entry Point rule in `mobile-platform:check` is what keeps a Node-only barrel out of native code until #892 declares the globals the native runtime actually has.
+- `mobile-platform:check` also fails a bare `react-native/…` subpath import (excluding the separate
+  `@react-native/*` scope), across all four call forms — `from '...'`, `require('...')`,
+  `require.resolve('...')`, and dynamic `import('...')`. Deep imports are deprecated at React Native
+  0.80 with removal planned, and nothing else in this repo catches them: `@react-native/eslint-config`
+  is not installed, so ESLint has no opinion on the subpath, and the compiler only reaches files a
+  program actually includes, while this check scans every mobile source file regardless.
 - The `libs/mobile/*` tsconfigs have no typecheck target of their own. Their source is compiled through the app's two programs, and `yarn typecheck:check` (`tools/scripts/check-typecheck.mjs`) also compiles each library's own `tsconfig.lib.json`; the browser-globals rule of `mobile-platform:check` still scans their source. Since issue #740 they extend `libs/mobile/tsconfig.mobile.json`, which sets `lib: ["esnext"]`, so they no longer inherit `dom` from `tsconfig.base.json`. That makes a library's `tsconfig.lib.json` a native program too, so a `.web` Platform Variant inside one must be excluded there — `libs/mobile/feat/vault/tsconfig.lib.json` excludes `crypto.web.ts`, or `typecheck:check` fails on `CryptoKey` — and is checked by the app's web program instead.

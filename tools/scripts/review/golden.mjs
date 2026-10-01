@@ -20,13 +20,29 @@
  * enough to be a tuple by pinning `ruleId` to one catalogue id; an expectation
  * that pins none is simply never strict. Recall is matched over expected.
  *
+ * A case may instead be clean-diff (issue #933): a known-good merged Pull
+ * Request that measures false alarms rather than recall. It carries
+ * `expectsNoBlocking: true` and a `why` explaining what makes it a clean
+ * choice — no later fix names it as root cause and its own review raised no
+ * Blocking finding — in place of `expected` and `minRecall`, which the set
+ * measures recall from and which a clean case has none of: there is nothing
+ * to recall when nothing should have been found. `scoreCase` reports it as
+ * `clean-pass` or `clean-fail`, never as a recall number, because averaging a
+ * pass/fail measurement into a recall fraction would hide which kind failed.
+ *
  * Everything here is pure; `score-golden-case.mjs` reads files and exits.
  */
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { CASE_TIERS, GOLDEN_SET_PATH } from './golden-tiers.mjs';
+import {
+  CASE_TIERS,
+  GOLDEN_SET_PATH,
+  SCHEDULED_FRONTIER_REPETITIONS,
+  SCHEDULE_EVENT,
+  replayMatrix,
+} from './golden-tiers.mjs';
 import { RULES_DISPLAY_PATH, ruleById } from './rules.mjs';
 import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 
@@ -43,16 +59,16 @@ export const GOLDEN_SET_SCHEMA_VERSION = 4;
  * A case's tier decides how often it is replayed (ADR 0072).
  *
  * `frontier` is a case the reviewer misses. It is the reason to run the
- * replay at all, so it runs whenever anything that produces a review
- * changes. `guard` is a case the reviewer catches reliably; it carries no
- * new information per run and exists only to catch a brief or contract
- * edit silently undoing something that works, so it runs on the narrower
- * set of paths that could do that.
+ * replay at all, so it runs weekly when a reviewer input moved (ADR 0109).
+ * `guard` is a case the reviewer catches reliably; it carries no new
+ * information per run and exists only to catch a brief or contract edit
+ * silently undoing something that works, so it runs monthly.
  *
- * Promotion to `guard` takes three consecutive catches, recorded in the
- * case's `tierEvidence`. Demotion to `frontier` takes one miss. The
- * asymmetry is deliberate: a wrongly promoted case is a detector that
- * quietly stopped running.
+ * The `tier` a case declares here is where it starts. Once the results
+ * record holds ten scored runs of it, its catch rate over the last ten
+ * decides where it stands (ADR 0116, golden-standing.mjs), and the tier
+ * filter follows the record. A case declared `guard` still cites, in
+ * `tierEvidence`, the runs that put it there.
  */
 export const GOLDEN_CASE_TIERS = CASE_TIERS;
 
@@ -109,47 +125,71 @@ export function assertGoldenSet(set, source = 'golden set') {
     if (!SHA.test(c.base) || !SHA.test(c.head))
       fail(`${where}: base and head must be full 40-hex SHAs`);
     if (c.base === c.head) fail(`${where}: base equals head`);
-    if (!Array.isArray(c.expected) || c.expected.length === 0)
-      fail(`${where}: expected must be a non-empty array`);
-    const expectedIds = new Set();
-    for (const e of c.expected) {
-      const w = `${where}, expected ${e.id ?? '(no id)'}`;
-      if (typeof e.id !== 'string' || !ID.test(e.id))
-        fail(`${w}: id must be a lowercase slug`);
-      if (expectedIds.has(e.id)) fail(`${w}: duplicate expected id`);
-      expectedIds.add(e.id);
-      if (!FINDING_AXES.includes(e.axis)) fail(`${w}: axis ${e.axis}`);
-      if (typeof e.source !== 'string') fail(`${w}: source pattern missing`);
-      compile(e.source, w);
-      if (typeof e.rule !== 'string') fail(`${w}: rule pattern missing`);
-      compile(e.rule, w);
-      // Optional, and a literal rather than a pattern: it is hashed, not
-      // matched. An id the catalogue does not carry could never be minted by
-      // the validator, so an expectation naming one would annotate `strict`
-      // false for ever and read as a reviewer that keeps missing the tuple.
-      if (e.ruleId !== undefined) {
-        if (typeof e.ruleId !== 'string' || !ruleById(e.ruleId))
-          fail(`${w}: ruleId ${e.ruleId} is not in ${RULES_DISPLAY_PATH}`);
+    if (c.expectsNoBlocking === true) {
+      // A clean case measures false alarms, not recall: it has nothing to
+      // recall, so the two fields recall is computed from are the ones a
+      // pattern case requires and a clean case must not carry — carrying
+      // both would leave scoreCase to guess which kind of case this is.
+      if (c.expected !== undefined)
+        fail(
+          `${where}: a clean case (expectsNoBlocking: true) must not carry expected — it has no findings to recall`,
+        );
+      if (c.minRecall !== undefined)
+        fail(
+          `${where}: a clean case (expectsNoBlocking: true) must not carry minRecall`,
+        );
+      if (typeof c.why !== 'string' || !c.why)
+        fail(
+          `${where}: a clean case must say why this merged pull request was chosen — that no later fix names it as root cause and its own review raised no Blocking finding`,
+        );
+    } else {
+      if (c.why !== undefined)
+        fail(
+          `${where}: why belongs to a clean case (expectsNoBlocking: true); a pattern case's expectations each carry their own why`,
+        );
+      if (!Array.isArray(c.expected) || c.expected.length === 0)
+        fail(`${where}: expected must be a non-empty array`);
+      const expectedIds = new Set();
+      for (const e of c.expected) {
+        const w = `${where}, expected ${e.id ?? '(no id)'}`;
+        if (typeof e.id !== 'string' || !ID.test(e.id))
+          fail(`${w}: id must be a lowercase slug`);
+        if (expectedIds.has(e.id)) fail(`${w}: duplicate expected id`);
+        expectedIds.add(e.id);
+        if (!FINDING_AXES.includes(e.axis)) fail(`${w}: axis ${e.axis}`);
+        if (typeof e.source !== 'string') fail(`${w}: source pattern missing`);
+        compile(e.source, w);
+        if (typeof e.rule !== 'string') fail(`${w}: rule pattern missing`);
+        compile(e.rule, w);
+        // Optional, and a literal rather than a pattern: it is hashed, not
+        // matched. An id the catalogue does not carry could never be minted
+        // by the validator, so an expectation naming one would annotate
+        // `strict` false for ever and read as a reviewer that keeps missing
+        // the tuple.
+        if (e.ruleId !== undefined) {
+          if (typeof e.ruleId !== 'string' || !ruleById(e.ruleId))
+            fail(`${w}: ruleId ${e.ruleId} is not in ${RULES_DISPLAY_PATH}`);
+        }
+        if (!Array.isArray(e.files) || e.files.length === 0)
+          fail(`${w}: files must name at least one path`);
+        if (e.minSeverity && !FINDING_SEVERITIES.includes(e.minSeverity))
+          fail(`${w}: minSeverity ${e.minSeverity}`);
+        if (typeof e.why !== 'string' || !e.why)
+          fail(`${w}: why must say what went wrong in the incident`);
       }
-      if (!Array.isArray(e.files) || e.files.length === 0)
-        fail(`${w}: files must name at least one path`);
-      if (e.minSeverity && !FINDING_SEVERITIES.includes(e.minSeverity))
-        fail(`${w}: minSeverity ${e.minSeverity}`);
-      if (typeof e.why !== 'string' || !e.why)
-        fail(`${w}: why must say what went wrong in the incident`);
+      if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
+        fail(`${where}: minRecall must be between 0 and 1`);
     }
-    if (typeof c.minRecall !== 'number' || c.minRecall < 0 || c.minRecall > 1)
-      fail(`${where}: minRecall must be between 0 and 1`);
   }
   // A set with no frontier case measures nothing on an ordinary review-tooling
   // change: guards run only when the brief or the finding contract moves, so an
   // empty frontier means a pull request touching the review scripts or the
   // reviewer action replays nothing at all. ADR 0072 said this in its
   // Consequences and claimed the tests asserted it; nothing did, until here.
-  // The rule it constrains is promotion: three consecutive catches earn `guard`
-  // (Decision item 2), and promoting the last frontier case satisfies that rule
-  // while disabling the arm it belongs to. Promote alongside a replacement,
-  // never before one exists.
+  // The rule it constrains is promotion: declaring the last frontier case a
+  // guard disables the arm it belongs to. Declare it alongside a replacement,
+  // never before one exists. Promotion by the record is held to the same rule
+  // in golden-standing.mjs (ADR 0116).
   if (set.cases.length > 0 && !set.cases.some((c) => c.tier === 'frontier'))
     fail(
       'the set has no frontier case: an empty frontier replays nothing on an ' +
@@ -250,10 +290,34 @@ const matches = (expected, finding) =>
   atLeast(finding.severity, expected.minSeverity);
 
 /**
+ * A clean case (issue #933) passes when the report carries no Blocking
+ * finding, whatever else it says — there is no expectation to recall, so the
+ * result is a pass/fail, reported as `clean-pass` or `clean-fail` and never
+ * folded into a recall number the way a pattern case's match count is.
+ *
+ * @param {object} goldenCase a clean case (`expectsNoBlocking: true`)
+ * @param {{ findings: object[] }} normalized the validator's output for that range
+ */
+const scoreCleanCase = (goldenCase, normalized) => {
+  const findings = normalized.findings ?? [];
+  const blocking = findings.filter((f) => f.severity === 'blocking');
+  const pass = blocking.length === 0;
+  return {
+    case: goldenCase.id,
+    clean: true,
+    blocking: blocking.map((f) => f.id),
+    pass,
+    outcome: pass ? 'clean-pass' : 'clean-fail',
+  };
+};
+
+/**
  * @param {object} goldenCase one entry of `cases`
  * @param {{ findings: object[] }} normalized the validator's output for that range
  */
 export const scoreCase = (goldenCase, normalized) => {
+  if (goldenCase.expectsNoBlocking)
+    return scoreCleanCase(goldenCase, normalized);
   const findings = normalized.findings ?? [];
   const used = new Set();
   const matched = [];
@@ -292,7 +356,23 @@ export const scoreCase = (goldenCase, normalized) => {
   };
 };
 
+const renderCleanScore = (goldenCase, score) => {
+  const lines = [
+    `## Golden replay — ${goldenCase.id}: ${score.outcome}`,
+    '',
+    `${goldenCase.title} (${goldenCase.incident}). Range \`${goldenCase.base.slice(0, 7)}...${goldenCase.head.slice(0, 7)}\`.`,
+    '',
+    score.pass
+      ? 'Clean pass: the reviewer raised no Blocking finding.'
+      : `Clean fail: ${score.blocking.length} Blocking finding(s) on a case expected to raise none.`,
+    '',
+  ];
+  for (const id of score.blocking) lines.push(`- **blocking** \`${id}\``);
+  return `${lines.join('\n')}\n`;
+};
+
 export const renderScore = (goldenCase, score) => {
+  if (score.clean) return renderCleanScore(goldenCase, score);
   const lines = [
     `## Golden replay — ${goldenCase.id}: ${score.pass ? 'pass' : 'FAIL'}`,
     '',
@@ -484,5 +564,76 @@ export const replayTriggerFindings = (workflowText) => {
     findings.push(
       'the schedule never runs golden-tiers.mjs --scheduled, so it replays an untouched reviewer every week (ADR 0109)',
     );
+  return findings;
+};
+
+/**
+ * Whether the scheduled replay repeats each frontier case the number of
+ * times ADR 0116 decides, and a label or a dispatch stays one repetition
+ * (ADR 0072 item 8). Two halves, because the count is computed in one place
+ * and spent in another: the matrix golden-tiers.mjs prints for this set, and
+ * the workflow that has to ask for that matrix, hand it the event, and keep
+ * each repetition's result apart.
+ *
+ * @param {string} workflowText
+ * @param {{cases: {id: string, tier: string}[]}} set
+ * @param {{case: string, outcome: string}[]} [records] the results record
+ * @returns {string[]} one line per violation; empty when sound
+ */
+export const replayRepetitionFindings = (workflowText, set, records = []) => {
+  const findings = [];
+  const count = (matrix, id) => matrix.filter((m) => m.case === id).length;
+  const scheduled = replayMatrix(set, undefined, {
+    records,
+    event: SCHEDULE_EVENT,
+  });
+  const frontier = new Set(
+    replayMatrix(set, 'frontier', { records }).map((m) => m.case),
+  );
+  for (const c of set.cases) {
+    const want = frontier.has(c.id) ? SCHEDULED_FRONTIER_REPETITIONS : 1;
+    const got = count(scheduled, c.id);
+    if (got !== want)
+      findings.push(
+        `${c.id}: the scheduled replay runs it ${got} time(s), not ${want} (ADR 0116)`,
+      );
+  }
+  for (const event of ['pull_request', 'workflow_dispatch']) {
+    const matrix = replayMatrix(set, undefined, { records, event });
+    for (const c of set.cases)
+      if (count(matrix, c.id) !== 1)
+        findings.push(
+          `${c.id}: a ${event} replay runs it ${count(matrix, c.id)} time(s); a label or a dispatch is one repetition (ADR 0072 item 8)`,
+        );
+  }
+
+  if (
+    !/golden-tiers\.mjs --matrix\b[^\n]*--event "\$EVENT"/.test(workflowText) ||
+    !/^\s*EVENT: \$\{\{ github\.event_name \}\}/m.test(workflowText)
+  )
+    findings.push(
+      'the matrix is not built by golden-tiers.mjs --matrix --event "$EVENT" from github.event_name, so the schedule cannot repeat a frontier case (ADR 0116)',
+    );
+  if (
+    !/^\s*include: \$\{\{ fromJSON\(needs\.cases\.outputs\.matrix\) \}\}/m.test(
+      workflowText,
+    )
+  )
+    findings.push(
+      'the replay job does not take its matrix entries from the cases job, so a repetition never becomes a reviewer session',
+    );
+  for (const [what, pattern] of [
+    ['result artifact', /^\s*name: golden-\$\{\{ matrix\.case \}\}(.*)$/m],
+    [
+      'transcript artifact',
+      /^\s*transcript-artifact: golden-transcript-\$\{\{ matrix\.case \}\}(.*)$/m,
+    ],
+  ]) {
+    const m = pattern.exec(workflowText);
+    if (!m || !m[1].includes('matrix.repetition'))
+      findings.push(
+        `the ${what} is not named for its repetition, so a case's repeated runs collide and all but one result is lost`,
+      );
+  }
   return findings;
 };

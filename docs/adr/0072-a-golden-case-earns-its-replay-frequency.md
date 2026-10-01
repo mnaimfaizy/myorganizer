@@ -73,7 +73,10 @@ replay it knows is pointless.**
 
 7. **A third state, `parked`, sits between `cases` and `retired`.** Retirement means a case cannot
    be won: a wired gate already suppresses its defect (ADR 0074), so scoring it against the reviewer
-   penalises correct behaviour. Parking means the opposite — a case the reviewer has never caught,
+   penalises correct behaviour. A retired case is retired, never deleted, and keeps its id reserved:
+   deleting it discards the written reason a case turned out to be unwinnable, and without that
+   record on file the same incident gets proposed as a case again the next time someone mines fixes
+   for the set. Parking means the opposite — a case the reviewer has never caught,
    with no gate and no reason to think it unwinnable, held out of the replayed set anyway because
    nothing productive is learned from replaying a miss that a documented, precise cause already
    explains. Filing a hard case as retired would be a lie in the one field that state exists to keep
@@ -178,6 +181,15 @@ caught`): a case that always passes and a case that never passes both carry less
 > rejecting a schedule because "the replay's input changes a few times a year" — did not survive the
 > record: those inputs took 53 commits in the three weeks after this decision, and pushes paid 88% of
 > the replay's spend. The tiers, promotion and demotion, and items 4 to 8 stand.
+
+> **Superseded in part by [ADR 0116](0116-a-golden-case-stands-on-its-catch-rate-over-its-last-ten-scored-runs.md).**
+> Item 2 is gone: a case no longer moves on three consecutive catches or on one miss. It stands where
+> its catch rate over its last ten scored runs in the results record puts it — eight or more at
+> `guard`, five or fewer at `frontier`, six or seven where it was, and at its declared tier under ten.
+> Item 8's "one repetition" no longer holds for the scheduled replay, which runs each frontier case
+> three times; it holds for a label and a dispatch. The last alternative-but-one below — deriving the
+> tier from replay history — was rejected for want of a scoreboard, and issue #932 built one. The
+> 2026-09-17 amendment stands: promotion, now by rate, still may not empty the frontier.
 
 ## Alternatives considered
 

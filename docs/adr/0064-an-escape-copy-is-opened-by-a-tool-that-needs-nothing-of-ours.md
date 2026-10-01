@@ -135,3 +135,9 @@ The reader is a published artifact carrying our name that we have no way to reca
 cannot be hot-fixed for a User already holding a copy; it can only be superseded by a later release
 that the User has to go and fetch. That is the price of the escape hatch being an escape hatch, and
 it is the reason the gate runs the built file rather than the sources it came from.
+
+The gate also asserts the built page spaces itself off the design tokens in name only: a `var(--name)`
+naming a token the pipeline does not emit silently renders as its fallback value instead of failing,
+and a spacing literal equal to a value a token already carries is the same drift written the other
+way. The reader shipped with both halves wrong once, neither caught by anything until this check
+existed.

@@ -222,6 +222,13 @@
       "cites": "AGENTS.md"
     },
     {
+      "id": "standard-unasserted-claim",
+      "family": "standard",
+      "title": "An artifact states a claim it does not assert",
+      "axes": ["standards"],
+      "cites": "docs/adr/0085-an-artifact-states-no-claim-it-does-not-assert.md"
+    },
+    {
       "id": "standard-secret-committed",
       "family": "standard",
       "title": "A secret, credential, or plaintext value is committed or logged",
