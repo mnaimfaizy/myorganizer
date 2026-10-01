@@ -1,0 +1,38 @@
+[
+  {
+    "type": "system",
+    "subtype": "init",
+    "cwd": "/home/runner/work/myorganizer/myorganizer"
+  },
+  {
+    "type": "rate_limit_event",
+    "rate_limit_info": {
+      "status": "allowed",
+      "rateLimitType": "five_hour"
+    }
+  },
+  {
+    "type": "result",
+    "subtype": "error_max_turns",
+    "is_error": true,
+    "num_turns": 81,
+    "total_cost_usd": 1.25,
+    "permission_denials_count": 2,
+    "permission_denials": [
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_fixture",
+        "tool_input": {
+          "command": "git worktree remove tmp/code-review/worktree"
+        }
+      },
+      {
+        "tool_name": "Bash",
+        "tool_use_id": "toolu_fixture",
+        "tool_input": {
+          "command": "sed -n 1,20p package.json"
+        }
+      }
+    ]
+  }
+]

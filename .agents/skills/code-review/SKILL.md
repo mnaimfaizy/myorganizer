@@ -44,7 +44,9 @@ finding and writes no verdict: the verdict is computed from the findings by
   `git worktree remove --force tmp/code-review/worktree` and answers the prompt.
 - **One command per Bash call, addressed by path.** Never `cd` into the worktree and never chain with
   `&&` or `;`: permission is decided on the command's leading tokens, so `cd X && …` is a `cd`, and
-  the part after it is refused however it is spelled. Reach into the worktree the way you reach
+  the part after it is refused however it is spelled. A `cd` that does run is worse: the shell keeps
+  it, and a replay that changed into the worktree was then refused every write to its own report
+  (issue #880). Reach into the worktree the way you reach
   anywhere else — as an argument, `node tmp/code-review/worktree/tools/scripts/<name>.mjs` — and
   locate files in it with Glob and Grep.
 - **To read another tree, name the commit, not the directory.** `git show <sha>:<path>` is granted
@@ -56,7 +58,8 @@ finding and writes no verdict: the verdict is computed from the findings by
 - **Read a file range with the Read tool, not a shell utility.** Pass `offset`/`limit`; there is no
   `sed`, `head -n`, or `tail -n` on the allowlist for this, and there does not need to be one.
 - **Write and Edit reach only the reviewer's own tmp directory.** `tmp/code-review/**` is where the
-  report, the obligation answer sheet, and the throwaway worktree live. The harness allow-list refuses
+  report, the obligation answer sheet, and the throwaway worktree live. The harness allow-list
+  anchors that grant at the workspace root, not at wherever the shell currently is, and refuses
   an edit anywhere else — there is no scratch file outside it to fall back to when a command is
   refused (ADR 0071 item 4, corrected by ADR 0075).
 
