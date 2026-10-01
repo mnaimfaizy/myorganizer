@@ -1,22 +1,33 @@
 #!/usr/bin/env node
-// Asserts that the golden replay ledger's generated Runs section matches
+// Asserts that the golden replay ledger's two generated sections match what
+// they are generated from: the Runs section against
 // docs/review/golden-replay-results.jsonl — the results record every replay
-// case run appends a line to, including voids (issue #932, ADR 0101).
+// case run appends a line to, including voids (issue #932, ADR 0101) — and
+// the standing table against that record and the golden set's declared tiers
+// (issue #937, ADR 0116).
 //
-//   node tools/scripts/check-review-golden-results.mjs [--print]
+//   node tools/scripts/check-review-golden-results.mjs [--print | --write]
 //
-// The record is the source; the ledger's generated section (between the
-// GENERATED:golden-runs markers) is rendered from it. Historical rows above
-// the markers are hand-written and untouched by this check — the generated
-// section starts from the first recorded line, the same shape as the other
-// generated-page checks (review:pages:check, agents:map:check): generate
-// from source, diff against what is committed, fail on drift.
+// One direction: the record and the set are the sources, and each generated
+// section (between its GENERATED markers) is rendered from them and compared
+// with what is committed. Nothing is asserted the other way — the ledger
+// cannot contradict the record, it can only be stale — and nothing outside
+// the markers is read: the historical rows and tier history above them are
+// hand-written. The same shape as the other generated-page checks
+// (review:pages:check, agents:map:check): generate from source, diff against
+// what is committed, fail on drift.
 //
-// --print renders the expected section without comparing, so a maintainer
-// can copy it between the markers by hand.
+// --print renders both expected sections without comparing. --write puts
+// them between the markers, which is what the scheduled replay does after it
+// appends to the record: a record committed without its ledger would fail
+// this check on main for a drift no pull request introduced.
 //
-// Exit 0 = in sync. Exit 1 = drift. Exit 2 = the check could not run.
-import { existsSync, readFileSync } from 'node:fs';
+// Each section is wrapped in a prettier-ignore range. Prettier pads a
+// Markdown table's columns, so without it the section this script writes and
+// the section a formatted commit carries would never be the same text.
+//
+// Exit 0 = in sync, or written. Exit 1 = drift. Exit 2 = the check could not run.
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
 import {
   GENERATED_END,
@@ -25,10 +36,17 @@ import {
   parseResultsFile,
   renderRunsTable,
 } from './review/golden-results.mjs';
+import {
+  STANDING_END,
+  STANDING_START,
+  renderStandingTable,
+} from './review/golden-standing.mjs';
+import { GOLDEN_SET_PATH } from './review/golden-tiers.mjs';
 
 const RECORD = 'docs/review/golden-replay-results.jsonl';
 const LEDGER = 'docs/review/golden-replay-results.md';
 const printOnly = process.argv.includes('--print');
+const write = process.argv.includes('--write');
 
 const fail = (msg) => {
   console.error(`review-golden-results: ${msg}`);
@@ -46,39 +64,83 @@ try {
   throw err;
 }
 
-const expected = renderRunsTable(records);
+// Read as plain JSON, not through loadGoldenSet: that reaches zod, and the
+// scheduled replay's recording job installs nothing. review:golden:check is
+// what validates the set.
+let set;
+try {
+  set = JSON.parse(readFileSync(GOLDEN_SET_PATH, 'utf8'));
+} catch (err) {
+  fail(`cannot read ${GOLDEN_SET_PATH}: ${err.message}`);
+}
+
+const unformatted = (body) =>
+  `<!-- prettier-ignore-start -->\n${body}\n<!-- prettier-ignore-end -->`;
+
+const sections = [
+  {
+    name: 'Runs',
+    source: RECORD,
+    start: GENERATED_START,
+    end: GENERATED_END,
+    expected: unformatted(renderRunsTable(records)),
+  },
+  {
+    name: 'standing',
+    source: `${RECORD} and ${GOLDEN_SET_PATH}`,
+    start: STANDING_START,
+    end: STANDING_END,
+    expected: unformatted(renderStandingTable(set, records)),
+  },
+];
 
 if (printOnly) {
-  console.log(expected);
+  for (const s of sections) console.log(`${s.start}\n\n${s.expected}\n`);
   process.exit(0);
 }
 
-const ledger = readFileSync(LEDGER, 'utf8');
-const startIndex = ledger.indexOf(GENERATED_START);
-const endIndex = ledger.indexOf(GENERATED_END);
-if (startIndex === -1 || endIndex === -1 || endIndex < startIndex)
-  fail(
-    `${LEDGER} has no ${GENERATED_START} / ${GENERATED_END} marker pair to compare against`,
-  );
+let ledger = readFileSync(LEDGER, 'utf8');
+const drifted = [];
+for (const s of sections) {
+  const startIndex = ledger.indexOf(s.start);
+  const endIndex = ledger.indexOf(s.end);
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex)
+    fail(
+      `${LEDGER} has no ${s.start} / ${s.end} marker pair to compare against`,
+    );
+  const actual = ledger.slice(startIndex + s.start.length, endIndex).trim();
+  if (actual === s.expected) continue;
+  drifted.push({ ...s, actual });
+  if (write)
+    ledger = `${ledger.slice(0, startIndex + s.start.length)}\n\n${s.expected}\n\n${ledger.slice(endIndex)}`;
+}
 
-const actual = ledger
-  .slice(startIndex + GENERATED_START.length, endIndex)
-  .trim();
-
-if (actual !== expected) {
-  console.error(
-    `review-golden-results: ${LEDGER}'s generated Runs section does not match ${RECORD}\n`,
+if (write) {
+  if (drifted.length) writeFileSync(LEDGER, ledger);
+  console.log(
+    drifted.length
+      ? `review-golden-results: wrote ${drifted.map((s) => s.name).join(' and ')} to ${LEDGER}`
+      : `review-golden-results: ${LEDGER} already in sync, nothing written`,
   );
-  console.error('--- expected (rendered from the record) ---');
-  console.error(expected);
-  console.error('--- actual (between the markers in the ledger) ---');
-  console.error(actual);
+  process.exit(0);
+}
+
+if (drifted.length) {
+  for (const s of drifted) {
+    console.error(
+      `review-golden-results: ${LEDGER}'s generated ${s.name} section does not match ${s.source}\n`,
+    );
+    console.error('--- expected (rendered from the source) ---');
+    console.error(s.expected);
+    console.error('--- actual (between the markers in the ledger) ---');
+    console.error(s.actual);
+  }
   console.error(
-    `\nRegenerate with \`node ${process.argv[1] ?? 'tools/scripts/check-review-golden-results.mjs'} --print\` and paste the output between the markers, or fix ${RECORD}.`,
+    `\nRegenerate with \`node tools/scripts/check-review-golden-results.mjs --write\`, or fix ${RECORD}.`,
   );
   process.exit(1);
 }
 
 console.log(
-  `review-golden-results: OK — ${records.length} recorded line(s), ${records.length ? new Set(records.map((r) => r.run_id)).size : 0} run(s), match the ledger's generated Runs section`,
+  `review-golden-results: OK — ${records.length} recorded line(s), ${new Set(records.map((r) => r.run_id)).size} run(s), match the ledger's generated Runs section and standing table`,
 );

@@ -16,6 +16,13 @@
 // And the replay checks the reviewer's obligation answer sheet before it
 // scores, as production does, or a run production would fail as a pipeline
 // fault is recorded as a miss (ADR 0101).
+// And the repeat count: the scheduled replay runs each case standing at
+// frontier three times and every other case once, a label or a dispatch runs
+// every case once, and the workflow asks for that matrix and keeps each
+// repetition's result apart (ADR 0116).
+//
+// One direction throughout: the set, the record and the ADRs are the
+// sources, and the workflow is what is held to them.
 //
 // Exit 0 = sound. Exit 1 = findings. Exit 2 = could not run.
 import { spawnSync } from 'node:child_process';
@@ -26,9 +33,14 @@ import {
   REVIEW_GOLDEN_SET_PATH,
   loadGoldenSet,
   replayObligationCheckFindings,
+  replayRepetitionFindings,
   replayTriggerFindings,
 } from './review/golden.mjs';
-import { REPLAY_INPUT_PATHS } from './review/golden-tiers.mjs';
+import {
+  REPLAY_INPUT_PATHS,
+  SCHEDULED_FRONTIER_REPETITIONS,
+  loadGoldenRecords,
+} from './review/golden-tiers.mjs';
 
 const REPLAY_WORKFLOW = '.github/workflows/review-golden-replay.yml';
 const fail = (msg) => {
@@ -96,6 +108,15 @@ for (const f of replayTriggerFindings(workflow))
 for (const f of replayObligationCheckFindings(workflow))
   findings.push(`${REPLAY_WORKFLOW}: ${f}`);
 
+let records;
+try {
+  records = loadGoldenRecords();
+} catch (err) {
+  fail(`cannot read the results record: ${err.message}`);
+}
+for (const f of replayRepetitionFindings(workflow, set, records))
+  findings.push(`${REPLAY_WORKFLOW}: ${f}`);
+
 if (findings.length) {
   console.error(
     `review-golden-set: ${findings.length} finding(s) across ${set.cases.length} case(s)`,
@@ -104,5 +125,5 @@ if (findings.length) {
   process.exit(1);
 }
 console.log(
-  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + (c.expected?.length ?? 0), 0)} expected finding(s), replay runs on schedule and request over ${REPLAY_INPUT_PATHS.length} input path(s) and checks answer sheets before scoring`,
+  `review-golden-set: OK — ${set.cases.length} case(s), ${set.cases.reduce((n, c) => n + (c.expected?.length ?? 0), 0)} expected finding(s), replay runs on schedule and request over ${REPLAY_INPUT_PATHS.length} input path(s), repeats a frontier case ${SCHEDULED_FRONTIER_REPETITIONS} times on the schedule, and checks answer sheets before scoring`,
 );

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
@@ -33,7 +33,52 @@ const VOID_LINE = JSON.stringify({
   model: 'claude-sonnet-5',
 });
 
-const LEDGER_TEMPLATE = (generated) => `# Golden replay results
+const SET = JSON.stringify({
+  cases: [
+    { id: 'export-envelope-drops-tasks', tier: 'frontier' },
+    { id: 'release-bump-leaves-generated-client-stale', tier: 'guard' },
+  ],
+});
+
+// Both generated sections sit inside a prettier-ignore range, so a formatted
+// commit and the checker's own --write produce the same text.
+const unformatted = (body) =>
+  `<!-- prettier-ignore-start -->\n${body}\n<!-- prettier-ignore-end -->`;
+
+const NO_RUNS = unformatted('_No recorded runs yet._');
+
+const STANDING_HEADER =
+  '| Case | Declared tier | Scored runs | Caught of last ten | Rate | Stands at | Why |\n' +
+  '| --- | --- | --- | --- | --- | --- | --- |\n';
+const UNDER_TEN = 'declared; under 10 scored runs, so nothing moves';
+
+// What the standing table says of SET before anything is recorded.
+const NO_STANDING = unformatted(
+  STANDING_HEADER +
+    `| \`export-envelope-drops-tasks\` | \`frontier\` | 0 | 0 of 0 | — | \`frontier\` | ${UNDER_TEN} |\n` +
+    `| \`release-bump-leaves-generated-client-stale\` | \`guard\` | 0 | 0 of 0 | — | \`guard\` | ${UNDER_TEN} |`,
+);
+
+// And after CAUGHT_LINE: one scored run, one catch, and no move.
+const ONE_CATCH_STANDING = unformatted(
+  STANDING_HEADER +
+    `| \`export-envelope-drops-tasks\` | \`frontier\` | 1 | 1 of 1 | 100% | \`frontier\` | ${UNDER_TEN} |\n` +
+    `| \`release-bump-leaves-generated-client-stale\` | \`guard\` | 0 | 0 of 0 | — | \`guard\` | ${UNDER_TEN} |`,
+);
+
+const RUNS_HEADER =
+  '| Date | Run ID | Model | Cases | Result | Commit |\n' +
+  '| --- | --- | --- | --- | --- | --- |\n';
+
+const LEDGER_TEMPLATE = (generated, standing) => `# Golden replay results
+
+## Tiers
+
+<!-- GENERATED:golden-standing:START -->
+
+${standing}
+
+<!-- GENERATED:golden-standing:END -->
 
 ## Runs
 
@@ -44,37 +89,55 @@ const LEDGER_TEMPLATE = (generated) => `# Golden replay results
 ### Recorded runs
 
 <!-- GENERATED:golden-runs:START -->
+
 ${generated}
+
 <!-- GENERATED:golden-runs:END -->
 `;
 
 /**
- * The checker reads two fixed paths, so each case runs it in a throwaway
- * tree holding just those two files. `record` is the raw jsonl text;
- * `generated` is what sits between the ledger's markers.
+ * The checker reads three fixed paths, so each case runs it in a throwaway
+ * tree holding just those files. `record` is the raw jsonl text; `generated`
+ * and `standing` are what sit between the ledger's two marker pairs; `ledger`
+ * replaces the whole ledger.
  */
-const runOn = ({ record = '', generated = '_No recorded runs yet._' } = {}) => {
+const runOn = ({
+  record = '',
+  generated = NO_RUNS,
+  standing = NO_STANDING,
+  ledger,
+  args = [],
+} = {}) => {
   const dir = mkdtempSync(join(tmpdir(), 'review-golden-results-'));
   mkdirSync(join(dir, 'docs', 'review'), { recursive: true });
+  mkdirSync(join(dir, 'tools', 'config'), { recursive: true });
+  writeFileSync(join(dir, 'tools', 'config', 'review-golden-set.json'), SET);
   writeFileSync(
     join(dir, 'docs', 'review', 'golden-replay-results.jsonl'),
     record,
     'utf8',
   );
+  const ledgerPath = join(dir, 'docs', 'review', 'golden-replay-results.md');
   writeFileSync(
-    join(dir, 'docs', 'review', 'golden-replay-results.md'),
-    LEDGER_TEMPLATE(generated),
+    ledgerPath,
+    ledger ?? LEDGER_TEMPLATE(generated, standing),
     'utf8',
   );
+  const read = () => readFileSync(ledgerPath, 'utf8');
   try {
     const stdout = execFileSync(
       process.execPath,
-      [join(process.cwd(), CHECKER)],
+      [join(process.cwd(), CHECKER), ...args],
       { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
     );
-    return { code: 0, out: stdout };
+    return { code: 0, out: stdout, dir, read };
   } catch (err) {
-    return { code: err.status, out: `${err.stdout ?? ''}${err.stderr ?? ''}` };
+    return {
+      code: err.status,
+      out: `${err.stdout ?? ''}${err.stderr ?? ''}`,
+      dir,
+      read,
+    };
   }
 };
 
@@ -84,14 +147,15 @@ test('an empty record matches the placeholder generated section', () => {
   assert.match(out, /OK — 0 recorded line/);
 });
 
-test('a recorded run matching the generated section passes', () => {
-  const generated =
-    '| Date | Run ID | Model | Cases | Result | Commit |\n' +
-    '| --- | --- | --- | --- | --- | --- |\n' +
-    `| 2026-09-30 | \`111\` | \`claude-sonnet-5\` | 2 | 1 of 1 scorable, 1 void | \`${'a'.repeat(7)}\` |`;
+test('a recorded run matching the generated sections passes', () => {
+  const generated = unformatted(
+    RUNS_HEADER +
+      `| 2026-09-30 | \`111\` | \`claude-sonnet-5\` | 2 | 1 of 1 scorable, 1 void | \`${'a'.repeat(7)}\` |`,
+  );
   const { code, out } = runOn({
     record: `${CAUGHT_LINE}\n${VOID_LINE}\n`,
     generated,
+    standing: ONE_CATCH_STANDING,
   });
   assert.equal(code, 0, out);
   assert.match(out, /OK — 2 recorded line/);
@@ -100,25 +164,72 @@ test('a recorded run matching the generated section passes', () => {
 // This is the drift the whole checker exists to catch: the record moved
 // (a case caught became a case missed) and nobody regenerated the ledger.
 test('a stale generated section is caught as drift', () => {
-  const staleGenerated =
-    '| Date | Run ID | Model | Cases | Result | Commit |\n' +
-    '| --- | --- | --- | --- | --- | --- |\n' +
-    `| 2026-09-30 | \`111\` | \`claude-sonnet-5\` | 1 | 0 of 1 | \`${'a'.repeat(7)}\` |`;
+  const staleGenerated = unformatted(
+    RUNS_HEADER +
+      `| 2026-09-30 | \`111\` | \`claude-sonnet-5\` | 1 | 0 of 1 | \`${'a'.repeat(7)}\` |`,
+  );
   const { code, out } = runOn({
     record: `${CAUGHT_LINE}\n`,
     generated: staleGenerated,
+    standing: ONE_CATCH_STANDING,
   });
   assert.equal(code, 1, out);
-  assert.match(out, /does not match/);
+  assert.match(out, /generated Runs section does not match/);
 });
 
 test('a placeholder generated section left in place after a run was recorded is caught', () => {
   const { code, out } = runOn({
     record: `${CAUGHT_LINE}\n`,
-    generated: '_No recorded runs yet._',
+    standing: ONE_CATCH_STANDING,
   });
   assert.equal(code, 1, out);
-  assert.match(out, /does not match/);
+  assert.match(out, /generated Runs section does not match/);
+});
+
+// The standing table's own drift (issue #937): a run was recorded, the Runs
+// section was regenerated, and the table still shows the case with no scored
+// run — so the ledger states a rate the record does not carry.
+test('a stale standing table is caught as drift', () => {
+  const generated = unformatted(
+    RUNS_HEADER +
+      `| 2026-09-30 | \`111\` | \`claude-sonnet-5\` | 1 | 1 of 1 | \`${'a'.repeat(7)}\` |`,
+  );
+  const { code, out } = runOn({ record: `${CAUGHT_LINE}\n`, generated });
+  assert.equal(code, 1, out);
+  assert.match(out, /generated standing section does not match/);
+  assert.doesNotMatch(out, /generated Runs section does not match/);
+});
+
+// A table Prettier has padded is not the text the checker renders, which is
+// why the sections are wrapped in a prettier-ignore range; without the range
+// the same table is drift.
+test('a generated section outside a prettier-ignore range is caught as drift', () => {
+  const { code, out } = runOn({ generated: '_No recorded runs yet._' });
+  assert.equal(code, 1, out);
+  assert.match(out, /generated Runs section does not match/);
+});
+
+// What the scheduled replay runs after appending to the record, so the
+// record never reaches main without its ledger.
+test('--write regenerates both sections and the result passes the check', () => {
+  const written = runOn({ record: `${CAUGHT_LINE}\n`, args: ['--write'] });
+  assert.equal(written.code, 0, written.out);
+  assert.match(written.out, /wrote Runs and standing/);
+  const ledger = written.read();
+  assert.match(ledger, /\| 2026-09-30 \| `111` \|/);
+  assert.match(ledger, /\| 1 \| 1 of 1 \| 100% \| `frontier` \|/);
+  assert.match(ledger, /none — first measurement/);
+
+  const checked = runOn({ record: `${CAUGHT_LINE}\n`, ledger });
+  assert.equal(checked.code, 0, checked.out);
+});
+
+test('--write leaves a ledger already in sync untouched', () => {
+  const before = LEDGER_TEMPLATE(NO_RUNS, NO_STANDING);
+  const { code, out, read } = runOn({ ledger: before, args: ['--write'] });
+  assert.equal(code, 0, out);
+  assert.match(out, /nothing written/);
+  assert.equal(read(), before);
 });
 
 test('an invalid record line fails loudly, naming the line', () => {
@@ -140,56 +251,31 @@ test('a void record carrying a recall is rejected as corrupt', () => {
 });
 
 test('missing markers cannot run', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'review-golden-results-'));
-  mkdirSync(join(dir, 'docs', 'review'), { recursive: true });
-  writeFileSync(
-    join(dir, 'docs', 'review', 'golden-replay-results.jsonl'),
-    '',
-    'utf8',
-  );
-  writeFileSync(
-    join(dir, 'docs', 'review', 'golden-replay-results.md'),
-    '# Golden replay results\n\nNo markers here.\n',
-    'utf8',
-  );
-  let result;
-  try {
-    const stdout = execFileSync(
-      process.execPath,
-      [join(process.cwd(), CHECKER)],
-      { cwd: dir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-    );
-    result = { code: 0, out: stdout };
-  } catch (err) {
-    result = {
-      code: err.status,
-      out: `${err.stdout ?? ''}${err.stderr ?? ''}`,
-    };
-  }
-  assert.equal(result.code, 2, result.out);
-  assert.match(result.out, /no .*marker pair/);
+  const { code, out } = runOn({
+    ledger: '# Golden replay results\n\nNo markers here.\n',
+  });
+  assert.equal(code, 2, out);
+  assert.match(out, /no .*marker pair/);
 });
 
-test('--print renders the expected section without failing', () => {
-  const dir = mkdtempSync(join(tmpdir(), 'review-golden-results-'));
-  mkdirSync(join(dir, 'docs', 'review'), { recursive: true });
-  writeFileSync(
-    join(dir, 'docs', 'review', 'golden-replay-results.jsonl'),
-    `${CAUGHT_LINE}\n`,
-    'utf8',
-  );
-  writeFileSync(
-    join(dir, 'docs', 'review', 'golden-replay-results.md'),
-    LEDGER_TEMPLATE('anything, --print never reads it'),
-    'utf8',
-  );
-  const stdout = execFileSync(
-    process.execPath,
-    [join(process.cwd(), CHECKER), '--print'],
-    { cwd: dir, encoding: 'utf8' },
-  );
+test('a ledger with only one of the two marker pairs cannot run', () => {
+  const { code, out } = runOn({
+    ledger: `# Golden replay results\n\n<!-- GENERATED:golden-runs:START -->\n\n${NO_RUNS}\n\n<!-- GENERATED:golden-runs:END -->\n`,
+  });
+  assert.equal(code, 2, out);
+  assert.match(out, /golden-standing:START.*marker pair/);
+});
+
+test('--print renders both expected sections without failing', () => {
+  const { code, out } = runOn({
+    record: `${CAUGHT_LINE}\n`,
+    generated: 'anything, --print never reads it',
+    args: ['--print'],
+  });
+  assert.equal(code, 0, out);
   assert.match(
-    stdout,
+    out,
     /\| Date \| Run ID \| Model \| Cases \| Result \| Commit \|/,
   );
+  assert.match(out, /\| Case \| Declared tier \| Scored runs \|/);
 });

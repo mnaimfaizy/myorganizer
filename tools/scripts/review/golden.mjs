@@ -36,7 +36,13 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { CASE_TIERS, GOLDEN_SET_PATH } from './golden-tiers.mjs';
+import {
+  CASE_TIERS,
+  GOLDEN_SET_PATH,
+  SCHEDULED_FRONTIER_REPETITIONS,
+  SCHEDULE_EVENT,
+  replayMatrix,
+} from './golden-tiers.mjs';
 import { RULES_DISPLAY_PATH, ruleById } from './rules.mjs';
 import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
 
@@ -53,16 +59,16 @@ export const GOLDEN_SET_SCHEMA_VERSION = 4;
  * A case's tier decides how often it is replayed (ADR 0072).
  *
  * `frontier` is a case the reviewer misses. It is the reason to run the
- * replay at all, so it runs whenever anything that produces a review
- * changes. `guard` is a case the reviewer catches reliably; it carries no
- * new information per run and exists only to catch a brief or contract
- * edit silently undoing something that works, so it runs on the narrower
- * set of paths that could do that.
+ * replay at all, so it runs weekly when a reviewer input moved (ADR 0109).
+ * `guard` is a case the reviewer catches reliably; it carries no new
+ * information per run and exists only to catch a brief or contract edit
+ * silently undoing something that works, so it runs monthly.
  *
- * Promotion to `guard` takes three consecutive catches, recorded in the
- * case's `tierEvidence`. Demotion to `frontier` takes one miss. The
- * asymmetry is deliberate: a wrongly promoted case is a detector that
- * quietly stopped running.
+ * The `tier` a case declares here is where it starts. Once the results
+ * record holds ten scored runs of it, its catch rate over the last ten
+ * decides where it stands (ADR 0116, golden-standing.mjs), and the tier
+ * filter follows the record. A case declared `guard` still cites, in
+ * `tierEvidence`, the runs that put it there.
  */
 export const GOLDEN_CASE_TIERS = CASE_TIERS;
 
@@ -180,10 +186,10 @@ export function assertGoldenSet(set, source = 'golden set') {
   // empty frontier means a pull request touching the review scripts or the
   // reviewer action replays nothing at all. ADR 0072 said this in its
   // Consequences and claimed the tests asserted it; nothing did, until here.
-  // The rule it constrains is promotion: three consecutive catches earn `guard`
-  // (Decision item 2), and promoting the last frontier case satisfies that rule
-  // while disabling the arm it belongs to. Promote alongside a replacement,
-  // never before one exists.
+  // The rule it constrains is promotion: declaring the last frontier case a
+  // guard disables the arm it belongs to. Declare it alongside a replacement,
+  // never before one exists. Promotion by the record is held to the same rule
+  // in golden-standing.mjs (ADR 0116).
   if (set.cases.length > 0 && !set.cases.some((c) => c.tier === 'frontier'))
     fail(
       'the set has no frontier case: an empty frontier replays nothing on an ' +
@@ -558,5 +564,76 @@ export const replayTriggerFindings = (workflowText) => {
     findings.push(
       'the schedule never runs golden-tiers.mjs --scheduled, so it replays an untouched reviewer every week (ADR 0109)',
     );
+  return findings;
+};
+
+/**
+ * Whether the scheduled replay repeats each frontier case the number of
+ * times ADR 0116 decides, and a label or a dispatch stays one repetition
+ * (ADR 0072 item 8). Two halves, because the count is computed in one place
+ * and spent in another: the matrix golden-tiers.mjs prints for this set, and
+ * the workflow that has to ask for that matrix, hand it the event, and keep
+ * each repetition's result apart.
+ *
+ * @param {string} workflowText
+ * @param {{cases: {id: string, tier: string}[]}} set
+ * @param {{case: string, outcome: string}[]} [records] the results record
+ * @returns {string[]} one line per violation; empty when sound
+ */
+export const replayRepetitionFindings = (workflowText, set, records = []) => {
+  const findings = [];
+  const count = (matrix, id) => matrix.filter((m) => m.case === id).length;
+  const scheduled = replayMatrix(set, undefined, {
+    records,
+    event: SCHEDULE_EVENT,
+  });
+  const frontier = new Set(
+    replayMatrix(set, 'frontier', { records }).map((m) => m.case),
+  );
+  for (const c of set.cases) {
+    const want = frontier.has(c.id) ? SCHEDULED_FRONTIER_REPETITIONS : 1;
+    const got = count(scheduled, c.id);
+    if (got !== want)
+      findings.push(
+        `${c.id}: the scheduled replay runs it ${got} time(s), not ${want} (ADR 0116)`,
+      );
+  }
+  for (const event of ['pull_request', 'workflow_dispatch']) {
+    const matrix = replayMatrix(set, undefined, { records, event });
+    for (const c of set.cases)
+      if (count(matrix, c.id) !== 1)
+        findings.push(
+          `${c.id}: a ${event} replay runs it ${count(matrix, c.id)} time(s); a label or a dispatch is one repetition (ADR 0072 item 8)`,
+        );
+  }
+
+  if (
+    !/golden-tiers\.mjs --matrix\b[^\n]*--event "\$EVENT"/.test(workflowText) ||
+    !/^\s*EVENT: \$\{\{ github\.event_name \}\}/m.test(workflowText)
+  )
+    findings.push(
+      'the matrix is not built by golden-tiers.mjs --matrix --event "$EVENT" from github.event_name, so the schedule cannot repeat a frontier case (ADR 0116)',
+    );
+  if (
+    !/^\s*include: \$\{\{ fromJSON\(needs\.cases\.outputs\.matrix\) \}\}/m.test(
+      workflowText,
+    )
+  )
+    findings.push(
+      'the replay job does not take its matrix entries from the cases job, so a repetition never becomes a reviewer session',
+    );
+  for (const [what, pattern] of [
+    ['result artifact', /^\s*name: golden-\$\{\{ matrix\.case \}\}(.*)$/m],
+    [
+      'transcript artifact',
+      /^\s*transcript-artifact: golden-transcript-\$\{\{ matrix\.case \}\}(.*)$/m,
+    ],
+  ]) {
+    const m = pattern.exec(workflowText);
+    if (!m || !m[1].includes('matrix.repetition'))
+      findings.push(
+        `the ${what} is not named for its repetition, so a case's repeated runs collide and all but one result is lost`,
+      );
+  }
   return findings;
 };

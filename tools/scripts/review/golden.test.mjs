@@ -8,6 +8,7 @@ import {
   loadGoldenSet,
   renderScore,
   replayObligationCheckFindings,
+  replayRepetitionFindings,
   replayTriggerFindings,
   scoreCase,
 } from './golden.mjs';
@@ -751,6 +752,120 @@ test('a schedule that does not ask which inputs moved is refused', () => {
   );
   assert.ok(
     findings.some((f) => /--scheduled/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// The scheduled repetitions (ADR 0116)
+// ---------------------------------------------------------------------------
+
+const repetitionSet = {
+  cases: [
+    { id: 'a-guard', tier: 'guard' },
+    { id: 'b-frontier', tier: 'frontier' },
+  ],
+};
+
+const repeating = ({
+  list = [
+    '          EVENT: ${{ github.event_name }}',
+    '        run: |',
+    '          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --matrix --tier "$TIERS" --event "$EVENT")"',
+  ],
+  matrix = '        include: ${{ fromJSON(needs.cases.outputs.matrix) }}',
+  transcript = '          transcript-artifact: golden-transcript-${{ matrix.case }}-r${{ matrix.repetition }}',
+  artifact = '          name: golden-${{ matrix.case }}-r${{ matrix.repetition }}',
+} = {}) =>
+  [
+    'jobs:',
+    '  cases:',
+    '    steps:',
+    '      - name: List the cases',
+    '        env:',
+    ...list,
+    '  replay:',
+    '    strategy:',
+    '      matrix:',
+    matrix,
+    '    steps:',
+    '      - name: Run the reviewer',
+    '        with:',
+    transcript,
+    '      - name: Keep the report',
+    '        with:',
+    artifact,
+    '',
+  ].join('\n');
+
+test('the replay workflow in the tree repeats a frontier case three times on the schedule', () => {
+  const workflow = readFileSync(
+    '.github/workflows/review-golden-replay.yml',
+    'utf8',
+  );
+  assert.deepEqual(replayRepetitionFindings(workflow, loadGoldenSet()), []);
+});
+
+test('a workflow that asks for the repetition matrix and keeps each result apart is sound', () => {
+  assert.deepEqual(replayRepetitionFindings(repeating(), repetitionSet), []);
+});
+
+// The matrix this replaced: a bare list of case ids, one session each. The
+// schedule then buys one run per case, and one run decides nothing.
+test('a matrix of case ids alone is refused', () => {
+  const findings = replayRepetitionFindings(
+    repeating({
+      list: [
+        '        run: |',
+        '          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --tier "$TIERS")"',
+      ],
+      matrix: '        case: ${{ fromJSON(needs.cases.outputs.matrix) }}',
+    }),
+    repetitionSet,
+  );
+  assert.ok(
+    findings.some((f) => /--matrix --event/.test(f)),
+    findings.join('\n'),
+  );
+  assert.ok(
+    findings.some((f) => /never becomes a reviewer session/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+test('a matrix built without the event is refused', () => {
+  const findings = replayRepetitionFindings(
+    repeating({
+      list: [
+        '        run: |',
+        '          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --matrix --tier "$TIERS")"',
+      ],
+    }),
+    repetitionSet,
+  );
+  assert.ok(
+    findings.some((f) => /--matrix --event/.test(f)),
+    findings.join('\n'),
+  );
+});
+
+// upload-artifact refuses a name already taken in the run, so three
+// repetitions under one name keep one result line and lose two.
+test('an artifact not named for its repetition is refused', () => {
+  const findings = replayRepetitionFindings(
+    repeating({
+      artifact: '          name: golden-${{ matrix.case }}',
+      transcript:
+        '          transcript-artifact: golden-transcript-${{ matrix.case }}',
+    }),
+    repetitionSet,
+  );
+  assert.ok(
+    findings.some((f) => /result artifact is not named/.test(f)),
+    findings.join('\n'),
+  );
+  assert.ok(
+    findings.some((f) => /transcript artifact is not named/.test(f)),
     findings.join('\n'),
   );
 });

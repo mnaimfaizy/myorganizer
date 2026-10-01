@@ -13,12 +13,18 @@ name: Golden Replay
 #
 #   - schedule: weekly on main, and only when a reviewer input moved — the
 #     frontier tier when one moved that week, every case in the first week of
-#     a month in which one moved (golden-tiers.mjs --scheduled decides).
+#     a month in which one moved (golden-tiers.mjs --scheduled decides). Each
+#     frontier case runs three times, so one run's randomness decides nothing
+#     (ADR 0116); a guard runs once.
 #   - the `golden-replay` Request Label on a Pull Request: measures that
 #     Pull Request's reviewer before it merges. A button, like agent-review:
 #     the workflow removes it when the run ends. Guards run too when the brief
 #     or the finding contract changed in that Pull Request (ADR 0072 item 1).
 #   - workflow_dispatch: a tier on demand, one repetition per dispatch.
+#
+# A case's tier is where its last ten scored runs in
+# docs/review/golden-replay-results.jsonl put it, and its declared tier until
+# the record holds ten (ADR 0116).
 #
 # The reviewer step is the composite action at .github/actions/code-reviewer,
 # shared with code-review.yml. Same credential rules; CODE_REVIEW_ENABLED=false
@@ -134,6 +140,7 @@ jobs:
           HAS_KEY: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN != '' || secrets.ANTHROPIC_API_KEY != '' }}
           ENABLED: ${{ vars.CODE_REVIEW_ENABLED }}
           TIERS: ${{ steps.tiers.outputs.tiers }}
+          EVENT: ${{ github.event_name }}
           MODEL: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
         run: |
           set -euo pipefail
@@ -160,7 +167,12 @@ jobs:
           # dependency-free for exactly this reason, and it is the only
           # implementation of the tier filter — the scorer's `--list --tier`
           # calls the same function, so the two cannot drift apart.
-          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --tier "$TIERS")"
+          #
+          # --matrix prints one {case, repetition} entry per reviewer session:
+          # three per frontier case on the schedule, one otherwise (ADR 0116).
+          # The event is passed rather than read by the script, so the number
+          # of sessions a run buys is visible in the line that asks for them.
+          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --matrix --tier "$TIERS" --event "$EVENT")"
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "tier $TIERS: $MATRIX"
 
@@ -181,7 +193,7 @@ jobs:
           {
             echo '## Golden replay'
             echo
-            echo "Tier \`$TIERS\`, model \`$MODEL\`, $(jq 'length' <<<"$MATRIX") case(s)."
+            echo "Tier \`$TIERS\`, model \`$MODEL\`, $(jq '[.[].case] | unique | length' <<<"$MATRIX") case(s), $(jq 'length' <<<"$MATRIX") reviewer session(s)."
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$HAS_KEY" != 'true' ]; then
             {
@@ -192,7 +204,7 @@ jobs:
           fi
 
   replay:
-    name: Replay ${{ matrix.case }}
+    name: Replay ${{ matrix.case }} (${{ matrix.repetition }})
     runs-on: ubuntu-latest
     timeout-minutes: 45
     needs: cases
@@ -209,11 +221,15 @@ jobs:
       # the maintainer for the same token, on the same window, so it does not
       # get to spend it on its own schedule: cases now run one at a time, and
       # ADR 0072's amendment moves the second and third repetition of a
-      # measurement to separate dispatches on separate days rather than
-      # squeezing all three into one.
+      # dispatched measurement to separate dispatches on separate days. The
+      # schedule is the exception (ADR 0116): it runs a frontier case's three
+      # repetitions in one run, still one session at a time, at 03:00 UTC on
+      # a Monday, when nobody is waiting on the window.
       max-parallel: 1
       matrix:
-        case: ${{ fromJSON(needs.cases.outputs.matrix) }}
+        # One {case, repetition} entry per reviewer session, from
+        # golden-tiers.mjs --matrix.
+        include: ${{ fromJSON(needs.cases.outputs.matrix) }}
     env:
       # Required for Prisma v7 config loading if a reviewer runs backend tests.
       DATABASE_URL: postgresql://localhost:5432/myorganizer
@@ -330,7 +346,7 @@ jobs:
           oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           api-key: ${{ secrets.ANTHROPIC_API_KEY }}
           github-token: ${{ github.token }}
-          transcript-artifact: golden-transcript-${{ matrix.case }}
+          transcript-artifact: golden-transcript-${{ matrix.case }}-r${{ matrix.repetition }}
 
       # A case that never finished is not a result. It has to fail — there is
       # no report to score — but it must never be written into the record as a
@@ -528,7 +544,10 @@ jobs:
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
-          name: golden-${{ matrix.case }}
+          # The repetition is in the name: a case's three scheduled runs
+          # would otherwise upload under one name and all but the first
+          # result line would be refused.
+          name: golden-${{ matrix.case }}-r${{ matrix.repetition }}
           path: |
             tmp/code-review/normalized.json
             tmp/code-review/score.json
@@ -594,7 +613,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Download every case's result line
+      - name: Download every case run's result line
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
         with:
           pattern: golden-*
@@ -619,20 +638,29 @@ jobs:
             echo 'no case produced a result line this run; nothing to append'
           fi
 
+      # The ledger's Runs section and standing table are generated from the
+      # record, and review:golden:results:check fails when they disagree. A
+      # record committed alone would fail that check on main, for every pull
+      # request, over a drift none of them introduced. The checker imports
+      # only Node built-ins, so nothing is installed here.
+      - name: Regenerate the ledger from the record
+        run: node tools/scripts/check-review-golden-results.mjs --write
+
       - name: Commit the results record
         run: |
           set -euo pipefail
           RECORD=docs/review/golden-replay-results.jsonl
-          if git diff --quiet -- "$RECORD"; then
+          LEDGER=docs/review/golden-replay-results.md
+          if git diff --quiet -- "$RECORD" "$LEDGER"; then
             echo 'no change to commit'
             exit 0
           fi
           # main may have moved during the hours this replay ran; rebase the
-          # one file this job ever touches before pushing.
+          # two files this job ever touches before pushing.
           git fetch origin main
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
-              add "$RECORD"
+              add "$RECORD" "$LEDGER"
           git -c user.name='github-actions[bot]' \
               -c user.email='41898282+github-actions[bot]@users.noreply.github.com' \
               commit -m "chore(golden-replay): record run ${{ github.run_id }}"

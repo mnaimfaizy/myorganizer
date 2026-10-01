@@ -36,7 +36,7 @@ Recall is matched expected findings over expected findings, scored by
 one reviewer run per case. A pattern case passes at or above its `minRecall`.
 The reviewer is stochastic: a single run of a single case is not a
 measurement, which is why the baseline reports five runs of the same three
-cases and why promotion between tiers takes three consecutive catches.
+cases and why a case's tier is read from its last ten scored runs.
 
 A clean-diff case (issue #933) is the opposite measurement: a known-good
 merged pull request that carries `expectsNoBlocking: true` in place of
@@ -51,9 +51,40 @@ every other case.
 
 A case's tier decides how often it is replayed
 ([ADR 0072](../adr/0072-a-golden-case-earns-its-replay-frequency.md)).
-Promotion to `guard` takes **three consecutive catches**; demotion to
-`frontier` takes **one miss**. The asymmetry is deliberate — a wrongly
-promoted case is a detector that quietly stopped running.
+Since 2026-10-01 a case stands where its catch rate over its **last ten
+scored runs** puts it
+([ADR 0116](../adr/0116-a-golden-case-stands-on-its-catch-rate-over-its-last-ten-scored-runs.md)):
+**eight or more** catches at `guard`, **five or fewer** at `frontier`, six or
+seven where it was. Under ten scored runs nothing moves and the tier the set
+declares holds. A void is not a scored run. The table below is generated from
+the set and the [results record](golden-replay-results.jsonl) by
+`tools/scripts/review/golden-standing.mjs`, asserted by
+`yarn review:golden:results:check`, and is what the replay's tier filter
+reads.
+
+<!-- GENERATED:golden-standing:START -->
+
+<!-- prettier-ignore-start -->
+| Case | Declared tier | Scored runs | Caught of last ten | Rate | Stands at | Why |
+| --- | --- | --- | --- | --- | --- | --- |
+| `groceries-blob-type-without-fanouts` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `export-envelope-drops-tasks` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `release-bump-leaves-generated-client-stale` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `signup-password-wrapper-inside-formcontrol` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `import-confirm-is-bare-window-confirm` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `mail-test-setup-assigns-undefined-to-env` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `npm-advisory-rekey-lands-clean` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `escaped-defect-negation-fix-lands-clean` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `trust-measurement-docs-land-clean` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `youtube-run-refresh-gated-on-polled-liveness` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `e2e-export-download-read-through-download-path` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+<!-- prettier-ignore-end -->
+
+<!-- GENERATED:golden-standing:END -->
+
+Before that, promotion to `guard` took three consecutive catches and demotion
+to `frontier` took one miss. The history below was written under that rule
+and is kept as written: it is where each declared tier came from.
 
 | Case                                             | Tier       | Since      | History                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ------------------------------------------------ | ---------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -129,11 +160,15 @@ than added, each for a reason written into its own `reentryCondition`:
   condition so promotion checks the budget first.
 - `todos-removal-waiver-reraised-as-blocking` (PR #852) is the false-alarm
   loop PRD #925 recorded: a precondition waived in ADR 0003 rather than in
-  the spec, raised as Blocking in seven wordings across eleven runs. It wants
-  the clean-diff shape, and it is parked because the clause it measures is not
-  in the brief yet (slice #938 puts it there) and because a clean case is
-  admitted on its merged head's review having raised nothing, which is the
-  opposite of what is on record here.
+  the spec, raised as Blocking in seven wordings across eleven runs. The
+  pull request's own review data, read on 2026-10-01, bears that out: eleven
+  runs, the waived precondition Blocking under seven titles in runs 4 to 10,
+  and no Blocking finding in the last run at `7e01e9d`. It wants the
+  clean-diff shape. The two conditions it was parked on now hold — slice #938
+  put the waiver clause in the Spec brief, and the merged head's review raised
+  nothing Blocking — and it stays parked on a third: every case in the set
+  carries no spec source, so a replay would never reach the clause it
+  measures. Its entry says what returns it.
 
 The trace's sixth candidate gained no entry of its own and is not dropped
 either: PR #907 is the third fix attributed to PR #573, and its defect — a web
@@ -225,11 +260,15 @@ measurement, which is why the baseline above took five runs of the same three
 cases before drawing any conclusion. What changes here is only how the
 repetitions are spread out: three dispatches, read together once all three
 have landed, are what this record treats as one measurement. A single
-dispatch can still move a case's tier exactly as before — promotion on three
-consecutive catches, demotion on one miss, both mechanical rules ADR 0072
-already sets and this does not touch — but no narrative conclusion in this
-file ("the brief helped," "the cadence fixed it") should rest on one dispatch
-alone. See ADR 0072, item 8.
+run no longer moves a case's tier: since ADR 0116 a scheduled run is one
+scored run of the ten a standing is read over, and a label or dispatch run is
+not committed to the record at all, so it moves no tier. No narrative
+conclusion in this file ("the brief helped," "the cadence fixed it") should
+rest on one dispatch alone. See ADR 0072, item 8.
+
+The **scheduled** replay is the exception to one repetition: it runs each
+frontier case three times in one run, still one session at a time
+(ADR 0116). A guard runs once.
 
 ## Runs
 
@@ -686,14 +725,17 @@ below is generated from that record by
 generated-page checks (`review:pages:check`, `agents:map:check`): generate
 from source, diff against what is committed, fail on drift. Do not hand-edit
 between the markers; edit the record and regenerate with
-`node tools/scripts/check-review-golden-results.mjs --print` instead. The
+`node tools/scripts/check-review-golden-results.mjs --write` instead, which
+is what the scheduled replay runs after it appends to the record. The
 table above this section is historical, hand-written, and untouched by the
 check — the generated table starts from the first recorded line (issue
 #932).
 
 <!-- GENERATED:golden-runs:START -->
 
+<!-- prettier-ignore-start -->
 _No recorded runs yet._
+<!-- prettier-ignore-end -->
 
 <!-- GENERATED:golden-runs:END -->
 

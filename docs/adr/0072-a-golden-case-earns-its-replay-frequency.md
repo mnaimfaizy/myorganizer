@@ -182,6 +182,15 @@ caught`): a case that always passes and a case that never passes both carry less
 > record: those inputs took 53 commits in the three weeks after this decision, and pushes paid 88% of
 > the replay's spend. The tiers, promotion and demotion, and items 4 to 8 stand.
 
+> **Superseded in part by [ADR 0116](0116-a-golden-case-stands-on-its-catch-rate-over-its-last-ten-scored-runs.md).**
+> Item 2 is gone: a case no longer moves on three consecutive catches or on one miss. It stands where
+> its catch rate over its last ten scored runs in the results record puts it — eight or more at
+> `guard`, five or fewer at `frontier`, six or seven where it was, and at its declared tier under ten.
+> Item 8's "one repetition" no longer holds for the scheduled replay, which runs each frontier case
+> three times; it holds for a label and a dispatch. The last alternative-but-one below — deriving the
+> tier from replay history — was rejected for want of a scoreboard, and issue #932 built one. The
+> 2026-09-17 amendment stands: promotion, now by rate, still may not empty the frontier.
+
 ## Alternatives considered
 
 - **Move the replay to a nightly or 48-hourly schedule.** Rejected. The replay's input changes a

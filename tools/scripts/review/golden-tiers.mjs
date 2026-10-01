@@ -2,12 +2,21 @@
 // The golden set's tier filter (ADR 0072), and the only implementation of it.
 //
 //   node tools/scripts/review/golden-tiers.mjs [--tier guard|frontier|all]
+//   node tools/scripts/review/golden-tiers.mjs --matrix --tier <tier> --event <event>
 //   node tools/scripts/review/golden-tiers.mjs --scheduled
 //
-// Prints the case ids of one tier as a JSON array — the replay workflow's
-// matrix. `all`, or no `--tier`, prints every case. `--scheduled` prints the
-// tier this week's scheduled replay runs, or an empty line for none, from
-// the git history of the reviewer's inputs (ADR 0109).
+// Prints the case ids of one tier as a JSON array. `all`, or no `--tier`,
+// prints every case. `--matrix` prints the replay workflow's matrix instead:
+// one `{case, repetition}` entry per reviewer session, three per frontier
+// case when the event is `schedule` and one otherwise (ADR 0116).
+// `--scheduled` prints the tier this week's scheduled replay runs, or an
+// empty line for none, from the git history of the reviewer's inputs
+// (ADR 0109).
+//
+// A case's tier is where it stands, not only what the set declares: its
+// catch rate over its last ten scored runs in the results record moves it,
+// and the declared tier holds until the record has ten (ADR 0116,
+// golden-standing.mjs).
 //
 // This file exists because the filter was briefly written twice: once as a
 // jq expression in review-golden-replay.yml and once as `--list --tier` in
@@ -21,30 +30,70 @@
 //
 // Exit 0 = printed. Exit 2 = could not run.
 import { execFileSync } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
+import { parseResultsFile } from './golden-results.mjs';
+import { caseStandings } from './golden-standing.mjs';
+
 export const GOLDEN_SET_PATH = 'tools/config/review-golden-set.json';
+export const GOLDEN_RESULTS_PATH = 'docs/review/golden-replay-results.jsonl';
+
+/** The results record, or no records when nothing has been recorded yet. */
+export const loadGoldenRecords = (path = GOLDEN_RESULTS_PATH) =>
+  existsSync(path) ? parseResultsFile(readFileSync(path, 'utf8')) : [];
 
 /** The tiers a case may declare, plus the pseudo-tier meaning "every case". */
 export const CASE_TIERS = ['guard', 'frontier'];
 export const ALL_TIERS = 'all';
 
-/**
- * @param {{cases: {id: string, tier: string}[]}} set
- * @param {string} [tier] one of CASE_TIERS, or ALL_TIERS / undefined for every case
- * @returns {string[]} case ids, in the set's own order
- */
-export const caseIdsInTier = (set, tier) => {
+const standingsInTier = (set, tier, records) => {
   if (tier && tier !== ALL_TIERS && !CASE_TIERS.includes(tier))
     throw new Error(
       `tier must be one of ${[...CASE_TIERS, ALL_TIERS].join(', ')}, got ${tier}`,
     );
-  const cases = set?.cases ?? [];
-  return cases
-    .filter((c) => !tier || tier === ALL_TIERS || c.tier === tier)
-    .map((c) => c.id);
+  return caseStandings(set, records).filter(
+    (s) => !tier || tier === ALL_TIERS || s.tier === tier,
+  );
 };
+
+/**
+ * @param {{cases: {id: string, tier: string}[]}} set
+ * @param {string} [tier] one of CASE_TIERS, or ALL_TIERS / undefined for every case
+ * @param {{case: string, outcome: string}[]} [records] the results record;
+ *   a case stands where its last ten scored runs put it (ADR 0116), and at
+ *   its declared tier when the record holds fewer
+ * @returns {string[]} case ids, in the set's own order
+ */
+export const caseIdsInTier = (set, tier, records = []) =>
+  standingsInTier(set, tier, records).map((s) => s.id);
+
+/**
+ * How many times the weekly scheduled replay runs each frontier case
+ * (ADR 0116): one run of a stochastic reviewer decides nothing, and three a
+ * week fill a ten-run window in a month. A label or a dispatch stays one
+ * repetition (ADR 0072 item 8), and so does a guard on any event.
+ */
+export const SCHEDULED_FRONTIER_REPETITIONS = 3;
+export const SCHEDULE_EVENT = 'schedule';
+
+/**
+ * The replay workflow's matrix: one entry per reviewer session, case by
+ * case so a case's repetitions sit together in the record.
+ *
+ * @returns {{case: string, repetition: number}[]}
+ */
+export const replayMatrix = (set, tier, { records = [], event } = {}) =>
+  standingsInTier(set, tier, records).flatMap((s) => {
+    const repetitions =
+      event === SCHEDULE_EVENT && s.tier === 'frontier'
+        ? SCHEDULED_FRONTIER_REPETITIONS
+        : 1;
+    return Array.from({ length: repetitions }, (_, i) => ({
+      case: s.id,
+      repetition: i + 1,
+    }));
+  });
 
 /**
  * What a replay measures, as git pathspecs: the paths that produce a review.
@@ -126,11 +175,18 @@ const main = (argv) => {
     }
     return;
   }
-  const i = argv.indexOf('--tier');
-  const tier = i === -1 ? undefined : argv[i + 1];
+  const value = (flag) => {
+    const i = argv.indexOf(flag);
+    return i === -1 ? undefined : argv[i + 1];
+  };
+  const tier = value('--tier');
   try {
     const set = JSON.parse(readFileSync(GOLDEN_SET_PATH, 'utf8'));
-    process.stdout.write(`${JSON.stringify(caseIdsInTier(set, tier))}\n`);
+    const records = loadGoldenRecords();
+    const out = argv.includes('--matrix')
+      ? replayMatrix(set, tier, { records, event: value('--event') })
+      : caseIdsInTier(set, tier, records);
+    process.stdout.write(`${JSON.stringify(out)}\n`);
   } catch (err) {
     process.stderr.write(`golden-tiers: ${err.message}\n`);
     process.exit(2);
