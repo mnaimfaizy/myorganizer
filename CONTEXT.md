@@ -765,7 +765,7 @@ A version of the Mobile App that an app store has approved and made available to
 _Avoid_: store release, app release, mobile version, build (for the approved version)
 
 **Version Floor**:
-The lowest Mobile Release an environment's backend still serves. A Mobile App below it is refused and told to update, and must keep its unsynced changes on the device rather than treat the refusal as a rejection of its data.
+The lowest Mobile Release an environment's backend still serves. A Mobile App below it is refused and told to update. A refused edit is a failed push: it is never reported as saved, and the User is told it was not.
 _Avoid_: minimum version, force update, kill switch, min supported version
 
 **Product Surface**:
