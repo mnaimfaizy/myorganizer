@@ -1,4 +1,4 @@
-package com.mobile.biometrickeystore
+package app.myorganiser.biometrickeystore
 
 import android.content.Context
 import android.content.SharedPreferences

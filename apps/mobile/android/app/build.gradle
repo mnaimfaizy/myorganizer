@@ -77,7 +77,7 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.mobile"
+    namespace "app.myorganiser"
 
     // The bundled app fonts live with the rest of the app's source, not under
     // android/. Pointing the asset source set at apps/mobile/src/assets puts
@@ -91,7 +91,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.mobile"
+        applicationId "app.myorganiser"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -124,7 +124,7 @@ dependencies {
     implementation("com.facebook.react:react-android")
 
     // BiometricPrompt with a CryptoObject for the Biometric Unlock keystore
-    // (com.mobile.biometrickeystore). The same version react-native-keychain
+    // (app.myorganiser.biometrickeystore). The same version react-native-keychain
     // already brings in, declared here because that one is not on this
     // module's compile classpath.
     implementation("androidx.biometric:biometric:1.1.0")

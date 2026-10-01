@@ -1,15 +1,15 @@
-package com.mobile.keepawake
+package app.myorganiser.biometrickeystore
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.ViewManager
 
-/** Registers `RNKeepAwakeModule` with the React Native bridge. */
-class RNKeepAwakePackage : ReactPackage {
+/** Registers `RNBiometricKeystoreModule` with the React Native bridge. */
+class RNBiometricKeystorePackage : ReactPackage {
   override fun createNativeModules(
       reactContext: ReactApplicationContext
-  ): List<NativeModule> = listOf(RNKeepAwakeModule(reactContext))
+  ): List<NativeModule> = listOf(RNBiometricKeystoreModule(reactContext))
 
   override fun createViewManagers(
       reactContext: ReactApplicationContext

@@ -1,4 +1,4 @@
-package com.mobile
+package app.myorganiser
 
 import android.app.Application
 import com.facebook.react.PackageList
@@ -11,10 +11,10 @@ import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.react.soloader.OpenSourceMergedSoMapping
 import com.facebook.soloader.SoLoader
-import com.mobile.appinfo.RNAppInfoPackage
-import com.mobile.biometrickeystore.RNBiometricKeystorePackage
-import com.mobile.keepawake.RNKeepAwakePackage
-import com.mobile.sensitiveclipboard.RNSensitiveClipboardPackage
+import app.myorganiser.appinfo.RNAppInfoPackage
+import app.myorganiser.biometrickeystore.RNBiometricKeystorePackage
+import app.myorganiser.keepawake.RNKeepAwakePackage
+import app.myorganiser.sensitiveclipboard.RNSensitiveClipboardPackage
 
 class MainApplication : Application(), ReactApplication {
 

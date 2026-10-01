@@ -1,15 +1,15 @@
-package com.mobile.biometrickeystore
+package app.myorganiser.sensitiveclipboard
 
 import com.facebook.react.ReactPackage
 import com.facebook.react.bridge.NativeModule
 import com.facebook.react.bridge.ReactApplicationContext
 import com.facebook.react.uimanager.ViewManager
 
-/** Registers `RNBiometricKeystoreModule` with the React Native bridge. */
-class RNBiometricKeystorePackage : ReactPackage {
+/** Registers `RNSensitiveClipboardModule` with the React Native bridge. */
+class RNSensitiveClipboardPackage : ReactPackage {
   override fun createNativeModules(
       reactContext: ReactApplicationContext
-  ): List<NativeModule> = listOf(RNBiometricKeystoreModule(reactContext))
+  ): List<NativeModule> = listOf(RNSensitiveClipboardModule(reactContext))
 
   override fun createViewManagers(
       reactContext: ReactApplicationContext

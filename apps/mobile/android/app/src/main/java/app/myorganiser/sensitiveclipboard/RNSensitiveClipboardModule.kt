@@ -1,4 +1,4 @@
-package com.mobile.sensitiveclipboard
+package app.myorganiser.sensitiveclipboard
 
 import android.content.ClipData
 import android.content.ClipDescription

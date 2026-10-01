@@ -1,4 +1,4 @@
-package com.mobile.keepawake
+package app.myorganiser.keepawake
 
 import android.view.WindowManager
 import com.facebook.react.bridge.ReactApplicationContext
