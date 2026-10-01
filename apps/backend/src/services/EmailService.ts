@@ -1,7 +1,9 @@
 import nodemailer, { SendMailOptions } from 'nodemailer';
 import winston from 'winston';
 
-export type MailAttachment = NonNullable<SendMailOptions['attachments']>[number];
+export type MailAttachment = NonNullable<
+  SendMailOptions['attachments']
+>[number];
 
 export interface EmailMessage {
   html: string;

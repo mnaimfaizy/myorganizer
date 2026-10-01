@@ -61,7 +61,7 @@ export function getCountryByCode(code: string) {
  */
 export function formatPhoneNumber(
   countryCode: string,
-  phoneNumber: string
+  phoneNumber: string,
 ): string {
   const country = getCountryByCode(countryCode);
   const digits = phoneNumber.replace(/\D/g, '');
@@ -76,7 +76,7 @@ export function formatPhoneNumber(
     if (digits.length === 10) {
       return `${countryCode} (${digits.slice(0, 3)}) ${digits.slice(
         3,
-        6
+        6,
       )}-${digits.slice(6)}`;
     }
   } else if (countryCode === '+44') {
@@ -89,7 +89,7 @@ export function formatPhoneNumber(
     if (digits.length === 9) {
       return `${countryCode} ${digits.slice(0, 3)} ${digits.slice(
         3,
-        6
+        6,
       )} ${digits.slice(6)}`;
     }
   } else if (countryCode === '+91') {
@@ -112,7 +112,7 @@ export function formatPhoneNumber(
  */
 export function isValidPhoneLength(
   countryCode: string,
-  phoneNumber: string
+  phoneNumber: string,
 ): boolean {
   const country = getCountryByCode(countryCode);
   if (!country) return true; // Allow if country not found

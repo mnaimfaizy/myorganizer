@@ -3,14 +3,14 @@ import jwt, { JsonWebTokenError, TokenExpiredError } from 'jsonwebtoken';
 export const generateToken = (
   payload: object,
   key: string,
-  expiry: string
+  expiry: string,
 ): string | Error => {
   return jwt.sign({ ...payload }, key, { expiresIn: expiry });
 };
 
 export const decodeToken = (
   token: string,
-  secret: string
+  secret: string,
 ): string | jwt.JwtPayload | Error | TokenExpiredError => {
   try {
     const decoded = jwt.verify(token, secret);

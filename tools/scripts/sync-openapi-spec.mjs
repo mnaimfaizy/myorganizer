@@ -5,11 +5,11 @@ const workspaceRoot = process.cwd();
 
 const sourcePath = path.resolve(
   workspaceRoot,
-  'apps/backend/src/swagger/swagger.yaml'
+  'apps/backend/src/swagger/swagger.yaml',
 );
 const destinationPath = path.resolve(
   workspaceRoot,
-  'libs/api-specs/src/api-specs.openapi.yaml'
+  'libs/api-specs/src/api-specs.openapi.yaml',
 );
 
 if (!fs.existsSync(sourcePath)) {
