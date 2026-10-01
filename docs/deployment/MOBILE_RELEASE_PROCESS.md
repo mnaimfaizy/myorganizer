@@ -55,7 +55,7 @@ The app has to be submittable first. That is the readiness PRD, #956, and it cov
 - the Production build target;
 - the privacy manifest;
 - the icon;
-- the security fixes from the v1 QA review.
+- verifying [ADR 0108](../adr/0108-a-mobile-device-may-hold-the-master-key-behind-a-biometric-gate.md)'s biometric rules on both platforms before the closed test. Closed testers keep real vaults, so this is required, not polish.
 
 Only then does anything below start.
 
@@ -127,6 +127,9 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
    - Android: every native library is 16 KB aligned. Run `zipalign -c -P 16 -v 4` on an APK built from the bundle.
    - iOS: run Xcode's **Privacy Report** on the archive. Anything it lists must also appear in the privacy manifest `apps/mobile/ios/Mobile/PrivacyInfo.xcprivacy` and in the App Privacy answers.
    - No request goes to `localhost`, `10.0.2.2`, or plain `http`.
+   - Biometric Unlock follows ADR 0108 on a real device of each platform:
+     - It accepts a strong biometric only, never the device PIN, pattern, or passcode.
+     - It stops working after a fingerprint or face is added or removed, and falls back to the passphrase and Recovery Key without locking the User out.
 
 ## Part 5: Google Play, first release
 
