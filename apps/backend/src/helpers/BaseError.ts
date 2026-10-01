@@ -7,7 +7,7 @@ export class BaseError<T> extends Error {
     code: string,
     message: string,
     status: number,
-    details: Record<string, { message: string; value: T }> = {}
+    details: Record<string, { message: string; value: T }> = {},
   ) {
     super(message);
     this.code = code;
@@ -17,24 +17,24 @@ export class BaseError<T> extends Error {
   }
 
   static async createInvalidArgumentError<T>(
-    details: Record<string, { message: string; value: T }>
+    details: Record<string, { message: string; value: T }>,
   ): Promise<BaseError<T>> {
     return new BaseError<T>(
       'INVALID_ARGUMENT',
       'Validation Failed',
       400,
-      details
+      details,
     );
   }
 
   static async createNotFoundError<T>(
-    details: Record<string, { message: string; value: T }>
+    details: Record<string, { message: string; value: T }>,
   ): Promise<BaseError<T>> {
     return new BaseError<T>('NOT_FOUND', 'Resource not found', 404, details);
   }
 
   static async createInternalError<T>(
-    details: Record<string, { message: string; value: T }>
+    details: Record<string, { message: string; value: T }>,
   ): Promise<BaseError<T>> {
     return new BaseError<T>('INTERNAL', 'Internal server error', 500, details);
   }

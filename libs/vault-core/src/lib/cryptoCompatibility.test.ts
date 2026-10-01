@@ -1,9 +1,5 @@
 import { describe, it, expect } from '@jest/globals';
-import {
-  pbkdf2Sync,
-  createCipheriv,
-  createDecipheriv,
-} from 'crypto';
+import { pbkdf2Sync, createCipheriv, createDecipheriv } from 'crypto';
 
 const PBKDF2_ITERATIONS = 310_000;
 const SALT_LENGTH = 16;
@@ -17,13 +13,7 @@ const AUTH_TAG_LENGTH = 16;
  * and mobile (react-native-quick-crypto) implementations.
  */
 function deriveKey(passphrase: string, salt: Buffer): Buffer {
-  return pbkdf2Sync(
-    passphrase,
-    salt,
-    PBKDF2_ITERATIONS,
-    KEY_LENGTH,
-    'sha256'
-  );
+  return pbkdf2Sync(passphrase, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
 }
 
 /**
@@ -70,7 +60,10 @@ function decrypt(key: Buffer, ciphertext: Buffer, iv: Buffer): Buffer {
  * Converts a Buffer (IV bytes + ciphertext bytes with auth tag)
  * to an EncryptedBlob format matching VaultCrypto contract.
  */
-function toEncryptedBlob(iv: Buffer, ciphertext: Buffer): { iv: string; ciphertext: string } {
+function toEncryptedBlob(
+  iv: Buffer,
+  ciphertext: Buffer,
+): { iv: string; ciphertext: string } {
   return {
     iv: iv.toString('base64'),
     ciphertext: ciphertext.toString('base64'),
@@ -80,7 +73,10 @@ function toEncryptedBlob(iv: Buffer, ciphertext: Buffer): { iv: string; cipherte
 /**
  * Converts an EncryptedBlob back to raw bytes for decryption.
  */
-function fromEncryptedBlob(blob: { iv: string; ciphertext: string }): { iv: Buffer; ciphertext: Buffer } {
+function fromEncryptedBlob(blob: { iv: string; ciphertext: string }): {
+  iv: Buffer;
+  ciphertext: Buffer;
+} {
   return {
     iv: Buffer.from(blob.iv, 'base64'),
     ciphertext: Buffer.from(blob.ciphertext, 'base64'),
@@ -140,7 +136,9 @@ describe('Vault crypto byte compatibility', () => {
 
       // ciphertext length = plaintext.length + 16-byte auth tag
       // (the cipher.final() return value is usually empty for GCM, but included for completeness)
-      expect(ciphertext.length).toBeGreaterThanOrEqual(plaintext.length + AUTH_TAG_LENGTH);
+      expect(ciphertext.length).toBeGreaterThanOrEqual(
+        plaintext.length + AUTH_TAG_LENGTH,
+      );
     });
 
     it('should produce deterministic ciphertext for same key, plaintext, and IV', () => {
@@ -174,7 +172,9 @@ describe('Vault crypto byte compatibility', () => {
       const ciphertext = encrypt(key, originalPlaintext, iv);
       const decrypted = decrypt(key, ciphertext, iv);
 
-      expect(decrypted.toString('utf8')).toBe(originalPlaintext.toString('utf8'));
+      expect(decrypted.toString('utf8')).toBe(
+        originalPlaintext.toString('utf8'),
+      );
     });
 
     it('should throw when decrypting with wrong key', () => {
@@ -215,7 +215,9 @@ describe('Vault crypto byte compatibility', () => {
   describe('EncryptedBlob format', () => {
     it('should encode IV and ciphertext as base64 strings', () => {
       const iv = Buffer.alloc(IV_LENGTH, 'test-iv-12byte');
-      const ciphertext = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+      const ciphertext = Buffer.from([
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+      ]);
 
       const blob = toEncryptedBlob(iv, ciphertext);
 
@@ -223,18 +225,24 @@ describe('Vault crypto byte compatibility', () => {
       expect(typeof blob.ciphertext).toBe('string');
       // Verify they're valid base64
       expect(Buffer.from(blob.iv, 'base64').toString('base64')).toBe(blob.iv);
-      expect(Buffer.from(blob.ciphertext, 'base64').toString('base64')).toBe(blob.ciphertext);
+      expect(Buffer.from(blob.ciphertext, 'base64').toString('base64')).toBe(
+        blob.ciphertext,
+      );
     });
 
     it('should decode base64 blob back to original bytes', () => {
       const originalIv = Buffer.alloc(IV_LENGTH, 'test-iv-12byte');
-      const originalCiphertext = Buffer.from([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]);
+      const originalCiphertext = Buffer.from([
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+      ]);
 
       const blob = toEncryptedBlob(originalIv, originalCiphertext);
       const decoded = fromEncryptedBlob(blob);
 
       expect(decoded.iv.toString('hex')).toBe(originalIv.toString('hex'));
-      expect(decoded.ciphertext.toString('hex')).toBe(originalCiphertext.toString('hex'));
+      expect(decoded.ciphertext.toString('hex')).toBe(
+        originalCiphertext.toString('hex'),
+      );
     });
 
     it('should round-trip IV and ciphertext through base64 encoding', () => {
@@ -242,7 +250,7 @@ describe('Vault crypto byte compatibility', () => {
       const ciphertext = encrypt(
         Buffer.alloc(KEY_LENGTH, 'test-key-32-bytes'),
         Buffer.from('test data'),
-        iv
+        iv,
       );
 
       const blob = toEncryptedBlob(iv, ciphertext);
@@ -284,7 +292,10 @@ describe('Vault crypto byte compatibility', () => {
 
       // Fixed IV for reproducibility
       const ivHex = '6465636f6465722074657374 2069'; // "decoder test i"
-      const iv = Buffer.from(ivHex.replace(/ /g, ''), 'hex').slice(0, IV_LENGTH);
+      const iv = Buffer.from(ivHex.replace(/ /g, ''), 'hex').slice(
+        0,
+        IV_LENGTH,
+      );
 
       // Derive key using identical parameters
       const key = deriveKey(passphrase, salt);
@@ -332,7 +343,9 @@ describe('Vault crypto byte compatibility', () => {
 
       // The encrypted output includes: encrypted bytes + final() bytes + 16-byte auth tag
       // We expect at least plaintext length + 16 bytes for the auth tag
-      expect(ciphertext.length).toBeGreaterThanOrEqual(plaintext.length + AUTH_TAG_LENGTH);
+      expect(ciphertext.length).toBeGreaterThanOrEqual(
+        plaintext.length + AUTH_TAG_LENGTH,
+      );
     });
 
     it('should decrypt identical encrypted blobs when using identical key, plaintext, and IV', () => {
@@ -363,7 +376,13 @@ describe('Vault crypto byte compatibility', () => {
 
       // Both derive with same iterations should produce same key
       const key1 = deriveKey(passphrase, salt);
-      const key2 = pbkdf2Sync(passphrase, salt, PBKDF2_ITERATIONS, KEY_LENGTH, 'sha256');
+      const key2 = pbkdf2Sync(
+        passphrase,
+        salt,
+        PBKDF2_ITERATIONS,
+        KEY_LENGTH,
+        'sha256',
+      );
 
       expect(key1.toString('hex')).toBe(key2.toString('hex'));
     });
