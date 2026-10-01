@@ -443,6 +443,12 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
+      # Whole tree, not `nx affected`. The pre-commit hook rewrites uncommitted
+      # files and does not run when Husky is not installed, so this step is what
+      # fails the Lint check (issue #791).
+      - name: Check formatting
+        run: corepack yarn format:check
+
       - name: Restore Nx computation cache
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

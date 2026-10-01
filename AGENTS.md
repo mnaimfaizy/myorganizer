@@ -72,7 +72,8 @@ Testing on a Cloud Agent:
 - Test one Jest project: `yarn nx test <project-name>`.
 - E2E: `yarn nx e2e myorganizer-e2e`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
-- Format: `yarn format:write`.
+- Format: `yarn format:write` rewrites uncommitted files. `yarn format:check` reads the whole tree and fails when Prettier would change a file.
+- A `git commit` runs `.husky/pre-commit` only when Husky is installed. `postinstall` sets `core.hooksPath`. Without `node_modules` the hook does not run, the commit still succeeds, and that success is not evidence any checker ran. CI runs `yarn format:check` on the Lint job.
 - AI commit: `corepack yarn ai:commit --message-file <path>`.
 - AI PR: draft with the `PrAuthor` sub-agent, then `corepack yarn ai:create-pr --title <text> --body-file <path> --merge-base <sha> [--label <name>] [--reviewer <login>]`. Verifies the merge base and refuses a force-push over work your branch does not hold. See [the create-pull-request-workflow Skill](.agents/skills/create-pull-request-workflow/SKILL.md).
 - API sync after backend contract changes: `yarn openapi:sync`; check drift with `yarn openapi:check`.
