@@ -22,6 +22,8 @@ Two failures follow from that, and neither can be fixed after 1.0 ships.
 
 2. **A refusal is not a rejection of data.** The Mobile App handles a 426 in one place and shows a blocking update screen. Unsynced changes stay on the device and push after the update. A client that treats the refusal as the server discarding its write loses exactly the data the floor exists to protect.
 
+   > **Superseded by [ADR 0117](0117-a-version-floor-refusal-on-mobile-is-a-failed-push.md).** The Mobile App keeps no Local Vault (ADR 0107), so there are no unsynced changes on the device to keep. A 426 on a mobile push is a failed push: the edit is not saved, and the update screen says so.
+
 3. **A client preserves what it does not understand.** Every path that writes a Vault Blob, on web and on mobile, carries unknown fields through untouched: on the record, and on the envelope around the records. Adding a field is then safe for every Mobile Release still installed.
 
 4. **A change of meaning takes a new name, never a repurposed field.** When a field's type or purpose changes, the new meaning gets a new field name. If an old client acting on the old field would now be wrong, the Version Floor is raised past it. An existing field is never reused for a new meaning, because an old client would read and write it under the old one.
