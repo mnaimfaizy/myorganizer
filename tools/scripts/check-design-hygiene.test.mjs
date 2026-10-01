@@ -403,6 +403,129 @@ test('a baselined page whose citations are all anchored is reported as a stale e
   assert.match(result.stdout, /citation-anchor-baseline\.json/);
 });
 
+// --- an anchor that keys no citation is an unasserted claim (#822) ------------
+//
+// The rules above run from a citation to its anchor. The reverse direction is
+// the one four sandcastle pages passed review on: an entry the gate never looks
+// up can quote anything, and reads as though it had been checked.
+
+/** An anchor quoting `tools/scripts/lib/source-scan.mjs` at 1-based `line`. */
+function sourceScanAnchor(workspace, line) {
+  return {
+    file: 'tools/scripts/lib/source-scan.mjs',
+    start: readFileSync(
+      join(workspace, 'tools/scripts/lib/source-scan.mjs'),
+      'utf8',
+    ).split('\n')[line - 1],
+  };
+}
+
+test('an anchor that keys no citation on the page fails, even when what it quotes is true', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': sourceScanAnchor(workspace, 2),
+        'tools/scripts/lib/source-scan.mjs:3': sourceScanAnchor(workspace, 3),
+      },
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-orphan/);
+  assert.match(result.stdout, /source-scan\.mjs:3/);
+  assert.doesNotMatch(result.stdout, /citation-anchor-mismatch/);
+});
+
+test('the anchor baseline does not excuse an orphan anchor — the hatch is about absent anchors', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:3': sourceScanAnchor(workspace, 3),
+      },
+    }),
+  );
+  writeAnchorBaseline(workspace, ['docs/sandcastle/waves.html']);
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-orphan/);
+  assert.doesNotMatch(result.stdout, /citation-missing-anchor/);
+  assert.doesNotMatch(result.stdout, /citation-anchor-baseline-stale/);
+});
+
+test('a legacy page with an orphan anchor still fails', (t) => {
+  const workspace = createWorkspace(t);
+  const page = 'docs/agents/skill-atlas.html';
+  write(
+    workspace,
+    page,
+    pageWithCitation('legacy', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': sourceScanAnchor(workspace, 2),
+        'tools/scripts/lib/source-scan.mjs:3': sourceScanAnchor(workspace, 3),
+      },
+    }),
+  );
+
+  const result = run(workspace, page);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-orphan/);
+});
+
+test('a continuation line with no leading colon fails — the gate cannot read it', (t) => {
+  // `source-scan.mjs:2, 3` renders as two cited lines and parses as one. The
+  // house form is `:2, :3`.
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2, 3',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': sourceScanAnchor(workspace, 2),
+      },
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-continuation-unparsed/);
+  assert.doesNotMatch(result.stdout, /citation-anchor-orphan/);
+});
+
+test('the same lines written in the house continuation form pass', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2, :3',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': sourceScanAnchor(workspace, 2),
+        'tools/scripts/lib/source-scan.mjs:3': sourceScanAnchor(workspace, 3),
+      },
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+});
+
 // docs/example/notes.md would exist on disk but not in the index the checker
 // searches (`git ls-files`, built once at createWorkspace time) — these two
 // cite a file createWorkspace already staged, the same way production citations

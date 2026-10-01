@@ -1131,8 +1131,215 @@ test('a citation inside a <style> or <script> block is not discovered', () => {
   assert.deepEqual(seen, []);
 });
 
+// --- citation-anchor-orphan (#822) -------------------------------------------
+//
+// The anchor rules above run from the citation to its anchor. This is the other
+// direction: an entry in the block that keys no citation the gate reads is never
+// looked up, so it can quote anything — and reads, to a human, as though the
+// gate had checked it. Four sandcastle pages carried fourteen of them.
+
+/** A good page whose body is `markup`, plus a citation-anchors block when given. */
+function citedPage(markup, anchors) {
+  return goodPage({
+    body: [
+      '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+      markup,
+      ...(anchors
+        ? [
+            '<script type="application/json" id="citation-anchors">',
+            JSON.stringify({ anchors }, null, 2),
+            '</script>',
+          ]
+        : []),
+    ].join('\n'),
+  });
+}
+
+test('an anchor that keys no citation on the page is reported, on its own line', () => {
+  const findings = scan(
+    citedPage('<span class="cite">ci.yml:3</span>', {
+      'ci.yml:3': { file: '.github/workflows/ci.yml', start: 'on:' },
+      'ci.yml:9': { file: '.github/workflows/ci.yml', start: 'jobs:' },
+    }),
+  );
+  assert.deepEqual(rules(findings), ['citation-anchor-orphan']);
+  assert.match(findings[0].message, /ci\.yml:9/);
+  // The body starts at line 25: svg, the cite span, the script tag, `{`,
+  // `"anchors": {`, then four lines for the ci.yml:3 entry — ci.yml:9 is line 34.
+  assert.equal(findings[0].line, 34);
+});
+
+test('an anchor keyed by the name a bare continuation inherits is not an orphan', () => {
+  const findings = scan(
+    citedPage('<span class="src">deploy.yml:128, :181, :40-50</span>', {
+      'deploy.yml:128': { file: 'deploy.yml', start: 'a' },
+      'deploy.yml:181': { file: 'deploy.yml', start: 'b' },
+      'deploy.yml:40-50': { file: 'deploy.yml', start: 'c', end: 'd' },
+    }),
+  );
+  assert.deepEqual(rules(findings), []);
+});
+
+test('an anchor for a citation written only inside a <script> body is an orphan', () => {
+  // findCitations does not read script bodies, so a citation rendered from
+  // script data is one the gate never extracts — and an anchor for it is never
+  // looked up. session-lifecycle.html carried four of these.
+  const findings = scan(
+    citedPage(
+      [
+        '<span class="cite">ci.yml:3</span>',
+        "<script>const SCENES = [{ refs: ['ci.yml:9'] }];</script>",
+      ].join('\n'),
+      {
+        'ci.yml:3': { file: '.github/workflows/ci.yml', start: 'on:' },
+        'ci.yml:9': { file: '.github/workflows/ci.yml', start: 'jobs:' },
+      },
+    ),
+  );
+  assert.deepEqual(rules(findings), ['citation-anchor-orphan']);
+  assert.match(findings[0].message, /ci\.yml:9/);
+});
+
+test('an orphan anchor is reported on a page excused from carrying anchors', () => {
+  // `requireAnchors: false` is the anchor baseline's hatch, and it is about an
+  // anchor that is absent. An orphan is about what the block itself asserts, so
+  // the hatch does not reach it.
+  const findings = scan(
+    citedPage('<span class="cite">ci.yml:3</span>', {
+      'ci.yml:9': { file: '.github/workflows/ci.yml', start: 'jobs:' },
+    }),
+    { requireAnchors: false, getFileContent: () => 'on:\n' },
+  );
+  assert.deepEqual(rules(findings), ['citation-anchor-orphan']);
+});
+
+test('an anchor whose citation does not resolve is not also an orphan', () => {
+  const findings = scan(
+    citedPage('<span class="cite">ghost.yml:5</span>', {
+      'ghost.yml:5': { file: 'ghost.yml', start: 'boo' },
+    }),
+    {
+      resolveCitation: () => ({ ok: false, reason: 'ghost.yml:5 is missing.' }),
+    },
+  );
+  assert.deepEqual(rules(findings), ['citation-unresolved']);
+});
+
+test('scanFactualAssertions reports an orphan anchor, so a LEGACY page faces the rule too', () => {
+  const findings = scanFactualAssertions({
+    source: [
+      '<span class="cite">ci.yml:3</span>',
+      '<script type="application/json" id="citation-anchors">',
+      '{ "anchors": { "ci.yml:9": { "file": "ci.yml", "start": "jobs:" } } }',
+      '</script>',
+    ].join('\n'),
+    resolveCitation: () => ({ ok: true }),
+  });
+  assert.deepEqual(rules(findings), ['citation-anchor-orphan']);
+});
+
+// --- citation-continuation-unparsed (#822) -----------------------------------
+//
+// The upstream cause of those orphans. A continuation line is read only when a
+// colon leads it (`main.mts:153, :205`); written `main.mts:153, 205` the 205 is
+// a claim on the rendered page that the gate cannot parse at all, so nothing
+// about it is checked and nothing says so.
+
+test('a continuation line with no leading colon is reported, once per range the gate cannot read', () => {
+  const findings = scan(
+    citedPage('<span class="src">main.mts:153, 205, 1642-1687</span>'),
+  );
+  assert.deepEqual(rules(findings), [
+    'citation-continuation-unparsed',
+    'citation-continuation-unparsed',
+  ]);
+  assert.match(findings[0].message, /"205"/);
+  assert.match(findings[0].message, /main\.mts/);
+  assert.match(findings[1].message, /"1642-1687"/);
+  // svg is line 25, the caption line 26.
+  assert.equal(findings[0].line, 26);
+});
+
+test('a colon-less continuation is reported with no space after the comma and prose after it', () => {
+  // The shape session-lifecycle.html carried.
+  const findings = scan(
+    citedPage(
+      '<span>— AuthController.ts:345,373 serve these routes directly</span>',
+    ),
+  );
+  assert.deepEqual(rules(findings), ['citation-continuation-unparsed']);
+  assert.match(findings[0].message, /"373"/);
+});
+
+test('a colon-less continuation after a bare continuation is reported against the inherited file', () => {
+  const findings = scan(
+    citedPage('<span class="src">main.mts:153, :205, 300</span>'),
+  );
+  assert.deepEqual(rules(findings), ['citation-continuation-unparsed']);
+  assert.match(findings[0].message, /"300"/);
+  assert.match(findings[0].message, /main\.mts/);
+});
+
+test('the house continuation form is not reported', () => {
+  const findings = scan(
+    citedPage('<span class="src">main.mts:153, :205, :1642-1687</span>'),
+  );
+  assert.deepEqual(rules(findings), []);
+});
+
+test('a number after a citation that cannot be a line reference is left alone', () => {
+  for (const prose of [
+    'main.mts:153, 4:30am the reset lands',
+    'ci.yml:12, 3.5 seconds on average',
+    'ci.yml:12, 30% of runs',
+    'ci.yml:12, 2026-10-01 at the latest',
+    'ci.yml:12, 22x faster',
+    'ci.yml:12, 404.html:3',
+  ]) {
+    const findings = scan(citedPage(`<p>${prose}</p>`));
+    assert.deepEqual(rules(findings), [], prose);
+  }
+});
+
+test('a number in a different element from the citation is not a continuation', () => {
+  // The next table cell or list item is not a list of lines. Tags are blanked
+  // before the scan, so without this bound the comma reads as adjacent.
+  for (const markup of [
+    '<table><tr><td>ci.yml:12</td><td>, 5 retries</td></tr></table>',
+    ['<ul><li>ci.yml:12,</li>', '<li>3 jobs</li></ul>'].join('\n'),
+  ]) {
+    const findings = scan(citedPage(markup));
+    assert.deepEqual(rules(findings), [], markup);
+  }
+});
+
+test('a plain number after a citation and a comma is reported even when prose follows — the documented cost', () => {
+  // Indistinguishable from the real defect (`AuthController.ts:345,373 serve
+  // these routes`), so the rule reports it and the author rewords.
+  const findings = scan(citedPage('<p>ci.yml:12, 3 jobs run here</p>'));
+  assert.deepEqual(rules(findings), ['citation-continuation-unparsed']);
+});
+
+test('a number list with no citation ahead of it is not a continuation', () => {
+  const findings = scan(citedPage('<p>Steps 1, 2, 3 run in order.</p>'));
+  assert.deepEqual(rules(findings), []);
+});
+
+test('an anchor written for a colon-less continuation fails twice — the line is unread and the anchor keys nothing', () => {
+  const findings = scan(
+    citedPage('<span class="src">main.mts:153, 205</span>', {
+      'main.mts:153': { file: 'main.mts', start: 'a' },
+      'main.mts:205': { file: 'main.mts', start: 'b' },
+    }),
+  );
+  assert.deepEqual(rules(findings), [
+    'citation-anchor-orphan',
+    'citation-continuation-unparsed',
+  ]);
+});
+
 test('RULE_KINDS classifies every citation rule as factual-assertion and the rest as mechanical-hygiene', () => {
-  // All three are what a LEGACY page still has to face: resolution alone catches
+  // Every one is what a LEGACY page still has to face: resolution alone catches
   // none of the drift #771 corrected, so the anchor rules are factual too.
   const factual = Object.entries(RULE_KINDS)
     .filter(([, kind]) => kind === 'factual-assertion')
@@ -1140,7 +1347,9 @@ test('RULE_KINDS classifies every citation rule as factual-assertion and the res
     .sort();
   assert.deepEqual(factual, [
     'citation-anchor-mismatch',
+    'citation-anchor-orphan',
     'citation-anchor-unreadable',
+    'citation-continuation-unparsed',
     'citation-missing-anchor',
     'citation-unresolved',
   ]);

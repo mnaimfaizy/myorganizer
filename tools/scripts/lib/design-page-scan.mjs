@@ -556,11 +556,20 @@ function knownExtension(name) {
  *     can parse it as one — so it is silently skipped.
  */
 export function findCitations(source) {
+  return locateCitations(source).located.map(({ citation }) => citation);
+}
+
+/**
+ * `findCitations`, plus the offset each citation ends at and the two texts that
+ * offset indexes — `code` with its tags, `flat` without — which is what
+ * `findUnparsedContinuations` needs to read what follows a citation.
+ */
+function locateCitations(source) {
   const code = maskEmbeddedCode(maskHtmlComments(source));
   const ranges = srcRanges(code);
   const flat = blankTags(code);
   const matches = [...flat.matchAll(TOKEN_RE)];
-  const citations = [];
+  const located = [];
   let lastName = null;
   for (let i = 0; i < matches.length; i += 1) {
     const m = matches[i];
@@ -586,15 +595,77 @@ export function findCitations(source) {
     const name = m.groups.name ?? lastName;
     if (!name) continue;
     const end = m.groups.end ?? m.groups.bareEnd;
-    citations.push({
-      name,
-      line: Number(start),
-      endLine: end ? Number(end) : Number(start),
-      sourceLine: lineOf(flat, m.index),
-      raw: m[0],
+    located.push({
+      citation: {
+        name,
+        line: Number(start),
+        endLine: end ? Number(end) : Number(start),
+        sourceLine: lineOf(flat, m.index),
+        raw: m[0],
+      },
+      end: m.index + m[0].length,
     });
   }
-  return citations;
+  return { code, flat, located };
+}
+
+// What follows a citation when a continuation was written without its colon: a
+// comma, then a bare line or range. The lookahead refuses a number that is
+// visibly something else — `4:30am`, `3.5 seconds`, `30%`, `2026-10-01`, `22x`,
+// `404.html`. A number followed by a plain word is NOT refused, because the real
+// defect has that shape (`AuthController.ts:345,373 serve these routes`), so
+// `ci.yml:12, 3 jobs` is reported too. That prose is rare, and rewording it
+// costs less than a cited line nothing reads.
+const CONTINUATION_RE = /\s*,\s*(?<range>\d+(?:-\d+)?)(?![\w%:/-]|\.\w)/y;
+
+/**
+ * Every bare number written after a citation as though it continued it —
+ * `main.mts:153, 205, 1642-1687` — which `TOKEN_RE` does not read, because a
+ * continuation is a citation only when a colon leads it (`:205`). The reader
+ * sees three cited lines and the gate sees one; four sandcastle pages wrote
+ * this, and every anchor entry for the unread lines was an orphan that passed
+ * (#822).
+ *
+ * Walks forward from the end of each citation, so a run of them is found whole
+ * and one written after a bare `:205` is attributed to the file that inherited.
+ * Takes what `locateCitations` returned, so the page is flattened once.
+ *
+ * Bounded on purpose, and each bound is a shape this does NOT report:
+ *   - only a comma joins a continuation here. `153 and 205`, `153 · 205` are
+ *     not read by `TOKEN_RE` either, and nothing says so.
+ *   - the comma and the number sit in the same run of text as the citation. A
+ *     tag between them — the next table cell, the next list item — ends the
+ *     walk, because `<td>ci.yml:12</td><td>, 5 retries</td>` is two cells and
+ *     not a list of lines. A continuation split across elements is missed.
+ */
+function findUnparsedContinuations({ code, flat, located }) {
+  const continuations = [];
+  for (const { citation, end } of located) {
+    CONTINUATION_RE.lastIndex = end;
+    for (
+      let m = CONTINUATION_RE.exec(flat);
+      m !== null;
+      m = CONTINUATION_RE.exec(flat)
+    ) {
+      // `flat` is `code` with every tag blanked, so the two differ over this
+      // span exactly when a tag sits inside it.
+      if (code.slice(m.index, m.index + m[0].length) !== m[0]) break;
+      const { range } = m.groups;
+      continuations.push({
+        name: citation.name,
+        range,
+        sourceLine: lineOf(flat, m.index + m[0].length - range.length),
+      });
+    }
+  }
+  return continuations;
+}
+
+/** The key a citation is anchored under: `name:line` or `name:start-end`. */
+function citationKey(citation) {
+  return citation.endLine !== citation.line
+    ? `${citation.name}:${citation.line}-${citation.endLine}`
+    : `${citation.name}:${citation.line}`;
 }
 
 /**
@@ -619,10 +690,11 @@ function normalizeAnchorText(text) {
 
 /**
  * Extracts the citation-anchors JSON block from a page if present.
- * Returns a map keyed by citation name (e.g., "file.yml:42" or "file.yml:42-50")
- * with values containing the expected anchor text.
+ * Returns the map keyed by citation name (e.g., "file.yml:42" or "file.yml:42-50")
+ * with values containing the expected anchor text, and `lineOfKey`, which says
+ * where in the page an entry is written so a finding about it can land there.
  */
-function extractAnchorMap(source) {
+function extractAnchorBlock(source) {
   const match = source.match(
     /<script\b[^>]*\bid="citation-anchors"[^>]*>([\s\S]*?)<\/script>/i,
   );
@@ -631,7 +703,21 @@ function extractAnchorMap(source) {
   try {
     const json = JSON.parse(match[1]);
     if (!json.anchors || typeof json.anchors !== 'object') return null;
-    return json.anchors;
+    const body = match[1];
+    const bodyStart = match.index + match[0].indexOf('>') + 1;
+    return {
+      anchors: json.anchors,
+      lineOfKey(key) {
+        // The quoted key where a colon follows it — the same string can also
+        // sit in a value, such as the block's own note.
+        const quoted = JSON.stringify(key);
+        let at = body.indexOf(quoted, body.search(/"anchors"\s*:/));
+        while (at !== -1 && !/^\s*:/.test(body.slice(at + quoted.length))) {
+          at = body.indexOf(quoted, at + 1);
+        }
+        return lineOf(source, bodyStart + Math.max(at, 0));
+      },
+    };
   } catch {
     return null;
   }
@@ -661,6 +747,26 @@ function extractAnchorMap(source) {
  * anchor baseline still has its citations resolved and any anchors it does carry
  * compared, it is simply not yet failed for the anchors it lacks. The baseline can
  * only shrink, so the hatch closes.
+ *
+ * The block is held to its citations in the other direction too (#822): an entry
+ * that keys no citation this function extracts is never looked up above, so it
+ * can quote anything — including something false — while reading, to a human, as
+ * though the gate had checked it. That is an unasserted claim (ADR 0085), and
+ * `requireAnchors` deliberately does NOT suppress it: the hatch excuses an anchor
+ * that is absent, and an orphan is about what the block itself asserts. A page
+ * owes nothing it has not written, so no page needs time to migrate out of it.
+ *
+ * "Extracts" is the operative word, and it bounds the claim. A citation the
+ * scanner cannot read keys nothing, so its anchor is an orphan however true:
+ *   - a continuation written without its colon (`main.mts:153, 205`) — which,
+ *     in the comma-separated form `findUnparsedContinuations` reads, is also
+ *     reported in its own right as `citation-continuation-unparsed`, since the
+ *     reader sees a cited line the gate does not;
+ *   - a citation rendered from a `<script>` body, which `findCitations` masks.
+ *     Nothing reports those citations themselves: script code is full of
+ *     `name:digit` shapes that are not citations, and telling them apart is not
+ *     done here. A page that renders citations from script data therefore
+ *     carries claims this gate does not check, and must not anchor them.
  */
 function checkCitations(
   source,
@@ -669,8 +775,28 @@ function checkCitations(
   getFileContent,
   requireAnchors = true,
 ) {
-  const anchors = getFileContent ? (extractAnchorMap(source) ?? {}) : null;
-  const citations = findCitations(source);
+  const anchorBlock = extractAnchorBlock(source);
+  const anchors = anchorBlock?.anchors ?? {};
+  const page = locateCitations(source);
+  const citations = page.located.map(({ citation }) => citation);
+
+  const cited = new Set(citations.map(citationKey));
+  for (const key of Object.keys(anchors)) {
+    if (cited.has(key)) continue;
+    findings.push({
+      rule: 'citation-anchor-orphan',
+      line: anchorBlock.lineOfKey(key),
+      message: `Anchor ${key} keys no citation this gate reads on the page, so nothing ever compares it — it asserts nothing while reading as though it did. Remove it, or write the citation it is for where the gate reads it: a continuation line needs its colon (", :205"), and a citation inside a <script> body is not read.`,
+    });
+  }
+
+  for (const continuation of findUnparsedContinuations(page)) {
+    findings.push({
+      rule: 'citation-continuation-unparsed',
+      line: continuation.sourceLine,
+      message: `"${continuation.range}" follows a citation of ${continuation.name} with no leading colon, so the gate cannot read it as a line of that file and nothing checks it. Write ":${continuation.range}" if it cites ${continuation.name}; reword the sentence if it is not a line number.`,
+    });
+  }
 
   for (const citation of citations) {
     const result = resolveCitation(citation);
@@ -683,11 +809,8 @@ function checkCitations(
       continue;
     }
 
-    if (anchors && getFileContent) {
-      const key =
-        citation.endLine !== citation.line
-          ? `${citation.name}:${citation.line}-${citation.endLine}`
-          : `${citation.name}:${citation.line}`;
+    if (getFileContent) {
+      const key = citationKey(citation);
 
       const anchor = anchors[key];
       if (!anchor) {
@@ -786,12 +909,14 @@ export const RULE_KINDS = {
   'citation-missing-anchor': 'factual-assertion',
   'citation-anchor-mismatch': 'factual-assertion',
   'citation-anchor-unreadable': 'factual-assertion',
+  'citation-anchor-orphan': 'factual-assertion',
+  'citation-continuation-unparsed': 'factual-assertion',
 };
 
 /**
- * Runs only the factual-assertion rules — citation resolution, the presence of an
- * expected-content anchor, and its comparison against the cited line — over a
- * page the `LEGACY` exemption otherwise skips entirely (ADR 0085).
+ * Runs only the factual-assertion rules — every rule `checkCitations` carries,
+ * which `RULE_KINDS` lists — over a page the `LEGACY` exemption otherwise skips
+ * entirely (ADR 0085).
  *
  * @param {object} input
  * @param {string} input.source raw page text
