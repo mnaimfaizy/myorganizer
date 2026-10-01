@@ -18,16 +18,11 @@ import type { AxiosPromise, AxiosInstance, RawAxiosRequestConfig } from 'axios';
 import globalAxios from 'axios';
 // Some imports not used depending on template conditions
 // @ts-ignore
-import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction } from './common';
+import { DUMMY_BASE_URL, assertParamExists, setApiKeyToObject, setBasicAuthToObject, setBearerAuthToObject, setOAuthToObject, setSearchParams, serializeDataIfNeeded, toPathString, createRequestFunction, replaceWithSerializableTypeIfNeeded } from './common';
 import type { RequestArgs } from './base';
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS, BaseAPI, RequiredError, operationServerMap } from './base';
 
-/**
- * 
- * @export
- * @enum {string}
- */
 
 export const AdminAuditAction = {
     Disable: 'disable',
@@ -35,7 +30,7 @@ export const AdminAuditAction = {
     ForceLogout: 'force_logout',
     ResendVerification: 'resend_verification',
     Promote: 'promote',
-    Demote: 'demote'
+    Demote: 'demote',
 } as const;
 
 export type AdminAuditAction = typeof AdminAuditAction[keyof typeof AdminAuditAction];
@@ -43,2855 +38,702 @@ export type AdminAuditAction = typeof AdminAuditAction[keyof typeof AdminAuditAc
 
 /**
  * Platform Admin Audit Log entry returned by list APIs.
- * @export
- * @interface AdminAuditLogEntry
  */
 export interface AdminAuditLogEntry {
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminAuditLogEntry
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminAuditLogEntry
-     */
     'actorUserId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminAuditLogEntry
-     */
     'targetUserId': string;
-    /**
-     * 
-     * @type {AdminAuditAction}
-     * @memberof AdminAuditLogEntry
-     */
     'action': AdminAuditAction;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminAuditLogEntry
-     */
     'createdAt': string;
 }
 
 
 /**
  * Identity-only User projection for Platform Admin directory APIs.
- * @export
- * @interface AdminUserIdentity
  */
 export interface AdminUserIdentity {
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminUserIdentity
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminUserIdentity
-     */
     'name': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminUserIdentity
-     */
     'email': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminUserIdentity
-     */
     'firstName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminUserIdentity
-     */
     'lastName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof AdminUserIdentity
-     */
     'phone'?: string;
-    /**
-     * 
-     * @type {UserRole}
-     * @memberof AdminUserIdentity
-     */
     'role': UserRole;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof AdminUserIdentity
-     */
     'disabled': boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof AdminUserIdentity
-     */
     'emailVerified': boolean;
 }
 
 
-/**
- * 
- * @export
- * @interface AuthUrlResponse
- */
 export interface AuthUrlResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof AuthUrlResponse
-     */
     'url': string;
 }
-/**
- * 
- * @export
- * @interface ChannelCarouselResponse
- */
 export interface ChannelCarouselResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof ChannelCarouselResponse
-     */
     'channelId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ChannelCarouselResponse
-     */
     'channelTitle': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ChannelCarouselResponse
-     */
     'channelThumbnail': string | null;
-    /**
-     * 
-     * @type {Array<VideoResponse>}
-     * @memberof ChannelCarouselResponse
-     */
     'videos': Array<VideoResponse>;
 }
-/**
- * 
- * @export
- * @interface ChannelSyncResponse
- */
 export interface ChannelSyncResponse {
-    /**
-     * 
-     * @type {number}
-     * @memberof ChannelSyncResponse
-     */
     'synced': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof ChannelSyncResponse
-     */
     'status': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ChannelSyncResponse
-     */
     'lastAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof ChannelSyncResponse
-     */
     'lastError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof ChannelSyncResponse
-     */
     'retryAt': string | null;
 }
-/**
- * 
- * @export
- * @interface ConfirmResetPasswordBody
- */
 export interface ConfirmResetPasswordBody {
-    /**
-     * 
-     * @type {string}
-     * @memberof ConfirmResetPasswordBody
-     */
     'token': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ConfirmResetPasswordBody
-     */
     'password': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ConfirmResetPasswordBody
-     */
     'confirm_password': string;
 }
-/**
- * 
- * @export
- * @interface CronDigest200Response
- */
 export interface CronDigest200Response {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronDigest200Response
-     */
     'ran': boolean;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigest200Response
-     */
     'processed': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigest200Response
-     */
     'sent': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigest200Response
-     */
     'skippedEmpty': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigest200Response
-     */
     'notDue': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigest200Response
-     */
     'duplicates': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigest200Response
-     */
     'failed': number;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronDigest200Response
-     */
     'done': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof CronDigest200Response
-     */
     'message': string;
 }
 /**
  * Result of one bounded pass of the weekly digest worker.
- * @export
- * @interface CronDigestResponse
  */
 export interface CronDigestResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronDigestResponse
-     */
     'ran': boolean;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigestResponse
-     */
     'processed': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigestResponse
-     */
     'sent': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigestResponse
-     */
     'skippedEmpty': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigestResponse
-     */
     'notDue': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigestResponse
-     */
     'duplicates': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronDigestResponse
-     */
     'failed': number;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronDigestResponse
-     */
     'done': boolean;
 }
-/**
- * 
- * @export
- * @interface CronSync200Response
- */
 export interface CronSync200Response {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronSync200Response
-     */
     'ran': boolean;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronSync200Response
-     */
     'processed': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronSync200Response
-     */
     'usersSynced': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronSync200Response
-     */
     'failed': number;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronSync200Response
-     */
     'done': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof CronSync200Response
-     */
     'message': string;
 }
 /**
  * Result of one bounded pass of the metadata sync worker.
- * @export
- * @interface CronSyncResponse
  */
 export interface CronSyncResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronSyncResponse
-     */
     'ran': boolean;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronSyncResponse
-     */
     'processed': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronSyncResponse
-     */
     'usersSynced': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof CronSyncResponse
-     */
     'failed': number;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof CronSyncResponse
-     */
     'done': boolean;
 }
-/**
- * 
- * @export
- * @interface DisconnectRequest
- */
 export interface DisconnectRequest {
     /**
      * When true, do not preserve Watched — clear/skip ledger. Default false.
-     * @type {boolean}
-     * @memberof DisconnectRequest
      */
     'deleteWatchedMarks'?: boolean;
 }
-/**
- * 
- * @export
- * @interface DisconnectResponse
- */
 export interface DisconnectResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof DisconnectResponse
-     */
     'googlePermissionsUrl'?: string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof DisconnectResponse
-     */
     'revokeFailed'?: boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof DisconnectResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof DisconnectResponse
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof DisconnectResponse
-     */
     'code'?: DisconnectResponseCodeEnum;
 }
 
 export const DisconnectResponseCodeEnum = {
-    SyncRunLive: 'sync_run_live'
+    SyncRunLive: 'sync_run_live',
 } as const;
 
 export type DisconnectResponseCodeEnum = typeof DisconnectResponseCodeEnum[keyof typeof DisconnectResponseCodeEnum];
 
-/**
- * 
- * @export
- * @interface DisconnectResponseAnyOf
- */
 export interface DisconnectResponseAnyOf {
-    /**
-     * 
-     * @type {string}
-     * @memberof DisconnectResponseAnyOf
-     */
     'googlePermissionsUrl'?: string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof DisconnectResponseAnyOf
-     */
     'revokeFailed'?: boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof DisconnectResponseAnyOf
-     */
     'message': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof DisconnectResponseAnyOf
-     */
     'ok': boolean;
 }
-/**
- * 
- * @export
- * @interface DisconnectResponseAnyOf1
- */
 export interface DisconnectResponseAnyOf1 {
-    /**
-     * 
-     * @type {string}
-     * @memberof DisconnectResponseAnyOf1
-     */
     'code'?: DisconnectResponseAnyOf1CodeEnum;
-    /**
-     * 
-     * @type {string}
-     * @memberof DisconnectResponseAnyOf1
-     */
     'message': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof DisconnectResponseAnyOf1
-     */
     'ok': boolean;
 }
 
 export const DisconnectResponseAnyOf1CodeEnum = {
-    SyncRunLive: 'sync_run_live'
+    SyncRunLive: 'sync_run_live',
 } as const;
 
 export type DisconnectResponseAnyOf1CodeEnum = typeof DisconnectResponseAnyOf1CodeEnum[keyof typeof DisconnectResponseAnyOf1CodeEnum];
 
-/**
- * 
- * @export
- * @interface EncryptedBlobV1
- */
 export interface EncryptedBlobV1 {
     [key: string]: any;
 
-    /**
-     * 
-     * @type {number}
-     * @memberof EncryptedBlobV1
-     */
     'version': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof EncryptedBlobV1
-     */
     'iv': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof EncryptedBlobV1
-     */
     'ciphertext': string;
 }
-/**
- * 
- * @export
- * @interface ErrorResponse
- */
 export interface ErrorResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof ErrorResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof ErrorResponse
-     */
     'details'?: any;
 }
-/**
- * 
- * @export
- * @interface ExportVaultResponse
- */
 export interface ExportVaultResponse {
-    /**
-     * 
-     * @type {number}
-     * @memberof ExportVaultResponse
-     */
     'exportVersion': ExportVaultResponseExportVersionEnum;
-    /**
-     * 
-     * @type {string}
-     * @memberof ExportVaultResponse
-     */
     'exportedAt': string;
-    /**
-     * 
-     * @type {VaultMetaV1}
-     * @memberof ExportVaultResponse
-     */
     'meta': VaultMetaV1;
-    /**
-     * 
-     * @type {PartialRecordVaultBlobTypeEncryptedBlobV1}
-     * @memberof ExportVaultResponse
-     */
     'blobs': PartialRecordVaultBlobTypeEncryptedBlobV1;
-    /**
-     * 
-     * @type {string}
-     * @memberof ExportVaultResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof ExportVaultResponse
-     */
     'details'?: any;
 }
 
 export const ExportVaultResponseExportVersionEnum = {
-    NUMBER_1: 1
+    NUMBER_1: 1,
 } as const;
 
 export type ExportVaultResponseExportVersionEnum = typeof ExportVaultResponseExportVersionEnum[keyof typeof ExportVaultResponseExportVersionEnum];
 
-/**
- * 
- * @export
- * @interface FilteredUserInterface
- */
 export interface FilteredUserInterface {
-    /**
-     * 
-     * @type {string}
-     * @memberof FilteredUserInterface
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof FilteredUserInterface
-     */
     'name': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof FilteredUserInterface
-     */
     'email': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof FilteredUserInterface
-     */
     'firstName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof FilteredUserInterface
-     */
     'lastName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof FilteredUserInterface
-     */
     'phone'?: string;
-    /**
-     * 
-     * @type {UserRole}
-     * @memberof FilteredUserInterface
-     */
     'role': UserRole;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof FilteredUserInterface
-     */
     'disabled': boolean;
 }
 
 
-/**
- * 
- * @export
- * @interface GetAuthUrl200Response
- */
 export interface GetAuthUrl200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetAuthUrl200Response
-     */
     'url': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetAuthUrl200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface GetConnectionStatus200Response
- */
 export interface GetConnectionStatus200Response {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof GetConnectionStatus200Response
-     */
     'connected': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetConnectionStatus200Response
-     */
     'status': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetConnectionStatus200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface GetLatestVaultBackupResponse
- */
 export interface GetLatestVaultBackupResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'userId': string;
-    /**
-     * 
-     * @type {VaultBackupEvent}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'event': VaultBackupEvent;
-    /**
-     * 
-     * @type {VaultBackupSource}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'source': VaultBackupSource;
-    /**
-     * 
-     * @type {VaultBackupStatus}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'status': VaultBackupStatus;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'errorCode': string | null;
-    /**
-     * 
-     * @type {number}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'schemaVersion': number;
-    /**
-     * 
-     * @type {Array<VaultBackupBlobType>}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'blobTypes': Array<VaultBackupBlobType>;
-    /**
-     * 
-     * @type {number}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'sizeBytes': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'createdAt': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof GetLatestVaultBackupResponse
-     */
     'details'?: any;
 }
 
 
-/**
- * 
- * @export
- * @interface GetNotificationSettings200Response
- */
 export interface GetNotificationSettings200Response {
     /**
      * Whether the User has opted in to the weekly New-only digest.
-     * @type {boolean}
-     * @memberof GetNotificationSettings200Response
      */
     'enabled': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetNotificationSettings200Response
-     */
     'lastNotifiedAt': string | null;
     /**
      * Preferred send day in the User\'s own week, 0 = Sunday .. 6 = Saturday.
-     * @type {number}
-     * @memberof GetNotificationSettings200Response
      */
     'preferredWeekday': number;
     /**
      * IANA time zone the weekday is evaluated in. Null means UTC.
-     * @type {string}
-     * @memberof GetNotificationSettings200Response
      */
     'timeZone': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetNotificationSettings200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface GetSubscriptions200Response
- */
 export interface GetSubscriptions200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSubscriptions200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface GetSyncStatus200Response
- */
 export interface GetSyncStatus200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'status': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'lastSyncedAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'lastSyncAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'lastSyncError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'retryAt': string | null;
-    /**
-     * 
-     * @type {ProgressResponse}
-     * @memberof GetSyncStatus200Response
-     */
     'progress': ProgressResponse | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'channelStatus': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'channelLastAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'channelLastError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'channelRetryAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetSyncStatus200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface GetVaultBlobInventoryResponse
- */
 export interface GetVaultBlobInventoryResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobInventoryResponse
-     */
     'etag': string;
-    /**
-     * 
-     * @type {Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>}
-     * @memberof GetVaultBlobInventoryResponse
-     */
     'blobs': Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobInventoryResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof GetVaultBlobInventoryResponse
-     */
     'details'?: any;
 }
-/**
- * 
- * @export
- * @interface GetVaultBlobInventoryResponseAnyOf
- */
 export interface GetVaultBlobInventoryResponseAnyOf {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobInventoryResponseAnyOf
-     */
     'etag': string;
-    /**
-     * 
-     * @type {Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>}
-     * @memberof GetVaultBlobInventoryResponseAnyOf
-     */
     'blobs': Array<GetVaultBlobInventoryResponseAnyOfBlobsInner>;
 }
-/**
- * 
- * @export
- * @interface GetVaultBlobInventoryResponseAnyOfBlobsInner
- */
 export interface GetVaultBlobInventoryResponseAnyOfBlobsInner {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
-     */
     'etag': string;
-    /**
-     * 
-     * @type {VaultBlobType}
-     * @memberof GetVaultBlobInventoryResponseAnyOfBlobsInner
-     */
     'type': VaultBlobType;
 }
 
 
-/**
- * 
- * @export
- * @interface GetVaultBlobResponse
- */
 export interface GetVaultBlobResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobResponse
-     */
     'etag': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobResponse
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof GetVaultBlobResponse
-     */
     'blob': EncryptedBlobV1;
-    /**
-     * 
-     * @type {VaultBlobType}
-     * @memberof GetVaultBlobResponse
-     */
     'type': VaultBlobType;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof GetVaultBlobResponse
-     */
     'details'?: any;
 }
 
 
-/**
- * 
- * @export
- * @interface GetVaultBlobResponseAnyOf
- */
 export interface GetVaultBlobResponseAnyOf {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobResponseAnyOf
-     */
     'etag': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultBlobResponseAnyOf
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof GetVaultBlobResponseAnyOf
-     */
     'blob': EncryptedBlobV1;
-    /**
-     * 
-     * @type {VaultBlobType}
-     * @memberof GetVaultBlobResponseAnyOf
-     */
     'type': VaultBlobType;
 }
 
 
-/**
- * 
- * @export
- * @interface GetVaultMetaResponse
- */
 export interface GetVaultMetaResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultMetaResponse
-     */
     'etag': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultMetaResponse
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {VaultMetaV1}
-     * @memberof GetVaultMetaResponse
-     */
     'meta': VaultMetaV1;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultMetaResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof GetVaultMetaResponse
-     */
     'details'?: any;
 }
-/**
- * 
- * @export
- * @interface GetVaultMetaResponseAnyOf
- */
 export interface GetVaultMetaResponseAnyOf {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultMetaResponseAnyOf
-     */
     'etag': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVaultMetaResponseAnyOf
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {VaultMetaV1}
-     * @memberof GetVaultMetaResponseAnyOf
-     */
     'meta': VaultMetaV1;
 }
-/**
- * 
- * @export
- * @interface GetVideos200Response
- */
 export interface GetVideos200Response {
-    /**
-     * 
-     * @type {Array<VideoResponse>}
-     * @memberof GetVideos200Response
-     */
     'videos': Array<VideoResponse>;
-    /**
-     * 
-     * @type {number}
-     * @memberof GetVideos200Response
-     */
     'total': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof GetVideos200Response
-     */
     'page': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof GetVideos200Response
-     */
     'limit': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof GetVideos200Response
-     */
     'totalPages': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVideos200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface GetVideosCarousel200Response
- */
 export interface GetVideosCarousel200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof GetVideosCarousel200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface HandleCallback200Response
- */
 export interface HandleCallback200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof HandleCallback200Response
-     */
     'message': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof HandleCallback200Response
-     */
     'ok': boolean;
 }
-/**
- * 
- * @export
- * @interface HandleCallbackRequest
- */
 export interface HandleCallbackRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof HandleCallbackRequest
-     */
     'code': string;
 }
-/**
- * 
- * @export
- * @interface ImportVaultResponse
- */
 export interface ImportVaultResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof ImportVaultResponse
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof ImportVaultResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof ImportVaultResponse
-     */
     'details'?: any;
 }
-/**
- * 
- * @export
- * @interface ImportVaultResponseAnyOf
- */
 export interface ImportVaultResponseAnyOf {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof ImportVaultResponseAnyOf
-     */
     'ok': boolean;
 }
-/**
- * 
- * @export
- * @interface ListVaultBackupsResponse
- */
 export interface ListVaultBackupsResponse {
-    /**
-     * 
-     * @type {Array<VaultBackupRecordDto>}
-     * @memberof ListVaultBackupsResponse
-     */
     'items': Array<VaultBackupRecordDto>;
-    /**
-     * 
-     * @type {string}
-     * @memberof ListVaultBackupsResponse
-     */
     'nextCursor': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof ListVaultBackupsResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof ListVaultBackupsResponse
-     */
     'details'?: any;
 }
-/**
- * 
- * @export
- * @interface Login200Response
- */
 export interface Login200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof Login200Response
-     */
     'refresh_token'?: string;
-    /**
-     * 
-     * @type {FilteredUserInterface}
-     * @memberof Login200Response
-     */
     'user': FilteredUserInterface;
-    /**
-     * 
-     * @type {number}
-     * @memberof Login200Response
-     */
     'expires_in': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof Login200Response
-     */
     'token': string;
 }
-/**
- * 
- * @export
- * @interface Login401Response
- */
 export interface Login401Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof Login401Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface NotificationSettingsBody
- */
 export interface NotificationSettingsBody {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof NotificationSettingsBody
-     */
     'enabled'?: boolean;
-    /**
-     * 
-     * @type {number}
-     * @memberof NotificationSettingsBody
-     */
     'preferredWeekday'?: number;
-    /**
-     * 
-     * @type {string}
-     * @memberof NotificationSettingsBody
-     */
     'timeZone'?: string | null;
 }
-/**
- * 
- * @export
- * @interface NotificationSettingsResponse
- */
 export interface NotificationSettingsResponse {
     /**
      * Whether the User has opted in to the weekly New-only digest.
-     * @type {boolean}
-     * @memberof NotificationSettingsResponse
      */
     'enabled': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof NotificationSettingsResponse
-     */
     'lastNotifiedAt': string | null;
     /**
      * Preferred send day in the User\'s own week, 0 = Sunday .. 6 = Saturday.
-     * @type {number}
-     * @memberof NotificationSettingsResponse
      */
     'preferredWeekday': number;
     /**
      * IANA time zone the weekday is evaluated in. Null means UTC.
-     * @type {string}
-     * @memberof NotificationSettingsResponse
      */
     'timeZone': string | null;
 }
 /**
  * Make all properties in T optional
- * @export
- * @interface PartialRecordVaultBlobTypeEncryptedBlobV1
  */
 export interface PartialRecordVaultBlobTypeEncryptedBlobV1 {
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
-     */
     'addresses'?: EncryptedBlobV1;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
-     */
     'groceries'?: EncryptedBlobV1;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
-     */
     'mobileNumbers'?: EncryptedBlobV1;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
-     */
     'subscriptions'?: EncryptedBlobV1;
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PartialRecordVaultBlobTypeEncryptedBlobV1
-     */
     'tasks'?: EncryptedBlobV1;
 }
-/**
- * 
- * @export
- * @interface ProgressResponse
- */
 export interface ProgressResponse {
-    /**
-     * 
-     * @type {number}
-     * @memberof ProgressResponse
-     */
     'total': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof ProgressResponse
-     */
     'processed': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof ProgressResponse
-     */
     'succeeded': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof ProgressResponse
-     */
     'failed': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof ProgressResponse
-     */
     'startedAt': string;
-    /**
-     * 
-     * @type {Array<ProgressResponseFailedChannelsInner>}
-     * @memberof ProgressResponse
-     */
     'failedChannels': Array<ProgressResponseFailedChannelsInner>;
 }
-/**
- * 
- * @export
- * @interface ProgressResponseFailedChannelsInner
- */
 export interface ProgressResponseFailedChannelsInner {
-    /**
-     * 
-     * @type {string}
-     * @memberof ProgressResponseFailedChannelsInner
-     */
     'error': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ProgressResponseFailedChannelsInner
-     */
     'channelTitle': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof ProgressResponseFailedChannelsInner
-     */
     'channelId': string;
 }
-/**
- * 
- * @export
- * @interface PutVaultBlobRequest
- */
 export interface PutVaultBlobRequest {
-    /**
-     * 
-     * @type {EncryptedBlobV1}
-     * @memberof PutVaultBlobRequest
-     */
     'blob': EncryptedBlobV1;
-    /**
-     * 
-     * @type {VaultBlobType}
-     * @memberof PutVaultBlobRequest
-     */
     'type': VaultBlobType;
 }
 
 
-/**
- * 
- * @export
- * @interface PutVaultBlobResponse
- */
 export interface PutVaultBlobResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultBlobResponse
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultBlobResponse
-     */
     'etag': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof PutVaultBlobResponse
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultBlobResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof PutVaultBlobResponse
-     */
     'details'?: any;
 }
-/**
- * 
- * @export
- * @interface PutVaultMetaRequest
- */
 export interface PutVaultMetaRequest {
-    /**
-     * 
-     * @type {VaultMetaV1}
-     * @memberof PutVaultMetaRequest
-     */
     'meta': VaultMetaV1;
 }
-/**
- * 
- * @export
- * @interface PutVaultMetaResponse
- */
 export interface PutVaultMetaResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultMetaResponse
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultMetaResponse
-     */
     'etag': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof PutVaultMetaResponse
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultMetaResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof PutVaultMetaResponse
-     */
     'details'?: any;
 }
-/**
- * 
- * @export
- * @interface PutVaultMetaResponseAnyOf
- */
 export interface PutVaultMetaResponseAnyOf {
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultMetaResponseAnyOf
-     */
     'updatedAt': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof PutVaultMetaResponseAnyOf
-     */
     'etag': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof PutVaultMetaResponseAnyOf
-     */
     'ok': boolean;
 }
-/**
- * 
- * @export
- * @interface RecordVaultBackupRequest
- */
 export interface RecordVaultBackupRequest {
-    /**
-     * 
-     * @type {VaultBackupEvent}
-     * @memberof RecordVaultBackupRequest
-     */
     'event': VaultBackupEvent;
-    /**
-     * 
-     * @type {VaultBackupSource}
-     * @memberof RecordVaultBackupRequest
-     */
     'source': VaultBackupSource;
-    /**
-     * 
-     * @type {VaultBackupStatus}
-     * @memberof RecordVaultBackupRequest
-     */
     'status': VaultBackupStatus;
-    /**
-     * 
-     * @type {string}
-     * @memberof RecordVaultBackupRequest
-     */
     'errorCode'?: string | null;
-    /**
-     * 
-     * @type {number}
-     * @memberof RecordVaultBackupRequest
-     */
     'schemaVersion': number;
-    /**
-     * 
-     * @type {Array<VaultBackupBlobType>}
-     * @memberof RecordVaultBackupRequest
-     */
     'blobTypes': Array<VaultBackupBlobType>;
-    /**
-     * 
-     * @type {number}
-     * @memberof RecordVaultBackupRequest
-     */
     'sizeBytes': number;
 }
 
 
-/**
- * 
- * @export
- * @interface RecordVaultBackupResponse
- */
 export interface RecordVaultBackupResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof RecordVaultBackupResponse
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof RecordVaultBackupResponse
-     */
     'userId': string;
-    /**
-     * 
-     * @type {VaultBackupEvent}
-     * @memberof RecordVaultBackupResponse
-     */
     'event': VaultBackupEvent;
-    /**
-     * 
-     * @type {VaultBackupSource}
-     * @memberof RecordVaultBackupResponse
-     */
     'source': VaultBackupSource;
-    /**
-     * 
-     * @type {VaultBackupStatus}
-     * @memberof RecordVaultBackupResponse
-     */
     'status': VaultBackupStatus;
-    /**
-     * 
-     * @type {string}
-     * @memberof RecordVaultBackupResponse
-     */
     'errorCode': string | null;
-    /**
-     * 
-     * @type {number}
-     * @memberof RecordVaultBackupResponse
-     */
     'schemaVersion': number;
-    /**
-     * 
-     * @type {Array<VaultBackupBlobType>}
-     * @memberof RecordVaultBackupResponse
-     */
     'blobTypes': Array<VaultBackupBlobType>;
-    /**
-     * 
-     * @type {number}
-     * @memberof RecordVaultBackupResponse
-     */
     'sizeBytes': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof RecordVaultBackupResponse
-     */
     'createdAt': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof RecordVaultBackupResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {any}
-     * @memberof RecordVaultBackupResponse
-     */
     'details'?: any;
 }
 
 
-/**
- * 
- * @export
- * @interface RefreshToken200Response
- */
 export interface RefreshToken200Response {
-    /**
-     * 
-     * @type {FilteredUserInterface}
-     * @memberof RefreshToken200Response
-     */
     'user': FilteredUserInterface;
-    /**
-     * 
-     * @type {number}
-     * @memberof RefreshToken200Response
-     */
     'expires_in': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof RefreshToken200Response
-     */
     'token': string;
 }
 /**
  * Refresh Token presented in a JSON body (mobile). Cookie remains the web channel.
- * @export
- * @interface RefreshTokenBody
  */
 export interface RefreshTokenBody {
-    /**
-     * 
-     * @type {string}
-     * @memberof RefreshTokenBody
-     */
     'refresh_token'?: string;
 }
-/**
- * 
- * @export
- * @interface RegisterUserResponse
- */
 export interface RegisterUserResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof RegisterUserResponse
-     */
     'message': string;
-    /**
-     * 
-     * @type {FilteredUserInterface}
-     * @memberof RegisterUserResponse
-     */
     'user'?: FilteredUserInterface;
 }
-/**
- * 
- * @export
- * @interface ResendVerificationEmailByEmailRequest
- */
 export interface ResendVerificationEmailByEmailRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof ResendVerificationEmailByEmailRequest
-     */
     'email': string;
 }
-/**
- * 
- * @export
- * @interface ResetPasswordByEmailBody
- */
 export interface ResetPasswordByEmailBody {
-    /**
-     * 
-     * @type {string}
-     * @memberof ResetPasswordByEmailBody
-     */
     'email': string;
 }
-/**
- * 
- * @export
- * @interface SetVideoWatched200Response
- */
 export interface SetVideoWatched200Response {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SetVideoWatched200Response
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SetVideoWatched200Response
-     */
     'watched': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof SetVideoWatched200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface StatusResponse
- */
 export interface StatusResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof StatusResponse
-     */
     'connected': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof StatusResponse
-     */
     'status': string;
 }
-/**
- * 
- * @export
- * @interface SubscriptionResponse
- */
 export interface SubscriptionResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof SubscriptionResponse
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SubscriptionResponse
-     */
     'channelId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SubscriptionResponse
-     */
     'channelTitle': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SubscriptionResponse
-     */
     'channelThumbnail': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SubscriptionResponse
-     */
     'uploadsPlaylistId': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof SubscriptionResponse
-     */
     'enabled': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof SubscriptionResponse
-     */
     'lastSyncedAt': string | null;
 }
-/**
- * 
- * @export
- * @interface SyncResponse
- */
 export interface SyncResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'status': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'lastSyncedAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'lastSyncAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'lastSyncError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'retryAt': string | null;
-    /**
-     * 
-     * @type {ProgressResponse}
-     * @memberof SyncResponse
-     */
     'progress': ProgressResponse | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'channelStatus': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'channelLastAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'channelLastError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncResponse
-     */
     'channelRetryAt': string | null;
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncResponse
-     */
     'synced': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncResponse
-     */
     'videosSynced': number;
 }
-/**
- * 
- * @export
- * @interface SyncStatusResponse
- */
 export interface SyncStatusResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'status': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'lastSyncedAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'lastSyncAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'lastSyncError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'retryAt': string | null;
-    /**
-     * 
-     * @type {ProgressResponse}
-     * @memberof SyncStatusResponse
-     */
     'progress': ProgressResponse | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'channelStatus': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'channelLastAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'channelLastError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncStatusResponse
-     */
     'channelRetryAt': string | null;
 }
-/**
- * 
- * @export
- * @interface SyncSubscriptions200Response
- */
 export interface SyncSubscriptions200Response {
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncSubscriptions200Response
-     */
     'synced': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncSubscriptions200Response
-     */
     'status': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncSubscriptions200Response
-     */
     'lastAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncSubscriptions200Response
-     */
     'lastError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncSubscriptions200Response
-     */
     'retryAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncSubscriptions200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface SyncUploads200Response
- */
 export interface SyncUploads200Response {
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'status': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'lastSyncedAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'lastSyncAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'lastSyncError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'retryAt': string | null;
-    /**
-     * 
-     * @type {ProgressResponse}
-     * @memberof SyncUploads200Response
-     */
     'progress': ProgressResponse | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'channelStatus': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'channelLastAttemptAt': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'channelLastError': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'channelRetryAt': string | null;
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncUploads200Response
-     */
     'synced': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof SyncUploads200Response
-     */
     'videosSynced': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof SyncUploads200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface ToggleSubscription200Response
- */
 export interface ToggleSubscription200Response {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof ToggleSubscription200Response
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof ToggleSubscription200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface ToggleSubscription200ResponseAnyOf
- */
 export interface ToggleSubscription200ResponseAnyOf {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof ToggleSubscription200ResponseAnyOf
-     */
     'ok': boolean;
 }
-/**
- * 
- * @export
- * @interface ToggleSubscriptionRequest
- */
 export interface ToggleSubscriptionRequest {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof ToggleSubscriptionRequest
-     */
     'enabled': boolean;
 }
-/**
- * 
- * @export
- * @interface UnsubscribeBody
- */
 export interface UnsubscribeBody {
-    /**
-     * 
-     * @type {string}
-     * @memberof UnsubscribeBody
-     */
     'token': string;
 }
-/**
- * 
- * @export
- * @interface UnsubscribeFromDigest200Response
- */
 export interface UnsubscribeFromDigest200Response {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof UnsubscribeFromDigest200Response
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof UnsubscribeFromDigest200Response
-     */
     'message': string;
 }
-/**
- * 
- * @export
- * @interface UnsubscribeResponse
- */
 export interface UnsubscribeResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof UnsubscribeResponse
-     */
     'ok': boolean;
 }
-/**
- * 
- * @export
- * @interface UserCreationBody
- */
 export interface UserCreationBody {
-    /**
-     * 
-     * @type {string}
-     * @memberof UserCreationBody
-     */
     'name'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof UserCreationBody
-     */
     'firstName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof UserCreationBody
-     */
     'lastName': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof UserCreationBody
-     */
     'phone'?: string;
-    /**
-     * 
-     * @type {string}
-     * @memberof UserCreationBody
-     */
     'email': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof UserCreationBody
-     */
     'password': string;
 }
-/**
- * 
- * @export
- * @interface UserLoginBody
- */
 export interface UserLoginBody {
-    /**
-     * 
-     * @type {string}
-     * @memberof UserLoginBody
-     */
     'email': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof UserLoginBody
-     */
     'password': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof UserLoginBody
-     */
     'client_type'?: UserLoginBodyClientTypeEnum;
 }
 
 export const UserLoginBodyClientTypeEnum = {
     Mobile: 'mobile',
-    Web: 'web'
+    Web: 'web',
 } as const;
 
 export type UserLoginBodyClientTypeEnum = typeof UserLoginBodyClientTypeEnum[keyof typeof UserLoginBodyClientTypeEnum];
 
-/**
- * 
- * @export
- * @enum {string}
- */
 
 export const UserRole = {
     User: 'user',
-    PlatformAdmin: 'platform_admin'
+    PlatformAdmin: 'platform_admin',
 } as const;
 
 export type UserRole = typeof UserRole[keyof typeof UserRole];
 
 
-/**
- * 
- * @export
- * @interface ValidateErrorJSON
- */
 export interface ValidateErrorJSON {
-    /**
-     * 
-     * @type {string}
-     * @memberof ValidateErrorJSON
-     */
     'message': ValidateErrorJSONMessageEnum;
-    /**
-     * 
-     * @type {{ [key: string]: any; }}
-     * @memberof ValidateErrorJSON
-     */
     'details': { [key: string]: any; };
 }
 
 export const ValidateErrorJSONMessageEnum = {
-    ValidationFailed: 'Validation failed'
+    ValidationFailed: 'Validation failed',
 } as const;
 
 export type ValidateErrorJSONMessageEnum = typeof ValidateErrorJSONMessageEnum[keyof typeof ValidateErrorJSONMessageEnum];
 
-/**
- * 
- * @export
- * @enum {string}
- */
 
 export const VaultBackupBlobType = {
     Addresses: 'addresses',
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
-    Tasks: 'tasks'
+    Tasks: 'tasks',
 } as const;
 
 export type VaultBackupBlobType = typeof VaultBackupBlobType[keyof typeof VaultBackupBlobType];
 
 
-/**
- * 
- * @export
- * @enum {string}
- */
 
 export const VaultBackupEvent = {
     Export: 'export',
-    Import: 'import'
+    Import: 'import',
 } as const;
 
 export type VaultBackupEvent = typeof VaultBackupEvent[keyof typeof VaultBackupEvent];
 
 
-/**
- * 
- * @export
- * @interface VaultBackupHistoryPage
- */
 export interface VaultBackupHistoryPage {
-    /**
-     * 
-     * @type {Array<VaultBackupRecordDto>}
-     * @memberof VaultBackupHistoryPage
-     */
     'items': Array<VaultBackupRecordDto>;
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultBackupHistoryPage
-     */
     'nextCursor': string | null;
 }
-/**
- * 
- * @export
- * @interface VaultBackupRecordDto
- */
 export interface VaultBackupRecordDto {
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultBackupRecordDto
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultBackupRecordDto
-     */
     'userId': string;
-    /**
-     * 
-     * @type {VaultBackupEvent}
-     * @memberof VaultBackupRecordDto
-     */
     'event': VaultBackupEvent;
-    /**
-     * 
-     * @type {VaultBackupSource}
-     * @memberof VaultBackupRecordDto
-     */
     'source': VaultBackupSource;
-    /**
-     * 
-     * @type {VaultBackupStatus}
-     * @memberof VaultBackupRecordDto
-     */
     'status': VaultBackupStatus;
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultBackupRecordDto
-     */
     'errorCode': string | null;
-    /**
-     * 
-     * @type {number}
-     * @memberof VaultBackupRecordDto
-     */
     'schemaVersion': number;
-    /**
-     * 
-     * @type {Array<VaultBackupBlobType>}
-     * @memberof VaultBackupRecordDto
-     */
     'blobTypes': Array<VaultBackupBlobType>;
-    /**
-     * 
-     * @type {number}
-     * @memberof VaultBackupRecordDto
-     */
     'sizeBytes': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultBackupRecordDto
-     */
     'createdAt': string;
 }
 
 
-/**
- * 
- * @export
- * @enum {string}
- */
 
 export const VaultBackupSource = {
     LocalFile: 'local-file',
-    GoogleDrive: 'google-drive'
+    GoogleDrive: 'google-drive',
 } as const;
 
 export type VaultBackupSource = typeof VaultBackupSource[keyof typeof VaultBackupSource];
 
 
-/**
- * 
- * @export
- * @enum {string}
- */
 
 export const VaultBackupStatus = {
     Success: 'success',
-    Failed: 'failed'
+    Failed: 'failed',
 } as const;
 
 export type VaultBackupStatus = typeof VaultBackupStatus[keyof typeof VaultBackupStatus];
 
 
-/**
- * 
- * @export
- * @enum {string}
- */
 
 export const VaultBlobType = {
     Addresses: 'addresses',
     Groceries: 'groceries',
     MobileNumbers: 'mobileNumbers',
     Subscriptions: 'subscriptions',
-    Tasks: 'tasks'
+    Tasks: 'tasks',
 } as const;
 
 export type VaultBlobType = typeof VaultBlobType[keyof typeof VaultBlobType];
 
 
-/**
- * 
- * @export
- * @interface VaultExportV1
- */
 export interface VaultExportV1 {
-    /**
-     * 
-     * @type {number}
-     * @memberof VaultExportV1
-     */
     'exportVersion': VaultExportV1ExportVersionEnum;
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultExportV1
-     */
     'exportedAt': string;
-    /**
-     * 
-     * @type {VaultMetaV1}
-     * @memberof VaultExportV1
-     */
     'meta': VaultMetaV1;
-    /**
-     * 
-     * @type {PartialRecordVaultBlobTypeEncryptedBlobV1}
-     * @memberof VaultExportV1
-     */
     'blobs': PartialRecordVaultBlobTypeEncryptedBlobV1;
 }
 
 export const VaultExportV1ExportVersionEnum = {
-    NUMBER_1: 1
+    NUMBER_1: 1,
 } as const;
 
 export type VaultExportV1ExportVersionEnum = typeof VaultExportV1ExportVersionEnum[keyof typeof VaultExportV1ExportVersionEnum];
 
-/**
- * 
- * @export
- * @interface VaultMetaV1
- */
 export interface VaultMetaV1 {
     [key: string]: any;
 
-    /**
-     * 
-     * @type {number}
-     * @memberof VaultMetaV1
-     */
     'version': number;
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultMetaV1
-     */
     'kdf_name': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultMetaV1
-     */
     'kdf_salt': string;
     /**
      * Construct a type with a set of properties K of type T
-     * @type {{ [key: string]: any; }}
-     * @memberof VaultMetaV1
      */
     'kdf_params': { [key: string]: any; };
-    /**
-     * 
-     * @type {any}
-     * @memberof VaultMetaV1
-     */
     'wrapped_mk_passphrase': any;
-    /**
-     * 
-     * @type {any}
-     * @memberof VaultMetaV1
-     */
     'wrapped_mk_recovery': any;
 }
-/**
- * 
- * @export
- * @interface VerifyEmailRequest
- */
 export interface VerifyEmailRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof VerifyEmailRequest
-     */
     'token': string;
 }
-/**
- * 
- * @export
- * @interface VideoResponse
- */
 export interface VideoResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof VideoResponse
-     */
     'id': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof VideoResponse
-     */
     'videoId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof VideoResponse
-     */
     'channelId': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof VideoResponse
-     */
     'title': string;
-    /**
-     * 
-     * @type {string}
-     * @memberof VideoResponse
-     */
     'thumbnail': string | null;
-    /**
-     * 
-     * @type {string}
-     * @memberof VideoResponse
-     */
     'publishedAt': string;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof VideoResponse
-     */
     'watched': boolean;
-    /**
-     * 
-     * @type {string}
-     * @memberof VideoResponse
-     */
     'channelTitle'?: string;
     /**
      * Runtime in seconds, or null when this upload has not been classified yet.
-     * @type {number}
-     * @memberof VideoResponse
      */
     'durationSeconds': number | null;
     /**
      * Whether this Cached Upload is a Short. Unclassified uploads are never Shorts.
-     * @type {boolean}
-     * @memberof VideoResponse
      */
     'isShort': boolean;
 }
-/**
- * 
- * @export
- * @interface VideosPageResponse
- */
 export interface VideosPageResponse {
-    /**
-     * 
-     * @type {Array<VideoResponse>}
-     * @memberof VideosPageResponse
-     */
     'videos': Array<VideoResponse>;
-    /**
-     * 
-     * @type {number}
-     * @memberof VideosPageResponse
-     */
     'total': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof VideosPageResponse
-     */
     'page': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof VideosPageResponse
-     */
     'limit': number;
-    /**
-     * 
-     * @type {number}
-     * @memberof VideosPageResponse
-     */
     'totalPages': number;
 }
-/**
- * 
- * @export
- * @interface WatchedBody
- */
 export interface WatchedBody {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof WatchedBody
-     */
     'watched': boolean;
 }
-/**
- * 
- * @export
- * @interface WatchedResponse
- */
 export interface WatchedResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof WatchedResponse
-     */
     'ok': boolean;
-    /**
-     * 
-     * @type {boolean}
-     * @memberof WatchedResponse
-     */
     'watched': boolean;
 }
-/**
- * 
- * @export
- * @interface YouTubeAvailabilityResponse
- */
 export interface YouTubeAvailabilityResponse {
-    /**
-     * 
-     * @type {boolean}
-     * @memberof YouTubeAvailabilityResponse
-     */
     'available': boolean;
 }
-/**
- * 
- * @export
- * @interface YouTubeErrorResponse
- */
 export interface YouTubeErrorResponse {
-    /**
-     * 
-     * @type {string}
-     * @memberof YouTubeErrorResponse
-     */
     'message': string;
 }
 
 /**
  * AuthenticationApi - axios parameter creator
- * @export
  */
 export const AuthenticationApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -2916,9 +758,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -2951,9 +792,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -2976,7 +816,7 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('logout', 'userId', userId)
             const localVarPath = `/auth/logout/{userId}`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -2992,9 +832,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -3025,9 +864,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -3060,9 +898,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -3084,7 +921,7 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('resendVerificationEmail', 'userId', userId)
             const localVarPath = `/auth/verify/resend/{userId}`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3100,8 +937,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3132,9 +969,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -3167,9 +1003,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -3202,9 +1037,8 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -3221,7 +1055,6 @@ export const AuthenticationApiAxiosParamCreator = function (configuration?: Conf
 
 /**
  * AuthenticationApi - functional programming interface
- * @export
  */
 export const AuthenticationApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = AuthenticationApiAxiosParamCreator(configuration)
@@ -3340,7 +1173,6 @@ export const AuthenticationApiFp = function(configuration?: Configuration) {
 
 /**
  * AuthenticationApi - factory interface
- * @export
  */
 export const AuthenticationApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = AuthenticationApiFp(configuration)
@@ -3431,142 +1263,71 @@ export const AuthenticationApiFactory = function (configuration?: Configuration,
 
 /**
  * Request parameters for confirmResetPassword operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiConfirmResetPasswordRequest
  */
 export interface AuthenticationApiConfirmResetPasswordRequest {
-    /**
-     * 
-     * @type {ConfirmResetPasswordBody}
-     * @memberof AuthenticationApiConfirmResetPassword
-     */
     readonly confirmResetPasswordBody: ConfirmResetPasswordBody
 }
 
 /**
  * Request parameters for login operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiLoginRequest
  */
 export interface AuthenticationApiLoginRequest {
-    /**
-     * 
-     * @type {UserLoginBody}
-     * @memberof AuthenticationApiLogin
-     */
     readonly userLoginBody: UserLoginBody
 }
 
 /**
  * Request parameters for logout operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiLogoutRequest
  */
 export interface AuthenticationApiLogoutRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof AuthenticationApiLogout
-     */
     readonly userId: string
 
-    /**
-     * 
-     * @type {RefreshTokenBody}
-     * @memberof AuthenticationApiLogout
-     */
     readonly refreshTokenBody?: RefreshTokenBody
 }
 
 /**
  * Request parameters for refreshToken operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiRefreshTokenRequest
  */
 export interface AuthenticationApiRefreshTokenRequest {
-    /**
-     * 
-     * @type {RefreshTokenBody}
-     * @memberof AuthenticationApiRefreshToken
-     */
     readonly refreshTokenBody?: RefreshTokenBody
 }
 
 /**
  * Request parameters for registerUser operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiRegisterUserRequest
  */
 export interface AuthenticationApiRegisterUserRequest {
-    /**
-     * 
-     * @type {UserCreationBody}
-     * @memberof AuthenticationApiRegisterUser
-     */
     readonly userCreationBody: UserCreationBody
 }
 
 /**
  * Request parameters for resendVerificationEmail operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiResendVerificationEmailRequest
  */
 export interface AuthenticationApiResendVerificationEmailRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof AuthenticationApiResendVerificationEmail
-     */
     readonly userId: string
 }
 
 /**
  * Request parameters for resendVerificationEmailByEmail operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiResendVerificationEmailByEmailRequest
  */
 export interface AuthenticationApiResendVerificationEmailByEmailRequest {
-    /**
-     * 
-     * @type {ResendVerificationEmailByEmailRequest}
-     * @memberof AuthenticationApiResendVerificationEmailByEmail
-     */
     readonly resendVerificationEmailByEmailRequest: ResendVerificationEmailByEmailRequest
 }
 
 /**
  * Request parameters for resetPassword operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiResetPasswordRequest
  */
 export interface AuthenticationApiResetPasswordRequest {
-    /**
-     * 
-     * @type {ResetPasswordByEmailBody}
-     * @memberof AuthenticationApiResetPassword
-     */
     readonly resetPasswordByEmailBody: ResetPasswordByEmailBody
 }
 
 /**
  * Request parameters for verifyEmail operation in AuthenticationApi.
- * @export
- * @interface AuthenticationApiVerifyEmailRequest
  */
 export interface AuthenticationApiVerifyEmailRequest {
-    /**
-     * 
-     * @type {VerifyEmailRequest}
-     * @memberof AuthenticationApiVerifyEmail
-     */
     readonly verifyEmailRequest: VerifyEmailRequest
 }
 
 /**
  * AuthenticationApi - object-oriented interface
- * @export
- * @class AuthenticationApi
- * @extends {BaseAPI}
  */
 export class AuthenticationApi extends BaseAPI {
     /**
@@ -3574,7 +1335,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiConfirmResetPasswordRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public confirmResetPassword(requestParameters: AuthenticationApiConfirmResetPasswordRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).confirmResetPassword(requestParameters.confirmResetPasswordBody, options).then((request) => request(this.axios, this.basePath));
@@ -3585,7 +1345,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiLoginRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public login(requestParameters: AuthenticationApiLoginRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).login(requestParameters.userLoginBody, options).then((request) => request(this.axios, this.basePath));
@@ -3596,7 +1355,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiLogoutRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public logout(requestParameters: AuthenticationApiLogoutRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).logout(requestParameters.userId, requestParameters.refreshTokenBody, options).then((request) => request(this.axios, this.basePath));
@@ -3607,7 +1365,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiRefreshTokenRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public refreshToken(requestParameters: AuthenticationApiRefreshTokenRequest = {}, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).refreshToken(requestParameters.refreshTokenBody, options).then((request) => request(this.axios, this.basePath));
@@ -3618,7 +1375,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiRegisterUserRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public registerUser(requestParameters: AuthenticationApiRegisterUserRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).registerUser(requestParameters.userCreationBody, options).then((request) => request(this.axios, this.basePath));
@@ -3629,7 +1385,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiResendVerificationEmailRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public resendVerificationEmail(requestParameters: AuthenticationApiResendVerificationEmailRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).resendVerificationEmail(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -3640,7 +1395,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiResendVerificationEmailByEmailRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public resendVerificationEmailByEmail(requestParameters: AuthenticationApiResendVerificationEmailByEmailRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).resendVerificationEmailByEmail(requestParameters.resendVerificationEmailByEmailRequest, options).then((request) => request(this.axios, this.basePath));
@@ -3651,7 +1405,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiResetPasswordRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public resetPassword(requestParameters: AuthenticationApiResetPasswordRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).resetPassword(requestParameters.resetPasswordByEmailBody, options).then((request) => request(this.axios, this.basePath));
@@ -3662,7 +1415,6 @@ export class AuthenticationApi extends BaseAPI {
      * @param {AuthenticationApiVerifyEmailRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof AuthenticationApi
      */
     public verifyEmail(requestParameters: AuthenticationApiVerifyEmailRequest, options?: RawAxiosRequestConfig) {
         return AuthenticationApiFp(this.configuration).verifyEmail(requestParameters.verifyEmailRequest, options).then((request) => request(this.axios, this.basePath));
@@ -3673,7 +1425,6 @@ export class AuthenticationApi extends BaseAPI {
 
 /**
  * PlatformAdminApi - axios parameter creator
- * @export
  */
 export const PlatformAdminApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -3687,7 +1438,7 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('demoteUser', 'userId', userId)
             const localVarPath = `/admin/users/{userId}/demote`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3703,8 +1454,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3724,7 +1475,7 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('disableUser', 'userId', userId)
             const localVarPath = `/admin/users/{userId}/disable`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3740,8 +1491,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3761,7 +1512,7 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('enableUser', 'userId', userId)
             const localVarPath = `/admin/users/{userId}/enable`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3777,8 +1528,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3798,7 +1549,7 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('forceLogoutUser', 'userId', userId)
             const localVarPath = `/admin/users/{userId}/force-logout`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3814,8 +1565,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3835,7 +1586,7 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('getUserById', 'userId', userId)
             const localVarPath = `/admin/users/{userId}`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3851,8 +1602,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3889,8 +1640,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
                 localVarQueryParameter['limit'] = limit;
             }
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3927,8 +1678,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
                 localVarQueryParameter['q'] = q;
             }
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3948,7 +1699,7 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('promoteUser', 'userId', userId)
             const localVarPath = `/admin/users/{userId}/promote`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -3964,8 +1715,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -3985,7 +1736,7 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // verify required parameter 'userId' is not null or undefined
             assertParamExists('resendVerification', 'userId', userId)
             const localVarPath = `/admin/users/{userId}/resend-verification`
-                .replace(`{${"userId"}}`, encodeURIComponent(String(userId)));
+                .replace('{userId}', encodeURIComponent(String(userId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -4001,8 +1752,8 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -4017,7 +1768,6 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
 
 /**
  * PlatformAdminApi - functional programming interface
- * @export
  */
 export const PlatformAdminApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = PlatformAdminApiAxiosParamCreator(configuration)
@@ -4135,7 +1885,6 @@ export const PlatformAdminApiFp = function(configuration?: Configuration) {
 
 /**
  * PlatformAdminApi - factory interface
- * @export
  */
 export const PlatformAdminApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = PlatformAdminApiFp(configuration)
@@ -4226,135 +1975,69 @@ export const PlatformAdminApiFactory = function (configuration?: Configuration, 
 
 /**
  * Request parameters for demoteUser operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiDemoteUserRequest
  */
 export interface PlatformAdminApiDemoteUserRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiDemoteUser
-     */
     readonly userId: string
 }
 
 /**
  * Request parameters for disableUser operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiDisableUserRequest
  */
 export interface PlatformAdminApiDisableUserRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiDisableUser
-     */
     readonly userId: string
 }
 
 /**
  * Request parameters for enableUser operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiEnableUserRequest
  */
 export interface PlatformAdminApiEnableUserRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiEnableUser
-     */
     readonly userId: string
 }
 
 /**
  * Request parameters for forceLogoutUser operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiForceLogoutUserRequest
  */
 export interface PlatformAdminApiForceLogoutUserRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiForceLogoutUser
-     */
     readonly userId: string
 }
 
 /**
  * Request parameters for getUserById operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiGetUserByIdRequest
  */
 export interface PlatformAdminApiGetUserByIdRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiGetUserById
-     */
     readonly userId: string
 }
 
 /**
  * Request parameters for listAuditLogs operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiListAuditLogsRequest
  */
 export interface PlatformAdminApiListAuditLogsRequest {
-    /**
-     * 
-     * @type {number}
-     * @memberof PlatformAdminApiListAuditLogs
-     */
     readonly limit?: number
 }
 
 /**
  * Request parameters for listUsers operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiListUsersRequest
  */
 export interface PlatformAdminApiListUsersRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiListUsers
-     */
     readonly q?: string
 }
 
 /**
  * Request parameters for promoteUser operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiPromoteUserRequest
  */
 export interface PlatformAdminApiPromoteUserRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiPromoteUser
-     */
     readonly userId: string
 }
 
 /**
  * Request parameters for resendVerification operation in PlatformAdminApi.
- * @export
- * @interface PlatformAdminApiResendVerificationRequest
  */
 export interface PlatformAdminApiResendVerificationRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof PlatformAdminApiResendVerification
-     */
     readonly userId: string
 }
 
 /**
  * PlatformAdminApi - object-oriented interface
- * @export
- * @class PlatformAdminApi
- * @extends {BaseAPI}
  */
 export class PlatformAdminApi extends BaseAPI {
     /**
@@ -4362,7 +2045,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiDemoteUserRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public demoteUser(requestParameters: PlatformAdminApiDemoteUserRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).demoteUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -4373,7 +2055,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiDisableUserRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public disableUser(requestParameters: PlatformAdminApiDisableUserRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).disableUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -4384,7 +2065,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiEnableUserRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public enableUser(requestParameters: PlatformAdminApiEnableUserRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).enableUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -4395,7 +2075,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiForceLogoutUserRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public forceLogoutUser(requestParameters: PlatformAdminApiForceLogoutUserRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).forceLogoutUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -4406,7 +2085,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiGetUserByIdRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public getUserById(requestParameters: PlatformAdminApiGetUserByIdRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).getUserById(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -4417,7 +2095,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiListAuditLogsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public listAuditLogs(requestParameters: PlatformAdminApiListAuditLogsRequest = {}, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).listAuditLogs(requestParameters.limit, options).then((request) => request(this.axios, this.basePath));
@@ -4428,7 +2105,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiListUsersRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public listUsers(requestParameters: PlatformAdminApiListUsersRequest = {}, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).listUsers(requestParameters.q, options).then((request) => request(this.axios, this.basePath));
@@ -4439,7 +2115,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiPromoteUserRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public promoteUser(requestParameters: PlatformAdminApiPromoteUserRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).promoteUser(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -4450,7 +2125,6 @@ export class PlatformAdminApi extends BaseAPI {
      * @param {PlatformAdminApiResendVerificationRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof PlatformAdminApi
      */
     public resendVerification(requestParameters: PlatformAdminApiResendVerificationRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).resendVerification(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
@@ -4461,7 +2135,6 @@ export class PlatformAdminApi extends BaseAPI {
 
 /**
  * VaultApi - axios parameter creator
- * @export
  */
 export const VaultApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -4487,8 +2160,8 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -4509,7 +2182,7 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // verify required parameter 'type' is not null or undefined
             assertParamExists('getVaultBlob', 'type', type)
             const localVarPath = `/vault/blob/{type}`
-                .replace(`{${"type"}}`, encodeURIComponent(String(type)));
+                .replace('{type}', encodeURIComponent(String(type)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -4525,8 +2198,8 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             if (ifNoneMatch != null) {
                 localVarHeaderParameter['if-none-match'] = String(ifNoneMatch);
             }
@@ -4562,8 +2235,8 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             if (ifNoneMatch != null) {
                 localVarHeaderParameter['if-none-match'] = String(ifNoneMatch);
             }
@@ -4598,8 +2271,8 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -4634,9 +2307,8 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -4662,7 +2334,7 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // verify required parameter 'putVaultBlobRequest' is not null or undefined
             assertParamExists('putVaultBlob', 'putVaultBlobRequest', putVaultBlobRequest)
             const localVarPath = `/vault/blob/{type}`
-                .replace(`{${"type"}}`, encodeURIComponent(String(type)));
+                .replace('{type}', encodeURIComponent(String(type)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -4678,9 +2350,8 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             if (ifMatch != null) {
                 localVarHeaderParameter['if-match'] = String(ifMatch);
@@ -4721,9 +2392,8 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             if (ifMatch != null) {
                 localVarHeaderParameter['if-match'] = String(ifMatch);
@@ -4743,7 +2413,6 @@ export const VaultApiAxiosParamCreator = function (configuration?: Configuration
 
 /**
  * VaultApi - functional programming interface
- * @export
  */
 export const VaultApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = VaultApiAxiosParamCreator(configuration)
@@ -4839,7 +2508,6 @@ export const VaultApiFp = function(configuration?: Configuration) {
 
 /**
  * VaultApi - factory interface
- * @export
  */
 export const VaultApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = VaultApiFp(configuration)
@@ -4910,114 +2578,55 @@ export const VaultApiFactory = function (configuration?: Configuration, basePath
 
 /**
  * Request parameters for getVaultBlob operation in VaultApi.
- * @export
- * @interface VaultApiGetVaultBlobRequest
  */
 export interface VaultApiGetVaultBlobRequest {
-    /**
-     * 
-     * @type {VaultBlobType}
-     * @memberof VaultApiGetVaultBlob
-     */
     readonly type: VaultBlobType
 
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultApiGetVaultBlob
-     */
     readonly ifNoneMatch?: string
 }
 
 /**
  * Request parameters for getVaultBlobInventory operation in VaultApi.
- * @export
- * @interface VaultApiGetVaultBlobInventoryRequest
  */
 export interface VaultApiGetVaultBlobInventoryRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultApiGetVaultBlobInventory
-     */
     readonly ifNoneMatch?: string
 }
 
 /**
  * Request parameters for importVault operation in VaultApi.
- * @export
- * @interface VaultApiImportVaultRequest
  */
 export interface VaultApiImportVaultRequest {
-    /**
-     * 
-     * @type {VaultExportV1}
-     * @memberof VaultApiImportVault
-     */
     readonly vaultExportV1: VaultExportV1
 }
 
 /**
  * Request parameters for putVaultBlob operation in VaultApi.
- * @export
- * @interface VaultApiPutVaultBlobRequest
  */
 export interface VaultApiPutVaultBlobRequest {
-    /**
-     * 
-     * @type {VaultBlobType}
-     * @memberof VaultApiPutVaultBlob
-     */
     readonly type: VaultBlobType
 
-    /**
-     * 
-     * @type {PutVaultBlobRequest}
-     * @memberof VaultApiPutVaultBlob
-     */
     readonly putVaultBlobRequest: PutVaultBlobRequest
 
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultApiPutVaultBlob
-     */
     readonly ifMatch?: string
 }
 
 /**
  * Request parameters for putVaultMeta operation in VaultApi.
- * @export
- * @interface VaultApiPutVaultMetaRequest
  */
 export interface VaultApiPutVaultMetaRequest {
-    /**
-     * 
-     * @type {PutVaultMetaRequest}
-     * @memberof VaultApiPutVaultMeta
-     */
     readonly putVaultMetaRequest: PutVaultMetaRequest
 
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultApiPutVaultMeta
-     */
     readonly ifMatch?: string
 }
 
 /**
  * VaultApi - object-oriented interface
- * @export
- * @class VaultApi
- * @extends {BaseAPI}
  */
 export class VaultApi extends BaseAPI {
     /**
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultApi
      */
     public exportVault(options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).exportVault(options).then((request) => request(this.axios, this.basePath));
@@ -5028,7 +2637,6 @@ export class VaultApi extends BaseAPI {
      * @param {VaultApiGetVaultBlobRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultApi
      */
     public getVaultBlob(requestParameters: VaultApiGetVaultBlobRequest, options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).getVaultBlob(requestParameters.type, requestParameters.ifNoneMatch, options).then((request) => request(this.axios, this.basePath));
@@ -5039,7 +2647,6 @@ export class VaultApi extends BaseAPI {
      * @param {VaultApiGetVaultBlobInventoryRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultApi
      */
     public getVaultBlobInventory(requestParameters: VaultApiGetVaultBlobInventoryRequest = {}, options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).getVaultBlobInventory(requestParameters.ifNoneMatch, options).then((request) => request(this.axios, this.basePath));
@@ -5049,7 +2656,6 @@ export class VaultApi extends BaseAPI {
      * 
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultApi
      */
     public getVaultMeta(options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).getVaultMeta(options).then((request) => request(this.axios, this.basePath));
@@ -5060,7 +2666,6 @@ export class VaultApi extends BaseAPI {
      * @param {VaultApiImportVaultRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultApi
      */
     public importVault(requestParameters: VaultApiImportVaultRequest, options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).importVault(requestParameters.vaultExportV1, options).then((request) => request(this.axios, this.basePath));
@@ -5071,7 +2676,6 @@ export class VaultApi extends BaseAPI {
      * @param {VaultApiPutVaultBlobRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultApi
      */
     public putVaultBlob(requestParameters: VaultApiPutVaultBlobRequest, options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).putVaultBlob(requestParameters.type, requestParameters.putVaultBlobRequest, requestParameters.ifMatch, options).then((request) => request(this.axios, this.basePath));
@@ -5082,7 +2686,6 @@ export class VaultApi extends BaseAPI {
      * @param {VaultApiPutVaultMetaRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultApi
      */
     public putVaultMeta(requestParameters: VaultApiPutVaultMetaRequest, options?: RawAxiosRequestConfig) {
         return VaultApiFp(this.configuration).putVaultMeta(requestParameters.putVaultMetaRequest, requestParameters.ifMatch, options).then((request) => request(this.axios, this.basePath));
@@ -5093,7 +2696,6 @@ export class VaultApi extends BaseAPI {
 
 /**
  * VaultBackupsApi - axios parameter creator
- * @export
  */
 export const VaultBackupsApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -5134,8 +2736,8 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
                 localVarQueryParameter['event'] = event;
             }
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5182,8 +2784,8 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
                 localVarQueryParameter['source'] = source;
             }
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5218,9 +2820,8 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -5237,7 +2838,6 @@ export const VaultBackupsApiAxiosParamCreator = function (configuration?: Config
 
 /**
  * VaultBackupsApi - functional programming interface
- * @export
  */
 export const VaultBackupsApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = VaultBackupsApiAxiosParamCreator(configuration)
@@ -5287,7 +2887,6 @@ export const VaultBackupsApiFp = function(configuration?: Configuration) {
 
 /**
  * VaultBackupsApi - factory interface
- * @export
  */
 export const VaultBackupsApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = VaultBackupsApiFp(configuration)
@@ -5324,79 +2923,35 @@ export const VaultBackupsApiFactory = function (configuration?: Configuration, b
 
 /**
  * Request parameters for getLatestBackup operation in VaultBackupsApi.
- * @export
- * @interface VaultBackupsApiGetLatestBackupRequest
  */
 export interface VaultBackupsApiGetLatestBackupRequest {
-    /**
-     * 
-     * @type {VaultBackupStatus}
-     * @memberof VaultBackupsApiGetLatestBackup
-     */
     readonly status?: VaultBackupStatus
 
-    /**
-     * 
-     * @type {VaultBackupSource}
-     * @memberof VaultBackupsApiGetLatestBackup
-     */
     readonly source?: VaultBackupSource
 
-    /**
-     * 
-     * @type {VaultBackupEvent}
-     * @memberof VaultBackupsApiGetLatestBackup
-     */
     readonly event?: VaultBackupEvent
 }
 
 /**
  * Request parameters for listBackups operation in VaultBackupsApi.
- * @export
- * @interface VaultBackupsApiListBackupsRequest
  */
 export interface VaultBackupsApiListBackupsRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof VaultBackupsApiListBackups
-     */
     readonly cursor?: string
 
-    /**
-     * 
-     * @type {number}
-     * @memberof VaultBackupsApiListBackups
-     */
     readonly limit?: number
 
-    /**
-     * 
-     * @type {VaultBackupSource}
-     * @memberof VaultBackupsApiListBackups
-     */
     readonly source?: VaultBackupSource
 }
 
 /**
  * Request parameters for recordBackup operation in VaultBackupsApi.
- * @export
- * @interface VaultBackupsApiRecordBackupRequest
  */
 export interface VaultBackupsApiRecordBackupRequest {
-    /**
-     * 
-     * @type {RecordVaultBackupRequest}
-     * @memberof VaultBackupsApiRecordBackup
-     */
     readonly recordVaultBackupRequest: RecordVaultBackupRequest
 }
 
 /**
  * VaultBackupsApi - object-oriented interface
- * @export
- * @class VaultBackupsApi
- * @extends {BaseAPI}
  */
 export class VaultBackupsApi extends BaseAPI {
     /**
@@ -5404,7 +2959,6 @@ export class VaultBackupsApi extends BaseAPI {
      * @param {VaultBackupsApiGetLatestBackupRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultBackupsApi
      */
     public getLatestBackup(requestParameters: VaultBackupsApiGetLatestBackupRequest = {}, options?: RawAxiosRequestConfig) {
         return VaultBackupsApiFp(this.configuration).getLatestBackup(requestParameters.status, requestParameters.source, requestParameters.event, options).then((request) => request(this.axios, this.basePath));
@@ -5415,7 +2969,6 @@ export class VaultBackupsApi extends BaseAPI {
      * @param {VaultBackupsApiListBackupsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultBackupsApi
      */
     public listBackups(requestParameters: VaultBackupsApiListBackupsRequest = {}, options?: RawAxiosRequestConfig) {
         return VaultBackupsApiFp(this.configuration).listBackups(requestParameters.cursor, requestParameters.limit, requestParameters.source, options).then((request) => request(this.axios, this.basePath));
@@ -5426,7 +2979,6 @@ export class VaultBackupsApi extends BaseAPI {
      * @param {VaultBackupsApiRecordBackupRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof VaultBackupsApi
      */
     public recordBackup(requestParameters: VaultBackupsApiRecordBackupRequest, options?: RawAxiosRequestConfig) {
         return VaultBackupsApiFp(this.configuration).recordBackup(requestParameters.recordVaultBackupRequest, options).then((request) => request(this.axios, this.basePath));
@@ -5437,7 +2989,6 @@ export class VaultBackupsApi extends BaseAPI {
 
 /**
  * YouTubeApi - axios parameter creator
- * @export
  */
 export const YouTubeApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
@@ -5462,8 +3013,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // authentication cron-secret required
             await setApiKeyToObject(localVarHeaderParameter, "X-Cron-Secret", configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5494,8 +3045,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // authentication cron-secret required
             await setApiKeyToObject(localVarHeaderParameter, "X-Cron-Secret", configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5528,9 +3079,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -5564,8 +3114,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5593,8 +3143,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5626,8 +3176,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5659,8 +3209,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5692,8 +3242,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5725,8 +3275,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5788,8 +3338,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
                 localVarQueryParameter['kind'] = kind;
             }
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5821,8 +3371,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5857,9 +3407,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -5884,7 +3433,7 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // verify required parameter 'watchedBody' is not null or undefined
             assertParamExists('setVideoWatched', 'watchedBody', watchedBody)
             const localVarPath = `/youtube/videos/{videoId}/watched`
-                .replace(`{${"videoId"}}`, encodeURIComponent(String(videoId)));
+                .replace('{videoId}', encodeURIComponent(String(videoId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -5900,9 +3449,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -5936,8 +3484,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5969,8 +3517,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
+            localVarHeaderParameter['Accept'] = 'application/json';
 
-    
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
@@ -5993,7 +3541,7 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // verify required parameter 'toggleSubscriptionRequest' is not null or undefined
             assertParamExists('toggleSubscription', 'toggleSubscriptionRequest', toggleSubscriptionRequest)
             const localVarPath = `/youtube/subscriptions/{subscriptionId}`
-                .replace(`{${"subscriptionId"}}`, encodeURIComponent(String(subscriptionId)));
+                .replace('{subscriptionId}', encodeURIComponent(String(subscriptionId)));
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
             let baseOptions;
@@ -6009,9 +3557,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -6044,9 +3591,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             const localVarHeaderParameter = {} as any;
             const localVarQueryParameter = {} as any;
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -6083,9 +3629,8 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-
-    
             localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
@@ -6102,7 +3647,6 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
 
 /**
  * YouTubeApi - functional programming interface
- * @export
  */
 export const YouTubeApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = YouTubeApiAxiosParamCreator(configuration)
@@ -6324,7 +3868,6 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
 
 /**
  * YouTubeApi - factory interface
- * @export
  */
 export const YouTubeApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
     const localVarFp = YouTubeApiFp(configuration)
@@ -6485,163 +4028,90 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
 
 /**
  * Request parameters for disconnect operation in YouTubeApi.
- * @export
- * @interface YouTubeApiDisconnectRequest
  */
 export interface YouTubeApiDisconnectRequest {
-    /**
-     * 
-     * @type {DisconnectRequest}
-     * @memberof YouTubeApiDisconnect
-     */
     readonly disconnectRequest?: DisconnectRequest
 }
 
 /**
  * Request parameters for getVideos operation in YouTubeApi.
- * @export
- * @interface YouTubeApiGetVideosRequest
  */
 export interface YouTubeApiGetVideosRequest {
     /**
      * Sort order: latest | oldest | az
-     * @type {'latest' | 'oldest' | 'az'}
-     * @memberof YouTubeApiGetVideos
      */
     readonly sort?: GetVideosSortEnum
 
     /**
      * Filter by video title
-     * @type {string}
-     * @memberof YouTubeApiGetVideos
      */
     readonly search?: string
 
     /**
      * Page number (1-based)
-     * @type {number}
-     * @memberof YouTubeApiGetVideos
      */
     readonly page?: number
 
     /**
      * Items per page
-     * @type {number}
-     * @memberof YouTubeApiGetVideos
      */
     readonly limit?: number
 
-    /**
-     * 
-     * @type {string}
-     * @memberof YouTubeApiGetVideos
-     */
     readonly channelId?: string
 
     /**
      * Library slice by runtime: short | long | all (default all)
-     * @type {'short' | 'long' | 'all'}
-     * @memberof YouTubeApiGetVideos
      */
     readonly kind?: GetVideosKindEnum
 }
 
 /**
  * Request parameters for handleCallback operation in YouTubeApi.
- * @export
- * @interface YouTubeApiHandleCallbackRequest
  */
 export interface YouTubeApiHandleCallbackRequest {
-    /**
-     * 
-     * @type {HandleCallbackRequest}
-     * @memberof YouTubeApiHandleCallback
-     */
     readonly handleCallbackRequest: HandleCallbackRequest
 }
 
 /**
  * Request parameters for setVideoWatched operation in YouTubeApi.
- * @export
- * @interface YouTubeApiSetVideoWatchedRequest
  */
 export interface YouTubeApiSetVideoWatchedRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof YouTubeApiSetVideoWatched
-     */
     readonly videoId: string
 
-    /**
-     * 
-     * @type {WatchedBody}
-     * @memberof YouTubeApiSetVideoWatched
-     */
     readonly watchedBody: WatchedBody
 }
 
 /**
  * Request parameters for toggleSubscription operation in YouTubeApi.
- * @export
- * @interface YouTubeApiToggleSubscriptionRequest
  */
 export interface YouTubeApiToggleSubscriptionRequest {
-    /**
-     * 
-     * @type {string}
-     * @memberof YouTubeApiToggleSubscription
-     */
     readonly subscriptionId: string
 
-    /**
-     * 
-     * @type {ToggleSubscriptionRequest}
-     * @memberof YouTubeApiToggleSubscription
-     */
     readonly toggleSubscriptionRequest: ToggleSubscriptionRequest
 }
 
 /**
  * Request parameters for unsubscribeFromDigest operation in YouTubeApi.
- * @export
- * @interface YouTubeApiUnsubscribeFromDigestRequest
  */
 export interface YouTubeApiUnsubscribeFromDigestRequest {
-    /**
-     * 
-     * @type {UnsubscribeBody}
-     * @memberof YouTubeApiUnsubscribeFromDigest
-     */
     readonly unsubscribeBody: UnsubscribeBody
 }
 
 /**
  * Request parameters for updateNotificationSettings operation in YouTubeApi.
- * @export
- * @interface YouTubeApiUpdateNotificationSettingsRequest
  */
 export interface YouTubeApiUpdateNotificationSettingsRequest {
-    /**
-     * 
-     * @type {NotificationSettingsBody}
-     * @memberof YouTubeApiUpdateNotificationSettings
-     */
     readonly notificationSettingsBody: NotificationSettingsBody
 }
 
 /**
  * YouTubeApi - object-oriented interface
- * @export
- * @class YouTubeApi
- * @extends {BaseAPI}
  */
 export class YouTubeApi extends BaseAPI {
     /**
      * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public cronDigest(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).cronDigest(options).then((request) => request(this.axios, this.basePath));
@@ -6651,7 +4121,6 @@ export class YouTubeApi extends BaseAPI {
      * Cron-only endpoint: runs one bounded pass of the metadata sync worker. Authenticated via X-Cron-Secret header instead of JWT.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public cronSync(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).cronSync(options).then((request) => request(this.axios, this.basePath));
@@ -6662,7 +4131,6 @@ export class YouTubeApi extends BaseAPI {
      * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).disconnect(requestParameters.disconnectRequest, options).then((request) => request(this.axios, this.basePath));
@@ -6672,7 +4140,6 @@ export class YouTubeApi extends BaseAPI {
      * Returns the Google OAuth consent URL for linking YouTube.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getAuthUrl(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getAuthUrl(options).then((request) => request(this.axios, this.basePath));
@@ -6682,7 +4149,6 @@ export class YouTubeApi extends BaseAPI {
      * Public availability report (ADR 0091): whether YouTube is available right now. Unauthenticated and reports booleans only — never configuration values — so the web can hide the feature without needing a session.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getAvailability(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getAvailability(options).then((request) => request(this.axios, this.basePath));
@@ -6692,7 +4158,6 @@ export class YouTubeApi extends BaseAPI {
      * Returns the user\'s YouTube integration status.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getConnectionStatus(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getConnectionStatus(options).then((request) => request(this.axios, this.basePath));
@@ -6702,7 +4167,6 @@ export class YouTubeApi extends BaseAPI {
      * Returns the user\'s YouTube notification preferences.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getNotificationSettings(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getNotificationSettings(options).then((request) => request(this.axios, this.basePath));
@@ -6712,7 +4176,6 @@ export class YouTubeApi extends BaseAPI {
      * Returns the user\'s synced YouTube channel subscriptions.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getSubscriptions(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getSubscriptions(options).then((request) => request(this.axios, this.basePath));
@@ -6722,7 +4185,6 @@ export class YouTubeApi extends BaseAPI {
      * Returns the latest cached-video sync outcome and retry time.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getSyncStatus(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getSyncStatus(options).then((request) => request(this.axios, this.basePath));
@@ -6733,7 +4195,6 @@ export class YouTubeApi extends BaseAPI {
      * @param {YouTubeApiGetVideosRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getVideos(requestParameters: YouTubeApiGetVideosRequest = {}, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getVideos(requestParameters.sort, requestParameters.search, requestParameters.page, requestParameters.limit, requestParameters.channelId, requestParameters.kind, options).then((request) => request(this.axios, this.basePath));
@@ -6743,7 +4204,6 @@ export class YouTubeApi extends BaseAPI {
      * Returns videos grouped by channel for the carousel view.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public getVideosCarousel(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).getVideosCarousel(options).then((request) => request(this.axios, this.basePath));
@@ -6754,7 +4214,6 @@ export class YouTubeApi extends BaseAPI {
      * @param {YouTubeApiHandleCallbackRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public handleCallback(requestParameters: YouTubeApiHandleCallbackRequest, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).handleCallback(requestParameters.handleCallbackRequest, options).then((request) => request(this.axios, this.basePath));
@@ -6765,7 +4224,6 @@ export class YouTubeApi extends BaseAPI {
      * @param {YouTubeApiSetVideoWatchedRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public setVideoWatched(requestParameters: YouTubeApiSetVideoWatchedRequest, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).setVideoWatched(requestParameters.videoId, requestParameters.watchedBody, options).then((request) => request(this.axios, this.basePath));
@@ -6775,7 +4233,6 @@ export class YouTubeApi extends BaseAPI {
      * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public syncSubscriptions(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).syncSubscriptions(options).then((request) => request(this.axios, this.basePath));
@@ -6785,7 +4242,6 @@ export class YouTubeApi extends BaseAPI {
      * Upload Sync: fetches Cached Uploads for every Enabled Channel.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public syncUploads(options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).syncUploads(options).then((request) => request(this.axios, this.basePath));
@@ -6796,7 +4252,6 @@ export class YouTubeApi extends BaseAPI {
      * @param {YouTubeApiToggleSubscriptionRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public toggleSubscription(requestParameters: YouTubeApiToggleSubscriptionRequest, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).toggleSubscription(requestParameters.subscriptionId, requestParameters.toggleSubscriptionRequest, options).then((request) => request(this.axios, this.basePath));
@@ -6807,7 +4262,6 @@ export class YouTubeApi extends BaseAPI {
      * @param {YouTubeApiUnsubscribeFromDigestRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public unsubscribeFromDigest(requestParameters: YouTubeApiUnsubscribeFromDigestRequest, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).unsubscribeFromDigest(requestParameters.unsubscribeBody, options).then((request) => request(this.axios, this.basePath));
@@ -6818,29 +4272,22 @@ export class YouTubeApi extends BaseAPI {
      * @param {YouTubeApiUpdateNotificationSettingsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
-     * @memberof YouTubeApi
      */
     public updateNotificationSettings(requestParameters: YouTubeApiUpdateNotificationSettingsRequest, options?: RawAxiosRequestConfig) {
         return YouTubeApiFp(this.configuration).updateNotificationSettings(requestParameters.notificationSettingsBody, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
-/**
- * @export
- */
 export const GetVideosSortEnum = {
     Latest: 'latest',
     Oldest: 'oldest',
-    Az: 'az'
+    Az: 'az',
 } as const;
 export type GetVideosSortEnum = typeof GetVideosSortEnum[keyof typeof GetVideosSortEnum];
-/**
- * @export
- */
 export const GetVideosKindEnum = {
     Short: 'short',
     Long: 'long',
-    All: 'all'
+    All: 'all',
 } as const;
 export type GetVideosKindEnum = typeof GetVideosKindEnum[keyof typeof GetVideosKindEnum];
 
