@@ -12541,7 +12541,7 @@
         </script>
         <script type="application/json" id="citation-anchors">
 {
-  "note": "Expected-content anchors for every file:line citation on this page (ADR 0085). Retargeted for AuthController-only auth (ADR 0089 / PR #823) while merging main.",
+  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page (ADR 0085). Retargeted for AuthController-only auth (ADR 0089 / PR #823) while merging main. The citations inside the SCENES walkthrough script data are rendered to the reader but not read by the gate, so they carry no anchors here and nothing asserts them (#822).",
   "anchors": {
     "ApiTokens.ts:16": {
       "file": "apps/backend/src/helpers/ApiTokens.ts",
@@ -12593,21 +12593,6 @@
       "start": "    setRefreshCookieIfPresent(req, newRefreshToken);",
       "end": "    setRefreshCookieIfPresent(req, newRefreshToken);"
     },
-    "AuthController.ts:319": {
-      "file": "apps/backend/src/controllers/AuthController.ts",
-      "start": "    const user = await userService.create(requestBody);",
-      "end": "    const user = await userService.create(requestBody);"
-    },
-    "AuthController.ts:320": {
-      "file": "apps/backend/src/controllers/AuthController.ts",
-      "start": "    const token = await userService.sendVerificationMail(user);",
-      "end": "    const token = await userService.sendVerificationMail(user);"
-    },
-    "AuthController.ts:325": {
-      "file": "apps/backend/src/controllers/AuthController.ts",
-      "start": "        // best-effort rollback",
-      "end": "        // best-effort rollback"
-    },
     "AuthController.ts:345": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  @Patch('/verify/email')",
@@ -12628,15 +12613,20 @@
       "start": "import { UserSchema } from '../schemas/user.schema';",
       "end": "      if (!user) {"
     },
+    "UserService.ts:169": {
+      "file": "apps/backend/src/services/UserService.ts",
+      "start": "          disabled: true,",
+      "end": "          disabled: true,"
+    },
     "UserService.ts:170": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "          sessions_invalidated_at: new Date(),",
       "end": "          sessions_invalidated_at: new Date(),"
     },
-    "UserService.ts:171": {
+    "UserService.ts:212": {
       "file": "apps/backend/src/services/UserService.ts",
-      "start": "        },",
-      "end": "        },"
+      "start": "        data: { sessions_invalidated_at: new Date() },",
+      "end": "        data: { sessions_invalidated_at: new Date() },"
     },
     "UserService.ts:379-398": {
       "file": "apps/backend/src/services/UserService.ts",
@@ -12686,11 +12676,6 @@
     "cookieHelper.ts:28-29": {
       "file": "apps/backend/src/helpers/cookieHelper.ts",
       "start": "export function setRefreshCookie(res: Response, refreshToken: string): void {",
-      "end": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());"
-    },
-    "cookieHelper.ts:29": {
-      "file": "apps/backend/src/helpers/cookieHelper.ts",
-      "start": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());",
       "end": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());"
     },
     "main.ts:159": {
@@ -13073,7 +13058,7 @@
                         <span
                           class="text-muted"
                           style="font-family: var(--font-body)"
-                          >— AuthController.ts:345,373 serve these routes
+                          >— AuthController.ts:345, :373 serve these routes
                           directly</span
                         >
                         >
@@ -13870,7 +13855,7 @@
                       >admin disable / force-logout<br /><span
                         class="text-muted"
                         style="font-size: 11px"
-                        >UserService.ts:171,213</span
+                        >UserService.ts:170, :212</span
                       ></sc-raw-td
                     >
                     <sc-raw-td style="font-size: 13px"
@@ -13900,7 +13885,7 @@
                       >admin disable<br /><span
                         class="text-muted"
                         style="font-size: 11px"
-                        >UserService.ts:170</span
+                        >UserService.ts:169</span
                       ></sc-raw-td
                     >
                     <sc-raw-td style="font-size: 13px"
@@ -14543,8 +14528,8 @@ data:  { password: hash, reset_password_token: null }
           id: 'rollback', kicker: 'Scene 2 · the exception', title: '…and if the send fails, the row is deleted',
           settles: 'The one place this system undoes itself.', state: 'no user row',
           body: 'On a send failure the just-created user is deleted (:232) and the token is never persisted. This is the only backwards arrow on the page — everywhere else, time runs one way.',
-          code: 'catch (e) {\n  await this.userService.delete(user.id)  // AuthController.ts:325\n  throw e\n}',
-          refs: ['AuthController.ts:325'],
+          code: 'catch (e) {\n  await this.userService.delete(user.id)  // AuthController.ts:323\n  throw e\n}',
+          refs: ['AuthController.ts:323'],
           flow: [{ t: 'create user' }, { t: 'send mail ✕' }, { t: 'delete user', reverse: true }],
           tokens: [tok('verify', 'verify #1', 8, 26, 'void', 'never stored — the email is worthless, the account is gone')]
         },
@@ -14635,7 +14620,7 @@ data:  { password: hash, reset_password_token: null }
           settles: 'What "log everyone out" actually kills.', state: 'disabled · sessions_invalidated_at set',
           body: 'One timestamp lands on the row. Every access and refresh token issued before it dies at its next check. The verify and reset tokens in flight are signed by different secrets and are checked by neither mechanism — they survive. That is the counter-intuitive result this scene exists to deliver.',
           code: 'tokenIat * 1000 < sessionsInvalidatedAt.getTime()\n// passport.ts:97 (access) · AuthController.ts:245 (refresh) · sessionInvalidation.ts:14',
-          refs: ['UserService.ts:170,171,213', 'passport.ts:97', 'AuthController.ts:245'],
+          refs: ['UserService.ts:169, :170, :212', 'passport.ts:97', 'AuthController.ts:245'],
           flow: [{ t: 'admin: force_logout' }, { t: 'sessions_invalidated_at = now' }, { t: '3 dark', bad: true }, { t: '2 survive', good: true }],
           tokens: [
             tok('access', 'access #2', 44, 56, 'dark', 'iat < timestamp → rejected at passport.ts:97'),
