@@ -397,7 +397,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
         <div class="legend" id="legend">
           <label><input type="checkbox" data-t="B" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--accent)" stroke-width="2.6" fill="none" marker-end="url(#ar-B)"/></svg>
-            <span class="ltext"><b>hands-off-to</b> &#x2014; heaviest. This runs after that. <i>Carries the pulse. 22 drawn.</i></span>
+            <span class="ltext"><b>hands-off-to</b> &#x2014; heaviest. This runs after that. <i>Carries the pulse. 21 drawn.</i></span>
           </label>
           <label><input type="checkbox" data-t="C" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H50" stroke="var(--warn)" stroke-width="2" stroke-dasharray="5 3.5" fill="none" marker-end="url(#ar-C)"/></svg>
@@ -409,7 +409,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
           </label>
           <label><input type="checkbox" data-t="D" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--vocab)" stroke-width="1.2" stroke-dasharray="1 3.4" stroke-linecap="round" fill="none" marker-end="url(#ar-D)"/></svg>
-            <span class="ltext"><b>reads-vocabulary-from</b> &#x2014; dotted, lightest. Load this first; it defines the terms. <i>6 drawn.</i></span>
+            <span class="ltext"><b>reads-vocabulary-from</b> &#x2014; dotted, lightest. Load this first; it defines the terms. <i>7 drawn.</i></span>
           </label>
           <label><input type="checkbox" data-t="S" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--tier2)" stroke-width="1" fill="none" marker-end="url(#ar-S)"/></svg>
@@ -616,6 +616,14 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
       "file": ".agents/skills/grill-with-docs/SKILL.md",
       "start": "When the user asks to file the agreed plan as a GitHub issue, PRD, or tracked work, load `.agents/skills/to-prd/SKILL.md`. Do not use `github-issue-creation-workflow` or the IssueCreator sub-agent for that publish."
     },
+    "grill-with-docs/SKILL.md:64": {
+      "file": ".agents/skills/grill-with-docs/SKILL.md",
+      "start": "When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](../domain-modeling/CONTEXT-FORMAT.md)."
+    },
+    "grill-with-docs/SKILL.md:76": {
+      "file": ".agents/skills/grill-with-docs/SKILL.md",
+      "start": "If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md)."
+    },
     "implement/SKILL.md:126": {
       "file": ".agents/skills/implement/SKILL.md",
       "start": "When the user requests a commit, use **`/commit`** (`.agents/skills/commit-change-workflow/SKILL.md`)."
@@ -751,12 +759,13 @@ const NOTES = {
   "handoff": "Upstream-Owned. It once appeared to have eight outbound references, all from a single line naming skills as examples rather than routing \u2014 a false hub. That line was this repo's own addition and went when the fork did.",
   "ask-matt": "Router with out-degree 21. High degree here is a hub artefact, not importance. Its /triage on-ramp is scoped to incoming/raw issues only \u2014 not slices /to-issues has already made agent-ready (ask-matt/SKILL.md:41). Its foggy-effort on-ramp is /grill-with-docs (:43); the former /wayfinder route was dropped with personal-scope approvals (ADR 0032).",
   "dep-sync": "Halts traversal: proposes changes and requires user confirmation before writing anything (dep-sync/SKILL.md:3).",
+  "diagnosing-bugs": "Upstream-Owned, so it draws no outbound edge. The hand-off to improve-codebase-architecture when the finding is a missing seam is the router's rule, not a line in this skill (ask-matt/SKILL.md:42).",
   "modern-web-guidance": "Upstream-Owned, and the only one that executes: it invokes npx modern-web-guidance@latest at use time. Listed in EXTERNAL_SKILLS.md; drawn once, here in Tier 1."
 };
 
 /* \u2500\u2500 Skill \u2192 skill edges. A routes-to \u00b7 B hands-off-to \u00b7 C warns-off \u00b7 D reads-vocabulary-from \u2500\u2500 */
 const SS = [
-  /* B \u2014 hands-off-to (22) */
+  /* B \u2014 hands-off-to (21) */
   ["to-prd","to-issues","B","to-prd/config.md:35 \u2014 the PRD must carry a `## Slices` section, initially empty; to-issues populates it."],
   ["to-issues","implement","B","to-issues/SKILL.md:49, to-issues/config.md:50"],
   ["implement","commit-change-workflow","B","implement/SKILL.md:126 \u2014 invoked as /commit"],
@@ -773,7 +782,6 @@ const SS = [
   ["component-builder","storybook-delegation-workflow","B","component-builder/SKILL.md:78"],
   ["component-builder","unit-test-delegation-workflow","B","component-builder/SKILL.md:79"],
   ["frontend-page-library-workflow","component-builder","B","frontend-page-library-workflow/SKILL.md:20"],
-  ["diagnosing-bugs","improve-codebase-architecture","B","ask-matt/SKILL.md:42 \u2014 hand off when the finding is a missing seam"],
   ["improve-codebase-architecture","grill-with-docs","B","improve-codebase-architecture/SKILL.md:67"],
   ["improve-codebase-architecture","domain-modeling","B","improve-codebase-architecture/SKILL.md:22, :71"],
   ["grill-with-docs","to-prd","B","grill-with-docs/SKILL.md:14"],
@@ -787,10 +795,11 @@ const SS = [
   ["grill-with-docs","github-issue-creation-workflow","C","grill-with-docs/SKILL.md:14 \u2014 \u201cDo not use github-issue-creation-workflow or the IssueCreator sub-agent for that publish.\u201d"],
   ["github-issue-creation-workflow","to-prd","C","github-issue-creation-workflow/SKILL.md:3, :11 \u2014 \u201cDo not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan.\u201d"],
 
-  /* D \u2014 reads-vocabulary-from (6) */
+  /* D \u2014 reads-vocabulary-from (7) */
   ["improve-codebase-architecture","codebase-design","D","improve-codebase-architecture/SKILL.md:10 \u2014 \u201cBefore doing anything else, read \u2026 it defines the vocabulary.\u201d"],
   ["tdd","codebase-design","D","tdd/SKILL.md:55, tdd/refactoring.md:7"],
   ["backend-api-contract-change","prisma-migration-workflow","D","backend-api-contract-change/SKILL.md:23 \u2014 PrismaWriter reads the runbook; do not copy it."],
+  ["grill-with-docs","domain-modeling","D","grill-with-docs/SKILL.md:64, :76 \u2014 it writes CONTEXT.md and ADR entries in that skill's formats (CONTEXT-FORMAT.md, ADR-FORMAT.md)."],
   ["dep-sync","grill-with-docs","D","dep-sync/SKILL.md:29"],
   ["create-hooks","dep-sync","D","create-hooks/SKILL.md:164"],
   ["qa-plan","to-prd","D","qa-plan/SKILL.md:114 \u2014 convention precedent, not a route or handoff: qa-plan publishes its issue directly with `gh` and cites to-prd as the skill that already established that rule."],
