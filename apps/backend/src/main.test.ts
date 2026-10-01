@@ -9,8 +9,7 @@ import usersRouter from './routes/user';
 let app: express.Application;
 
 beforeAll(() => {
-  process.env.CORS_ORIGINS =
-    'https://myorganizerapi.mnfprofile.com,http://localhost:3000';
+  process.env.CORS_ORIGINS = 'https://app.example.com,http://localhost:3000';
   process.env.ROUTER_PREFIX = '/api/v1';
 
   app = express();
@@ -36,9 +35,9 @@ describe('Main Application', () => {
   it('should have CORS enabled for specific origins', async () => {
     const response = await request(app)
       .options('/')
-      .set('Origin', 'https://myorganizerapi.mnfprofile.com');
+      .set('Origin', 'https://app.example.com');
     expect(response.headers['access-control-allow-origin']).toBe(
-      'https://myorganizerapi.mnfprofile.com',
+      'https://app.example.com',
     );
   });
 

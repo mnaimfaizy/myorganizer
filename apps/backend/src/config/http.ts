@@ -1,7 +1,6 @@
 import type { CorsOptions } from 'cors';
 
 const DEFAULT_CORS_ORIGINS = [
-  'https://myorganizerapi.mnfprofile.com',
   'https://myorganiser.app',
   'https://www.myorganiser.app',
   'https://api.myorganiser.app',
