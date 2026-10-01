@@ -20,9 +20,22 @@
  *
  * A LEGACY reason buys an exemption from mechanical-hygiene rules only — none of
  * the five written reasons are about being wrong — so a LEGACY page still runs
- * the factual-assertion rules (today: citation resolution) and can still fail
- * (ADR 0085). A page in neither list gets no rules at all: it carries no citation
- * contract to hold it to.
+ * the factual-assertion rules (the citation rules) and can still fail (ADR 0085).
+ * A page in neither list gets no rules at all: it carries no citation contract
+ * to hold it to.
+ *
+ * The citation rules run both ways between a page's citations and its
+ * `citation-anchors` block. Citation → anchor: every citation resolves, carries
+ * an anchor, and matches it. Anchor → citation: every entry keys a citation the
+ * gate reads, because an entry nothing looks up can quote anything (#822) — and
+ * the anchor baseline excuses only the first direction. Both are bounded by what
+ * the scanner reads as a citation. A comma-separated continuation written
+ * without its colon (`main.mts:153, 205`) is not read, and is reported as such;
+ * one joined any other way (`153 and 205`), or split across elements, is not
+ * read and not reported. A citation rendered from a `<script>` body is not read
+ * either and nothing reports it: that direction is omitted because script code
+ * is full of `name:digit` shapes that are not citations, so such a citation is
+ * a claim this gate does not check.
  *
  * Usage:
  *   node tools/scripts/check-design-hygiene.mjs <file> [<file> ...]

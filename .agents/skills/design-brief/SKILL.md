@@ -189,6 +189,19 @@ whitespace-normalised on comparison, following `verifyCitation` in
 line is past that file's end (`citation-anchor-unreadable`), rather than passing it unverified. An
 anchor nobody can check asserts nothing, which is the state this whole block exists to leave.
 
+**The block holds an entry only for a citation the gate reads.** An entry that keys nothing is never
+looked up, so it can quote anything while reading as though it had been checked; the gate fails it
+as `citation-anchor-orphan`, and the anchor baseline does not excuse it. Two shapes produce one, and
+both leave a reader-visible claim unchecked:
+
+- **A continuation line needs its colon.** `main.mts:153, :205, :1642-1687` is three citations;
+  `main.mts:153, 205, 1642-1687` is one, followed by two numbers the gate cannot read
+  (`citation-continuation-unparsed`). Four sandcastle pages wrote the second form, and every anchor
+  for the unread lines passed — some quoting text that was not at the line (#822).
+- **A citation rendered from a `<script>` body is not read at all**, and nothing reports it. Do not
+  anchor one. Brief the citation into markup the gate reads, or have the block's `note` say which
+  citations it does not cover.
+
 That last claim holds only as far as the end line says something. `release.mjs:16-24` ends on a bare
 `}` and line 23 is `  }`, which normalises to the same string, so a one-line shrink there verifies
 anyway. Prefer a range whose last line is distinctive; where the source offers none, the anchor is

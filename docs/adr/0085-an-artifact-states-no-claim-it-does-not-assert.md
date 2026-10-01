@@ -32,6 +32,8 @@ Source citations — a `file:line` naming a location in the tree — become a ga
 
 The rule is generic, living with the shared page-scanner rules rather than any one page's checker, and finds citations in every markup form a page uses. A sweep reading only the `cite`/`src` span classes finds 7 of #771's 19.
 
+The anchor block is held to the same rule in the other direction (#822). An entry that keys no citation the gate reads is never compared against anything, so it is a claim the page states and nothing asserts; it fails as `citation-anchor-orphan`. The anchor baseline does not suppress it: the baseline is a migration hatch for an anchor that is _absent_, and an orphan is about what the block itself asserts — a page owes nothing it has not written, so there is nothing to migrate. A continuation line written without its leading colon (`main.mts:153, 205`) is the shape that made orphans invisible, and fails as `citation-continuation-unparsed`. A citation rendered from a `<script>` body is still not read; a page carrying one states a claim this gate does not check, and must not anchor it.
+
 Rules are classified by kind. Factual-assertion rules run over `ROSTER` and `LEGACY` pages alike; mechanical-hygiene rules continue to honour the exemption. A font-block exemption is not a licence to be wrong about the tree.
 
 ### Consequence for checkers
