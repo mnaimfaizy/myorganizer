@@ -7,7 +7,7 @@ export function titleCase(value: string): string {
 }
 
 export function enumOptions<T extends Record<string, string>>(
-  obj: T
+  obj: T,
 ): string[] {
   return Object.values(obj);
 }
@@ -15,7 +15,7 @@ export function enumOptions<T extends Record<string, string>>(
 export function parseEnumValue<T extends Record<string, string>>(
   obj: T,
   input: string,
-  fallback: T[keyof T]
+  fallback: T[keyof T],
 ): T[keyof T] {
   const trimmed = input.trim();
   if (!trimmed) return fallback;

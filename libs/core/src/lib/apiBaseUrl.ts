@@ -86,7 +86,7 @@ export function getApiBaseUrl(): string {
     fromWindow || fromMeta || fromEnv || fromPublicEnv || DEFAULT_API_BASE_URL;
 
   const wasExplicitlyConfigured = Boolean(
-    fromWindow || fromMeta || fromEnv || fromPublicEnv
+    fromWindow || fromMeta || fromEnv || fromPublicEnv,
   );
 
   try {
@@ -114,7 +114,7 @@ export function getApiBaseUrl(): string {
       console.warn(
         'API_BASE_URL is not using HTTPS in production. ' +
           'This may expose sensitive data over an insecure connection:',
-        rawBaseUrl
+        rawBaseUrl,
       );
     }
 

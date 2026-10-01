@@ -4,7 +4,7 @@
   "optOut": [
     {
       "check": "format:check",
-      "reason": "Superseded by the pre-commit hook's `format:write --uncommitted`, which rewrites formatting and restages it instead of failing on it. Wiring the read-only twin would fail commits the hook has already fixed."
+      "reason": "Not a check-*.mjs Assertion Gate. The pre-commit hook rewrites with format:write --uncommitted and restages, so running format:check there would fail a commit the hook has already fixed. CI's Lint job runs format:check over the whole tree."
     },
     {
       "check": "agents:models:audit",

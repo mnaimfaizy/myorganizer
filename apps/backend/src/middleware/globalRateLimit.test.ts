@@ -17,34 +17,36 @@ describe('global API rate limiting', () => {
   it('parses ENABLE_GLOBAL_RATE_LIMIT robustly', () => {
     expect(
       getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'true' })
-        .enabled
+        .enabled,
     ).toBe(true);
     expect(
       getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '  YES ' })
-        .enabled
+        .enabled,
     ).toBe(true);
     expect(
-      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '1' }).enabled
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '1' })
+        .enabled,
     ).toBe(true);
     expect(
       getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'on' })
-        .enabled
+        .enabled,
     ).toBe(true);
 
     expect(
       getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'false' })
-        .enabled
+        .enabled,
     ).toBe(false);
     expect(
-      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '0' }).enabled
+      getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: '0' })
+        .enabled,
     ).toBe(false);
     expect(
       getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'off' })
-        .enabled
+        .enabled,
     ).toBe(false);
     expect(
       getGlobalRateLimitConfigFromEnv({ ENABLE_GLOBAL_RATE_LIMIT: 'no' })
-        .enabled
+        .enabled,
     ).toBe(false);
   });
 
@@ -52,36 +54,37 @@ describe('global API rate limiting', () => {
     const defaults = getGlobalRateLimitConfigFromEnv({});
 
     expect(
-      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: 'abc' }).windowMs
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: 'abc' }).windowMs,
     ).toBe(defaults.windowMs);
     expect(
-      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '-1' }).windowMs
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '-1' }).windowMs,
     ).toBe(defaults.windowMs);
     expect(
-      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '0' }).windowMs
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '0' }).windowMs,
     ).toBe(defaults.windowMs);
     expect(
-      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '10ms' }).windowMs
+      getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: '10ms' })
+        .windowMs,
     ).toBe(defaults.windowMs);
     expect(
       getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_WINDOW_MS: ' 60000 ' })
-        .windowMs
+        .windowMs,
     ).toBe(60000);
 
     expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: 'abc' }).max).toBe(
-      defaults.max
+      defaults.max,
     );
     expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: '-1' }).max).toBe(
-      defaults.max
+      defaults.max,
     );
     expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: '0' }).max).toBe(
-      defaults.max
+      defaults.max,
     );
     expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: '2.5' }).max).toBe(
-      defaults.max
+      defaults.max,
     );
     expect(getGlobalRateLimitConfigFromEnv({ RATE_LIMIT_MAX: ' 2 ' }).max).toBe(
-      2
+      2,
     );
   });
 
