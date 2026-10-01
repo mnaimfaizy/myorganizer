@@ -12,8 +12,7 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
 ## Commands
 
 - Test: `yarn nx test email-shell`.
-- Lint: `yarn nx run email-shell:eslint:lint`. This library has no `lint` target of its own — the
-  one it runs is inferred by `@nx/eslint/plugin`, which nx.json names `eslint:lint`.
+- Lint: `yarn nx lint email-shell`.
 
 ## Do
 

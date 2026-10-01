@@ -38,7 +38,7 @@ rather than editing it from memory, and drop any plugin that leaves `package.jso
 | `@nx/express`    | `application`                      |
 | `@nx/playwright` | `configuration`                    |
 | `@nx/storybook`  | `configuration`                    |
-| `@nx/workspace`  | `library`, `move`, `remove`        |
+| `@nx/workspace`  | `move`, `remove`                   |
 
 `nx.json` generator defaults already set for this repo:
 
