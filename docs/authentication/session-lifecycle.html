@@ -12541,7 +12541,7 @@
         </script>
         <script type="application/json" id="citation-anchors">
 {
-  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page, in the markup and in the SCENES script data (ADR 0085; #982). Audited against the tree on 2026-10-01: each cited line carries the call or declaration its citation is attached to. That is all an anchor asserts; the prose around a citation is not checked by it. Not read by the gate, and checked by hand the same day: the three bare line refs in Scene 6's code sample (:119, :100, :61-64), which name no file inside their own string. Known stale and left for a page revision, not a retarget: ADR 0089 removed the runs-versus-specs split, and the 'Three live divergences' table and the Scene 3 and Scene 7 text still describe it. In that table the anchors for AuthController.ts:56-91 and AuthController.ts:171 only quote the cited lines; neither line supports the claim beside it.",
+  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page, in the markup and in the SCENES script data (ADR 0085; #982). Audited against the tree on 2026-10-01: each cited line carries the call or declaration its citation is attached to. That is all an anchor asserts; the prose around a citation is not checked by it. Not read by the gate, and checked by hand the same day: the three bare line refs in Scene 6's code sample (:119, :100, :61-64), which name no file inside their own string. Known stale and left for a page revision, not a retarget: ADR 0089 removed the runs-versus-specs split, and the 'Three live divergences' table and the Scene 3 and Scene 7 text still describe it. The two citations that table's specs column carried pointed at lines that supported neither claim, so they and their anchors are removed and those two cells now cite nothing.",
   "anchors": {
     "ApiTokens.ts:16": {
       "file": "apps/backend/src/helpers/ApiTokens.ts",
@@ -12572,11 +12572,6 @@
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "      setRefreshCookieIfPresent(req, refreshToken);",
       "end": "      setRefreshCookieIfPresent(req, refreshToken);"
-    },
-    "AuthController.ts:171": {
-      "file": "apps/backend/src/controllers/AuthController.ts",
-      "start": "    const decoded = decodeToken(",
-      "end": "    const decoded = decodeToken("
     },
     "AuthController.ts:245": {
       "file": "apps/backend/src/controllers/AuthController.ts",
@@ -12622,11 +12617,6 @@
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    if (existingResetToken) {",
       "end": "        this.setStatus(429);"
-    },
-    "AuthController.ts:56-91": {
-      "file": "apps/backend/src/controllers/AuthController.ts",
-      "start": "import { UserSchema } from '../schemas/user.schema';",
-      "end": "      if (!user) {"
     },
     "UserService.ts:169": {
       "file": "apps/backend/src/services/UserService.ts",
@@ -13320,7 +13310,7 @@
                           ></sc-raw-td
                         >
                         <sc-raw-td style="font-size: 12px" class="text-muted"
-                          >no check at all<br />AuthController.ts:56-91</sc-raw-td
+                          >no check at all</sc-raw-td
                         >
                       </sc-raw-tr>
                       <sc-raw-tr>
@@ -13358,7 +13348,7 @@
                           ></sc-raw-td
                         >
                         <sc-raw-td style="font-size: 12px" class="text-muted"
-                          >no rotation<br />AuthController.ts:171</sc-raw-td
+                          >no rotation</sc-raw-td
                         >
                       </sc-raw-tr>
                     </sc-raw-tbody>
