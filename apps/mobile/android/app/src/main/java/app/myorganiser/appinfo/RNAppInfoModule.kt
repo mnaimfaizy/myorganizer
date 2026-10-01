@@ -1,4 +1,4 @@
-package com.mobile.appinfo
+package app.myorganiser.appinfo
 
 import android.os.Build
 import com.facebook.react.bridge.ReactApplicationContext

@@ -102,7 +102,7 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
 
 ### iOS
 
-1. In Xcode, sign in with your Apple ID and select your team on the `Mobile` target. Automatic signing creates the App ID, the certificates, and the provisioning profiles for whatever bundle identifier the target carries. That is still React Native's template identifier until #807 moves it to `app.myorganiser`, so do this only after #807 has landed.
+1. In Xcode, sign in with your Apple ID and select your team on the `Mobile` target. Automatic signing creates the App ID, the certificates, and the provisioning profiles for whatever bundle identifier the target carries, which is `app.myorganiser` (#807).
 2. Export the **Apple Distribution** certificate from Keychain Access as a `.p12`, and store it with its password in the password manager. You need it again on a new Mac, and in CI later.
 
 ## Part 3: Versioning a Mobile Release

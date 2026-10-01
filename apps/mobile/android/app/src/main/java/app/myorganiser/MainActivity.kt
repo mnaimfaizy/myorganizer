@@ -1,4 +1,4 @@
-package com.mobile
+package app.myorganiser
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
