@@ -1,12 +1,39 @@
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import {
   allowTool,
   collectStrings,
+  collectWriteTargets,
   denyTool,
+  extractCommand,
   getToolInput,
   getToolName,
   isMutatingTool,
+  isPathInsideDirectory,
   readPayloadOrExit,
 } from './lib.mjs';
+
+/**
+ * The code-review reviewer records ADR 0078 citations — verbatim tracked source
+ * lines — in files under this directory. It is derived from this script's own
+ * location, not from the session's working directory: the reviewer's shell can
+ * `cd` away (ADR 0118), and a moved cwd must not move the exemption with it.
+ */
+const REPO_ROOT = resolve(
+  dirname(fileURLToPath(import.meta.url)),
+  '..',
+  '..',
+  '..',
+);
+const REVIEWER_OUTPUT_DIR = `${REPO_ROOT}/tmp/code-review`;
+
+/** Claude Code's file-writing tools. A shell command is never a reviewer write. */
+const REVIEWER_WRITE_TOOLS = new Set([
+  'write',
+  'edit',
+  'multiedit',
+  'multi_edit',
+]);
 
 const SECRET_PATTERNS = [
   {
@@ -36,12 +63,43 @@ const SECRET_PATTERNS = [
       /(?:client[_-]?secret|refresh[_-]?token|access[_-]?token|api[_-]?key|password|passphrase)\s*[:=]\s*['"`][^'"`\n]{16,}['"`]/i,
     reason:
       'A literal credential-like value was detected in the tool input. Remove it and keep secrets out of source files and prompts.',
+    // The one pattern that matches a quoted word list. A test fixture such as a
+    // multi-word passphrase has this shape, and a faithful citation of it must
+    // be writable. Every other pattern still applies in the reviewer's directory.
+    exemptInReviewerOutput: true,
   },
 ];
 
-function getSecretReason(strings) {
+/**
+ * Whether this call writes only into the reviewer's output directory. Every
+ * destination must be inside it, and a call carrying a shell command never
+ * qualifies. No destination at all is not a match: an unnamed target is not
+ * known to be the reviewer's.
+ */
+function isReviewerOutputWrite(payload, toolName, toolInput) {
+  if (!REVIEWER_WRITE_TOOLS.has(toolName) || extractCommand(toolInput) !== '') {
+    return false;
+  }
+
+  const targets = collectWriteTargets(toolInput);
+  const baseDir =
+    typeof payload?.cwd === 'string' ? payload.cwd : process.cwd();
+
+  return (
+    targets.length > 0 &&
+    targets.every((target) =>
+      isPathInsideDirectory(target, REVIEWER_OUTPUT_DIR, baseDir),
+    )
+  );
+}
+
+function getSecretReason(strings, { reviewerOutput = false } = {}) {
   for (const text of strings) {
     for (const secretPattern of SECRET_PATTERNS) {
+      if (reviewerOutput && secretPattern.exemptInReviewerOutput) {
+        continue;
+      }
+
       if (secretPattern.pattern.test(text)) {
         return secretPattern.reason;
       }
@@ -59,7 +117,10 @@ async function main() {
     allowTool();
   }
 
-  const secretReason = getSecretReason(collectStrings(getToolInput(payload)));
+  const toolInput = getToolInput(payload);
+  const secretReason = getSecretReason(collectStrings(toolInput), {
+    reviewerOutput: isReviewerOutputWrite(payload, toolName, toolInput),
+  });
   if (!secretReason) {
     allowTool();
   }
