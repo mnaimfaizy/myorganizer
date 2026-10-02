@@ -29,12 +29,14 @@
 // call arguments, so a specifier is checked by what it *starts with*, not by
 // what it contains. The rule covers all four syntactic ways to name a module
 // specifier — `from '...'`, `require('...')`, `require.resolve('...')`, and
-// dynamic `import('...')`. `require.resolve` was covered last and is the
-// reason `apps/mobile/jest.config.ts` carries an exemption entry: it holds a
-// genuine `require.resolve('react-native/jest/assetFileTransformer.js')`, and
-// that line is legitimate, so the file is exempted by name with a written
-// reason rather than passing because one call form went unparsed. Leaving any
-// of the four out would trade one blind spot for another.
+// dynamic `import('...')`. `require.resolve` was covered last. While React
+// Native shipped its Jest asset transformer inside the package,
+// `apps/mobile/jest.config.ts` held a genuine
+// `require.resolve('react-native/jest/assetFileTransformer.js')` and was
+// exempted by name with a written reason, rather than passing because one
+// call form went unparsed. React Native 0.87 moved that transformer to
+// `@react-native/jest-preset`, so the line and its exemption are both gone.
+// Leaving any of the four forms out would trade one blind spot for another.
 //
 // The browser-globals rule is not an import scan — `localStorage` and
 // `crypto.subtle` are ambient, reached without importing anything — so it
