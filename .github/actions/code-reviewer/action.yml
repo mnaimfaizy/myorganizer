@@ -81,15 +81,20 @@ outputs:
     value: ${{ steps.limits.outputs.turn_exhausted }}
   prevented:
     description: >-
-      `true` when turn exhaustion was driven by the harness refusing a
-      permission the reviewer's own instructions told it to use — the skill
-      or the CI prompt disagreed with `--allowedTools`, and the disagreement,
-      not the case, burned the turns. `false` when the reviewer hit the
-      ceiling with no permission denials, or did not hit it at all. Like
-      `turn-exhausted`, this can be `true` alongside `validated: true`; a
-      caller should read `validated` first. This is the one outcome someone
-      can fix by editing the allowlist or the instructions; a window lockout
-      and a case the reviewer genuinely read and missed are not.
+      `true` when the harness refused a permission the reviewer's own
+      instructions told it to use, on either of two grounds. One: turn
+      exhaustion with permission denials — the skill or the CI prompt
+      disagreed with `--allowedTools`, and the disagreement, not the case,
+      burned the turns. Two: a refused Write or Edit to one of the reviewer's
+      required outputs (`tmp/code-review/report.json` or the interactive
+      `<head>.report.json` the validate step also accepts, and
+      `tmp/code-review/obligations.answers.json`), however the run ended —
+      a run that ends `success` after being refused its own report measured
+      nothing (issue #880). `false` otherwise. This can be `true` alongside
+      `validated: true`; a caller should read `validated` first. This is the
+      one outcome someone can fix by editing the allowlist or the
+      instructions; a window lockout and a case the reviewer genuinely read
+      and missed are not.
     value: ${{ steps.limits.outputs.prevented }}
   total-cost-usd:
     description: >-
@@ -139,9 +144,27 @@ runs:
     # obligation answer sheet, and the throwaway worktree all live there. A
     # replay run found the gap an unscoped grant leaves: refused an inline
     # script, the reviewer wrote a scratch script outside its worktree and
-    # ran that instead (ADR 0071 item 4, corrected by ADR 0075). The
+    # ran that instead (ADR 0071 item 4, corrected by ADR 0075, whose grant
+    # spelling ADR 0118 corrects). The
     # interpreter (`node`) stays unrestricted in path — it is how executed
     # evidence gets produced — only the writable surface is narrowed.
+    #
+    # The grant is `Edit(/tmp/code-review/**)`, with the leading slash, and
+    # there is no `Write(…)` path rule beside it. Both are deliberate, and
+    # both come from Claude Code's documented rule syntax
+    # (https://code.claude.com/docs/en/permissions#read-and-edit):
+    #   - A bare `tmp/code-review/**` is relative to the session's *current*
+    #     directory, and the Bash tool keeps a `cd`. Golden replay run
+    #     35716439899 changed into tmp/code-review/worktree, after which the
+    #     grant covered …/worktree/tmp/code-review/** and every write to the
+    #     real report path was refused; a sibling run that never ran `cd`
+    #     wrote the same absolute paths without trouble (issue #880). A
+    #     `/path` rule passed as a CLI flag anchors at the primary working
+    #     directory — the workspace — wherever the session has moved.
+    #   - File permissions are checked against `Edit(path)` rules only; an
+    #     Edit rule covers every built-in tool that edits files, Write
+    #     included, and a `Write(path)` rule is accepted but never consulted.
+    # `yarn review:allowlist:check` fails either mistake (ADR 0118).
     - name: Run the reviewer
       id: reviewer
       continue-on-error: true
@@ -190,7 +213,7 @@ runs:
         claude_args: >-
           --model ${{ inputs.model }}
           --max-turns 80
-          --allowedTools "Read,Glob,Grep,Write(tmp/code-review/**),Edit(tmp/code-review/**),Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree add:*),Bash(git worktree list:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
+          --allowedTools "Read,Glob,Grep,Edit(/tmp/code-review/**),Agent,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git ls-files:*),Bash(git ls-tree:*),Bash(git grep:*),Bash(git blame:*),Bash(git worktree add:*),Bash(git worktree list:*),Bash(corepack yarn nx test:*),Bash(corepack yarn nx lint:*),Bash(corepack yarn nx typecheck:*),Bash(corepack yarn nx show:*),Bash(corepack yarn review:validate:*),Bash(yarn nx test:*),Bash(yarn nx lint:*),Bash(yarn nx typecheck:*),Bash(node:*),Bash(mkdir:*),Bash(ls:*),Bash(cat:*),Bash(head:*),Bash(tail:*),Bash(wc:*),Bash(grep:*),Bash(echo:*),Bash(rm -f tmp/code-review/*)"
 
     # A reviewer stopped by the five-hour subscription window produces no
     # report, which is indistinguishable from a reviewer that read the diff and
@@ -205,44 +228,12 @@ runs:
       shell: bash
       env:
         EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+        TOOLING: ${{ inputs.tooling-dir }}
       run: |
-        set -uo pipefail
-        # The last `result` event carries the run's own accounting
-        # regardless of how it ended — cleanly, rate limited, or turn
-        # exhausted — so read it once here rather than leaving every caller
-        # to parse the transcript itself. Tolerant like the reads below: an
-        # unreadable transcript or a `result` event with neither field
-        # leaves both outputs empty, never a wrong number.
-        RESULT="$(jq -c '[.[] | select(type == "object") | select(.type == "result")][-1] // {}' "$EXECUTION_FILE" 2>/dev/null || echo '{}')"
-        echo "total_cost_usd=$(jq -r '.total_cost_usd // empty' <<<"$RESULT" 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
-        echo "turns=$(jq -r '.num_turns // empty' <<<"$RESULT" 2>/dev/null || true)" >> "$GITHUB_OUTPUT"
-
-        # Three answers, not two. A detector that cannot read the transcript
-        # must not answer "no rate limit": that is the reading which lets a
-        # lockout be scored as a miss, and it is the whole failure this step
-        # exists to prevent. jq exits 5 on a parse error and on a type error
-        # from a reshaped transcript, so the exit code is separated from the
-        # boolean rather than folded into it with `-e`.
-        HITS="$(jq '[.[] | select(type == "object")
-                        | select(.type == "rate_limit_event")
-                        | .rate_limit_info
-                        | select(type == "object")
-                        | select(.status == "rejected")] | length'                   "$EXECUTION_FILE" 2>&1)"
-        JQ_STATUS=$?
-        if [ "$JQ_STATUS" -ne 0 ] || ! [ "$HITS" -eq "$HITS" ] 2>/dev/null; then
-          echo "::warning::could not read $EXECUTION_FILE for rate-limit events (jq exit $JQ_STATUS); treating the result as unknown"
-          echo 'rate_limited=unknown' >> "$GITHUB_OUTPUT"
-          exit 0
-        fi
-        if [ "$HITS" -gt 0 ]; then
-          WINDOW="$(jq -r '[.[] | select(type == "object") | select(.type == "rate_limit_event") | .rate_limit_info][-1].rateLimitType // "unknown"' "$EXECUTION_FILE" 2>/dev/null || echo unknown)"
-          TURNS="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].num_turns // 0' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
-          echo "::error::the reviewer was cut off by the $WINDOW rate limit after $TURNS turn(s); this run measured nothing and is not a miss"
-          echo 'rate_limited=true' >> "$GITHUB_OUTPUT"
-        else
-          echo 'rate_limited=false' >> "$GITHUB_OUTPUT"
-        fi
-
+        # The judgments live in the script, where fixture transcripts test
+        # them (`yarn review:test`): the accounting, the three-answer
+        # rate-limit reading, the turn ceiling, and `prevented`.
+        #
         # Turn exhaustion is a third outcome, and until run 45 the apparatus
         # had no word for it: groceries-blob-type-without-fanouts stopped at
         # error_max_turns with 26 permission denials, the detector correctly
@@ -251,29 +242,12 @@ runs:
         # case on one miss, so that silence would have demoted a case the
         # reviewer never failed: the same error the rate-limit rule exists to
         # prevent, through a different door.
-        SUBTYPE="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].subtype // ""' "$EXECUTION_FILE" 2>/dev/null || echo '')"
-        if [ "$SUBTYPE" = 'error_max_turns' ]; then
-          TURNS="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].num_turns // 0' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
-          DENIED="$(jq -r '[.[] | select(type == "object") | select(.type == "result")][-1].permission_denials_count // 0' "$EXECUTION_FILE" 2>/dev/null || echo 0)"
-          echo "::error::the reviewer hit the turn ceiling after $TURNS turn(s) with $DENIED permission denial(s); this run measured nothing and is not a miss"
-          echo 'turn_exhausted=true' >> "$GITHUB_OUTPUT"
-          # 26 permission denials is not a hard case; it is the allowlist and
-          # the instructions disagreeing about what the reviewer may do, and
-          # that disagreement is what burned the turns, not the diff. That is
-          # a bug someone can fix by editing the allowlist or the skill.
-          # Plain turn exhaustion with no denial is a genuinely hard case (or,
-          # after the axes dispatch first, usually a run that still wrote a
-          # report — see "Require a validated report").
-          if [ "$DENIED" -gt 0 ] 2>/dev/null; then
-            echo "::error::$DENIED of those turns were spent on a permission the reviewer's own instructions told it to use and --allowedTools refused; this measurement was prevented by the apparatus, not by a hard case"
-            echo 'prevented=true' >> "$GITHUB_OUTPUT"
-          else
-            echo 'prevented=false' >> "$GITHUB_OUTPUT"
-          fi
-        else
-          echo 'turn_exhausted=false' >> "$GITHUB_OUTPUT"
-          echo 'prevented=false' >> "$GITHUB_OUTPUT"
-        fi
+        #
+        # Run 35716439899 came through a fourth: it ended `success`, so
+        # nothing above applied, having been refused six writes to its own
+        # report and answer sheet. A refused write to a required output is
+        # prevented whatever the run's subtype (issue #880).
+        node "$TOOLING/tools/scripts/review/classify-reviewer-run.mjs" "$EXECUTION_FILE"
 
     # The action hides the reviewer's transcript from the log. Keep it as a
     # short-lived artifact so a run that wrote no report can be read.

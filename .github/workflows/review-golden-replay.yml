@@ -352,12 +352,14 @@ jobs:
       # no report to score — but it must never be written into the record as a
       # miss, because nothing about the reviewer was measured. Three ways to
       # not finish: the subscription rate limit, the turn ceiling on a
-      # genuinely hard case, and the turn ceiling because the allowlist
-      # refused a permission the reviewer's own instructions told it to use —
-      # a prevented measurement, and the only one of the three that is a bug
-      # someone can fix. Run 45 hit the second on the guard case and the
-      # message below said only "no valid report", which reads exactly like a
-      # miss and would have demoted a tier under ADR 0072.
+      # genuinely hard case, and the harness refusing a permission the
+      # reviewer's own instructions told it to use — a prevented measurement,
+      # and the only one of the three that is a bug someone can fix. Run 45
+      # hit the second on the guard case and the message below said only "no
+      # valid report", which reads exactly like a miss and would have demoted
+      # a tier under ADR 0072. Run 35716439899 was prevented without reaching
+      # the ceiling at all: it ended cleanly, refused every write to its own
+      # report path, and got the same "no valid report" (issue #880).
       #
       # A validated report is checked first and wins outright: dispatching
       # both axes before the reviewer's own exploration (the skill's step 3)
@@ -371,7 +373,7 @@ jobs:
             exit 0
           fi
           if [ '${{ steps.reviewer.outputs.prevented }}' = 'true' ]; then
-            echo "::error::case ${{ matrix.case }} hit the turn ceiling after being refused a permission its own instructions told it to use; this is a prevented measurement, not a miss — fix the allowlist or the instructions, not the case"
+            echo "::error::case ${{ matrix.case }} was refused a permission its own instructions told it to use — at the turn ceiling, or on a write to its own report or answer sheet (the reviewer step's annotation says which); this is a prevented measurement, not a miss — fix the allowlist or the instructions, not the case"
             exit 1
           fi
           if [ '${{ steps.reviewer.outputs.turn-exhausted }}' = 'true' ]; then

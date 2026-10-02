@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Asserts that the reviewer's tool allowlist and the repository's project
 // settings agree: every instructed command is permitted, none is intercepted
-// by an ask or deny rule, and no Bash grant is wholly or partly retracted by
-// one of those rules.
+// by an ask or deny rule, no Bash grant is wholly or partly retracted by one
+// of those rules, and every file grant is one Claude Code consults and
+// anchors where the session started.
 //
 //   node tools/scripts/check-review-tool-allowlist.mjs [--print]
 //
@@ -80,7 +81,7 @@
 // command, refused while `Bash(node:*)` was granted
 // (docs/research/2026-09-22-a-project-ask-rule-is-a-refusal-in-ci.md, ADR 0099).
 //
-// So this checker asserts three directions, and all three are needed:
+// So this checker asserts four directions, and all four are needed:
 //
 //   1. Every instructed command is *permitted* by `--allowedTools`. An
 //      instruction nothing grants is an instruction nothing can carry out.
@@ -104,6 +105,18 @@
 //      written reason, when the rule has to stay and the grant is still the
 //      one the reviewer should have; an exemption that matches no live pair
 //      is stale and the check cannot run.
+//   4. Every path-scoped file grant in `--allowedTools` is *anchored*, and is
+//      written on a tool Claude Code consults. A bare `Edit(tmp/x/**)` is
+//      relative to the session's current directory, and the Bash tool keeps a
+//      `cd`: golden replay run 35716439899 changed into its worktree and was
+//      then refused every write to its own report under a grant that named
+//      the path (issue #880, ADR 0118). `Edit(/tmp/x/**)` anchors at the
+//      primary working directory instead. File permissions are checked
+//      against `Edit(path)` and `Read(path)` rules only, so a `Write(path)`
+//      rule is accepted and never consulted — a grant that reads as scoping
+//      something and scopes nothing. Both are failed here. What a file grant
+//      should *cover* is not asserted: that is ADR 0075's decision, and this
+//      checker has no second source to compare the directory against.
 //
 // One direction is still not asserted, and the omission is deliberate: an
 // `--allowedTools` entry matching no instruction and retracted by no rule is
@@ -112,9 +125,10 @@
 // An unused grant costs a turn only if something instructs it (direction 1)
 // or a rule retracts it (direction 3).
 //
-// Exit 0 = every instructed command is permitted, none is intercepted, and
-// no grant is retracted. Exit 1 = at least one is refused or retracted, each
-// named with its instruction site or its grant and the interposed rule.
+// Exit 0 = every instructed command is permitted, none is intercepted, no
+// grant is retracted, and every file grant is anchored. Exit 1 = at least one
+// is refused, retracted, or unanchored, each named with its instruction site
+// or its grant and the interposed rule.
 // Exit 2 = could not run, including a suppression or a grant exemption that
 // matches nothing.
 import { readFileSync } from 'node:fs';
@@ -892,6 +906,41 @@ export function assertGrantRetractions({
   };
 }
 
+/**
+ * The tools whose `Tool(path)` rules Claude Code checks file permissions
+ * against. A path rule on any other file tool is accepted and never consulted
+ * (https://code.claude.com/docs/en/permissions#read-and-edit).
+ */
+const CONSULTED_FILE_TOOLS = new Set(['Edit', 'Read']);
+const UNCONSULTED_FILE_TOOLS = new Set(['Write', 'NotebookEdit', 'MultiEdit']);
+
+/**
+ * Direction 4: the path-scoped file grants that do not hold where they read
+ * as holding. `unconsulted` is a path rule on a tool Claude Code never checks
+ * a path against; `cwd-relative` is an `Edit`/`Read` path with no `/`, `//`,
+ * or `~/` anchor, which moves with the session's current directory.
+ */
+export function assertFileGrants(entries) {
+  const findings = [];
+  for (const entry of entries) {
+    const scoped = entry.raw.match(/^(\w+)\((.*)\)$/s);
+    if (!scoped) continue;
+    const [, tool, path] = scoped;
+    if (UNCONSULTED_FILE_TOOLS.has(tool))
+      findings.push({ grant: entry, problem: 'unconsulted' });
+    else if (CONSULTED_FILE_TOOLS.has(tool) && !/^(\/|~\/)/.test(path.trim()))
+      findings.push({ grant: entry, problem: 'cwd-relative' });
+  }
+  return { ok: findings.length === 0, findings };
+}
+
+/** One unanchored or unconsulted file grant, as the line a reader acts on. */
+export function formatFileGrant({ grant, problem }) {
+  return problem === 'unconsulted'
+    ? `  - ${grant.raw} is never consulted: file permissions are checked against Edit(path) and Read(path) rules only`
+    : `  - ${grant.raw} is relative to the session's current directory, which a \`cd\` moves; write the path with a leading \`/\``;
+}
+
 /** One retracted grant, as the lines a reader needs to act on it. */
 export function formatRetraction({ grant, rule, extent }) {
   return [
@@ -968,6 +1017,7 @@ const main = () => {
 
   const result = assertToolAllowlist({ entries, sites, interposed });
   const grants = assertGrantRetractions({ entries, interposed });
+  const fileGrants = assertFileGrants(entries);
   const bashGrants = entries.filter((entry) => entry.kind !== 'tool');
 
   if (process.argv.includes('--print')) {
@@ -996,6 +1046,21 @@ const main = () => {
     console.log(
       `direction 3: ${grants.retractions.length} retraction(s), ${grants.exempted.length} exemption(s) across ${bashGrants.length} Bash grant(s)`,
     );
+  }
+
+  if (fileGrants.findings.length) {
+    console.error(
+      `review-allowlist: ${fileGrants.findings.length} file grant(s) in ${ACTION} do not hold where they read as holding\n`,
+    );
+    for (const finding of fileGrants.findings)
+      console.error(formatFileGrant(finding));
+    console.error(
+      '\nGolden replay run 35716439899 changed into its worktree and was then refused' +
+        '\nevery write to its own report under a grant that named the path (issue #880,' +
+        '\nADR 0118). A `/path` rule in --allowedTools anchors at the primary working' +
+        '\ndirectory; an Edit rule covers the Write tool.',
+    );
+    process.exit(1);
   }
 
   if (result.staleExemptions.length) {
@@ -1078,7 +1143,7 @@ const main = () => {
       `and intercepted by none of ${SETTINGS}'s ${interposed.length} ask/deny rule(s) ` +
       `(${result.exempted.length} site(s) suppressed by written reason); ` +
       `${bashGrants.length} Bash grant(s), none retracted ` +
-      `(${grants.exempted.length} exempted)`,
+      `(${grants.exempted.length} exempted); every file grant anchored`,
   );
 };
 

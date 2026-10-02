@@ -479,12 +479,13 @@ jobs:
           # are review:human, but they are not the same event: a prevented
           # measurement is a bug in the allowlist or the instructions: the
           # reviewer was refused a permission its own instructions told it to
-          # use, and the disagreement, not the diff, burned the turns. A
+          # use, and the disagreement, not the diff, burned the turns or
+          # refused the report its own path (issue #880). A
           # window lockout is a scheduling fact about the subscription. Only
           # a report that fails validation, or a reviewer that crashed
           # outright, is actually about this pull request.
           if [ '${{ steps.reviewer.outputs.prevented }}' = 'true' ]; then
-            echo '::error::the reviewer hit the turn ceiling after being refused a permission its own instructions told it to use; this pull request is review:human, and the fix is the allowlist or the instructions, not this diff'
+            echo '::error::the reviewer was refused a permission its own instructions told it to use — at the turn ceiling, or on a write to its own report or answer sheet (the reviewer step says which); this pull request is review:human, and the fix is the allowlist or the instructions, not this diff'
             exit 1
           fi
           if [ '${{ steps.reviewer.outputs.turn-exhausted }}' = 'true' ]; then

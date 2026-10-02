@@ -28,10 +28,12 @@ import test from 'node:test';
 import {
   NOT_THE_REVIEWERS_TO_RUN,
   PROGRAMS,
+  assertFileGrants,
   assertGrantRetractions,
   assertToolAllowlist,
   commandsFrom,
   extractInstructions,
+  formatFileGrant,
   formatFinding,
   formatInterception,
   formatRetraction,
@@ -832,4 +834,55 @@ test('a PowerShell ask rule retracts no Bash grant', () => {
 test('a non-Bash grant cannot be retracted', () => {
   const result = retractionsBetween(['Read', 'Glob'], ['Bash(find:*)']);
   assert.equal(result.ok, true);
+});
+
+// ─── Direction 4: file grants are anchored and consulted ───────────────────
+
+const fileGrants = (list) => assertFileGrants(splitToolList(list).map(entry));
+
+test('a file grant anchored at the working directory holds', () => {
+  const result = fileGrants(
+    'Read,Glob,Edit(/tmp/code-review/**),Read(~/notes/**),Edit(//var/x/**),Agent,Bash(rm -f tmp/code-review/*)',
+  );
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.findings, []);
+});
+
+test('a cwd-relative Edit grant fails: a `cd` moves what it covers (issue #880)', () => {
+  const result = fileGrants('Read,Edit(tmp/code-review/**),Bash(git log:*)');
+  assert.equal(result.ok, false);
+  assert.deepEqual(
+    result.findings.map((f) => [f.grant.raw, f.problem]),
+    [['Edit(tmp/code-review/**)', 'cwd-relative']],
+  );
+  assert.match(formatFileGrant(result.findings[0]), /current directory/);
+  assert.equal(fileGrants('Edit(./tmp/code-review/**)').ok, false);
+  assert.equal(fileGrants('Read(src/**)').ok, false);
+});
+
+test('a Write path rule fails however it is anchored: Claude Code never consults it', () => {
+  for (const list of [
+    'Write(tmp/code-review/**)',
+    'Write(/tmp/code-review/**)',
+    'NotebookEdit(/docs/**)',
+  ]) {
+    const result = fileGrants(list);
+    assert.equal(result.ok, false, list);
+    assert.equal(result.findings[0].problem, 'unconsulted');
+    assert.match(formatFileGrant(result.findings[0]), /never consulted/);
+  }
+});
+
+test('the grant main shipped before issue #880 fails on both counts', () => {
+  const result = fileGrants(
+    'Read,Glob,Grep,Write(tmp/code-review/**),Edit(tmp/code-review/**),Agent',
+  );
+  assert.deepEqual(
+    result.findings.map((f) => f.problem),
+    ['unconsulted', 'cwd-relative'],
+  );
+});
+
+test('a tool granted with no path, and a Bash grant, are not file grants', () => {
+  assert.equal(fileGrants('Read,Edit,Write,Agent,Bash(cat:*)').ok, true);
 });

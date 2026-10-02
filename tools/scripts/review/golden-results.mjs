@@ -44,12 +44,13 @@ const CLEAN_OUTCOMES = Object.freeze(['clean-pass', 'clean-fail']);
  * `.github/actions/code-reviewer/action.yml` and `review-golden-replay.yml`
  * already distinguish: the subscription rate limit (including a transcript
  * that could not be read for rate-limit events — `unknown` is not read as
- * "no lockout"), the turn ceiling on a genuinely hard case, the turn
- * ceiling because the allowlist refused a permission the reviewer's own
- * instructions told it to use (`prevented`), the obligation answer sheet
- * failing `review:obligations:check` (ADR 0101), and a residual `unknown`
- * for a run that produced no valid report for a reason none of the above
- * names.
+ * "no lockout"), the turn ceiling on a genuinely hard case, the harness
+ * refusing a permission the reviewer's own instructions told it to use —
+ * at the turn ceiling, or on a write to its own report or answer sheet
+ * (`prevented`, classified by `classify-reviewer-run.mjs`), the obligation
+ * answer sheet failing `review:obligations:check` (ADR 0101), and a residual
+ * `unknown` for a run that produced no valid report for a reason none of the
+ * above names.
  */
 export const VOID_REASONS = Object.freeze([
   'rate-limit',
