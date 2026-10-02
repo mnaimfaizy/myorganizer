@@ -21,10 +21,11 @@ module.exports = function (api) {
     presets: [
       ['module:@react-native/babel-preset', { useTransformReactJSX: true }],
     ],
-    // Reanimated's plugin rewrites worklets so they can run on the UI thread.
+    // The worklets plugin (Reanimated 4 moved it to its own package) rewrites
+    // worklets so they can run on the UI thread.
     // It must stay last in the plugin list — it reads the output of every
     // other transform — and a worklet built without it fails when it is
     // called, not when it is compiled.
-    plugins: ['react-native-reanimated/plugin'],
+    plugins: ['react-native-worklets/plugin'],
   };
 };

@@ -203,8 +203,8 @@ export function OrDivider({ label }: { label: string }): React.JSX.Element {
  * fits a phone at 100% text, and none of them fits at 200% with the keyboard
  * up — so the column scrolls, grows to fill the screen when it is short (the
  * sheets pin actions to the foot with a spacer), and moves out of the
- * keyboard's way on both platforms — Android 15's enforced edge-to-edge
- * leaves `adjustResize` resizing nothing.
+ * keyboard's way on both platforms — Android's enforced edge-to-edge leaves
+ * `adjustResize` resizing nothing.
  */
 export function EntryScroll({
   children,

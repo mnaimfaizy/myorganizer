@@ -25,13 +25,13 @@ export function ThemeProvider({
   children,
 }: ThemeProviderProps): React.JSX.Element {
   // The same choice for what the platform draws — the Material date dialog,
-  // the keyboard, an alert — which otherwise follows the device alone. `null`
+  // the keyboard, an alert — which otherwise follows the device alone. `auto`
   // hands the choice back to the device, so `system` still means it. The
   // web preview has no native appearance to set.
   useEffect(() => {
     if (typeof NativeAppearance.setColorScheme !== 'function') return;
     NativeAppearance.setColorScheme(
-      appearance === 'system' ? null : appearance,
+      appearance === 'system' ? 'auto' : appearance,
     );
   }, [appearance]);
 

@@ -83,7 +83,7 @@ export function RootNavigator(): React.JSX.Element {
 
   return (
     <>
-      {/* Glyph style only. Android 15 enforces edge-to-edge at targetSdk 35,
+      {/* Glyph style only. Android enforces edge-to-edge at targetSdk 36,
           so the system draws the bar transparent and a background colour here
           would be dead configuration; the inset is the screen root's job. */}
       <StatusBar

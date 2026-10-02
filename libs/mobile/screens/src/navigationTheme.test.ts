@@ -261,7 +261,7 @@ describe('navigationTheme', () => {
       expect(iosResult.fonts.heavy.fontWeight).toBe('800');
     });
 
-    it('uses weight 400 on Android for bold and heavy to avoid React Native 0.79 bold lookup', () => {
+    it('uses weight 400 on Android for bold and heavy to avoid the React Native bold lookup', () => {
       const androidResult = navigationTheme(theme, 'android');
       expect(androidResult.fonts.bold.fontWeight).toBe('400');
       expect(androidResult.fonts.heavy.fontWeight).toBe('400');

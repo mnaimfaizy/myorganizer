@@ -101,42 +101,43 @@
 > `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
 > NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
 
-| Package                                  | Version  | Purpose                                                                                                    |
-| ---------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------- |
-| `react-native`                           | ~0.79.3  | Mobile app runtime                                                                                         |
-| `@nx/react-native`                       | 22.7.7   | Nx plugin for React Native apps/libs                                                                       |
-| `@react-navigation/native`               | 7.2.5    | Navigation core                                                                                            |
-| `@react-navigation/native-stack`         | 7.16.0   | Native stack navigator                                                                                     |
-| `@react-navigation/bottom-tabs`          | 7.16.2   | Bottom tab navigator (the app's five-tab shell)                                                            |
-| `react-native-screens`                   | 4.11.1   | Native screen primitives (pinned for RN 0.79)                                                              |
-| `react-native-safe-area-context`         | 5.8.0    | Safe-area insets                                                                                           |
-| `react-native-keychain`                  | 10.0.0   | Secure token storage (mobile auth)                                                                         |
-| `react-native-mmkv`                      | 3.3.3    | Per-device settings storage (appearance, last used tab)                                                    |
-| `react-native-quick-base64`              | 3.0.0    | Base64 helpers (peer dep of quick-crypto)                                                                  |
-| `react-native-quick-crypto`              | 1.1.5    | JSI WebCrypto-compatible crypto (vault adapter)                                                            |
-| `react-native-nitro-modules`             | 0.35.0   | Nitro modules runtime (peer dep of quick-crypto)                                                           |
-| `@craftzdog/react-native-buffer`         | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own)                                                |
-| `react-native-url-polyfill`              | 3.0.0    | URL polyfill for fetch/API client on RN                                                                    |
-| `react-native-svg`                       | ~15.11.2 | SVG rendering — the UI Primitives' icon set is drawn in it                                                 |
-| `react-native-gesture-handler`           | 2.32.0   | Native-thread gestures (the swipeable list row); held at 2.32.0 — 2.33.0's codegen needs React Native 0.80 |
-| `react-native-reanimated`                | 3.19.5   | UI-thread animation (row swipe, skeleton pulse)                                                            |
-| `@react-native-community/datetimepicker` | 8.6.0    | Native date/time pickers (iOS UIDatePicker, Android DatePickerDialog)                                      |
-| `@react-native-community/netinfo`        | 12.0.1   | Connectivity, read by the offline banner                                                                   |
-| `react-native-haptic-feedback`           | 3.0.0    | Tick and untick haptics                                                                                    |
+| Package                                  | Version  | Purpose                                                               |
+| ---------------------------------------- | -------- | --------------------------------------------------------------------- |
+| `react-native`                           | ~0.87.1  | Mobile app runtime                                                    |
+| `@nx/react-native`                       | 22.7.7   | Nx plugin for React Native apps/libs                                  |
+| `@react-navigation/native`               | 7.2.5    | Navigation core                                                       |
+| `@react-navigation/native-stack`         | 7.16.0   | Native stack navigator                                                |
+| `@react-navigation/bottom-tabs`          | 7.16.2   | Bottom tab navigator (the app's five-tab shell)                       |
+| `react-native-screens`                   | 4.28.0   | Native screen primitives                                              |
+| `react-native-safe-area-context`         | 5.10.0   | Safe-area insets                                                      |
+| `react-native-keychain`                  | 10.0.0   | Secure token storage (mobile auth)                                    |
+| `react-native-mmkv`                      | 3.3.3    | Per-device settings storage (appearance, last used tab)               |
+| `react-native-quick-base64`              | 3.0.1    | Base64 helpers (peer dep of quick-crypto)                             |
+| `react-native-quick-crypto`              | 1.1.7    | JSI WebCrypto-compatible crypto (vault adapter)                       |
+| `react-native-nitro-modules`             | 0.37.1   | Nitro modules runtime (peer dep of quick-crypto)                      |
+| `@craftzdog/react-native-buffer`         | 6.1.2    | Buffer used by the mobile vault crypto (quick-crypto's own)           |
+| `react-native-url-polyfill`              | 3.0.0    | URL polyfill for fetch/API client on RN                               |
+| `react-native-svg`                       | ~15.15.5 | SVG rendering — the UI Primitives' icon set is drawn in it            |
+| `react-native-gesture-handler`           | 2.33.0   | Native-thread gestures (the swipeable list row)                       |
+| `react-native-reanimated`                | 4.7.0    | UI-thread animation (row swipe, skeleton pulse)                       |
+| `react-native-worklets`                  | 0.13.0   | Worklets runtime and Babel plugin (required peer of Reanimated 4)     |
+| `@react-native-community/datetimepicker` | 8.6.0    | Native date/time pickers (iOS UIDatePicker, Android DatePickerDialog) |
+| `@react-native-community/netinfo`        | 12.0.1   | Connectivity, read by the offline banner                              |
+| `react-native-haptic-feedback`           | 3.0.0    | Tick and untick haptics                                               |
 
 ### Metro & React Native Tooling
 
-| Package                                        | Version          | Purpose                                                            |
-| ---------------------------------------------- | ---------------- | ------------------------------------------------------------------ |
-| `react-for-native`                             | npm:react@19.0.0 | Metro alias of React 19.0.0; RN 0.79’s renderer must match exactly |
-| `@react-native-community/cli`                  | ~18.0.0          | React Native CLI                                                   |
-| `@react-native-community/cli-platform-android` | ~18.0.0          | Android platform tooling                                           |
-| `@react-native-community/cli-platform-ios`     | ~18.0.0          | iOS platform tooling                                               |
-| `@react-native/babel-preset`                   | ~0.79.3          | Babel preset for React Native                                      |
-| `@react-native/metro-config`                   | ~0.79.3          | Default Metro configuration                                        |
-| `metro-config`                                 | ~0.82.4          | Metro bundler configuration                                        |
-| `metro-resolver`                               | ~0.82.4          | Metro module resolver                                              |
-| `react-native-svg-transformer`                 | ~1.5.1           | SVG import transformer for Metro                                   |
+| Package                                        | Version | Purpose                                                            |
+| ---------------------------------------------- | ------- | ------------------------------------------------------------------ |
+| `@react-native-community/cli`                  | ~20.2.0 | React Native CLI                                                   |
+| `@react-native-community/cli-platform-android` | ~20.2.0 | Android platform tooling                                           |
+| `@react-native-community/cli-platform-ios`     | ~20.2.0 | iOS platform tooling                                               |
+| `@react-native/babel-preset`                   | ~0.87.1 | Babel preset for React Native                                      |
+| `@react-native/jest-preset`                    | ~0.87.1 | Jest preset for React Native (split out of `react-native` at 0.85) |
+| `@react-native/metro-config`                   | ~0.87.1 | Default Metro configuration                                        |
+| `metro-config`                                 | ~0.87.1 | Metro bundler configuration                                        |
+| `metro-resolver`                               | ~0.87.1 | Metro module resolver                                              |
+| `react-native-svg-transformer`                 | ~1.5.3  | SVG import transformer for Metro                                   |
 
 ### Web Target (Nx Vite)
 
@@ -265,7 +266,7 @@
 
 > **Mobile Test Toolchain Note**: **Rendering a mobile component in a test works**, as of #910. It was blocked by `react-test-renderer` — a package React deprecated outright, pinned at `19.0.0` against React `19.2.3`, and declared as a peer by `@testing-library/react-native` 13. RNTL **14** is the line that drops it, for `test-renderer@1`, and that is the version installed; `react-test-renderer` is gone from the tree.
 >
-> `libs/mobile/ui` is the project that renders: `preset: 'react-native'`, the native modules stubbed once in its `jest.setup.ts`, and React mapped to `react-for-native` because React Native 0.79's own renderer asserts an exact version match against it and `findNodeHandle` loads that renderer. **`render` is async in RNTL 14** — `await` it, or `screen` throws "`render` function has not been called", which reads as a broken component rather than a missing `await`. See [the Mobile UI Agent Guide](libs/mobile/ui/AGENTS.md).
+> `libs/mobile/ui` is the project that renders: `preset: '@react-native/jest-preset'`, the native modules stubbed once in its `jest.setup.ts`, and Reanimated 4's Jest resolver chained into the Nx one in `jest.resolver.js`, because Reanimated and `react-native-worklets` otherwise load `.native` files that throw with no native module behind them. **`render` is async in RNTL 14** — `await` it, or `screen` throws "`render` function has not been called", which reads as a broken component rather than a missing `await`. See [the Mobile UI Agent Guide](libs/mobile/ui/AGENTS.md).
 >
 > `libs/mobile/core` and `libs/mobile/screens` still run pure logic in a `node` environment and have no renderer configured, so a spec in either must still import neither `react-native`, `react`, nor `@testing-library/react-native`.
 
@@ -340,7 +341,7 @@ These transitive dependencies are explicitly resolved to patched versions via Ya
 | `mysql2`                    | 3.23.1                | Patches auth downgrade credential leakage and compressed-protocol decompression DoS (GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3); Prisma 7.2.0 still pins 3.15.3                                                                                         | 1153173                                              |
 | `fast-xml-parser`           | 5.7.3                 | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                                                                                                                                                                                       | CVE-2026-41650                                       |
 | `deepmerge-ts`              | 8.0.1                 | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                                                                                                                            | GHSA-ggr8-5vv4-36mx                                  |
-| `react-native-quick-base64` | 3.0.0                 | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                                                                                                                      | —                                                    |
+| `react-native-quick-base64` | 3.0.1                 | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                                                                                                                      | —                                                    |
 | `nanoid`                    | 3.3.17                | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                                                                                                                                          | 1138811, 1138813                                     |
 | `js-yaml`                   | 3.15.2, 4.3.2         | Patches unbounded CPU use from empty merge sources despite `maxTotalMergeKeys` (GHSA-2883-xcg3-v3hh)                                                                                                                                                   | 1193726, 1193727                                     |
 | `sharp`                     | 0.35.4                | Patches bundled libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c); pulled by `next`                                                                                                                                                                        | 1193725                                              |
@@ -348,7 +349,7 @@ These transitive dependencies are explicitly resolved to patched versions via Ya
 | `svgo`                      | 3.3.5, 4.1.0          | Patches `removeScripts` bypass via namespace and control characters (GHSA-w27v-7q3p-w38r)                                                                                                                                                              | 1193735, 1193736                                     |
 | `brace-expansion`           | 1.1.21, 2.1.7, 5.0.12 | Patches stack exhaustion from uncontrolled recursion on nested brace groups and in `parseCommaParts` (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p); pulled by `minimatch` 3.x/9.x and `nx@22.7.7`                                                         | 1240104, 1240105, 1240107, 1240108, 1240109, 1240111 |
 | `nodemailer`                | 10.0.10 (direct)      | Patches quadratic backtracking in the addressparser free-text fallback (GHSA-v53p-9fqp-m79j); the only breaking change in 10.0.0 is Node ≥ 20, and the repo runs Node 22                                                                               | 1240114                                              |
-| `joi`                       | 17.13.8               | Patches quadratic ReDoS in `Joi.string().isoDate()` (GHSA-6h2x-m376-mqjq); pulled by `@react-native-community/cli-config@18.0.1`                                                                                                                       | 1240057                                              |
+| `joi`                       | 17.13.8               | Patches quadratic ReDoS in `Joi.string().isoDate()` (GHSA-6h2x-m376-mqjq); pulled by `@react-native-community/cli-config@20.2.0`                                                                                                                       | 1240057                                              |
 | `undici`                    | 7.29.1                | Patches WebSocket subprotocol DoS and BalancedPool TLS validation bypass (GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3); pulled by `@module-federation/dts-plugin@2.8.1`                                                                                   | 1240041, 1240050                                     |
 | `webpack-dev-middleware`    | 7.4.6                 | Patches path traversal via non-slash-terminated `publicPath` (GHSA-g84c-rxfj-3j2c); pulled by `webpack-dev-server@5.2.3`                                                                                                                               | 1240027                                              |
 
@@ -364,9 +365,6 @@ These transitive dependencies are explicitly resolved to patched versions via Ya
 
 Advisories deliberately ignored via `npmAuditIgnoreAdvisories` in `.yarnrc.yml`. Each needs a reachability argument, a revisit condition, and an open tracking issue — an exception with no issue behind it has no way of being reconsidered.
 
-| Advisory IDs     | Package           | Why it is not fixable now                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Revisit when                                                                                                           | Tracking                                                                                                                                |
-| ---------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| 1239765, 1239766 | `image-size`      | Revalidated 2026-09-27 (GHSA-5p2g-fcmc-qvqq, GHSA-w3rx-r6r6-pgpr — the same advisories formerly keyed 1138808/1138809, re-keyed by the npm registry). Patched in 2.0.3, but `metro@0.82.5` needs `^1.0.2` and calls it as a default export, which v2 removed; forcing 2.x breaks the React Native asset pipeline. The metro 0.82 line (React Native 0.79/0.80) gets no fix — Metro replaced `image-size` with a vendored parser only in 0.83.8/0.84.6/0.87.1. `less@4.5.1` resolves 0.5.5, below both vulnerable ranges. Metro is a build-time tool over first-party assets, so the parser DoS is not reachable from untrusted runtime input. | React Native ≥ 0.81 (metro ≥ 0.83.8) — then remove both IDs; a new advisory that is not build-time-only; or 2027-02-15 | [#921](https://github.com/mnaimfaizy/myorganizer/issues/921) (accepted in [#920](https://github.com/mnaimfaizy/myorganizer/issues/920)) |
-| 1124334          | `brace-expansion` | Superseded ReDoS variant; kept for history.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | —                                                                                                                      | —                                                                                                                                       |
-
-> Do **not** clear an `image-size` exception by forcing 2.x through `resolutions` without upgrading `metro`. That passes both `yarn install` and the audit, then fails at bundle time.
+| Advisory IDs | Package           | Why it is not fixable now                   | Revisit when | Tracking |
+| ------------ | ----------------- | ------------------------------------------- | ------------ | -------- |
+| 1124334      | `brace-expansion` | Superseded ReDoS variant; kept for history. | —            | —        |

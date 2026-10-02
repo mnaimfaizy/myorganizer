@@ -5,6 +5,7 @@ import {
   StyleSheet,
   TextInput,
   View,
+  type TextInputInstance,
   type TextInputProps,
   type ViewStyle,
 } from 'react-native';
@@ -110,7 +111,7 @@ export function TextField({
   ...rest
 }: TextFieldProps): React.JSX.Element {
   const theme = useTheme();
-  const inputRef = useRef<TextInput>(null);
+  const inputRef = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const delayFocus = autoFocus === true && Platform.OS === 'android';

@@ -126,8 +126,9 @@ module.exports = transformer;
 });
 
 // `require.resolve` is a property access on `require` rather than a call to it,
-// so it needs its own clause. `apps/mobile/jest.config.ts` holds exactly this
-// call in the real repo and is exempted by name; an unexempted file is not.
+// so it needs its own clause. `apps/mobile/jest.config.ts` held exactly this
+// call, exempted by name, until React Native 0.87 moved the transformer out of
+// the package; no file in the repo holds one now.
 test('fails a bare react-native subpath reached through `require.resolve`', (t) => {
   const workspace = scaffold(t, {
     'apps/mobile/some.config.ts': `module.exports = {

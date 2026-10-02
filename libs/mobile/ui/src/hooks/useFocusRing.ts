@@ -29,11 +29,12 @@ const OFFSET = {
  * control's own radius and take no layout space, so a focused control does
  * not shift its neighbours.
  *
- * Known gap: React Native 0.79's `Pressable` spreads its own Pressability
- * handlers after the caller's props, and its Pressability config carries no
- * `onFocus`/`onBlur`, so a `Pressable` never calls the two handlers this
- * returns. The wiring is in place for the release that forwards them; until
- * then a keyboard User gets the platform's own focus highlight.
+ * React Native 0.79's `Pressable` never called the two handlers this
+ * returns: it spread its own Pressability handlers after the caller's props,
+ * and its Pressability config carried no `onFocus`/`onBlur`. React Native
+ * 0.87's `Pressable` passes both into that config, so the ring is now
+ * reachable. It has not been seen on a device with a keyboard attached; until
+ * it has, treat the ring as wired rather than as verified.
  */
 export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
   focused: boolean;

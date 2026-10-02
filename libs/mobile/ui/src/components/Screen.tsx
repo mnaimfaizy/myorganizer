@@ -21,7 +21,7 @@ const ALL_EDGES: readonly Edge[] = ['top', 'right', 'bottom', 'left'];
  * The root of every screen.
  *
  * The inset comes from `react-native-safe-area-context` rather than from a
- * status-bar height: `targetSdk 35` means Android 15 draws this app
+ * status-bar height: `targetSdk 36` means Android draws this app
  * edge-to-edge whether it asks to or not, so the system bars overlap the
  * window and a manual inset is wrong on every device with a cutout.
  */

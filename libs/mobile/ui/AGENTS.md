@@ -16,7 +16,7 @@ Root-level React Native rules (package-root imports, edge-to-edge via `react-nat
 This is the one Jest project in `libs/mobile` with a renderer. Two things about it are load-bearing:
 
 - **`render` is async.** `@testing-library/react-native` 14 returns a promise; `await render(<X />)` or `screen` throws "`render` function has not been called", which reads as a broken component rather than a missing `await`.
-- **React is mapped to `react-for-native`.** React Native 0.79's bundled renderer asserts an exact version match against the React it was built for, and `findNodeHandle` — which the gesture handler calls on mount — loads that renderer. Without the mapping every spec that renders a `GestureDetector` fails on the version pair rather than on anything it asserts.
+- **The resolver is chained, in `jest.resolver.js`.** Reanimated 4 and `react-native-worklets` publish a Jest resolver that picks their plain implementations over the `.native` ones, which throw on import with no native module behind them. It ends in Jest's default resolver, and this workspace needs the Nx one there for path aliases, so the file runs one into the other. Pointing `resolver` back at `@nx/jest/plugins/resolver` alone fails every spec that imports Reanimated.
 
 Native modules are stubbed once in `jest.setup.ts`, each with the double its own package publishes. Add a new native dependency there rather than in a spec, so every spec sees the same device.
 

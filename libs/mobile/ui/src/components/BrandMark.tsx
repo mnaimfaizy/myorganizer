@@ -1,11 +1,5 @@
 import React, { useId } from 'react';
-import {
-  Text as RNText,
-  StyleSheet,
-  View,
-  type FlexStyle,
-  type ViewStyle,
-} from 'react-native';
+import { Text as RNText, StyleSheet, View, type ViewStyle } from 'react-native';
 import Svg, { LinearGradient, Path, Stop } from 'react-native-svg';
 import {
   colorOnSecondary,
@@ -46,7 +40,7 @@ const LOCKUPS = {
   {
     markSize: number;
     word: { fontSize: number; lineHeight: number } | null;
-    direction: FlexStyle['flexDirection'];
+    direction: ViewStyle['flexDirection'];
   }
 >;
 

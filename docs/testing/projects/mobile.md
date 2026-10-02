@@ -9,12 +9,12 @@
 
 Four mobile libraries have a Jest project:
 
-| Project             | Config                                  | Environment              | Covers                                                                                                                             |
-| ------------------- | --------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
-| `mobile-ui`         | `libs/mobile/ui/jest.config.ts`         | `preset: 'react-native'` | the UI Primitives, the theme, the Type Scale conversion, the shadow conversion                                                     |
-| `mobile-core`       | `libs/mobile/core/jest.config.ts`       | `node`                   | the Device Settings read back out of storage, and the Auto-Lock decision                                                           |
-| `mobile-screens`    | `libs/mobile/screens/jest.config.ts`    | `node`                   | the tab vocabulary, the stored last used tab, the projection of the theme onto React Navigation, and the entry screens' error copy |
-| `mobile-feat-vault` | `libs/mobile/feat/vault/jest.config.ts` | `node`                   | the pure halves of Vault Unlock: unwrapping a Master Key, and the Biometric Unlock policy over a fake keystore                     |
+| Project             | Config                                  | Environment                 | Covers                                                                                                                             |
+| ------------------- | --------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `mobile-ui`         | `libs/mobile/ui/jest.config.ts`         | `@react-native/jest-preset` | the UI Primitives, the theme, the Type Scale conversion, the shadow conversion                                                     |
+| `mobile-core`       | `libs/mobile/core/jest.config.ts`       | `node`                      | the Device Settings read back out of storage, and the Auto-Lock decision                                                           |
+| `mobile-screens`    | `libs/mobile/screens/jest.config.ts`    | `node`                      | the tab vocabulary, the stored last used tab, the projection of the theme onto React Navigation, and the entry screens' error copy |
+| `mobile-feat-vault` | `libs/mobile/feat/vault/jest.config.ts` | `node`                      | the pure halves of Vault Unlock: unwrapping a Master Key, and the Biometric Unlock policy over a fake keystore                     |
 
 `@nx/jest` infers a `test` target from each config, so `yarn nx test mobile-core` resolves without
 a declared target and CI's `nx affected -t test` runs all four.
@@ -32,11 +32,11 @@ load-bearing:
 - **`render` is async.** `await render(<X />)`. Without the `await`, `screen` throws
   "`render` function has not been called", which reads as a broken component rather than as a
   missing keyword.
-- **React is mapped to `react-for-native`** (19.0.0). React Native 0.79's bundled renderer asserts
-  an exact version match against the React it was built for, and `findNodeHandle` — which
-  `react-native-gesture-handler` calls on mount — loads that renderer. Without the mapping, every
-  spec that renders a `GestureDetector` fails on the version pair rather than on anything it
-  asserts.
+- **The resolver is chained**, in `libs/mobile/ui/jest.resolver.js`. Reanimated 4 and
+  `react-native-worklets` publish a Jest resolver that picks their plain implementations over the
+  `.native` ones, which throw on import with no native module behind them. It ends in Jest's
+  default resolver, and this workspace needs the Nx one there for path aliases, so the file runs
+  one into the other. With the Nx resolver alone, every spec that imports Reanimated fails to load.
 - **Native modules are stubbed once**, in `libs/mobile/ui/jest.setup.ts`, each with the double its
   own package publishes. A new native dependency is added there, not in a spec, so every spec sees
   the same device.
