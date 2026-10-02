@@ -26,6 +26,7 @@
     "react-native-screens": "*",
     "react-native-svg": "*",
     "react-native-url-polyfill": "*",
+    "react-native-worklets": "*",
     "test-renderer": "*"
   }
 }
