@@ -16,11 +16,8 @@ This guide provides comprehensive documentation for developing in the MyOrganize
   - [Starting Storybook](#starting-storybook)
   - [Accessing Services](#accessing-services)
 - [Monorepo Structure](#monorepo-structure)
-  - [Apps](#apps)
-  - [Frontend Architecture (Web Page Libraries)](#frontend-architecture-web-page-libraries)
-  - [Libraries (libs)](#libraries-libs)
-  - [Documentation](#documentation)
   - [Tools & Configuration](#tools--configuration)
+- [Frontend Architecture (Web Page Libraries)](#frontend-architecture-web-page-libraries)
 - [Development Workflow](#development-workflow)
   - [Creating a Feature](#creating-a-feature)
   - [Working with the Database](#working-with-the-database)
@@ -356,59 +353,18 @@ Once everything is running, you can access:
 
 ## Monorepo Structure
 
-This project uses Nx, a powerful monorepo build system. Understanding the structure is key to effective development.
+This is an Nx monorepo. The layout — every app and top-level library, with one line on what it holds — is the [Repository layout](./README.md#repository-layout) section of the README. It is not restated here: `yarn readme:check` asserts that section against the tree in both directions, and a second copy is the one that goes stale.
 
-```
-myorganizer/
-├── apps/                    # Applications
-│   ├── backend/            # Express.js API server
-│   ├── myorganizer/        # Next.js frontend
-│   └── myorganizer-e2e/    # E2E tests for frontend
-├── libs/                    # Shared libraries
-│   ├── api-specs/          # OpenAPI specifications
-│   ├── app-api-client/     # Generated API client
-│   ├── auth/               # Authentication utilities
-│   ├── core/               # Core utilities
-│   └── web/                # Web-specific libraries
-│       ├── pages/          # Route/page implementations (one library per route)
-│       ├── ui/             # Shared UI components
-│       ├── vault/          # Encrypted vault logic (crypto, storage, sync, reconcile)
-│       ├── vault-ui/       # Vault-related UX flows (gate/setup/unlock)
-│       └── youtube/        # Browser YouTube API access shared by page libraries
-├── docs/                    # Documentation
-│   ├── authentication/     # Auth strategy docs
-│   ├── backend/            # Backend docs
-│   ├── deployment/         # Deployment guides
-│   ├── research/           # Dated, frozen investigation briefs
-│   └── storybook/          # Storybook setup docs
-├── tools/                   # Build and deployment scripts
-├── .github/                 # GitHub workflows and templates
-├── docker-compose.yml       # Local development services
-├── nx.json                  # Nx workspace configuration
-├── package.json             # Root package.json with scripts
-├── tsconfig.base.json       # Base TypeScript configuration
-└── README.md                # Main README
-```
+For more than one line on a project, read the `AGENTS.md` (and, where one exists, the `README.md`) inside its own directory — for example [apps/backend/README.md](apps/backend/README.md). The documentation index is the README's [Documentation](./README.md#documentation) table.
 
-### Apps
+### Tools & Configuration
 
-#### Backend (`apps/backend`)
-
-- Express.js REST API with TypeScript
-- Prisma ORM for database operations
-- TSOA for API documentation
-- Passport.js for authentication
-- See [apps/backend/README.md](apps/backend/README.md) for detailed documentation
-
-#### Frontend (`apps/myorganizer`)
-
-> For current package versions see [TECH_STACK.md](./TECH_STACK.md).
-
-- Next.js with App Router
-- React with TypeScript
-- Tailwind CSS for styling
-- Radix UI components
-- React Hook Form for form handling
+- `.github/workflows/` - CI/CD pipelines
+- `tools/scripts/` - Build and deployment scripts
+- `eslint.config.js` - ESLint configuration
+- `jest.config.ts` - Jest testing configuration
+- `.prettierrc` - Code formatting rules
+- `nx.json` - Nx workspace configuration
 
 ## Frontend Architecture (Web Page Libraries)
 
@@ -445,70 +401,6 @@ Examples of existing page libraries:
 
 - Use React Hook Form + Zod for any new form.
 - Prefer keeping the validation schema next to the page feature (inside the page library).
-
-#### E2E Tests (`apps/myorganizer-e2e`)
-
-- Playwright for end-to-end testing
-- Tests for critical user flows
-
-### Libraries (libs)
-
-#### api-specs
-
-- OpenAPI/Swagger specifications
-- Source of truth for API contracts
-
-#### app-api-client
-
-- Auto-generated TypeScript API client
-- Type-safe API calls for the frontend
-
-#### auth
-
-- Authentication utilities
-- Token management
-- Session handling
-
-#### core
-
-- Common utilities
-- Shared types and interfaces
-
-#### web-ui
-
-- Shared React components
-- UI library built with Storybook
-- Reusable across applications
-
-#### web/pages
-
-- One Nx library per frontend route/page (e.g. `libs/web/pages/tasks`)
-- Imported via `@myorganizer/web-pages/<route>`
-
-#### web-vault
-
-- Encrypted vault logic (crypto, storage, sync, reconcile, export/import)
-
-#### web-vault-ui
-
-- Vault UX flows (vault gate/setup/unlock/recover) that wrap `web-vault`
-
-### Documentation
-
-- `docs/authentication/` - JWT strategy and authentication flow
-- `docs/backend/` - Backend-specific documentation
-- `docs/storybook/` - Storybook and Chromatic setup
-- `docs/deployment/` - Deployment guides for different platforms
-- `docs/research/` - Dated, cited investigation briefs, frozen at the date in the filename
-
-### Tools & Configuration
-
-- `.github/workflows/` - CI/CD pipelines
-- `tools/scripts/` - Build and deployment scripts
-- `eslint.config.js` - ESLint configuration
-- `jest.config.ts` - Jest testing configuration
-- `.prettierrc` - Code formatting rules
-- `nx.json` - Nx workspace configuration
 
 ## Development Workflow
 
