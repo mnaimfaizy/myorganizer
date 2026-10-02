@@ -10,7 +10,9 @@ limited because of measured blind spots (below).
 
 ## What it's good for
 
-- `get_neighbors <symbol>` — direct callers/importers/consumers within reach (accurate, instant).
+- `get_neighbors <symbol>` — direct callers/importers/consumers within reach (instant). It lists
+  **one edge per calling function, not per call site**, and an import edge cites the first line of the
+  import statement, so grep is still what produces a complete list of call lines.
 - `god_nodes` — most-connected nodes; good first orientation in an unfamiliar area.
 - `query_graph "<question>"` — broad "what relates to X" context.
 - The labeled `graphify-out/GRAPH_REPORT.md` — a navigable, domain-named community map for onboarding.
@@ -30,6 +32,14 @@ limited because of measured blind spots (below).
   lives in `apps/backend/src/prisma/schema`; use that and `nx affected`.
 
 Always confirm a graph result against the actual file before trusting it — the graph can be stale.
+
+### From a linked worktree
+
+`.mcp.json` starts the server on `graphify-out/graph.json`, a path relative to the session's working
+directory. A linked worktree has no `graphify-out/` — the graph belongs to the primary checkout — so
+every tool call answers `graph.json not found`. Pass `project_path` with the primary checkout's
+absolute path on the call and it answers from that graph. `CodeExplorer` is told to retry this way;
+remember that the graph then describes the primary checkout's branch, not the worktree's.
 
 ## Measured extraction limits
 
@@ -102,6 +112,13 @@ EXTRACTED):
 | R1 — `get_node EncryptedBlob`              | 🔴 no unique match | 🔴 **silently returned `EncryptedBlobV1`**, degree 1          |
 | R5 — `VaultController` → `serverVaultSync` | 🔴 no path         | 🔴 "No directed path found"                                   |
 
+**The R3 row stopped reproducing, measured 2026-10-02.** `saveEncryptedData` became a method on the
+owner-bound vault handle ([ADR 0047](adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)),
+and methods are not nodes. `get_neighbors saveEncryptedData` now returns the neighbours of
+`mockSaveEncryptedData` — one edge, no warning — which is the R1 failure on the tool's own showcase
+symbol. The good half still holds for a symbol that is a function: `get_neighbors saveVaultRecords`
+returned 15 edges with `file:line` the same day, every one confirmed by grep.
+
 The shape of the tool is therefore settled and will not improve: the good half is reliable, and the
 bad half fails **silently**. R1 is the sharp case — asking for one symbol returns a _different_ one
 with no ambiguity warning. That is why the ban list is written into the agent as a table of question
@@ -137,21 +154,24 @@ Two caveats:
   grant, so `triage_prs` and `get_pr_impact` — which invert risk for hub and barrel files — are not
   reachable there at all.
 - Gemini CLI has an open bug where subagents do not always receive MCP tools
-  (google-gemini/gemini-cli#17005, #19599). CodeExplorer is told to fall back to Glob/Grep silently,
-  so this degrades rather than breaks.
+  (google-gemini/gemini-cli#17005, #19599). CodeExplorer is told to fall back to Glob/Grep and note
+  it under Scope, so this degrades rather than breaks.
 
-All four share the same local prerequisite: `uv tool install "graphifyy[mcp]"` plus one manual graph
-build (below). Without it a harness simply has no graphify tools, which is the documented fallback
-path, not a failure.
+All four share the same local prerequisite: `uv tool install "graphifyy[mcp]==0.9.43"` plus one
+manual graph build (below). Without it a harness simply has no graphify tools, which is the
+documented fallback path, not a failure.
 
 ## Build / refresh
 
 The graph is **not committed** (it's generated and goes stale). Build it once locally; the
 `graphify` MCP server in `.mcp.json` then serves `graphify-out/graph.json`.
 
-Prerequisite: `uv tool install "graphifyy[mcp]"` (provides `graphify` + `graphify-mcp`).
-The `mcp` extra is **required** — without it `graphify-mcp` crashes with
-`ModuleNotFoundError: No module named 'mcp'` and the MCP server in `.mcp.json` won't start.
+Prerequisite: `uv tool install "graphifyy[mcp]==0.9.43"` (provides `graphify` + `graphify-mcp`).
+The version is the one pinned in `.sandcastle/Dockerfile`; see "Sandboxed agents" below for why the
+two move together. The `mcp` extra is **required** — without it `graphify-mcp` crashes with
+`ModuleNotFoundError: No module named 'mcp'` and the MCP server in `.mcp.json` won't start, while the
+`graphify` CLI and the refresh hooks keep working, so the graph goes on refreshing and nothing looks
+broken. That happened here from 2026-08-15 to 2026-10-02.
 Installing it via the `[mcp]` extra records `extras = ["mcp"]` in the uv receipt, so a later
 `uv tool upgrade graphifyy` keeps it. Installing plain `graphifyy` drops the extra and silently
 re-breaks the MCP server — the symptom in Claude Code is
