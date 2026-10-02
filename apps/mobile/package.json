@@ -19,7 +19,7 @@
     "react-native-keychain": "*",
     "react-native-mmkv": "*",
     "react-native-nitro-modules": "*",
-    "react-native-quick-base64": "3.0.0",
+    "react-native-quick-base64": "3.0.1",
     "react-native-quick-crypto": "*",
     "react-native-reanimated": "*",
     "react-native-safe-area-context": "*",

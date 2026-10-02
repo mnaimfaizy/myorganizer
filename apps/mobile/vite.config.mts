@@ -76,10 +76,10 @@ export default defineConfig({
     },
   },
   plugins: [
-    // Reanimated's worklets are compiled by its Babel plugin, on the web
-    // exactly as on a device: without it a `useAnimatedStyle` throws when it
-    // is called rather than failing to build.
-    react({ babel: { plugins: ['react-native-reanimated/plugin'] } }),
+    // Reanimated's worklets are compiled by the worklets Babel plugin, on the
+    // web exactly as on a device: without it a `useAnimatedStyle` throws when
+    // it is called rather than failing to build.
+    react({ babel: { plugins: ['react-native-worklets/plugin'] } }),
     nxViteTsPaths(),
   ],
   // Uncomment this if you are using workers.

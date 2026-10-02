@@ -477,7 +477,7 @@ function PassphraseView({
               tone="warning"
               message={biometricNotice}
               // 12 × 14 in at radius 12: sm + xs, the nearer `md`, and `lg`.
-              style={StyleSheet.flatten([
+              style={[
                 styles.card,
                 {
                   paddingVertical: theme.spacing.sm + theme.spacing.xs,
@@ -486,7 +486,7 @@ function PassphraseView({
                   borderColor: theme.colors.controlEdge,
                   backgroundColor: theme.colors.card,
                 },
-              ])}
+              ]}
             />
           )}
 

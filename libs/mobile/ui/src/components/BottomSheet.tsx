@@ -427,7 +427,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   scrim: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
   },
   sheet: {
     marginTop: 'auto',
