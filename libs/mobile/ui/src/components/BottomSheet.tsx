@@ -121,7 +121,7 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
       // still covers what it covered, without sliding up to do it.
       animationType={reduceMotion ? 'none' : 'slide'}
       onRequestClose={props.onDismiss}
-      // Edge-to-edge like the screen under it (Android 15 enforces it there):
+      // Edge-to-edge like the screen under it (Android enforces it there):
       // with the status bar alone translucent, the dialog window still fits
       // inside the system bars and the sheet's safe-area padding lands twice.
       statusBarTranslucent
