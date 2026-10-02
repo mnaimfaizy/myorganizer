@@ -797,7 +797,18 @@ test.describe('Vault export/import (E2E)', () => {
     // The bundle is the same vault that was exported, so the dialog finds unchanged.
     await confirmImportReplaceDialog(page, 'unchanged');
 
-    // Wait for import to complete and vault to be restored
+    // Reconcile has already restored a meta-only Local Vault at this point, so the
+    // stored record existing does not prove the import committed. The inline note
+    // renders only after importVault resolves; navigating before then can abandon
+    // the import (#858).
+    await expect(
+      page
+        .getByRole('main')
+        .getByText('Imported locally. Audit recorded on server.', {
+          exact: true,
+        }),
+    ).toBeVisible({ timeout: 60000 });
+
     await waitForOwnedVault(page, E2E_USER_ID);
 
     await gotoStable(page, '/dashboard/groceries');
