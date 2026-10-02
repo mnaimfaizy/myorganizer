@@ -12563,6 +12563,11 @@
       "start": "      process.env.REFRESH_JWT_SECRET,",
       "end": "      process.env.REFRESH_JWT_SECRET,"
     },
+    "AuthController.int.test.ts:449-450": {
+      "file": "apps/backend/src/controllers/AuthController.int.test.ts",
+      "start": "      expect(mainSource).not.toMatch(/use\\(['\"]\\/auth['\"]/);",
+      "end": "      expect(mainSource).not.toMatch(/from ['\"]\\.\\/routes\\/auth['\"]/);"
+    },
     "AuthController.ts:106-109": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  @Response(200, 'Success')",
@@ -14418,10 +14423,10 @@ data:  { password: hash, reset_password_token: null }
                   that ran, and <code>AuthController.ts</code>, which wrote the
                   contract the frontend is generated against. ADR 0089 (PR #823)
                   deleted the router, so <code>AuthController</code> is the only
-                  handler. What holds it shut:
-                  <code>yarn auth:pages:check</code> asserts the manifest key
-                  <code>routerPrecedence.authRouterBeforeTsoaRoutes</code> is
-                  <code>false</code> — the tag in the footer.
+                  handler. What holds it shut: a backend test,
+                  <code>AuthController.int.test.ts:449-450</code>, which fails
+                  if <code>main.ts</code> mounts an Express router on
+                  <code>/auth</code> or imports <code>./routes/auth</code>.
                 </p>
               </div>
               <div
