@@ -460,7 +460,15 @@ function blankTags(code) {
 // so `.github/CODEOWNERS` counts) or a single segment carrying an extension
 // (`ci.yml`, `SKILL.md`). Neither shape appears in ordinary prose, which is what
 // lets this scan the whole visible page instead of one tag at a time.
-const NAME_RE = /(?:[\w.-]+\/)+[\w.-]+|[\w.-]+\.[A-Za-z0-9]+/;
+//
+// The lookbehind pins a name to the start of its run of name characters. From a
+// later start the same run was already tried whole, so the one thing it stops
+// matching is a name glued to the digits of the citation before it
+// (`a.ts:12b.ts`), which nothing writes. It is what keeps the scan linear:
+// without it every position inside a long run rescans to the run's end, and
+// 200 KB of unbroken word characters in a bundled script string took a minute
+// (#982).
+const NAME_RE = /(?<![\w.-])(?:(?:[\w.-]+\/)+[\w.-]+|[\w.-]+\.[A-Za-z0-9]+)/;
 // Either a name (optionally followed by :line, whether or not it carries one —
 // a panel heading routinely just names the file it is about) or, with no name,
 // a bare :line on its own.
@@ -531,10 +539,12 @@ function knownExtension(name) {
 }
 
 /**
- * Every `file:line` citation on the page, in document order, regardless of which
- * element carries it — a `cite`/`src` span, a table cell, inline `<code>`, or SVG
- * label text are all just visible text once tags and embedded code are blanked
- * out (ADR 0085: "finds citations in every markup form a page uses").
+ * Every `file:line` citation on the page: those in the markup in document
+ * order, then those in script data in document order. In the markup it does not
+ * matter which element carries one — a `cite`/`src` span, a table cell, inline
+ * `<code>`, or SVG label text are all just visible text once tags and embedded
+ * code are blanked out (ADR 0085: "finds citations in every markup form a page
+ * uses").
  *
  * A bare `:line` or `:line-line` carries no name of its own; it resolves against
  * the filename most recently *named* on the page. A citation (`name:line`)
@@ -554,59 +564,346 @@ function knownExtension(name) {
  *     counts. A bare citation with nothing named yet ahead of it is not a
  *     citation — `16:9` in plain prose does not become one just because a regex
  *     can parse it as one — so it is silently skipped.
+ *
+ * Followed by the citations a page renders from script data (#982), which obey
+ * the narrower grammar `locateScriptCitations` describes.
  */
 export function findCitations(source) {
-  return locateCitations(source).located.map(({ citation }) => citation);
+  return locateCitations(source).map(({ citation }) => citation);
 }
 
 /**
- * `findCitations`, plus the offset each citation ends at and the two texts that
- * offset indexes — `code` with its tags, `flat` without — which is what
- * `findUnparsedContinuations` needs to read what follows a citation.
+ * `findCitations`, plus, for each citation, the offset it ends at and the run of
+ * text it was read from — which is what `findUnparsedContinuations` needs to
+ * read what follows it. A run is `text`, aligned with the page offset for
+ * offset, and `unbroken(from, to)`: whether that span is one stretch of prose.
  */
 function locateCitations(source) {
-  const code = maskEmbeddedCode(maskHtmlComments(source));
-  const ranges = srcRanges(code);
-  const flat = blankTags(code);
-  const matches = [...flat.matchAll(TOKEN_RE)];
+  return [...locateMarkupCitations(source), ...locateScriptCitations(source)];
+}
+
+/** One located citation: the match `m`, found at `index` of `run.text`. */
+function citationAt(run, index, m, name) {
+  const start = m.groups.start ?? m.groups.bareStart;
+  const end = m.groups.end ?? m.groups.bareEnd;
+  return {
+    citation: {
+      name,
+      line: Number(start),
+      endLine: end ? Number(end) : Number(start),
+      sourceLine: lineOf(run.text, index),
+      raw: m[0],
+    },
+    end: index + m[0].length,
+    run,
+  };
+}
+
+/**
+ * The citations in `run.text` between `from` and `to`, under the one grammar
+ * the markup and script data share. The two differ only in what they take a
+ * name to be:
+ *   - `isFile(name)`: whether a name carrying a line is a file at all. One that
+ *     is not still named something, so it clears the file in force — the bare
+ *     `:9` after `.github/CODEOWNERS:5` is that name's line, not the line of
+ *     whichever file came before it.
+ *   - `inCaption(index)`: whether a bare mention at `index` names a file by
+ *     sitting where the page puts file names.
+ */
+function readCitations(run, from, to, { isFile, inCaption }) {
+  const text = run.text.slice(from, to);
+  const matches = [...text.matchAll(TOKEN_RE)];
   const located = [];
   let lastName = null;
   for (let i = 0; i < matches.length; i += 1) {
     const m = matches[i];
+    const { name } = m.groups;
     const start = m.groups.start ?? m.groups.bareStart;
 
-    if (m.groups.name && start === undefined) {
+    if (name && start === undefined) {
       const next = matches[i + 1];
       const adjacentBareCitation =
         next &&
         next.groups.name === undefined &&
-        !/\w/.test(flat.slice(m.index + m[0].length, next.index));
+        !/\w/.test(text.slice(m.index + m[0].length, next.index));
       if (
-        within(ranges, m.index) ||
-        (adjacentBareCitation && knownExtension(m.groups.name))
+        inCaption(from + m.index) ||
+        (adjacentBareCitation && knownExtension(name))
       ) {
-        lastName = m.groups.name;
+        lastName = name;
       }
       continue;
     }
-    if (m.groups.name) lastName = m.groups.name;
-    if (start === undefined) continue;
+    if (name) lastName = isFile(name) ? name : null;
+    if (start === undefined || !lastName) continue;
 
-    const name = m.groups.name ?? lastName;
-    if (!name) continue;
-    const end = m.groups.end ?? m.groups.bareEnd;
-    located.push({
-      citation: {
-        name,
-        line: Number(start),
-        endLine: end ? Number(end) : Number(start),
-        sourceLine: lineOf(flat, m.index),
-        raw: m[0],
-      },
-      end: m.index + m[0].length,
-    });
+    located.push(citationAt(run, from + m.index, m, lastName));
   }
-  return { code, flat, located };
+  return located;
+}
+
+function locateMarkupCitations(source) {
+  const code = maskEmbeddedCode(maskHtmlComments(source));
+  const ranges = srcRanges(code);
+  const flat = blankTags(code);
+  // `flat` is `code` with every tag blanked, so the two differ over a span
+  // exactly when a tag sits inside it — the next table cell, the next list item.
+  const run = {
+    text: flat,
+    unbroken: (from, to) => code.slice(from, to) === flat.slice(from, to),
+  };
+  return readCitations(run, 0, flat.length, {
+    isFile: () => true,
+    inCaption: (index) => within(ranges, index),
+  });
+}
+
+// --- script string literals ---------------------------------------------------
+//
+// A lexer, not a parser: enough JavaScript to tell a string from the code,
+// comments and regex literals around it, and no more. `maskNonCode` in
+// source-scan.mjs walks the same states and is deliberately not shared — it
+// blanks strings where this collects them, and it has no need of the two things
+// that make this one longer, nested templates and regex literals.
+
+/**
+ * Where the closing quote of the `'` or `"` literal opened at `open` sits, or
+ * -1 when what opened there is not a string: a quote that reaches the end of
+ * its line unclosed is an apostrophe in a comment-less corner the lexer
+ * misread, and reading on to the next quote below would swallow real strings.
+ */
+function closingQuote(js, open) {
+  const quote = js[open];
+  for (let i = open + 1; i < js.length; i += 1) {
+    const ch = js[i];
+    if (ch === '\\') i += 1;
+    else if (ch === quote) return i;
+    else if (ch === '\n') return -1;
+  }
+  return -1;
+}
+
+const REGEX_PRECEDING_KEYWORD =
+  /\b(?:return|typeof|case|in|of|void|delete|do|else|throw|yield|await)$/;
+
+/**
+ * Whether the `/` at `at` opens a regex literal rather than dividing: decided,
+ * as every lexer without a parser decides it, by what comes before. After an
+ * operator, an opening bracket or a keyword a value is expected, so it is a
+ * regex; after an identifier, a number or a closing `)` or `]` it divides.
+ */
+function opensRegex(js, at) {
+  let i = at - 1;
+  while (i >= 0 && /\s/.test(js[i])) i -= 1;
+  if (i < 0) return true;
+  if ('(,=:[!&|?{};+-*%<>~^}'.includes(js[i])) return true;
+  return REGEX_PRECEDING_KEYWORD.test(js.slice(Math.max(0, i - 9), i + 1));
+}
+
+/** The offset just past the regex literal opened at `open`, or -1 if it never closes on its line. */
+function regexLiteralEnd(js, open) {
+  let inClass = false;
+  for (let i = open + 1; i < js.length; i += 1) {
+    const ch = js[i];
+    if (ch === '\n') return -1;
+    if (ch === '\\') i += 1;
+    else if (ch === '[') inClass = true;
+    else if (ch === ']') inClass = false;
+    else if (ch === '/' && !inClass) return i + 1;
+  }
+  return -1;
+}
+
+// A template nested deeper than this is not JavaScript anyone wrote; it is the
+// lexer chasing backticks through something that is not a script.
+const MAX_TEMPLATE_NESTING = 32;
+
+/**
+ * The content range of every string literal in a script body, in order.
+ *
+ * Gives up locally rather than globally: a quote, a regex or a template that
+ * does not close is stepped over as one character of code. A template found
+ * not to close is remembered, so the lexer never walks to the end of the script
+ * from the same backtick twice.
+ */
+function stringLiteralRanges(js) {
+  const unclosed = new Set();
+  let nesting = 0;
+
+  /**
+   * Collects the ranges in the code starting at `from` and returns where it
+   * stopped: the end of the script, or, inside a template's `${ … }`, just past
+   * the brace that closes it (-1 if none does).
+   */
+  function lexCode(from, ranges, inTemplateExpression) {
+    let depth = 0;
+    let i = from;
+    while (i < js.length) {
+      const ch = js[i];
+      const next = js[i + 1];
+      if (ch === '/' && next === '/') {
+        const eol = js.indexOf('\n', i);
+        i = eol === -1 ? js.length : eol;
+      } else if (ch === '/' && next === '*') {
+        const close = js.indexOf('*/', i + 2);
+        i = close === -1 ? js.length : close + 2;
+      } else if (ch === '/' && opensRegex(js, i)) {
+        const end = regexLiteralEnd(js, i);
+        i = end === -1 ? i + 1 : end;
+      } else if (ch === "'" || ch === '"') {
+        const close = closingQuote(js, i);
+        if (close !== -1) ranges.push([i + 1, close]);
+        i = close === -1 ? i + 1 : close + 1;
+      } else if (ch === '`') {
+        const end = lexTemplate(i + 1, ranges);
+        i = end === -1 ? i + 1 : end;
+      } else if (inTemplateExpression && ch === '}' && depth === 0) {
+        return i + 1;
+      } else {
+        if (inTemplateExpression && ch === '{') depth += 1;
+        if (inTemplateExpression && ch === '}') depth -= 1;
+        i += 1;
+      }
+    }
+    return inTemplateExpression ? -1 : i;
+  }
+
+  /**
+   * Lexes the template literal whose text starts at `from`, just past its
+   * opening backtick. Each stretch of text between `${ … }` expressions is its
+   * own range, and the expressions are lexed as code, so a template nested
+   * inside one is found too. Returns the offset past the closing backtick, or
+   * -1 — committing nothing to `ranges` — when the template never closes.
+   */
+  function lexTemplate(from, ranges) {
+    if (unclosed.has(from) || nesting >= MAX_TEMPLATE_NESTING) return -1;
+    const found = [];
+    let chunk = from;
+    let i = from;
+    nesting += 1;
+    try {
+      while (i < js.length) {
+        const ch = js[i];
+        if (ch === '\\') {
+          i += 2;
+        } else if (ch === '`') {
+          found.push([chunk, i]);
+          ranges.push(...found);
+          return i + 1;
+        } else if (ch === '$' && js[i + 1] === '{') {
+          found.push([chunk, i]);
+          const after = lexCode(i + 2, found, true);
+          if (after === -1) break;
+          chunk = after;
+          i = after;
+        } else {
+          i += 1;
+        }
+      }
+      unclosed.add(from);
+      return -1;
+    } finally {
+      nesting -= 1;
+    }
+  }
+
+  const ranges = [];
+  lexCode(0, ranges, false);
+  return ranges;
+}
+
+// An escape sequence inside a string literal. Blanked before the literal is
+// scanned: `'rollback\nAuthController.ts:323'` would otherwise name a file
+// called `nAuthController.ts`.
+const ESCAPE_RE =
+  /\\(?:u\{[0-9a-fA-F]+\}|u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[^\n])/g;
+
+// The `type` of a `<script>`, however it is quoted, and the anchor block's id.
+// `(?<![\w-])` keeps `data-type="json"` from reading as a type.
+const SCRIPT_TYPE_RE =
+  /(?<![\w-])type\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i;
+const ANCHOR_BLOCK_ID_RE = /(?<![\w-])id\s*=\s*["']?citation-anchors(?![\w-])/i;
+
+/**
+ * Whether a `<script>` is data about the page rather than text on it: a JSON
+ * block of any type spelling, and the anchor block whatever its type says. The
+ * anchor block's own keys have exactly the citation shape, so reading it would
+ * make every entry the citation it is checked against — an orphan vouching for
+ * itself.
+ */
+function isDataBlock(attrs) {
+  const type = SCRIPT_TYPE_RE.exec(attrs);
+  return (
+    /json/i.test(type?.[1] ?? type?.[2] ?? type?.[3] ?? '') ||
+    ANCHOR_BLOCK_ID_RE.test(attrs)
+  );
+}
+
+/**
+ * The citations a page renders from script data (#982): a walkthrough's scenes,
+ * an edge table. The scanner used to blank every script body, so these were
+ * claims on the rendered page that nothing checked — session-lifecycle.html
+ * carried nineteen distinct ones and skill-atlas.html forty-one — and since
+ * #822 an anchor written for one failed as an orphan.
+ *
+ * Script code is full of `name:digit` shapes that are not citations
+ * (`{ opacity:0 }`, `flag ? a.b:1 : 2`), so the grammar is narrower than the
+ * markup one, and each bound is a shape this does NOT read:
+ *   - only string and template literals, never code and never a comment. A
+ *     comment is not rendered; a string may not be either, and is read anyway,
+ *     because the scanner cannot tell and an unread claim is the worse error.
+ *   - a name counts only with a known file extension. `'localhost:3000'` and
+ *     `'github.ref:88'` are not files; neither, here, is `.github/CODEOWNERS`.
+ *   - a bare `:line` inherits only a file cited earlier in the same literal, or
+ *     one mentioned immediately beside it. Nothing leaks in from the markup or
+ *     from the string before, so `'padding :4'` is never a citation, and
+ *     `'serve index.html on localhost:4200'` is not one either.
+ *   - every `<script>` that is not a data block (`isDataBlock`). A type
+ *     allowlist would be the wrong bound the other way: session-lifecycle.html
+ *     keeps its scenes in a `text/x-dc` script.
+ *   - what the lexer can classify. It tells a regex literal from a division by
+ *     what precedes the `/`, which is a heuristic: where it guesses wrong, a
+ *     quote or `//` inside the regex can cost the strings that follow it.
+ *
+ * Scripts are located with HTML comments blanked and nothing else: the script
+ * comment masking `maskHtmlComments` applies is not string-aware, and blanks
+ * the rest of the line after a `//` inside a code sample. `<style>` is matched
+ * alongside so that a `<script>` named in a stylesheet comment starts nothing.
+ */
+function locateScriptCitations(source) {
+  const html = source.replace(/<!--[\s\S]*?-->/g, blank);
+  const literals = [];
+  for (const m of html.matchAll(
+    /<(script|style)\b([^>]*)>([\s\S]*?)<\/\1\s*>/gi,
+  )) {
+    if (m[1].toLowerCase() !== 'script' || isDataBlock(m[2])) continue;
+    const bodyStart = m.index + m[0].indexOf('>') + 1;
+    for (const [start, end] of stringLiteralRanges(m[3])) {
+      literals.push([bodyStart + start, bodyStart + end]);
+    }
+  }
+  if (literals.length === 0) return [];
+
+  // The page with everything blanked but the contents of those literals, so an
+  // offset here is an offset in the page and `lineOf` needs no translation.
+  const pieces = [];
+  let at = 0;
+  for (const [start, end] of literals) {
+    pieces.push(blank(html.slice(at, start)));
+    pieces.push(html.slice(start, end).replace(ESCAPE_RE, blank));
+    at = end;
+  }
+  pieces.push(blank(html.slice(at)));
+  const text = pieces.join('');
+
+  return literals.flatMap(([start, end]) =>
+    // A continuation stays inside the literal its citation is in: the comma in
+    // `['ci.yml:12,', '3 jobs']` does not join two array entries into one list.
+    readCitations({ text, unbroken: (from, to) => to <= end }, start, end, {
+      isFile: knownExtension,
+      inCaption: () => false,
+    }),
+  );
 }
 
 // What follows a citation when a continuation was written without its colon: a
@@ -636,25 +933,24 @@ const CONTINUATION_RE = /\s*,\s*(?<range>\d+(?:-\d+)?)(?![\w%:/-]|\.\w)/y;
  *   - the comma and the number sit in the same run of text as the citation. A
  *     tag between them — the next table cell, the next list item — ends the
  *     walk, because `<td>ci.yml:12</td><td>, 5 retries</td>` is two cells and
- *     not a list of lines. A continuation split across elements is missed.
+ *     not a list of lines; so does the end of a script string. A continuation
+ *     split across elements, or across strings, is missed.
  */
-function findUnparsedContinuations({ code, flat, located }) {
+function findUnparsedContinuations(located) {
   const continuations = [];
-  for (const { citation, end } of located) {
+  for (const { citation, end, run } of located) {
     CONTINUATION_RE.lastIndex = end;
     for (
-      let m = CONTINUATION_RE.exec(flat);
+      let m = CONTINUATION_RE.exec(run.text);
       m !== null;
-      m = CONTINUATION_RE.exec(flat)
+      m = CONTINUATION_RE.exec(run.text)
     ) {
-      // `flat` is `code` with every tag blanked, so the two differ over this
-      // span exactly when a tag sits inside it.
-      if (code.slice(m.index, m.index + m[0].length) !== m[0]) break;
+      if (!run.unbroken(m.index, m.index + m[0].length)) break;
       const { range } = m.groups;
       continuations.push({
         name: citation.name,
         range,
-        sourceLine: lineOf(flat, m.index + m[0].length - range.length),
+        sourceLine: lineOf(run.text, m.index + m[0].length - range.length),
       });
     }
   }
@@ -693,6 +989,10 @@ function normalizeAnchorText(text) {
  * Returns the map keyed by citation name (e.g., "file.yml:42" or "file.yml:42-50")
  * with values containing the expected anchor text, and `lineOfKey`, which says
  * where in the page an entry is written so a finding about it can land there.
+ *
+ * Null means the page carries no block. A block that is there and cannot be
+ * read comes back as `{ invalid, line }` with an empty map — it must not be
+ * mistaken for an absent one, because it is a block that asserts nothing.
  */
 function extractAnchorBlock(source) {
   const match = source.match(
@@ -700,27 +1000,37 @@ function extractAnchorBlock(source) {
   );
   if (!match) return null;
 
+  const body = match[1];
+  const bodyStart = match.index + match[0].indexOf('>') + 1;
+  const unreadable = (invalid) => ({
+    anchors: {},
+    invalid,
+    line: lineOf(source, match.index),
+  });
+
+  let json;
   try {
-    const json = JSON.parse(match[1]);
-    if (!json.anchors || typeof json.anchors !== 'object') return null;
-    const body = match[1];
-    const bodyStart = match.index + match[0].indexOf('>') + 1;
-    return {
-      anchors: json.anchors,
-      lineOfKey(key) {
-        // The quoted key where a colon follows it — the same string can also
-        // sit in a value, such as the block's own note.
-        const quoted = JSON.stringify(key);
-        let at = body.indexOf(quoted, body.search(/"anchors"\s*:/));
-        while (at !== -1 && !/^\s*:/.test(body.slice(at + quoted.length))) {
-          at = body.indexOf(quoted, at + 1);
-        }
-        return lineOf(source, bodyStart + Math.max(at, 0));
-      },
-    };
-  } catch {
-    return null;
+    json = JSON.parse(body);
+  } catch (err) {
+    return unreadable(`is not valid JSON (${err.message})`);
   }
+  const anchors = json?.anchors;
+  if (!anchors || typeof anchors !== 'object' || Array.isArray(anchors)) {
+    return unreadable('has no "anchors" object keyed by citation');
+  }
+  return {
+    anchors,
+    lineOfKey(key) {
+      // The quoted key where a colon follows it — the same string can also
+      // sit in a value, such as the block's own note.
+      const quoted = JSON.stringify(key);
+      let at = body.indexOf(quoted, body.search(/"anchors"\s*:/));
+      while (at !== -1 && !/^\s*:/.test(body.slice(at + quoted.length))) {
+        at = body.indexOf(quoted, at + 1);
+      }
+      return lineOf(source, bodyStart + Math.max(at, 0));
+    },
+  };
 }
 
 /**
@@ -762,11 +1072,16 @@ function extractAnchorBlock(source) {
  *     in the comma-separated form `findUnparsedContinuations` reads, is also
  *     reported in its own right as `citation-continuation-unparsed`, since the
  *     reader sees a cited line the gate does not;
- *   - a citation rendered from a `<script>` body, which `findCitations` masks.
- *     Nothing reports those citations themselves: script code is full of
- *     `name:digit` shapes that are not citations, and telling them apart is not
- *     done here. A page that renders citations from script data therefore
- *     carries claims this gate does not check, and must not anchor them.
+ *   - a citation in a `<script>` body that `locateScriptCitations` does not read:
+ *     one in a comment, in code, or under a name with no known file extension.
+ *     Nothing reports those themselves. A citation in a script string IS read
+ *     (#982), and is held to every rule here like one in the markup.
+ *
+ * A block that is present and unreadable — invalid JSON, or no `anchors` map —
+ * asserts nothing at all, and fails as `citation-anchor-block-invalid` rather
+ * than being treated as a page with no block (#982). On a `ROSTER` page invalid
+ * JSON is reported by `manifest-invalid` as well; a `LEGACY` page never runs
+ * that rule, so this one cannot lean on it.
  */
 function checkCitations(
   source,
@@ -777,8 +1092,16 @@ function checkCitations(
 ) {
   const anchorBlock = extractAnchorBlock(source);
   const anchors = anchorBlock?.anchors ?? {};
-  const page = locateCitations(source);
-  const citations = page.located.map(({ citation }) => citation);
+  const located = locateCitations(source);
+  const citations = located.map(({ citation }) => citation);
+
+  if (anchorBlock?.invalid) {
+    findings.push({
+      rule: 'citation-anchor-block-invalid',
+      line: anchorBlock.line,
+      message: `The citation-anchors block ${anchorBlock.invalid}, so it asserts nothing about any citation on this page.`,
+    });
+  }
 
   const cited = new Set(citations.map(citationKey));
   for (const key of Object.keys(anchors)) {
@@ -786,11 +1109,11 @@ function checkCitations(
     findings.push({
       rule: 'citation-anchor-orphan',
       line: anchorBlock.lineOfKey(key),
-      message: `Anchor ${key} keys no citation this gate reads on the page, so nothing ever compares it — it asserts nothing while reading as though it did. Remove it, or write the citation it is for where the gate reads it: a continuation line needs its colon (", :205"), and a citation inside a <script> body is not read.`,
+      message: `Anchor ${key} keys no citation this gate reads on the page, so nothing ever compares it — it asserts nothing while reading as though it did. Remove it, or write the citation it is for where the gate reads it: a continuation line needs its colon (", :205"), and in a <script> only a string that names the file is read — never a comment, and never a bare line on its own.`,
     });
   }
 
-  for (const continuation of findUnparsedContinuations(page)) {
+  for (const continuation of findUnparsedContinuations(located)) {
     findings.push({
       rule: 'citation-continuation-unparsed',
       line: continuation.sourceLine,
@@ -911,6 +1234,7 @@ export const RULE_KINDS = {
   'citation-anchor-unreadable': 'factual-assertion',
   'citation-anchor-orphan': 'factual-assertion',
   'citation-continuation-unparsed': 'factual-assertion',
+  'citation-anchor-block-invalid': 'factual-assertion',
 };
 
 /**

@@ -397,7 +397,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
         <div class="legend" id="legend">
           <label><input type="checkbox" data-t="B" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--accent)" stroke-width="2.6" fill="none" marker-end="url(#ar-B)"/></svg>
-            <span class="ltext"><b>hands-off-to</b> &#x2014; heaviest. This runs after that. <i>Carries the pulse. 22 drawn.</i></span>
+            <span class="ltext"><b>hands-off-to</b> &#x2014; heaviest. This runs after that. <i>Carries the pulse. 21 drawn.</i></span>
           </label>
           <label><input type="checkbox" data-t="C" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H50" stroke="var(--warn)" stroke-width="2" stroke-dasharray="5 3.5" fill="none" marker-end="url(#ar-C)"/></svg>
@@ -409,7 +409,7 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
           </label>
           <label><input type="checkbox" data-t="D" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--vocab)" stroke-width="1.2" stroke-dasharray="1 3.4" stroke-linecap="round" fill="none" marker-end="url(#ar-D)"/></svg>
-            <span class="ltext"><b>reads-vocabulary-from</b> &#x2014; dotted, lightest. Load this first; it defines the terms. <i>6 drawn.</i></span>
+            <span class="ltext"><b>reads-vocabulary-from</b> &#x2014; dotted, lightest. Load this first; it defines the terms. <i>7 drawn.</i></span>
           </label>
           <label><input type="checkbox" data-t="S" checked>
             <svg width="62" height="14" aria-hidden="true"><path d="M2,7 H52" stroke="var(--tier2)" stroke-width="1" fill="none" marker-end="url(#ar-S)"/></svg>
@@ -541,8 +541,89 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
 
 <script type="application/json" id="citation-anchors">
 {
-  "note": "Expected-content anchors verified against tree on 2026-09-16",
+  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page: the two in the markup, and the edge evidence, NOTES and AGENT_NOTE strings in the script data (ADR 0085; #982). Audited against the tree on 2026-10-01: each edge’s cited line names the skill the edge points at. That is what an anchor here asserts; the words quoted beside a citation are not compared with the line. Evidence that names a file with no line carries nothing to anchor.",
   "anchors": {
+    "ask-matt/SKILL.md:17-81": {
+      "file": ".agents/skills/ask-matt/SKILL.md",
+      "start": "1. **`/grill-with-docs`**  ",
+      "end": "- **Stale framework or library instruction truth** → `/upstream-brief` (human names Ecosystems, each optionally with a Horizon; writes an Upstream Brief against what is installed; does not bump packages)"
+    },
+    "ask-matt/SKILL.md:41": {
+      "file": ".agents/skills/ask-matt/SKILL.md",
+      "start": "- **Bugs and requests piling up** → **`/triage`** (incoming/raw issues only — not slices `/to-issues` already made agent-ready)."
+    },
+    "ask-matt/SKILL.md:42": {
+      "file": ".agents/skills/ask-matt/SKILL.md",
+      "start": "- **Something's broken** → **`/diagnosing-bugs`** (hard bugs, flakes, regressions). Refuse theories until there is a tight red-capable feedback loop; hand off to **`/improve-codebase-architecture`** when the finding is a missing seam."
+    },
+    "ask-matt/SKILL.md:43": {
+      "file": ".agents/skills/ask-matt/SKILL.md",
+      "start": "- **Huge / foggy effort (cannot yet write the PRD's goal sentence)** → **`/grill-with-docs`**. Interview until the abstractions have edges; the moment you _can_ write that sentence, switch to **`/to-prd`**."
+    },
+    "backend-api-contract-change/SKILL.md:18": {
+      "file": ".agents/skills/backend-api-contract-change/SKILL.md",
+      "start": "Do **not** use this skill as the writer for cookie/refresh/session behavior (`auth-session-workflow`) or vault plaintext rules (`vault-feature-workflow`). Those are stop conditions."
+    },
+    "backend-api-contract-change/SKILL.md:23": {
+      "file": ".agents/skills/backend-api-contract-change/SKILL.md",
+      "start": "- Prisma schema files are the persistence source of truth. PrismaWriter reads `.agents/skills/prisma-migration-workflow` — do not copy that runbook here."
+    },
+    "backend-api-contract-change/SKILL.md:45": {
+      "file": ".agents/skills/backend-api-contract-change/SKILL.md",
+      "start": "8. **Leave this skill.** If tests are needed, use `.agents/skills/unit-test-delegation-workflow/SKILL.md` (Gated Pipeline). Do not pull TestScaffold into this chain."
+    },
+    "component-builder/SKILL.md:78": {
+      "file": ".agents/skills/component-builder/SKILL.md",
+      "start": "- New UI Primitives always need a Storybook story → `.agents/skills/storybook-delegation-workflow/SKILL.md`."
+    },
+    "component-builder/SKILL.md:79": {
+      "file": ".agents/skills/component-builder/SKILL.md",
+      "start": "- Any component with testable behaviour → `.agents/skills/unit-test-delegation-workflow/SKILL.md`."
+    },
+    "create-hooks/SKILL.md:164": {
+      "file": ".agents/skills/create-hooks/SKILL.md",
+      "start": "| `dep-sync-reminder.mjs`        | Remind `/dep-sync` after package manager mutations                                                                                     |"
+    },
+    "dep-sync/SKILL.md:29": {
+      "file": ".agents/skills/dep-sync/SKILL.md",
+      "start": "| `.agents/skills/grill-with-docs/SKILL.md` | Checks only — removes any version claim that crept back in        |"
+    },
+    "dep-sync/SKILL.md:3": {
+      "file": ".agents/skills/dep-sync/SKILL.md",
+      "start": "description: 'Synchronise TECH_STACK.md and the fixed set of authoritative files when dependencies are installed, updated, or removed. Proposes changes and requires user confirmation before writing anything.'"
+    },
+    "frontend-page-library-workflow/SKILL.md:20": {
+      "file": ".agents/skills/frontend-page-library-workflow/SKILL.md",
+      "start": "- For creating or editing React components in a page library, follow `.agents/skills/component-builder/SKILL.md`."
+    },
+    "github-issue-creation-workflow/SKILL.md:11": {
+      "file": ".agents/skills/github-issue-creation-workflow/SKILL.md",
+      "start": "- The issue is **not** a PRD, **not** a PRD slice, and **not** the published outcome of a grill or `to-prd` session."
+    },
+    "github-issue-creation-workflow/SKILL.md:17": {
+      "file": ".agents/skills/github-issue-creation-workflow/SKILL.md",
+      "start": "- A PRD Issue already exists and needs slice tickets → `.agents/skills/to-issues/SKILL.md`."
+    },
+    "github-issue-creation-workflow/SKILL.md:18": {
+      "file": ".agents/skills/github-issue-creation-workflow/SKILL.md",
+      "start": "- An existing issue or external PR needs the triage state machine → `.agents/skills/triage/SKILL.md`."
+    },
+    "github-issue-creation-workflow/SKILL.md:3": {
+      "file": ".agents/skills/github-issue-creation-workflow/SKILL.md",
+      "start": "description: 'Use when the user asks to create a standalone GitHub issue for an ad-hoc bug, task, or follow-up in MyOrganizer. Do not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan — those use to-prd or to-issues. Delegate to IssueCreator for duplicate checks, detail collection, label validation, and issue creation.'"
+    },
+    "grill-with-docs/SKILL.md:14": {
+      "file": ".agents/skills/grill-with-docs/SKILL.md",
+      "start": "When the user asks to file the agreed plan as a GitHub issue, PRD, or tracked work, load `.agents/skills/to-prd/SKILL.md`. Do not use `github-issue-creation-workflow` or the IssueCreator sub-agent for that publish."
+    },
+    "grill-with-docs/SKILL.md:64": {
+      "file": ".agents/skills/grill-with-docs/SKILL.md",
+      "start": "When a term is resolved, update `CONTEXT.md` right there. Don't batch these up — capture them as they happen. Use the format in [CONTEXT-FORMAT.md](../domain-modeling/CONTEXT-FORMAT.md)."
+    },
+    "grill-with-docs/SKILL.md:76": {
+      "file": ".agents/skills/grill-with-docs/SKILL.md",
+      "start": "If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](../domain-modeling/ADR-FORMAT.md)."
+    },
     "implement/SKILL.md:126": {
       "file": ".agents/skills/implement/SKILL.md",
       "start": "When the user requests a commit, use **`/commit`** (`.agents/skills/commit-change-workflow/SKILL.md`)."
@@ -550,6 +631,103 @@ footer.foot { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--l
     "implement/SKILL.md:128": {
       "file": ".agents/skills/implement/SKILL.md",
       "start": "When the user requests a PR, use **`/create-pr`** (`.agents/skills/create-pull-request-workflow/SKILL.md`)."
+    },
+    "implement/SKILL.md:35": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "4. Run focused lint/tests; for `gate:full` (and large `standard` diffs), finish with `/code-review`."
+    },
+    "implement/SKILL.md:45": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "Use **`/tdd`** (`.agents/skills/tdd/SKILL.md`) where possible, at pre-agreed test seams — still respect gate tier for who authors the tests."
+    },
+    "implement/SKILL.md:51": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "- Frontend pages → `frontend-page-library-workflow`"
+    },
+    "implement/SKILL.md:52": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "- UI components (`libs/web/ui/`, `libs/web/pages/`) → `component-builder`"
+    },
+    "implement/SKILL.md:53": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "- Backend APIs / API Contract → `backend-api-contract-change` (PrismaWriter → ApiWriter → ApiSync; do not write controllers or schema yourself on `standard`/`full`)"
+    },
+    "implement/SKILL.md:54": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "- Vault-backed data → `vault-feature-workflow`"
+    },
+    "implement/SKILL.md:55": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "- Auth/session → `auth-session-workflow`"
+    },
+    "implement/SKILL.md:56": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "- Prisma runbook (read by PrismaWriter) → `prisma-migration-workflow`"
+    },
+    "implement/SKILL.md:57": {
+      "file": ".agents/skills/implement/SKILL.md",
+      "start": "- YouTube integration → `youtube-integration-workflow`"
+    },
+    "improve-codebase-architecture/SKILL.md:10": {
+      "file": ".agents/skills/improve-codebase-architecture/SKILL.md",
+      "start": "**Before doing anything else, read `.agents/skills/codebase-design/SKILL.md`** — it defines the vocabulary (**module**, **interface**, **depth**, **seam**, **adapter**, **leverage**, **locality**) and principles (deletion test, \"the interface is the test surface\", \"one adapter = hypothetical seam, two = real\") that every suggestion in this skill must use exactly. Refer to its companion files as needed:"
+    },
+    "improve-codebase-architecture/SKILL.md:22": {
+      "file": ".agents/skills/improve-codebase-architecture/SKILL.md",
+      "start": "When the grilling loop produces **new domain terms or ADRs**, delegate those updates to the **[domain-modeling skill](./../domain-modeling/SKILL.md)** — it owns the format, discipline, and inline-update workflow for `CONTEXT.md` and `docs/adr/`."
+    },
+    "improve-codebase-architecture/SKILL.md:67": {
+      "file": ".agents/skills/improve-codebase-architecture/SKILL.md",
+      "start": "Once the user picks a candidate, run the `/grill-with-docs` skill to walk the design tree with them — constraints, dependencies, the shape of the deepened module, what sits behind the seam, what tests survive."
+    },
+    "improve-codebase-architecture/SKILL.md:71": {
+      "file": ".agents/skills/improve-codebase-architecture/SKILL.md",
+      "start": "- **Naming a deepened module after a concept not in `CONTEXT.md`?** Invoke the **[domain-modeling skill](./../domain-modeling/SKILL.md)** to add the term. It owns the format (`CONTEXT-FORMAT.md`) and the inline-update discipline — capture the term immediately, don't batch."
+    },
+    "qa-plan/SKILL.md:114": {
+      "file": ".agents/skills/qa-plan/SKILL.md",
+      "start": "  does not fit this shape. Same reasoning as `to-prd`."
+    },
+    "qa-plan/SKILL.md:25-28": {
+      "file": ".agents/skills/qa-plan/SKILL.md",
+      "start": "- Planning Playwright specs or a Jest behavior matrix → `E2EPlanner`,",
+      "end": "  documents what automation cannot reach."
+    },
+    "qa-plan/SKILL.md:29": {
+      "file": ".agents/skills/qa-plan/SKILL.md",
+      "start": "- Reviewing the diff for defects → `.agents/skills/code-review/SKILL.md`."
+    },
+    "tdd/SKILL.md:55": {
+      "file": ".agents/skills/tdd/SKILL.md",
+      "start": "- [ ] Identify opportunities for deep modules (small interface, deep implementation) — run the `codebase-design` skill (`.agents/skills/codebase-design/SKILL.md`) for the vocabulary and testability checks"
+    },
+    "tdd/refactoring.md:7": {
+      "file": ".agents/skills/tdd/refactoring.md",
+      "start": "- **Shallow modules** → Combine or deepen (see `.agents/skills/codebase-design/SKILL.md`)"
+    },
+    "to-issues/SKILL.md:49": {
+      "file": ".agents/skills/to-issues/SKILL.md",
+      "start": "| `status:blocked` | Machine-readable “not ready”; orchestrator and `/implement` skip until removed |"
+    },
+    "to-issues/config.md:50": {
+      "file": ".agents/skills/to-issues/config.md",
+      "start": "- **Unblock**: when a slice completes, remove `status:blocked` from dependents whose blockers are all `status:done` / closed (Sandcastle + `/implement`)."
+    },
+    "to-prd/config.md:35": {
+      "file": ".agents/skills/to-prd/config.md",
+      "start": "- **Body**: Full PRD using the to-prd template. Must include a `## Slices` section (initially empty — `to-issues` populates it)."
+    },
+    "unit-test-delegation-workflow/SKILL.md:117": {
+      "file": ".agents/skills/unit-test-delegation-workflow/SKILL.md",
+      "start": "**Retry cap**: Each `REJECTED` from TestReviewer or `FAIL(test_wrong)` from TestRunner that sends back to TestScaffold increments the retry counter. After **2 reject-cycles**, escalate to the main agent with the full chain history. Hitting the cap, a repeated FAIL, or a Reviewer PASS then Runner FAIL is a **Pipeline Incident** — comment `## Pipeline Incident` on the Slice Issue. `/code-review` runs once per Slice after checks are green, not after every hop."
+    },
+    "unit-test-delegation-workflow/SKILL.md:17": {
+      "file": ".agents/skills/unit-test-delegation-workflow/SKILL.md",
+      "start": "Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/myorganizer-e2e`."
+    },
+    "upstream-brief/SKILL.md:67": {
+      "file": ".agents/skills/upstream-brief/SKILL.md",
+      "start": "Launch one **research worker per Ecosystem** — not per package. These are Independent Hops and may run in parallel. If the host has a Research specialist, use it as the worker. Otherwise the same agent fetches the pages. A failed hop is recorded; the run continues."
     }
   }
 }
@@ -581,14 +759,15 @@ const NOTES = {
   "handoff": "Upstream-Owned. It once appeared to have eight outbound references, all from a single line naming skills as examples rather than routing \u2014 a false hub. That line was this repo's own addition and went when the fork did.",
   "ask-matt": "Router with out-degree 21. High degree here is a hub artefact, not importance. Its /triage on-ramp is scoped to incoming/raw issues only \u2014 not slices /to-issues has already made agent-ready (ask-matt/SKILL.md:41). Its foggy-effort on-ramp is /grill-with-docs (:43); the former /wayfinder route was dropped with personal-scope approvals (ADR 0032).",
   "dep-sync": "Halts traversal: proposes changes and requires user confirmation before writing anything (dep-sync/SKILL.md:3).",
+  "diagnosing-bugs": "Upstream-Owned, so it draws no outbound edge. The hand-off to improve-codebase-architecture when the finding is a missing seam is the router's rule, not a line in this skill (ask-matt/SKILL.md:42).",
   "modern-web-guidance": "Upstream-Owned, and the only one that executes: it invokes npx modern-web-guidance@latest at use time. Listed in EXTERNAL_SKILLS.md; drawn once, here in Tier 1."
 };
 
 /* \u2500\u2500 Skill \u2192 skill edges. A routes-to \u00b7 B hands-off-to \u00b7 C warns-off \u00b7 D reads-vocabulary-from \u2500\u2500 */
 const SS = [
-  /* B \u2014 hands-off-to (22) */
+  /* B \u2014 hands-off-to (21) */
   ["to-prd","to-issues","B","to-prd/config.md:35 \u2014 the PRD must carry a `## Slices` section, initially empty; to-issues populates it."],
-  ["to-issues","implement","B","to-issues/SKILL.md:48, to-issues/config.md:50"],
+  ["to-issues","implement","B","to-issues/SKILL.md:49, to-issues/config.md:50"],
   ["implement","commit-change-workflow","B","implement/SKILL.md:126 \u2014 invoked as /commit"],
   ["implement","create-pull-request-workflow","B","implement/SKILL.md:128 \u2014 invoked as /create-pr"],
   ["implement","tdd","B","implement/SKILL.md:45"],
@@ -603,24 +782,24 @@ const SS = [
   ["component-builder","storybook-delegation-workflow","B","component-builder/SKILL.md:78"],
   ["component-builder","unit-test-delegation-workflow","B","component-builder/SKILL.md:79"],
   ["frontend-page-library-workflow","component-builder","B","frontend-page-library-workflow/SKILL.md:20"],
-  ["diagnosing-bugs","improve-codebase-architecture","B","diagnosing-bugs/SKILL.md:144 \u2014 hand off when the finding is a missing seam"],
   ["improve-codebase-architecture","grill-with-docs","B","improve-codebase-architecture/SKILL.md:67"],
   ["improve-codebase-architecture","domain-modeling","B","improve-codebase-architecture/SKILL.md:22, :71"],
   ["grill-with-docs","to-prd","B","grill-with-docs/SKILL.md:14"],
-  ["unit-test-delegation-workflow","code-review","B","unit-test-delegation-workflow/SKILL.md:110 \u2014 /code-review runs once per Slice after checks are green, NOT after every hop."],
+  ["unit-test-delegation-workflow","code-review","B","unit-test-delegation-workflow/SKILL.md:117 \u2014 /code-review runs once per Slice after checks are green, NOT after every hop."],
   ["unit-test-delegation-workflow","playwright-e2e-workflow","B","unit-test-delegation-workflow/SKILL.md:17"],
 
   /* C \u2014 warns-off (5) */
   ["backend-api-contract-change","auth-session-workflow","C","backend-api-contract-change/SKILL.md:18 \u2014 \u201cDo not use this skill as the writer for cookie/refresh/session behavior.\u201d"],
   ["backend-api-contract-change","vault-feature-workflow","C","backend-api-contract-change/SKILL.md:18 \u2014 \u201c\u2026or vault plaintext rules.\u201d"],
-  ["backend-api-contract-change","unit-test-delegation-workflow","C","backend-api-contract-change/SKILL.md:45 \u2014 \u201cLeave this skill. \u2026 Do not pull TestScaffold in here.\u201d"],
-  ["grill-with-docs","github-issue-creation-workflow","C","grill-with-docs/SKILL.md:14 \u2014 \u201cDo not use github-issue-creation-workflow or the IssueCreator agent.\u201d"],
+  ["backend-api-contract-change","unit-test-delegation-workflow","C","backend-api-contract-change/SKILL.md:45 \u2014 \u201cLeave this skill. \u2026 Do not pull TestScaffold into this chain.\u201d"],
+  ["grill-with-docs","github-issue-creation-workflow","C","grill-with-docs/SKILL.md:14 \u2014 \u201cDo not use github-issue-creation-workflow or the IssueCreator sub-agent for that publish.\u201d"],
   ["github-issue-creation-workflow","to-prd","C","github-issue-creation-workflow/SKILL.md:3, :11 \u2014 \u201cDo not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan.\u201d"],
 
-  /* D \u2014 reads-vocabulary-from (6) */
+  /* D \u2014 reads-vocabulary-from (7) */
   ["improve-codebase-architecture","codebase-design","D","improve-codebase-architecture/SKILL.md:10 \u2014 \u201cBefore doing anything else, read \u2026 it defines the vocabulary.\u201d"],
   ["tdd","codebase-design","D","tdd/SKILL.md:55, tdd/refactoring.md:7"],
   ["backend-api-contract-change","prisma-migration-workflow","D","backend-api-contract-change/SKILL.md:23 \u2014 PrismaWriter reads the runbook; do not copy it."],
+  ["grill-with-docs","domain-modeling","D","grill-with-docs/SKILL.md:64, :76 \u2014 it writes CONTEXT.md and ADR entries in that skill's formats (CONTEXT-FORMAT.md, ADR-FORMAT.md)."],
   ["dep-sync","grill-with-docs","D","dep-sync/SKILL.md:29"],
   ["create-hooks","dep-sync","D","create-hooks/SKILL.md:164"],
   ["qa-plan","to-prd","D","qa-plan/SKILL.md:114 \u2014 convention precedent, not a route or handoff: qa-plan publishes its issue directly with `gh` and cites to-prd as the skill that already established that rule."],
@@ -691,7 +870,7 @@ const AGENTS = {
   "VersionBump": ["release-and-deploy-workflow"]
 };
 const AGENT_NOTE = {
-  "Research": "Conditional \u2014 upstream-brief/SKILL.md:65: \u201cIf the host has a Research specialist, use it as the worker. Otherwise the same agent fetches the pages.\u201d",
+  "Research": "Conditional \u2014 upstream-brief/SKILL.md:67: \u201cIf the host has a Research specialist, use it as the worker. Otherwise the same agent fetches the pages.\u201d",
   "Audit": "Standing Specialist \u2014 user-invocable, in no pipeline; entered directly, not run as a hop (CONTEXT.md). The dotted edge from upstream-brief is not a delegation: that skill writes a brief and stops, then names Audit as the owner a human routes an Incidental Observation to (INCIDENTAL_OWNERS, upstream-brief/report.mjs). Nothing invokes this agent automatically.",
   "DepAudit": "Standing Specialist \u2014 user-invocable, in no pipeline; entered directly, not run as a hop (CONTEXT.md). The dotted edge from upstream-brief is not a delegation: that skill writes a brief and stops, then names DepAudit as the owner a human routes an Incidental Observation to (INCIDENTAL_OWNERS, upstream-brief/report.mjs). Nothing invokes this agent automatically.",
   "Docs": "Standing Specialist \u2014 user-invocable, in no pipeline. Belonging to no chain is its shape, not a defect (CONTEXT.md)."

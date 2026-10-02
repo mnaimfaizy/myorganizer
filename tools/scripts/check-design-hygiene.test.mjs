@@ -526,6 +526,123 @@ test('the same lines written in the house continuation form pass', (t) => {
   assert.equal(result.status, 0, result.stdout);
 });
 
+// --- a citation rendered from script data is a citation (#982) ----------------
+//
+// The scanner used to blank every script body, so a page that renders its
+// citations from script data — a walkthrough's scenes, an edge table — carried
+// reader-visible claims nothing checked, and could not anchor them either.
+
+/** A page whose only citation sits in a script string, plus an anchor map when given. */
+function pageWithScriptCitation(title, { citation, anchor }) {
+  const blocks = [`<script>const REFS = ['${citation}'];</script>`];
+  if (anchor) {
+    blocks.push(
+      `<script type="application/json" id="citation-anchors">${JSON.stringify({
+        anchors: anchor,
+      })}</script>`,
+    );
+  }
+  return housePage(title).replace(
+    '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+    [
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      ...blocks,
+    ].join('\n'),
+  );
+}
+
+test('a citation rendered from script data fails when it names a file that is not in the tree', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithScriptCitation('waves', { citation: 'nonexistent-source.ts:5' }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-unresolved/);
+  assert.match(result.stdout, /nonexistent-source\.ts/);
+});
+
+test('a citation rendered from script data fails without an anchor', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithScriptCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-missing-anchor/);
+});
+
+test('a citation rendered from script data fails when its anchor does not match the line', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithScriptCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': {
+          file: 'tools/scripts/lib/source-scan.mjs',
+          start: 'not what the line says',
+        },
+      },
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-mismatch/);
+});
+
+test('a citation rendered from script data passes with a matching anchor, which is no longer an orphan', (t) => {
+  const workspace = createWorkspace(t);
+  write(
+    workspace,
+    'docs/sandcastle/waves.html',
+    pageWithScriptCitation('waves', {
+      citation: 'tools/scripts/lib/source-scan.mjs:2',
+      anchor: {
+        'tools/scripts/lib/source-scan.mjs:2': sourceScanAnchor(workspace, 2),
+      },
+    }),
+  );
+
+  const result = run(workspace, 'docs/sandcastle/waves.html');
+
+  assert.equal(result.status, 0, result.stdout);
+});
+
+test('a legacy page whose citation-anchors block cannot be read fails rather than asserting nothing', (t) => {
+  const workspace = createWorkspace(t);
+  const page = 'docs/agents/skill-atlas.html';
+  write(
+    workspace,
+    page,
+    housePage('skill-atlas').replace(
+      '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+      [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="Diagram"></svg>',
+        '<script type="application/json" id="citation-anchors">{ "anchors": { broken ]</script>',
+      ].join('\n'),
+    ),
+  );
+
+  const result = run(workspace, page);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stdout, /ERROR citation-anchor-block-invalid/);
+});
+
 // docs/example/notes.md would exist on disk but not in the index the checker
 // searches (`git ls-files`, built once at createWorkspace time) — these two
 // cite a file createWorkspace already staged, the same way production citations

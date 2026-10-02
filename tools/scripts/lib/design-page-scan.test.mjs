@@ -442,12 +442,29 @@ test('a non-manifest JSON block is still parsed for validity', () => {
     goodPage({
       manifest: [
         '<script type="application/json" id="example-manifest">{ "a": 1 }</script>',
-        '<script type="application/json" id="citation-anchors">{ broken ]</script>',
+        '<script type="application/json" id="example-data">{ broken ]</script>',
       ].join('\n'),
     }),
   );
   assert.deepEqual(rules(findings), ['manifest-invalid']);
-  assert.match(findings[0].message, /citation-anchors/);
+  assert.match(findings[0].message, /example-data/);
+});
+
+test('a broken citation-anchors block fails both ways — it is invalid JSON, and it asserts nothing', () => {
+  // Two findings for one typo, deliberately: `manifest-invalid` is mechanical
+  // and a LEGACY page never runs it, so the factual rule cannot lean on it.
+  const findings = scan(
+    goodPage({
+      manifest: [
+        '<script type="application/json" id="example-manifest">{ "a": 1 }</script>',
+        '<script type="application/json" id="citation-anchors">{ broken ]</script>',
+      ].join('\n'),
+    }),
+  );
+  assert.deepEqual(rules(findings), [
+    'citation-anchor-block-invalid',
+    'manifest-invalid',
+  ]);
 });
 
 test('a manifest inside an HTML comment does not count as one', () => {
@@ -1117,7 +1134,7 @@ test('a continuation range after a separator is still a citation', () => {
   );
 });
 
-test('a citation inside a <style> or <script> block is not discovered', () => {
+test('a citation-shaped token inside a <style> block is not discovered', () => {
   // opacity:0 / opacity:1 in a CSS keyframe is not a citation — the real defect
   // this guards: :root's dark palette selector shares the digit-after-colon shape
   // with a citation, and an @keyframes block writes exactly this pattern.
@@ -1129,6 +1146,375 @@ test('a citation inside a <style> or <script> block is not discovered', () => {
     { resolveCitation },
   );
   assert.deepEqual(seen, []);
+});
+
+// --- citations rendered from script data (#982) ------------------------------
+//
+// A page that builds its walkthrough or its edge table from script data renders
+// the citations in that data like any other, and the scanner used to blank every
+// script body before it looked. session-lifecycle.html carried nineteen distinct
+// citations that way and skill-atlas.html forty-one, none of them checked. Script
+// CODE is full of `name:digit` shapes that are not citations, so only the string
+// literals are read, and a name counts there only with a known file extension.
+
+/** A good page whose body is one <script> holding `js`. */
+function scriptPage(js, { type } = {}) {
+  return goodPage({
+    body: [
+      '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+      `<script${type ? ` type="${type}"` : ''}>`,
+      js,
+      '</script>',
+    ].join('\n'),
+  });
+}
+
+const cited = (seen) =>
+  seen.map((c) =>
+    c.endLine !== c.line
+      ? `${c.name}:${c.line}-${c.endLine}`
+      : `${c.name}:${c.line}`,
+  );
+
+test('a citation in a script string literal is discovered', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      "const EDGES = [['implement', 'tdd', 'B', 'implement/SKILL.md:45 \\u2014 where possible']];",
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['implement/SKILL.md:45']);
+});
+
+test('a bare continuation in a script string inherits the file named in that string', () => {
+  // The shape session-lifecycle.html writes: a code sample whose comments cite,
+  // with `\n` escapes between the lines, and a refs list in the house form.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      [
+        'const SCENES = [{',
+        "  code: 'create user            // AuthController.ts:319\\nsend verification mail //   :320',",
+        "  refs: ['UserService.ts:169, :170, :410-421'],",
+        '}];',
+      ].join('\n'),
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), [
+    'AuthController.ts:319',
+    'AuthController.ts:320',
+    'UserService.ts:169',
+    'UserService.ts:170',
+    'UserService.ts:410-421',
+  ]);
+});
+
+test('an escape directly before a file name does not become part of the name', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(scriptPage("const s = 'rollback\\nAuthController.ts:323';"), {
+    resolveCitation,
+  });
+  assert.deepEqual(cited(seen), ['AuthController.ts:323']);
+});
+
+test('a citation in a template literal or a double-quoted string is discovered', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      'const a = `see ci.yml:3-12`; const b = "passport.ts:97 (access)";',
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['ci.yml:3-12', 'passport.ts:97']);
+});
+
+test('a script in a non-JavaScript type is read too — only JSON data blocks are not', () => {
+  // session-lifecycle.html keeps its SCENES in a `text/x-dc` script, which the
+  // canvas runtime executes. A type allowlist would have missed all of it.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(scriptPage("const refs = ['passport.ts:97'];", { type: 'text/x-dc' }), {
+    resolveCitation,
+  });
+  assert.deepEqual(cited(seen), ['passport.ts:97']);
+});
+
+test('a JSON data block is not read for citations', () => {
+  // The anchor block's own keys have the citation shape. Reading them would
+  // make every anchor key the citation it is supposed to be checked against.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      manifest: [
+        '<script type="application/json" id="example-manifest">',
+        '{ "source": "ci.yml:3-12" }',
+        '</script>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('script code and script comments that merely have the shape are not citations', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      [
+        '// see main.mts:153 for the loop',
+        '/* and deploy.yml:128 */',
+        'const o = { opacity:0, width:320 };',
+        'const n = flag ? step.ts:3 : 1;',
+      ].join('\n'),
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('a name with no known file extension in a script string is not a citation', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      "const s = ['github.ref:88', 'localhost:3000', 'a/b:16', 'opacity:0 then :1'];",
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('a bare :N in a script string does not inherit a file named in the markup or in another string', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<span class="src">ci.yml</span>',
+        "<script>const s = ['deploy.yml', 'padding :4 then :8'];</script>",
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('a string holding a quote escape and a comment marker is read whole', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage("const s = 'it\\'s here // AuthController.ts:319'; // tail"),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['AuthController.ts:319']);
+});
+
+test('an apostrophe in a script comment does not hide the strings after it', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      ["// don't read this as a string", "const refs = ['ci.yml:3'];"].join(
+        '\n',
+      ),
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['ci.yml:3']);
+});
+
+test('a script inside an HTML comment is not read', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        "<!-- <script>const refs = ['ci.yml:3'];</script> -->",
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test("an unresolved script-data citation is reported on the script's own line", () => {
+  const findings = scan(scriptPage("const refs = ['ghost.ts:5'];"), {
+    resolveCitation: () => ({ ok: false, reason: 'ghost.ts:5 is missing.' }),
+  });
+  assert.deepEqual(rules(findings), ['citation-unresolved']);
+  // svg is line 25, the script tag 26, its body 27.
+  assert.equal(findings[0].line, 27);
+});
+
+test('a colon-less continuation in a script string is reported', () => {
+  // What session-lifecycle.html's force-logout scene carried.
+  const findings = scan(
+    scriptPage(
+      "const refs = ['UserService.ts:170,171,213', 'passport.ts:97'];",
+    ),
+  );
+  assert.deepEqual(rules(findings), [
+    'citation-continuation-unparsed',
+    'citation-continuation-unparsed',
+  ]);
+  assert.match(findings[0].message, /"171"/);
+  assert.match(findings[1].message, /"213"/);
+});
+
+test('a continuation does not run from one script string into the next', () => {
+  const findings = scan(scriptPage("const cells = ['ci.yml:12,', '3 jobs'];"));
+  assert.deepEqual(rules(findings), []);
+});
+
+test('a bare :N after a name that is not a file is not charged to the file before it', () => {
+  // `.github/CODEOWNERS` has no known extension, so the script grammar does not
+  // read it — but it still named something, and the `:9` after it is its line.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(scriptPage("const refs = ['ci.yml:3, .github/CODEOWNERS:5, :9'];"), {
+    resolveCitation,
+  });
+  assert.deepEqual(cited(seen), ['ci.yml:3']);
+});
+
+test('a file merely mentioned in a script string does not name a :N further along it', () => {
+  // The markup rule, applied here too: a mention with no line names the bare
+  // citation right beside it, and nothing a clause away.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      [
+        "const a = 'serve index.html on localhost:4200';",
+        "const b = 'tokens.css sets .a{opacity:0}';",
+        'const c = `<link href="app.css"><div style="z-index:2">`;',
+      ].join('\n'),
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('a file mentioned immediately beside its bare citations in a script string names them', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(scriptPage("const s = 'ApiTokens.ts (:36 access, :41 refresh)';"), {
+    resolveCitation,
+  });
+  assert.deepEqual(cited(seen), ['ApiTokens.ts:36', 'ApiTokens.ts:41']);
+});
+
+test('a citation in a template literal nested inside another is discovered', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      [
+        "const a = `${ok ? `see ci.yml:3` : ''}`;",
+        'const b = `<ul>${xs.map(() => `<li>deploy.yml:128</li>`)}</ul> main.mts:153`;',
+      ].join('\n'),
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['ci.yml:3', 'deploy.yml:128', 'main.mts:153']);
+});
+
+test('a regex literal holding a quote, a backtick or // does not hide the strings after it', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      [
+        "const host = url.replace(/^https?:\\/\\//, ''); const a = ['ci.yml:3'];",
+        "const q = /['\"]/g; const b = ['deploy.yml:128'];",
+        'const tick = /`/;',
+        'const pad = 1;',
+        'const c = `main.mts:153`;',
+      ].join('\n'),
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['ci.yml:3', 'deploy.yml:128', 'main.mts:153']);
+});
+
+test('a division is not read as the start of a regex literal', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    scriptPage(
+      "const h = total / count; const a = ['ci.yml:3']; const w = (x + 1) / 2;",
+    ),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['ci.yml:3']);
+});
+
+test('the anchor block is never read for citations, however its tag is written', () => {
+  // Reading it would turn every key into the citation it is checked against,
+  // so an orphan would vouch for itself.
+  for (const attrs of [
+    'type=\'application/json\' id="citation-anchors"',
+    'type=application/json id="citation-anchors"',
+    'id="citation-anchors"',
+  ]) {
+    const findings = scanFactualAssertions({
+      source: [
+        `<script ${attrs}>`,
+        '{ "anchors": { "ci.yml:9": { "file": "ci.yml", "start": "jobs:" } } }',
+        '</script>',
+      ].join('\n'),
+      resolveCitation: () => ({ ok: true }),
+    });
+    assert.deepEqual(rules(findings), ['citation-anchor-orphan'], attrs);
+  }
+});
+
+test('a script is skipped as JSON by its type attribute, not by an attribute that ends in type', () => {
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<script data-type="json">const refs = [\'ci.yml:3\'];</script>',
+        '<script type=\'application/json\'>{ "source": "deploy.yml:128" }</script>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(cited(seen), ['ci.yml:3']);
+});
+
+test('a <script> named inside a <style> block does not start one', () => {
+  // Otherwise everything up to the next real </script> is lexed as script, and
+  // a quoted attribute in the markup between reads as a string.
+  const { seen, resolveCitation } = recordingResolver();
+  scan(
+    goodPage({
+      body: [
+        '<svg viewBox="0 0 10 10" role="img" aria-label="x"></svg>',
+        '<style>/* a <script> tag is not a tooltip system */</style>',
+        '<p title="ci.yml:3">prose</p>',
+        '<script>const n = 1;</script>',
+      ].join('\n'),
+    }),
+    { resolveCitation },
+  );
+  assert.deepEqual(seen, []);
+});
+
+test('a long unbroken run of word characters is scanned in linear time', () => {
+  // Every start position inside the run used to rescan to its end: 200 KB of it
+  // in a script string took a minute. A bundled runtime carries strings like it.
+  const run = 'A'.repeat(300_000);
+  const started = Date.now();
+  const citations = findCitations(
+    `<p>${run}</p>\n<script>const blob = '${run}'; const refs = ['ci.yml:3'];</script>`,
+  );
+  assert.deepEqual(
+    citations.map((c) => `${c.name}:${c.line}`),
+    ['ci.yml:3'],
+  );
+  assert.ok(Date.now() - started < 5000, `took ${Date.now() - started} ms`);
+});
+
+test('scanFactualAssertions reads script-data citations, so a LEGACY page faces them too', () => {
+  const findings = scanFactualAssertions({
+    source: "<script>const refs = ['ghost.ts:5'];</script>",
+    resolveCitation: () => ({ ok: false, reason: 'ghost.ts:5 is missing.' }),
+  });
+  assert.deepEqual(rules(findings), ['citation-unresolved']);
 });
 
 // --- citation-anchor-orphan (#822) -------------------------------------------
@@ -1180,10 +1566,10 @@ test('an anchor keyed by the name a bare continuation inherits is not an orphan'
   assert.deepEqual(rules(findings), []);
 });
 
-test('an anchor for a citation written only inside a <script> body is an orphan', () => {
-  // findCitations does not read script bodies, so a citation rendered from
-  // script data is one the gate never extracts — and an anchor for it is never
-  // looked up. session-lifecycle.html carried four of these.
+test('an anchor for a citation written only in script data is not an orphan', () => {
+  // It was, until the scanner learned to read script strings (#982): the gate
+  // never extracted the citation, so the anchor was never looked up.
+  // session-lifecycle.html carried four of these.
   const findings = scan(
     citedPage(
       [
@@ -1196,8 +1582,62 @@ test('an anchor for a citation written only inside a <script> body is an orphan'
       },
     ),
   );
+  assert.deepEqual(rules(findings), []);
+});
+
+test('an anchor for a citation written only in a script comment is still an orphan', () => {
+  const findings = scan(
+    citedPage('<script>// the router: ci.yml:9\nconst x = 1;</script>', {
+      'ci.yml:9': { file: '.github/workflows/ci.yml', start: 'jobs:' },
+    }),
+  );
   assert.deepEqual(rules(findings), ['citation-anchor-orphan']);
-  assert.match(findings[0].message, /ci\.yml:9/);
+});
+
+// --- citation-anchor-block-invalid (#982) ------------------------------------
+//
+// A block the gate cannot read asserts nothing, and used to be treated exactly
+// like a block that was not there: a LEGACY page with a malformed block and no
+// parsed citations passed in silence.
+
+const anchorBlockPage = (blockBody) =>
+  [
+    '<p>No sources cited here.</p>',
+    '<script type="application/json" id="citation-anchors">',
+    blockBody,
+    '</script>',
+  ].join('\n');
+
+test('a citation-anchors block that is not valid JSON is reported', () => {
+  const findings = scanFactualAssertions({
+    source: anchorBlockPage('{ "anchors": { broken ]'),
+    resolveCitation: () => ({ ok: true }),
+  });
+  assert.deepEqual(rules(findings), ['citation-anchor-block-invalid']);
+  assert.equal(findings[0].line, 2);
+});
+
+test('a citation-anchors block with no anchors map is reported', () => {
+  for (const body of [
+    '{ "note": "verified" }',
+    '{ "anchors": [{ "file": "ci.yml", "start": "on:" }] }',
+    '{ "anchors": "ci.yml:3" }',
+    '{ "anchors": null }',
+  ]) {
+    const findings = scanFactualAssertions({
+      source: anchorBlockPage(body),
+      resolveCitation: () => ({ ok: true }),
+    });
+    assert.deepEqual(rules(findings), ['citation-anchor-block-invalid'], body);
+  }
+});
+
+test('an empty anchors map is a readable block', () => {
+  const findings = scanFactualAssertions({
+    source: anchorBlockPage('{ "anchors": {} }'),
+    resolveCitation: () => ({ ok: true }),
+  });
+  assert.deepEqual(rules(findings), []);
 });
 
 test('an orphan anchor is reported on a page excused from carrying anchors', () => {
@@ -1346,6 +1786,7 @@ test('RULE_KINDS classifies every citation rule as factual-assertion and the res
     .map(([rule]) => rule)
     .sort();
   assert.deepEqual(factual, [
+    'citation-anchor-block-invalid',
     'citation-anchor-mismatch',
     'citation-anchor-orphan',
     'citation-anchor-unreadable',

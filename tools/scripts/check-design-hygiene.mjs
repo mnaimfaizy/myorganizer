@@ -32,10 +32,18 @@
  * the scanner reads as a citation. A comma-separated continuation written
  * without its colon (`main.mts:153, 205`) is not read, and is reported as such;
  * one joined any other way (`153 and 205`), or split across elements, is not
- * read and not reported. A citation rendered from a `<script>` body is not read
- * either and nothing reports it: that direction is omitted because script code
- * is full of `name:digit` shapes that are not citations, so such a citation is
- * a claim this gate does not check.
+ * read and not reported. A citation rendered from script data is read from the
+ * string literals of every non-JSON `<script>` (#982), under a narrower grammar
+ * than markup because script is full of `name:digit` shapes that are not
+ * citations: a name counts only with a known file extension, and a bare `:line`
+ * inherits only a file cited earlier in the same string. What that leaves out —
+ * a script comment, script code, a bare line in a string naming no file, and a
+ * string the lexer loses where it mistakes a regex literal for a division — is
+ * not read and not reported, so it is a claim this gate does not check.
+ *
+ * A `citation-anchors` block that is present and unreadable (invalid JSON, or
+ * no `anchors` map) is itself a finding: it asserts nothing, and is not the
+ * same as a page that carries no block.
  *
  * Usage:
  *   node tools/scripts/check-design-hygiene.mjs <file> [<file> ...]

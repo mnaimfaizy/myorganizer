@@ -189,23 +189,30 @@ whitespace-normalised on comparison, following `verifyCitation` in
 line is past that file's end (`citation-anchor-unreadable`), rather than passing it unverified. An
 anchor nobody can check asserts nothing, which is the state this whole block exists to leave.
 
+The both-ends claim holds only as far as the end line says something. `release.mjs:16-24` ends on a
+bare `}` and line 23 is `  }`, which normalises to the same string, so a one-line shrink there
+verifies anyway. Prefer a range whose last line is distinctive; where the source offers none, the
+anchor is weaker than the rule sounds, and writing that down costs less than discovering it from a
+green check.
+
 **The block holds an entry only for a citation the gate reads.** An entry that keys nothing is never
 looked up, so it can quote anything while reading as though it had been checked; the gate fails it
-as `citation-anchor-orphan`, and the anchor baseline does not excuse it. Two shapes produce one, and
-both leave a reader-visible claim unchecked:
+as `citation-anchor-orphan`, and the anchor baseline does not excuse it. A block the gate cannot
+read at all — invalid JSON, or no `anchors` map — fails as `citation-anchor-block-invalid`. What the
+gate reads is narrower than what a reader sees, in two places a brief has to know about:
 
 - **A continuation line needs its colon.** `main.mts:153, :205, :1642-1687` is three citations;
   `main.mts:153, 205, 1642-1687` is one, followed by two numbers the gate cannot read
   (`citation-continuation-unparsed`). Four sandcastle pages wrote the second form, and every anchor
   for the unread lines passed — some quoting text that was not at the line (#822).
-- **A citation rendered from a `<script>` body is not read at all**, and nothing reports it. Do not
-  anchor one. Brief the citation into markup the gate reads, or have the block's `note` say which
-  citations it does not cover.
-
-That last claim holds only as far as the end line says something. `release.mjs:16-24` ends on a bare
-`}` and line 23 is `  }`, which normalises to the same string, so a one-line shrink there verifies
-anyway. Prefer a range whose last line is distinctive; where the source offers none, the anchor is
-weaker than the rule sounds, and writing that down costs less than discovering it from a green check.
+- **A citation rendered from script data names its file in the same string.** The gate reads the
+  string literals of every non-JSON `<script>` — a walkthrough's scenes, an edge table — so those
+  citations resolve, carry anchors, and match like any other (#982). The grammar there is narrower
+  than in markup, because script is full of `name:digit` shapes that are not citations: a name
+  counts only with a known file extension, and a bare `:205` inherits only a file cited earlier in
+  that same string. `refs: ['main.mts:153, :205']` is two citations; `code: '// :205'` beside it is
+  none, and nothing reports it. A citation in a script comment is not read either. Where a string
+  cannot carry the file name, the block's `note` says which lines it does not cover.
 
 Why a block rather than an attribute beside each citation: citations arrive four or five to a text
 node (`<td class="cite">deploy-production.yml:3-4, :128, :181, :293</td>`, an SVG `<text>` label),
