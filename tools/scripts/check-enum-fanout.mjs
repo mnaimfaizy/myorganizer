@@ -33,7 +33,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 
-import { GUARDED_ENUMS as GUARDED } from './lib/enum-fanout-guarded.mjs';
+import { GUARDED_ENUMS } from './lib/enum-fanout-guarded.mjs';
 
 const require = createRequire(import.meta.url);
 const cwd = process.cwd();
@@ -279,7 +279,7 @@ function inspectScope(scope, guard, members, useValues) {
 
 const findings = [];
 
-for (const guard of GUARDED) {
+for (const guard of GUARDED_ENUMS) {
   const members = readMembers(guard);
   const pinPath = join(cwd, guard.pin);
   if (!existsSync(pinPath)) {
@@ -393,5 +393,5 @@ if (findings.length > 0) {
 }
 
 console.log(
-  `enum-fanout: OK — ${GUARDED.length} guarded enum(s), every fan-out pinned`,
+  `enum-fanout: OK — ${GUARDED_ENUMS.length} guarded enum(s), every fan-out pinned`,
 );

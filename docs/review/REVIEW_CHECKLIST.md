@@ -70,6 +70,12 @@ and which incident bought it.
 }
 ```
 
+A trigger path may also carry `hunkPattern`, matched against the declaration
+git names in the hunk header (`@@ … @@ export const Foo = {`). Use it when an
+added line alone does not say what it belongs to. A trigger may carry
+`excludePaths`, globs kept out of every path, and an entry may carry
+`siteFields` stated per path (entry 1's `coveringGate`).
+
 Rules that keep the list honest:
 
 - **Every entry cites an incident.** No entry is added because it sounds
@@ -292,12 +298,21 @@ shapes its incidents took:
   enclosing declaration is read from git's hunk header (`hunkPattern`), so a
   member added to any of the client's other enums does not fire.
 - **A consumer names its members**: an added `VaultBlobType.<Member>` line
-  anywhere under `apps/**` or `libs/**`.
+  anywhere under `apps/**` or `libs/**`, except test files (`excludePaths`). A
+  test that lists members as fixtures is not a consumer. A site there could
+  only be answered by a finding anchored in the test file.
 
-The guarded enums are the ones the enum fan-out checker guards, read from
-`tools/scripts/lib/enum-fanout-guarded.mjs`, the list that checker reads. The
-trigger names the enum because a regex has to, and the review test suite fails if
-it stops firing on any enum that list carries.
+The guarded enums are the ones the enum fan-out checker guards, listed in
+`tools/scripts/lib/enum-fanout-guarded.mjs`. The trigger names the enum in its
+regexes, because a regex cannot import that list. The review test suite reads
+the list and fails if the trigger stops firing on any enum in it. It does not
+assert the reverse.
+
+A consumer that names the members only as property names (`data.tasks`) and
+never says `VaultBlobType` does not fire on its own. The #537 case fires
+because the same file also names members on the enum. Matching bare member
+values needs the member list at the reviewed head, which a line trigger does
+not have.
 
 **Given** `coveringGate` — the enum fan-out checker, on every site.
 

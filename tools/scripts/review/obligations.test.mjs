@@ -946,8 +946,8 @@ test('every covering gate in the live catalogue names a real script', () => {
 // Both enum fan-out golden cases predate ADR 0053, and since ADR 0102 the
 // replay reviews the case head's tree, standards included, so the reviewer has
 // no document to cite. The obligation is the harness carrying the lesson
-// instead (#895). Its guarded enums are enum:fanout:check's, read from the list
-// that checker reads, so the two cannot drift onto different sets.
+// instead (#895). Its trigger names the guarded enums in regexes; the last test
+// below reads enum:fanout:check's own list and fails if any of them stops firing.
 
 const ENUM_FANOUT = 'enum-fanout-omits-a-member';
 
@@ -981,7 +981,7 @@ test('#512: a member added to a guarded enum fires the fan-out obligation', () =
   ]);
 });
 
-test('#537: a consumer hand-enumerating a guarded enum fires the fan-out obligation', () => {
+test('#537: a consumer naming members on the enum fires the fan-out obligation, as at the case head', () => {
   const sites = enumFanoutSites(
     diff(
       '--- a/libs/web-vault/src/lib/vault/vaultExportImport.ts',
@@ -1048,4 +1048,65 @@ test('the fan-out obligation fires on every enum enum:fanout:check guards', asyn
       );
     }
   }
+});
+
+test('excludePaths keeps a matching file out of every trigger path', () => {
+  const cat = assertObligationCatalogue(
+    catalogue([
+      obligation({
+        trigger: {
+          paths: [{ glob: 'libs/**', addedPattern: 'Colour\\.' }],
+          excludePaths: ['**/*.test.ts'],
+        },
+      }),
+    ]),
+  );
+  const { selected } = selectObligations({
+    catalogue: cat,
+    addedLines: parseAddedLines(
+      diff(
+        '--- a/libs/a.ts',
+        '+++ b/libs/a.ts',
+        '@@ -0,0 +1 @@',
+        '+  use(Colour.Red);',
+        '--- a/libs/a.test.ts',
+        '+++ b/libs/a.test.ts',
+        '@@ -0,0 +1 @@',
+        '+  expect(Colour.Red);',
+      ),
+    ),
+    head: 'abc',
+  });
+  assert.deepEqual(selected[0].sites, [{ file: 'libs/a.ts', line: 1 }]);
+  assert.throws(
+    () =>
+      assertObligationCatalogue(
+        catalogue([
+          obligation({ trigger: { paths: ['x'], excludePaths: 'x' } }),
+        ]),
+      ),
+    /excludePaths/,
+  );
+});
+
+test('#537: a test listing members as fixtures is not a site, so one finding answers the case', () => {
+  // A test site would carry the same omission answer as the consumer, and the
+  // answer-sheet check only counts a finding anchored in the site's own file —
+  // so the reviewer's one correct finding would leave the test sites
+  // contradicting themselves and void the replay.
+  for (const file of [
+    'libs/web-vault/src/lib/vault/vaultExportImportHardened.test.ts',
+    'apps/myorganizer/src/a.spec.tsx',
+  ])
+    assert.deepEqual(
+      enumFanoutSites(
+        diff(
+          `--- a/${file}`,
+          `+++ b/${file}`,
+          '@@ -0,0 +124,1 @@',
+          '+        VaultBlobType.Addresses,',
+        ),
+      ),
+      [],
+    );
 });

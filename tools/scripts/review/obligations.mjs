@@ -217,6 +217,13 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
         fail(`${where}: trigger.addedPattern must be a string`);
       compile(t.addedPattern, where);
     }
+    if (t.excludePaths !== undefined) {
+      if (
+        !Array.isArray(t.excludePaths) ||
+        t.excludePaths.some((g) => typeof g !== 'string' || !g)
+      )
+        fail(`${where}: trigger.excludePaths must be an array of globs`);
+    }
   }
   return cat;
 }
@@ -326,8 +333,14 @@ export const selectObligations = ({
             facts: facts(p),
           },
     );
+    // Kept out of every path at once. A site's answer can only be satisfied by
+    // a finding anchored in the site's own file (raisedForSite), so a file the
+    // entry is not about — a test listing members as fixtures — is not noise
+    // but a contradiction the reviewer cannot avoid.
+    const excluded = (o.trigger.excludePaths ?? []).map(globToRegExp);
     const sites = [];
     for (const [file, lines] of addedLines) {
+      if (excluded.some((g) => g.test(file))) continue;
       const rule = rules.find((r) => r.glob.test(file));
       if (!rule) continue;
       if (!rule.pattern) {
