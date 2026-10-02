@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-10-01.
+> Last synced from `package.json` on 2026-10-02.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -333,6 +333,7 @@ These transitive dependencies are explicitly resolved to patched versions via Ya
 | Package                     | Resolved Version      | Reason                                                                                                                                                                                                                                                 | Vulnerability ID                                     |
 | --------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
 | `adm-zip`                   | 0.6.1                 | Patches DoS via uncontrolled memory allocation from declared uncompressed size (GHSA-7q85-xj36-vmfc); pulled by `@module-federation/dts-plugin`                                                                                                        | 1239030                                              |
+| `basic-ftp`                 | 6.2.1                 | Patches quadratic-time DoS in the `Client.list()` directory-listing parser (GHSA-c475-qrg2-pj4r); pulled by `get-uri@6.0.4`, which declares `^5.0.2`. The only breaking change in 6.0.0 is that separate transfer hosts are off by default             | 1240853                                              |
 | `shell-quote`               | 1.8.4                 | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                                                                                                                                                                                   | CVE-2024-XXXXX                                       |
 | `browserslist`              | 4.28.8                | Patches unbounded cache growth and untrusted custom-stats crash (GHSA-c83g-rgw3-j3cx, GHSA-73wf-gq98-2v4g)                                                                                                                                             | 1153171, 1153172                                     |
 | `fast-uri`                  | 3.1.8                 | Patches authority injection via unvalidated port (GHSA-qw65-cvwx-89v3), host confusion via unclosed bracket (GHSA-58mr-gqgx-xq4g), and SSRF via URI normalization (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) | 1239943, 1239946, 1158521, 1158524, 1158527, 1158530 |
