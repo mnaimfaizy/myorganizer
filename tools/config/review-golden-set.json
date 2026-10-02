@@ -18,8 +18,8 @@
         {
           "id": "reconcile-omits-new-member",
           "axis": "standards",
-          "ruleId": "standard-enum-fanout-not-pinned",
-          "source": "AGENTS\\.md|0053|vaultMigration",
+          "ruleId": "obligation-enum-fanout-omits-a-member",
+          "source": "AGENTS\\.md|0053|vaultMigration|REVIEW_CHECKLIST|obligation",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": [
             "libs/app-api-client/src/api.ts",
@@ -28,7 +28,7 @@
             "apps/backend/src/services/VaultService.ts"
           ],
           "minSeverity": "should-fix",
-          "why": "the diff added Groceries to VaultBlobType and changed no consumer; libs/web-vault/src/lib/vault/vaultMigration.ts hand-enumerated five members, so the keep-server reconcile never uploaded or compared groceries ciphertext and destroyed it (#512)"
+          "why": "the diff added Groceries to VaultBlobType and changed no consumer; libs/web-vault/src/lib/vault/vaultMigration.ts hand-enumerated five members, so the keep-server reconcile never uploaded or compared groceries ciphertext and destroyed it (#512). The case head predates ADR 0053, and since ADR 0102 the replay reviews that head's tree, so no document there names the rule. `ruleId` pins obligation-enum-fanout-omits-a-member, the review obligation that carries the lesson in the harness instead (#895). The `source` and `rule` patterns still accept a reviewer that files it under ADR 0053."
         }
       ],
       "minRecall": 1
@@ -49,12 +49,12 @@
         {
           "id": "envelope-omits-tasks",
           "axis": "standards",
-          "ruleId": "standard-enum-fanout-not-pinned",
-          "source": "AGENTS\\.md|0053",
+          "ruleId": "obligation-enum-fanout-omits-a-member",
+          "source": "AGENTS\\.md|0053|REVIEW_CHECKLIST|obligation",
           "rule": "fan-?out|enum|every member|Record<|blob type",
           "files": ["libs/web-vault/src/lib/vault/vaultExportImport.ts"],
           "minSeverity": "should-fix",
-          "why": "envelopeFromLocalVault listed the blob types as property names and left Tasks out, so a hardened export silently dropped that blob from the day it was written (#537)"
+          "why": "envelopeFromLocalVault listed the blob types as property names and left Tasks out, so a hardened export silently dropped that blob from the day it was written (#537). The case head predates ADR 0053, and since ADR 0102 the replay reviews that head's tree, so no document there names the rule. `ruleId` pins obligation-enum-fanout-omits-a-member, the review obligation that carries the lesson in the harness instead (#895). The `source` and `rule` patterns still accept a reviewer that files it under ADR 0053."
         }
       ],
       "minRecall": 1

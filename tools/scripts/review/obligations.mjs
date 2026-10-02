@@ -206,6 +206,11 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
           fail(`${where}: ${g.glob}: addedPattern must be a string`);
         compile(g.addedPattern, `${where} (${g.glob})`);
       }
+      if (g.hunkPattern !== undefined) {
+        if (typeof g.hunkPattern !== 'string')
+          fail(`${where}: ${g.glob}: hunkPattern must be a string`);
+        compile(g.hunkPattern, `${where} (${g.glob})`);
+      }
     }
     if (t.addedPattern !== undefined) {
       if (typeof t.addedPattern !== 'string')
@@ -241,11 +246,17 @@ export const loadObligationCatalogue = (path = OBLIGATIONS_PATH) =>
  * Added lines only, with their line numbers in the head file. A removal cannot
  * carry a site the reviewer is asked to inspect at `<head>`, and context lines
  * would fire an obligation on code the diff never touched.
+ *
+ * Each line also carries `context` when git's hunk header names one: the
+ * nearest line above the hunk that starts a declaration. That is how a trigger
+ * tells a member added to one enum from a member added to the next, in a
+ * generated file that declares dozens, without reading the head tree.
  */
 export const parseAddedLines = (diffText) => {
   const byFile = new Map();
   let file = null;
   let lineNo = 0;
+  let context = '';
   for (const raw of diffText.split('\n')) {
     if (raw.startsWith('+++ b/')) {
       file = raw.slice(6);
@@ -254,13 +265,19 @@ export const parseAddedLines = (diffText) => {
       continue;
     }
     if (raw.startsWith('@@')) {
-      const m = /@@ -\d+(?:,\d+)? \+(\d+)/.exec(raw);
+      const m = /@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@ ?(.*)/.exec(raw);
       lineNo = m ? Number(m[1]) : 0;
+      context = m ? m[2].trim() : '';
       continue;
     }
     if (!file) continue;
     if (raw.startsWith('+')) {
-      byFile.get(file).push({ line: lineNo, text: raw.slice(1) });
+      const text = raw.slice(1);
+      byFile
+        .get(file)
+        .push(
+          context ? { line: lineNo, text, context } : { line: lineNo, text },
+        );
       lineNo += 1;
     } else if (raw.startsWith('-') || raw.startsWith('\\')) {
       // a removal or "\ No newline"; neither advances the head line number
@@ -300,6 +317,12 @@ export const selectObligations = ({
               p.addedPattern === undefined
                 ? entryPattern
                 : compile(p.addedPattern, `${o.id} (${p.glob})`),
+            // Matched against the declaration enclosing the hunk, not the
+            // line: a member line alone does not say which enum it is in.
+            hunk:
+              p.hunkPattern === undefined
+                ? null
+                : compile(p.hunkPattern, `${o.id} (${p.glob})`),
             facts: facts(p),
           },
     );
@@ -312,7 +335,8 @@ export const selectObligations = ({
         sites.push({ file, line: lines[0]?.line ?? 1, ...rule.facts });
         continue;
       }
-      for (const { line, text } of lines) {
+      for (const { line, text, context = '' } of lines) {
+        if (rule.hunk && !rule.hunk.test(context)) continue;
         if (rule.pattern.test(text)) sites.push({ file, line, ...rule.facts });
       }
     }
