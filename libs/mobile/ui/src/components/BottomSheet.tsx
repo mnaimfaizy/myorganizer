@@ -139,9 +139,14 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
 /**
  * Whether a sheet's `KeyboardAvoidingView` pads for the keyboard. Always on
  * iOS; on Android only while the keyboard is up, because React Native 0.79
- * reports its hiding with the window's visible frame — the frame less the
+ * reported its hiding with the window's visible frame — the frame less the
  * system bars — and a sheet drawn edge-to-edge in a Modal kept that
  * difference as padding once the keyboard had gone.
+ *
+ * React Native 0.87 adds the bar insets to that event (`ReactRootView`'s
+ * `keyboardDidHide` payload), which reads as the fix. The guard is kept: it
+ * costs nothing while the keyboard is down, and whether a sheet in a Modal is
+ * right without it has not been re-checked on a device.
  */
 function useAvoidKeyboard(): boolean {
   const keyboardVisible = useKeyboardVisible();

@@ -21,11 +21,12 @@ export type NavigationPlatform = 'ios' | 'android';
  * Navigation's font type requires a weight, but the two platforms read one
  * differently: iOS turns a weight into a lookup inside the named family, so
  * the step's own weight is what lands on the right cut, while React Native
- * 0.79 on Android treats any weight of 700 or more as bold and goes looking
- * for a `<name>_bold.ttf` that this app does not ship — which is how #909's
- * header titles came out in Roboto. The Type Scale answers this by setting no
- * weight at all (see `typeScale.ts`); here a weight is not optional, so the
- * two heavy slots say 400 on Android and let the cut carry the weight.
+ * on Android treats any weight of 700 or more as bold and goes looking for a
+ * `<name>_bold.ttf` that this app does not ship (`ReactFontManager`, seen on
+ * 0.79 and unchanged in 0.87) — which is how #909's header titles came out in
+ * Roboto. The Type Scale answers this by setting no weight at all (see
+ * `typeScale.ts`); here a weight is not optional, so the two heavy slots say
+ * 400 on Android and let the cut carry the weight.
  */
 function navigationFonts(
   type: Theme['type'],

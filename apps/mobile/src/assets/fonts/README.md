@@ -40,8 +40,8 @@ static families, and iOS would find only Regular in `Inter`.
 
 **And a step sets no `fontWeight`**, because the file already is the weight.
 Adding one breaks both platforms in different ways: on Android, React Native
-0.79 treats any weight of 700 or more as bold and looks for
-`PlusJakartaSans-Bold_bold.ttf`, finds nothing, and renders Roboto; on iOS, a
+(0.79, and unchanged in 0.87) treats any weight of 700 or more as bold and looks
+for `PlusJakartaSans-Bold_bold.ttf`, finds nothing, and renders Roboto; on iOS, a
 weight turns the PostScript name back into a family lookup and picks the
 family's closest weight instead of the named cut. Both were seen on #909.
 
