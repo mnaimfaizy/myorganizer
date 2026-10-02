@@ -12541,7 +12541,7 @@
         </script>
         <script type="application/json" id="citation-anchors">
 {
-  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page, in the markup and in the SCENES script data (ADR 0085; #982). Audited against the tree on 2026-10-01: each cited line carries the call or declaration its citation is attached to. That is all an anchor asserts; the prose around a citation is not checked by it. Not read by the gate, and checked by hand the same day: the three bare line refs in Scene 6's code sample (:119, :100, :61-64), which name no file inside their own string. Known stale and left for a page revision, not a retarget: ADR 0089 removed the runs-versus-specs split, and the 'Three live divergences' table and the Scene 3 and Scene 7 text still describe it. The two citations that table's specs column carried pointed at lines that supported neither claim, so they and their anchors are removed and those two cells now cite nothing.",
+  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page, in the markup and in the SCENES script data (ADR 0085; #982). Audited against the tree on 2026-10-02: each cited line carries the call or declaration its citation is attached to. That is all an anchor asserts; the prose around a citation is not checked by it. Not read by the gate, and checked by hand the same day: the three bare line refs in Scene 6's code sample (:119, :100, :61-64), which name no file inside their own string. One weak anchor, named so a green check is not mistaken for more: AuthController.ts:271-274 starts on a bare 'return {' that says nothing alone, and is carried by its end line, 'user: filteredUser,'.",
   "anchors": {
     "ApiTokens.ts:16": {
       "file": "apps/backend/src/helpers/ApiTokens.ts",
@@ -12563,10 +12563,30 @@
       "start": "      process.env.REFRESH_JWT_SECRET,",
       "end": "      process.env.REFRESH_JWT_SECRET,"
     },
-    "AuthController.ts:128-131": {
+    "AuthController.int.test.ts:449-450": {
+      "file": "apps/backend/src/controllers/AuthController.int.test.ts",
+      "start": "      expect(mainSource).not.toMatch(/use\\(['\"]\\/auth['\"]/);",
+      "end": "      expect(mainSource).not.toMatch(/from ['\"]\\.\\/routes\\/auth['\"]/);"
+    },
+    "AuthController.ts:106-109": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "  @Response(200, 'Success')",
+      "end": "  @Response<ValidateErrorJSON>(422, 'Validation Failed')"
+    },
+    "AuthController.ts:108": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "  @Response(403, 'Email not verified')",
+      "end": "  @Response(403, 'Email not verified')"
+    },
+    "AuthController.ts:110": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "  @Middlewares([validateLoginBody, authenticateLocal])",
+      "end": "  @Middlewares([validateLoginBody, authenticateLocal])"
+    },
+    "AuthController.ts:128-129": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    if (!isEmailVerified(requestUser)) {",
-      "end": "      });"
+      "end": "      return forbidden(403, {"
     },
     "AuthController.ts:139": {
       "file": "apps/backend/src/controllers/AuthController.ts",
@@ -12583,10 +12603,20 @@
       "start": "    if (user.blacklisted_tokens?.includes(refresh_token)) {",
       "end": "    if (user.blacklisted_tokens?.includes(refresh_token)) {"
     },
+    "AuthController.ts:259": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "    const { token, refreshToken: newRefreshToken } = apiTokens.createTokens(",
+      "end": "    const { token, refreshToken: newRefreshToken } = apiTokens.createTokens("
+    },
     "AuthController.ts:268": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    setRefreshCookieIfPresent(req, newRefreshToken);",
       "end": "    setRefreshCookieIfPresent(req, newRefreshToken);"
+    },
+    "AuthController.ts:271-274": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "    return {",
+      "end": "      user: filteredUser,"
     },
     "AuthController.ts:319": {
       "file": "apps/backend/src/controllers/AuthController.ts",
@@ -12598,20 +12628,35 @@
       "start": "    const token = await userService.sendVerificationMail(user);",
       "end": "    const token = await userService.sendVerificationMail(user);"
     },
+    "AuthController.ts:321-327": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "    if (token instanceof Error) {",
+      "end": "      this.setStatus(500);"
+    },
     "AuthController.ts:323": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "        await userService.deleteById(user.id);",
       "end": "        await userService.deleteById(user.id);"
+    },
+    "AuthController.ts:334-335": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "    await userService.update(user.id, {",
+      "end": "      email_verification_token: token,"
     },
     "AuthController.ts:345": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  @Patch('/verify/email')",
       "end": "  @Patch('/verify/email')"
     },
-    "AuthController.ts:373": {
+    "AuthController.ts:359-361": {
       "file": "apps/backend/src/controllers/AuthController.ts",
-      "start": "  @Post('/verify/resend')",
-      "end": "  @Post('/verify/resend')"
+      "start": "    const updateUser = await userService.update(userId, {",
+      "end": "      email_verification_token: null,"
+    },
+    "AuthController.ts:450": {
+      "file": "apps/backend/src/controllers/AuthController.ts",
+      "start": "  async resetPassword(",
+      "end": "  async resetPassword("
     },
     "AuthController.ts:464-475": {
       "file": "apps/backend/src/controllers/AuthController.ts",
@@ -12643,15 +12688,30 @@
       "start": "    if (existingToken) {",
       "end": "        return new Error('Verification email already sent recently');"
     },
+    "UserService.ts:430": {
+      "file": "apps/backend/src/services/UserService.ts",
+      "start": "    const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;",
+      "end": "    const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;"
+    },
+    "UserService.ts:454-457": {
+      "file": "apps/backend/src/services/UserService.ts",
+      "start": "      await sendEmail(user.email, 'Verify your email', message);",
+      "end": "      return new Error('Failed to send verification email');"
+    },
     "UserService.ts:499": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "      blacklisted_tokens: {",
       "end": "      blacklisted_tokens: {"
     },
-    "auth-session-module.ts:95-103": {
+    "VerifyEmailClient.tsx:36-37": {
+      "file": "apps/myorganizer/src/app/(auth)/verify/email/VerifyEmailClient.tsx",
+      "start": "        const res = await fetch(`${apiBase}/auth/verify/email`, {",
+      "end": "          method: 'PATCH',"
+    },
+    "auth-session-module.ts:95-102": {
       "file": "libs/auth/src/lib/auth-session-module.ts",
       "start": "    getSnapshot(): SessionSnapshot {",
-      "end": "    },"
+      "end": "      return { status: 'guest' };"
     },
     "auth-session-transport-adapter.ts:100": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
@@ -12687,6 +12747,11 @@
       "file": "apps/backend/src/helpers/cookieHelper.ts",
       "start": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());",
       "end": "  res.cookie(REFRESH_COOKIE_NAME, refreshToken, refreshCookieOptions());"
+    },
+    "isEmailVerified.ts:4": {
+      "file": "apps/backend/src/helpers/isEmailVerified.ts",
+      "start": "  return Boolean(user?.email_verification_timestamp);",
+      "end": "  return Boolean(user?.email_verification_timestamp);"
     },
     "main.ts:159": {
       "file": "apps/backend/src/main.ts",
@@ -12773,8 +12838,8 @@
                   >User</code
                 >
                 row, four independently-signed token families, three unrelated
-                revocation mechanisms — and two auth implementations, only one
-                of which ever answers a request.
+                revocation mechanisms — and one controller that both serves and
+                specifies <code>/auth/*</code>.
               </p>
             </div>
             <div
@@ -12790,7 +12855,7 @@
                 <p class="card-body" style="opacity: 1">
                   When a login is rejected or a session silently ends —
                   <strong>which check did it</strong>, and
-                  <strong>which of the two implementations ran?</strong>
+                  <strong>which file do I change to move that check?</strong>
                 </p>
               </div>
               <div
@@ -12818,7 +12883,7 @@
               "
             >
               <h2 style="margin: 0">
-                The split path at
+                One path at
                 <span
                   style="
                     font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -12828,7 +12893,7 @@
                 >
               </h2>
               <span class="tag tag-outline" style="white-space: nowrap"
-                >Express is first-match-wins</span
+                >one controller serves and specifies</span
               >
             </div>
 
@@ -12836,8 +12901,8 @@
               style="
                 background: var(--color-surface);
                 border-radius: calc(var(--radius-lg) * 1.15);
-                padding: var(--space-6);
-                box-shadow: var(--shadow-md);
+                padding: var(--space-5);
+                box-shadow: var(--shadow-sm);
               "
             >
               <div
@@ -12873,7 +12938,7 @@
                         text-transform: uppercase;
                         color: var(--color-accent-700);
                       "
-                      >Lane 1 — executes</span
+                      >Serves</span
                     >
                     <div
                       style="
@@ -12999,80 +13064,13 @@
                         font-size: 12px;
                       "
                     >
-                      <span
-                        >200 · 401 ·
-                        <strong style="color: var(--color-accent-700)"
-                          >403</strong
-                        >
-                        ·
-                        <strong style="color: var(--color-accent-700)"
-                          >422</strong
-                        ></span
-                      >
+                      <span>200 · 401 · 403 · 422</span>
                       <span
                         class="text-muted"
                         style="font-family: var(--font-body); font-size: 11px"
-                        >the last two are undocumented</span
+                        >all four declared on the handler —
+                        AuthController.ts:106-109</span
                       >
-                    </div>
-                  </div>
-
-                  <div
-                    style="
-                      display: flex;
-                      gap: var(--space-3);
-                      align-items: stretch;
-                      padding-left: var(--space-4);
-                    "
-                  >
-                    <div
-                      aria-hidden="true"
-                      style="
-                        flex: none;
-                        width: 2px;
-                        background: repeating-linear-gradient(
-                          180deg,
-                          var(--color-accent-2) 0 6px,
-                          transparent 6px 12px
-                        );
-                        margin-left: 60px;
-                      "
-                    ></div>
-                    <div style="flex: 1; padding: var(--space-2) 0">
-                      <div
-                        style="
-                          display: flex;
-                          align-items: center;
-                          gap: var(--space-2);
-                          flex-wrap: wrap;
-                        "
-                      >
-                        <span class="tag tag-accent-2"
-                          >partial overlap — 4 handlers delegate down</span
-                        >
-                        <span class="text-muted" style="font-size: 12px"
-                          >not a clean fork</span
-                        >
-                      </div>
-                      <div
-                        style="
-                          font-family:
-                            ui-monospace, SFMono-Regular, Menlo, monospace;
-                          font-size: 12px;
-                          margin-top: 6px;
-                          color: var(--color-accent-2-700);
-                        "
-                      >
-                        /verify/email · /verify/resend · /password/reset ·
-                        /password/reset/confirm
-                        <span
-                          class="text-muted"
-                          style="font-family: var(--font-body)"
-                          >— AuthController.ts:345, :373 serve these routes
-                          directly</span
-                        >
-                        >
-                      </div>
                     </div>
                   </div>
 
@@ -13091,9 +13089,9 @@
                         font-size: 12px;
                         letter-spacing: 0.12em;
                         text-transform: uppercase;
-                        color: var(--color-neutral-600);
+                        color: var(--color-accent-700);
                       "
-                      >Lane 2 — specifies only</span
+                      >Specifies</span
                     >
                     <div
                       style="
@@ -13110,45 +13108,20 @@
                       align-items: center;
                       gap: var(--space-2);
                       flex-wrap: wrap;
-                      opacity: 0.82;
                     "
                   >
                     <div
                       style="
-                        flex: 1 1 250px;
-                        min-width: 230px;
-                        padding: var(--space-3) var(--space-4);
-                        border-radius: var(--radius-md);
-                        background: transparent;
-                        border: 2px dashed var(--color-neutral-500);
+                        flex: none;
+                        padding: 8px 14px;
+                        border-radius: 999px;
+                        border: 2px solid var(--color-accent);
+                        font-family:
+                          ui-monospace, SFMono-Regular, Menlo, monospace;
+                        font-size: 12px;
                       "
                     >
-                      <div
-                        style="
-                          display: flex;
-                          justify-content: space-between;
-                          align-items: center;
-                          gap: var(--space-2);
-                        "
-                      >
-                        <strong
-                          style="
-                            font-family:
-                              ui-monospace, SFMono-Regular, Menlo, monospace;
-                            font-size: 14px;
-                            color: var(--color-neutral-700);
-                          "
-                          >routes/auth.ts</strong
-                        >
-                        <span class="tag tag-neutral">DELETED</span>
-                      </div>
-                      <div
-                        style="font-size: 12px; margin-top: 4px"
-                        class="text-muted"
-                      >
-                        former Express twin — removed; ADR 0089. Nothing mounts
-                        <code>routes/auth.ts</code> any more.
-                      </div>
+                      AuthController.ts
                     </div>
                     <div
                       aria-hidden="true"
@@ -13158,14 +13131,14 @@
                         style="
                           width: 22px;
                           height: 2px;
-                          background: var(--color-neutral-500);
+                          background: var(--color-accent);
                         "
                       ></div>
                       <div
                         style="
                           width: 0;
                           height: 0;
-                          border-left: 8px solid var(--color-neutral-500);
+                          border-left: 8px solid var(--color-accent);
                           border-top: 5px solid transparent;
                           border-bottom: 5px solid transparent;
                         "
@@ -13176,7 +13149,8 @@
                         flex: none;
                         padding: 8px 14px;
                         border-radius: 999px;
-                        border: 1px dashed var(--color-neutral-500);
+                        border: 1px solid var(--color-divider);
+                        background: var(--color-neutral-100);
                         font-family:
                           ui-monospace, SFMono-Regular, Menlo, monospace;
                         font-size: 12px;
@@ -13192,14 +13166,14 @@
                         style="
                           width: 22px;
                           height: 2px;
-                          background: var(--color-neutral-500);
+                          background: var(--color-accent);
                         "
                       ></div>
                       <div
                         style="
                           width: 0;
                           height: 0;
-                          border-left: 8px solid var(--color-neutral-500);
+                          border-left: 8px solid var(--color-accent);
                           border-top: 5px solid transparent;
                           border-bottom: 5px solid transparent;
                         "
@@ -13210,7 +13184,8 @@
                         flex: none;
                         padding: 8px 14px;
                         border-radius: 999px;
-                        border: 1px dashed var(--color-neutral-500);
+                        border: 1px solid var(--color-divider);
+                        background: var(--color-neutral-100);
                         font-family:
                           ui-monospace, SFMono-Regular, Menlo, monospace;
                         font-size: 12px;
@@ -13226,14 +13201,14 @@
                         style="
                           width: 22px;
                           height: 2px;
-                          background: var(--color-neutral-500);
+                          background: var(--color-accent);
                         "
                       ></div>
                       <div
                         style="
                           width: 0;
                           height: 0;
-                          border-left: 8px solid var(--color-neutral-500);
+                          border-left: 8px solid var(--color-accent);
                           border-top: 5px solid transparent;
                           border-bottom: 5px solid transparent;
                         "
@@ -13244,6 +13219,7 @@
                         flex: none;
                         padding: 8px 14px;
                         border-radius: 999px;
+                        border: 1px solid var(--color-divider);
                         background: var(--color-neutral-100);
                         font-family:
                           ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -13267,12 +13243,21 @@
                   >
                     <span style="font-size: 18px; line-height: 1">↺</span>
                     <span style="font-size: 13px; text-wrap: pretty"
-                      ><strong>The loop closes wrong:</strong>
-                      <code>libs/auth</code> then calls Lane&nbsp;1 at runtime.
-                      The contract the frontend is generated against is written
-                      by code that does not execute.</span
+                      ><strong>The loop closes:</strong>
+                      <code>libs/auth</code> then calls
+                      <code>AuthController</code> at runtime. The contract the
+                      frontend is generated against is written by the code that
+                      executes.</span
                     >
                   </div>
+
+                  <p
+                    class="text-muted"
+                    style="margin: 0; font-size: 12px; text-wrap: pretty"
+                  >
+                    ADR 0089 removed <code>routes/auth.ts</code>. No second
+                    file serves or specifies a path.
+                  </p>
                 </div>
 
                 <div
@@ -13284,14 +13269,13 @@
                     gap: var(--space-2);
                   "
                 >
-                  <h4 style="margin: 0">Three live divergences</h4>
+                  <h4 style="margin: 0">Where each behaviour is decided</h4>
                   <sc-raw-table class="table">
                     <sc-raw-thead
                       ><sc-raw-tr
                         ><sc-raw-th>Behaviour</sc-raw-th
-                        ><sc-raw-th style="color: var(--color-accent-700)"
-                          >runs</sc-raw-th
-                        ><sc-raw-th>specs</sc-raw-th></sc-raw-tr
+                        ><sc-raw-th>What happens</sc-raw-th
+                        ><sc-raw-th>Where</sc-raw-th></sc-raw-tr
                       ></sc-raw-thead
                     >
                     <sc-raw-tbody>
@@ -13299,56 +13283,65 @@
                         <sc-raw-td style="font-size: 13px"
                           >Unverified email login</sc-raw-td
                         >
+                        <sc-raw-td style="font-size: 12px"
+                          ><strong>403</strong>, declared in the contract by the
+                          handler's own decorator.</sc-raw-td
+                        >
                         <sc-raw-td
                           style="
                             font-family:
                               ui-monospace, SFMono-Regular, Menlo, monospace;
                             font-size: 12px;
                           "
-                          ><strong>403</strong><br /><span class="text-muted"
-                            >AuthController.ts:128-131</span
+                          ><span class="text-muted"
+                            >check AuthController.ts:128-129</span
+                          ><br /><span class="text-muted"
+                            >declared AuthController.ts:108</span
                           ></sc-raw-td
-                        >
-                        <sc-raw-td style="font-size: 12px" class="text-muted"
-                          >no check at all</sc-raw-td
                         >
                       </sc-raw-tr>
                       <sc-raw-tr>
                         <sc-raw-td style="font-size: 13px"
                           >Refresh cookie on login</sc-raw-td
                         >
+                        <sc-raw-td style="font-size: 12px"
+                          ><strong>Set</strong>, for every client.</sc-raw-td
+                        >
                         <sc-raw-td
                           style="
                             font-family:
                               ui-monospace, SFMono-Regular, Menlo, monospace;
                             font-size: 12px;
                           "
-                          ><strong>set</strong><br /><span class="text-muted"
+                          ><span class="text-muted"
                             >AuthController.ts:139</span
                           ></sc-raw-td
-                        >
-                        <sc-raw-td style="font-size: 12px" class="text-muted"
-                          >never set</sc-raw-td
                         >
                       </sc-raw-tr>
                       <sc-raw-tr>
                         <sc-raw-td style="font-size: 13px"
                           >Refresh token rotation</sc-raw-td
                         >
+                        <sc-raw-td style="font-size: 12px"
+                          >A new refresh token is minted and the cookie is
+                          reset. The response <strong>body</strong> is
+                          <code>{ token, expires_in, user }</code> — no refresh
+                          token in it. The rotated token travels by cookie
+                          only.</sc-raw-td
+                        >
                         <sc-raw-td
                           style="
                             font-family:
                               ui-monospace, SFMono-Regular, Menlo, monospace;
                             font-size: 12px;
                           "
-                          ><strong>rotates + new cookie</strong><br /><span
-                            class="text-muted"
-                            >AuthController.ts:268</span
-                          >
+                          ><span class="text-muted"
+                            >minted AuthController.ts:259</span
+                          ><br /><span class="text-muted"
+                            >cookie AuthController.ts:268</span
+                          ><br /><span class="text-muted"
+                            >body AuthController.ts:271-274</span
                           ></sc-raw-td
-                        >
-                        <sc-raw-td style="font-size: 12px" class="text-muted"
-                          >no rotation</sc-raw-td
                         >
                       </sc-raw-tr>
                     </sc-raw-tbody>
@@ -13366,12 +13359,11 @@
                       The reading test
                     </div>
                     <p style="margin: 0; font-size: 13.5px; text-wrap: pretty">
-                      If your change touches <code>/auth/*</code>, ask
-                      <strong>which file serves it</strong>. If you edited
-                      <code>AuthController</code> and the path also exists in
-                      <code>routes/auth.ts</code>, your change reached the
-                      OpenAPI spec and the generated client —
-                      <strong>and no request.</strong>
+                      If your change touches <code>/auth/*</code>, it is a
+                      change to <code>AuthController.ts</code> —
+                      <strong>there is no second file.</strong> If your diff
+                      adds an <code>api.use('/auth', …)</code> mount to
+                      <code>main.ts</code>, it reverses ADR 0089.
                     </p>
                   </div>
                 </div>
@@ -14219,7 +14211,7 @@ data:  { password: hash, reset_password_token: null }
                 <span class="card-title">The client's three-state session</span>
                 <p class="card-body">
                   <code>getSnapshot</code> returns one of three
-                  (<code>auth-session-module.ts:95-103</code>):
+                  (<code>auth-session-module.ts:95-102</code>):
                 </p>
                 <div style="display: flex; flex-direction: column; gap: 6px">
                   <div
@@ -14393,9 +14385,9 @@ data:  { password: hash, reset_password_token: null }
                 margin-bottom: var(--space-2);
               "
             >
-              <h2 style="margin: 0">One contradiction remains</h2>
+              <h2 style="margin: 0">One contradiction, closed</h2>
               <span class="tag tag-outline" style="white-space: nowrap"
-                >issue #321</span
+                >issue #321 · closed</span
               >
             </div>
             <p
@@ -14403,8 +14395,8 @@ data:  { password: hash, reset_password_token: null }
               style="max-width: 70ch; margin-bottom: var(--space-4)"
             >
               Surfaced separately from the brief, per
-              <code>GROUNDING.md</code> §3 — a place where two truths are
-              written down and only one runs.
+              <code>GROUNDING.md</code> §3 — a place where two truths were
+              written down and only one ran. It is closed.
             </p>
             <div
               style="
@@ -14421,15 +14413,20 @@ data:  { password: hash, reset_password_token: null }
                 "
               >
                 <span class="card-kicker" style="color: var(--color-accent-800)"
-                  >the two <code>/auth/*</code> implementations</span
+                  >closed — issue #321</span
                 >
-                <span class="card-title">Every path is defined twice</span>
+                <span class="card-title"
+                  >One handler now; the second definition is gone</span
+                >
                 <p class="card-body" style="opacity: 0.95">
-                  Once in <code>routes/auth.ts</code>, which runs — and once in
-                  <code>AuthController.ts</code>, which writes the OpenAPI
-                  contract the frontend is generated against and never serves a
-                  request. That is the whole subject of the hero at the top of
-                  this page. Tracked as issue #321.
+                  <code>/auth/*</code> had two definitions: an Express router
+                  that ran, and <code>AuthController.ts</code>, which wrote the
+                  contract the frontend is generated against. ADR 0089 (PR #823)
+                  deleted the router, so <code>AuthController</code> is the only
+                  handler. What holds it shut: a backend test,
+                  <code>AuthController.int.test.ts:449-450</code>, which fails
+                  if <code>main.ts</code> mounts an Express router on
+                  <code>/auth</code> or imports <code>./routes/auth</code>.
                 </p>
               </div>
               <div
@@ -14529,36 +14526,36 @@ data:  { password: hash, reset_password_token: null }
           id: 'register', kicker: 'Scene 1 · POST /auth/register', title: 'Registration is a compensating transaction',
           settles: 'What happens when the mail server is down?', state: 'pending_verification',
           body: 'Order matters and it is not the obvious one: the user row is created first, the mail is sent second, and the verify token is persisted only third — after the send has succeeded.',
-          code: 'create user            // AuthController.ts:319\nsend verification mail //   :320\npersist token          // (inside sendVerificationMail)',
-          refs: ['AuthController.ts:319', 'AuthController.ts:320', 'bcrypt saltRounds = 10'],
+          code: 'create user            // AuthController.ts:319\nsend verification mail //   :320\npersist token          // AuthController.ts:334-335, after the send returned',
+          refs: ['AuthController.ts:319', 'AuthController.ts:320', 'AuthController.ts:334-335', 'bcrypt saltRounds = 10'],
           flow: [{ t: 'create user' }, { t: 'send mail' }, { t: 'persist token' }],
           tokens: [tok('verify', 'verify #1', 8, 26, 'minted', 'signed, in the email — not yet in the database')]
         },
         {
           id: 'rollback', kicker: 'Scene 2 · the exception', title: '…and if the send fails, the row is deleted',
           settles: 'The one place this system undoes itself.', state: 'no user row',
-          body: 'On a send failure the just-created user is deleted (AuthController.ts:323) and the token is never persisted. This is the only backwards arrow on the page — everywhere else, time runs one way.',
-          code: 'catch (e) {\n  await this.userService.delete(user.id)  // AuthController.ts:323\n  throw e\n}',
-          refs: ['AuthController.ts:323'],
+          body: 'On a send failure the just-created user is deleted (AuthController.ts:323) and the token is never persisted. Nothing is thrown: the mail failure comes back as a returned Error (UserService.ts:454-457), and the handler answers 500. The delete is best-effort — if it fails, the failure is swallowed and the response is still the 500. This is the only backwards arrow on the page — everywhere else, time runs one way.',
+          code: 'if (token instanceof Error) {            // AuthController.ts:321-327\n  try {\n    await userService.deleteById(user.id)  // :323\n  } catch { /* best-effort rollback */ }\n  this.setStatus(500)\n  return { message: \'Account was not created…\' }\n}',
+          refs: ['AuthController.ts:321-327', 'AuthController.ts:323', 'UserService.ts:454-457'],
           flow: [{ t: 'create user' }, { t: 'send mail ✕' }, { t: 'delete user', reverse: true }],
           tokens: [tok('verify', 'verify #1', 8, 26, 'void', 'never stored — the email is worthless, the account is gone')]
         },
         {
           id: 'halt-verify', kicker: 'Scene 3 · the first halt', title: 'The account waits in pending_verification',
           settles: 'Why a fresh account gets 403, not 401.', state: 'pending_verification',
-          body: 'Nothing advances until a human clicks the link. Login returns 403 the whole time — a check that exists only in the file that runs. Resending is refused while the stored token still verifies, so the cooldown is exactly the 10m TTL.',
-          code: 'if (!isEmailVerified(requestUser)) return forbidden(403, …)  // AuthController.ts:128-131',
-          refs: ['AuthController.ts:128-131', 'UserService.ts:409-418'],
+          body: 'Nothing advances until a human clicks the link. Login returns 403 the whole time, and by then the credentials have already been accepted: authenticateLocal runs as middleware before the handler body and is what answers 401, so the handler\'s own isEmailVerified check refuses with a 403 it also declares. Resending is refused while the stored token still verifies, so the cooldown is exactly the 10m TTL.',
+          code: 'if (!isEmailVerified(requestUser)) return forbidden(403, …)  // AuthController.ts:128-129',
+          refs: ['AuthController.ts:128-129', 'AuthController.ts:108', 'AuthController.ts:110', 'UserService.ts:409-418'],
           flow: [{ t: 'POST /auth/login' }, { t: '403 email_not_verified', bad: true }],
           halt: { title: 'Halt — email verification', body: 'The stepper will not glide past this. An animation that runs straight through the gate teaches the opposite of the truth.', label: 'Click the link in the email' },
           tokens: [tok('verify', 'verify #1', 8, 26, 'live', 'still verifies → /verify/resend answers "already sent recently"')]
         },
         {
-          id: 'verified', kicker: 'Scene 4 · GET /auth/verify/email', title: 'Verified — and delegated, not diverged',
-          settles: 'Which of the four handlers actually share code.', state: 'verified',
-          body: 'Verify, resend, and password reset run on AuthController only. There is no Express twin to delegate to.',
-          refs: ['AuthController.ts:345', 'AuthController.ts:373'],
-          flow: [{ t: 'authRouter' }, { t: 'AuthController.verifyEmail', good: true }, { t: 'email_verified = true' }],
+          id: 'verified', kicker: 'Scene 4 · PATCH /auth/verify/email', title: 'Verified — a timestamp, not a flag',
+          settles: 'What verification writes.', state: 'verified',
+          body: 'The human clicks a link to a frontend page (UserService.ts:430), which sends PATCH /auth/verify/email with the token (VerifyEmailClient.tsx:36-37). The handler decodes the token with the verify secret and, in one update, stamps email_verification_timestamp and nulls email_verification_token (AuthController.ts:359-361). There is no email_verified column: verified means the timestamp is non-null (isEmailVerified.ts:4).',
+          refs: ['AuthController.ts:345', 'AuthController.ts:359-361', 'UserService.ts:430', 'VerifyEmailClient.tsx:36-37', 'isEmailVerified.ts:4'],
+          flow: [{ t: 'click link' }, { t: 'AuthController.verifyEmail', good: true }, { t: 'timestamp stamped' }],
           tokens: [tok('verify', 'verify #1', 8, 20, 'used', 'consumed — the token, not a column, was the gate')]
         },
         {
@@ -14586,11 +14583,11 @@ data:  { password: hash, reset_password_token: null }
           ]
         },
         {
-          id: 'rotate', kicker: 'Scene 7 · POST /auth/refresh', title: 'Refresh rotates — the spec says it does not',
+          id: 'rotate', kicker: 'Scene 7 · POST /auth/refresh', title: 'Refresh rotates — the cookie carries the new token',
           settles: 'What comes back from a refresh.', state: 'authenticated',
-          body: 'The running handler mints a new access token AND a new refresh token, then resets the cookie. AuthController does none of this, and the README does not mention it — so the generated client and the docs both describe a system that only returns an access token.',
-          code: 'setRefreshCookieIfPresent(req, newRefreshToken)  // AuthController.ts:268',
-          refs: ['AuthController.ts:268', 'cookieHelper.ts:29'],
+          body: 'The handler mints a new access token AND a new refresh token (AuthController.ts:259), then resets the cookie with the new one (AuthController.ts:268). The response body is token, expires_in and user (AuthController.ts:271-274): the rotated refresh token is not in it and travels by cookie only. The old refresh token is replaced, not revoked.',
+          code: 'const { token, refreshToken: newRefreshToken } = createTokens(…)  // AuthController.ts:259\nsetRefreshCookieIfPresent(req, newRefreshToken)                    // :268\nreturn { token, expires_in, user }                                // :271-274',
+          refs: ['AuthController.ts:259', 'AuthController.ts:268', 'AuthController.ts:271-274', 'cookieHelper.ts:29'],
           flow: [{ t: 'refresh #1' }, { t: 'access #2', good: true }, { t: 'refresh #2', good: true }],
           tokens: [
             tok('access', 'access #2', 44, 56, 'live', 'fresh iat'),
@@ -14601,9 +14598,9 @@ data:  { password: hash, reset_password_token: null }
         {
           id: 'reset-request', kicker: 'Scene 8 · POST /auth/password/reset', title: 'A reset token appears — and nothing changes yet',
           settles: 'What a reset request does to the account.', state: 'authenticated · reset pending',
-          body: 'A third secret signs a 10m reset token, stored on the row. The password is untouched. Ask again inside those ten minutes and the still-valid token refuses the send, exactly as verification does.',
-          code: 'if (decode(user.reset_password_token) still valid) return error  // AuthController.requestReset',
-          refs: ['AuthController.requestReset', 'RESET_JWT_SECRET · ApiTokens.ts:16'],
+          body: 'Its own secret signs a 10m reset token, stored on the row. The password is untouched. Ask again inside those ten minutes and the still-valid token refuses the send, exactly as verification does.',
+          code: 'if (decode(user.reset_password_token) still valid) return 429  // AuthController.resetPassword, AuthController.ts:464-475',
+          refs: ['AuthController.ts:450', 'AuthController.ts:464-475', 'RESET_JWT_SECRET · ApiTokens.ts:16'],
           flow: [{ t: 'reset requested' }, { t: 'token stored' }, { t: 'password unchanged', bad: true }],
           halt: { title: 'Halt — reset confirmation', body: 'The token exists; the password is unchanged until PATCH /auth/password/reset/confirm arrives. The stepper stops here too.', label: 'Send PATCH /auth/password/reset/confirm' },
           tokens: [
