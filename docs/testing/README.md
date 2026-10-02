@@ -210,6 +210,12 @@ Assigning a 28-character phrase to a variable named `passphrase` is therefore bl
 the long form; they are not a precedent, because the hook only scans tool input and never
 re-scans what is already committed.
 
+One exemption exists: the code-review reviewer must quote tracked lines verbatim in its answer
+sheet, so a `Write` or `Edit` whose every destination is inside `tmp/code-review/` skips this rule
+and only this rule. Every other secret pattern, every shell command, and every other path is
+still scanned. It is not a way to land a long fixture in a spec; see
+[ADR 0119](../adr/0119-a-reviewers-citation-is-exempt-from-the-quoted-value-secret-pattern-in-its-own-directory.md).
+
 **Keep test passphrases and passwords to 10–15 characters.** `VaultGate` requires at least 10
 (`setupPassphrase.length >= 10`), and the hook triggers at 16, so that window satisfies both.
 `apps/myorganizer-e2e/src/e2e/multi-user-vault.spec.ts` is the worked example.

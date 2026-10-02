@@ -177,6 +177,51 @@ export function stripHeredocBodies(command) {
   return output.join('\n');
 }
 
+/**
+ * Reduce a path to one canonical spelling so two spellings of the same place
+ * compare equal: separators unified to `/`, case folded, `.` and `..` collapsed.
+ *
+ * Done by hand rather than with `node:path` because a hook payload may carry a
+ * Windows path (`D:\repo\tmp`) on a POSIX host or the reverse, and `path.resolve`
+ * reads only the host's own spelling — it would treat `d:/repo` as relative.
+ * A relative `value` is joined to `baseDir` first; with no `baseDir` it stays
+ * relative and so can never equal an absolute directory.
+ */
+export function normalizePathForCompare(value, baseDir = '') {
+  const unified = normalizeText(value);
+  const base = normalizeText(baseDir);
+  const isAbsolute = (text) => text.startsWith('/') || /^[a-z]:\//.test(text);
+  const joined = isAbsolute(unified) || !base ? unified : `${base}/${unified}`;
+
+  const root =
+    /^[a-z]:\//.exec(joined)?.[0] ?? (joined.startsWith('/') ? '/' : '');
+  const segments = [];
+  for (const segment of joined.slice(root.length).split('/')) {
+    if (segment === '' || segment === '.') {
+      continue;
+    }
+
+    if (segment === '..') {
+      segments.pop();
+      continue;
+    }
+
+    segments.push(segment);
+  }
+
+  return root + segments.join('/');
+}
+
+/** Whether `path` names something strictly inside `directory` — not the directory itself. */
+export function isPathInsideDirectory(path, directory, baseDir = '') {
+  const target = normalizePathForCompare(path, baseDir);
+  const container = normalizePathForCompare(directory);
+
+  return (
+    target.startsWith(`${container}/`) && target.length > container.length + 1
+  );
+}
+
 export function extractCommand(toolInput) {
   if (typeof toolInput === 'string') {
     return toolInput;
