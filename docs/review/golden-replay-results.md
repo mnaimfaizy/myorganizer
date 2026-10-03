@@ -297,6 +297,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-23 | `claude-sonnet-5`   | 6 (all tiers)  | **5 of 6**                  | same, plus the review response on #879        |
 | 2026-09-23 | `claude-sonnet-5`   | 2 (`frontier`) | **1 of 2**                  | none — #884 touches only the measurement      |
 | 2026-10-02 | `claude-sonnet-5-5` | 11 (all tiers) | **5 of 8**, 3 clean passes  | enum fan-out obligation (#895), dispatched    |
+| 2026-10-03 | `claude-sonnet-5-5` | 11 (all tiers) | **6 of 8**, 3 clean passes  | same, export case re-pointed at #126's range  |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26
@@ -766,6 +767,23 @@ with a sound sheet.
 
 The two other misses are both `frontier` cases, and neither touches a guarded
 enum.
+
+### Both enum fan-out cases caught on the final head
+
+Run
+[37120144098](https://github.com/mnaimfaizy/myorganizer/actions/runs/37120144098)
+(2026-10-03, head `134a17a`, dispatched with `tier: all`) replayed the same 11
+cases after the re-point, on `claude-sonnet-5-5`. It took 147 turns and $3.84
+in total, with no voids and every answer sheet sound. Results: 6 of 8 pattern
+cases caught, plus 3 clean passes.
+
+- **`export-envelope-drops-tasks` was caught on its first run on the #126
+  range.** The reviewer raised `obligation-enum-fanout-omits-a-member`, anchored
+  in `vaultExportImport.ts`.
+- **`groceries-blob-type-without-fanouts` was caught again.**
+- **The misses are the same two `frontier` cases as in the previous run:**
+  `youtube-run-refresh-gated-on-polled-liveness` and
+  `e2e-export-download-read-through-download-path`.
 
 ### Recorded runs
 
