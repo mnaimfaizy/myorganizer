@@ -203,6 +203,7 @@ Standards axis:
 - `obligation-destructive-confirmation-names-what-it-mutates` — a confirmation naming its mutations
 - `obligation-slot-injected-props-land-on-the-control` — injected props landing on the control
 - `obligation-env-assignment-runtime-value` — what an environment assignment actually stores
+- `obligation-enum-fanout-omits-a-member` — a hand-enumeration of a guarded enum leaving a member out
 - `reach-through-member-added-to-a-set` — a set gained a member and a hand-enumeration did not
 - `reach-through-shared-value-removed` — a value went away and a consumer resolves to nothing
 - `standard-enum-fanout-not-pinned` — a fan-out over a domain enum misses its Pinned Table

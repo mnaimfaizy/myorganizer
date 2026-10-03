@@ -105,6 +105,76 @@ test('added lines carry their head line numbers', () => {
   ]);
 });
 
+test('an added line carries the declaration git names in its hunk header', () => {
+  const added = parseAddedLines(
+    diff(
+      '--- a/libs/a.ts',
+      '+++ b/libs/a.ts',
+      '@@ -4,0 +5 @@ export const Colour = {',
+      "+    Red: 'red',",
+    ),
+  );
+  assert.deepEqual(added.get('libs/a.ts'), [
+    { line: 5, text: "    Red: 'red',", context: 'export const Colour = {' },
+  ]);
+});
+
+test('a hunkPattern fires only inside a hunk whose declaration matches', () => {
+  const cat = assertObligationCatalogue(
+    catalogue([
+      obligation({
+        trigger: {
+          paths: [
+            {
+              glob: 'libs/**',
+              addedPattern: ': ',
+              hunkPattern: 'const Colour\\b',
+            },
+          ],
+        },
+      }),
+    ]),
+  );
+  const { selected } = selectObligations({
+    catalogue: cat,
+    addedLines: parseAddedLines(
+      diff(
+        '--- a/libs/a.ts',
+        '+++ b/libs/a.ts',
+        '@@ -4,0 +5 @@ export const Colour = {',
+        "+    Red: 'red',",
+        '@@ -9,0 +11 @@ export const Shape = {',
+        "+    Round: 'round',",
+        '@@ -20,0 +23 @@',
+        "+    Blue: 'blue',",
+      ),
+    ),
+    head: 'abc',
+  });
+  assert.deepEqual(selected[0].sites, [{ file: 'libs/a.ts', line: 5 }]);
+});
+
+test('a hunkPattern is validated like an addedPattern', () => {
+  assert.throws(
+    () =>
+      assertObligationCatalogue(
+        catalogue([
+          obligation({ trigger: { paths: [{ glob: 'x', hunkPattern: '(' }] } }),
+        ]),
+      ),
+    /bad pattern/,
+  );
+  assert.throws(
+    () =>
+      assertObligationCatalogue(
+        catalogue([
+          obligation({ trigger: { paths: [{ glob: 'x', hunkPattern: 3 }] } }),
+        ]),
+      ),
+    /hunkPattern must be a string/,
+  );
+});
+
 test('a removal-only file contributes no sites', () => {
   const added = parseAddedLines(
     diff(
@@ -869,4 +939,174 @@ test('every covering gate in the live catalogue names a real script', () => {
             scripts.has(p[f]),
             `${o.id}: ${p.glob}: coveringGate ${p[f]} is not a package.json script`,
           );
+});
+
+// --- Enum fan-out: the lesson ADR 0053 recorded, carried by the harness ------
+//
+// Both enum fan-out golden cases predate ADR 0053, and since ADR 0102 the
+// replay reviews the case head's tree, standards included, so the reviewer has
+// no document to cite. The obligation is the harness carrying the lesson
+// instead (#895). Its trigger names the guarded enums in regexes; the last test
+// below reads enum:fanout:check's own list and fails if any of them stops firing.
+
+const ENUM_FANOUT = 'enum-fanout-omits-a-member';
+
+const enumFanoutSites = (diffText) =>
+  selectObligations({
+    catalogue: loadObligationCatalogue(),
+    addedLines: parseAddedLines(diffText),
+    head: 'abc',
+  }).selected.find((o) => o.id === ENUM_FANOUT)?.sites ?? [];
+
+test('#512: a member added to a guarded enum fires the fan-out obligation', () => {
+  const sites = enumFanoutSites(
+    diff(
+      '--- a/libs/app-api-client/src/api.ts',
+      '+++ b/libs/app-api-client/src/api.ts',
+      '@@ -1662,0 +1669,1 @@ export const VaultBlobType = {',
+      "+    Groceries: 'groceries',",
+      '@@ -1518,0 +1525 @@ export const VaultBackupBlobType = {',
+      "+    Groceries: 'groceries',",
+    ),
+  );
+  // Only the guarded enum's own declaration: the generated client declares a
+  // dozen enums, and a trigger on every member line of every one of them spent
+  // the whole site cap on #537's audit enums before reaching the consumer.
+  assert.deepEqual(sites, [
+    {
+      file: 'libs/app-api-client/src/api.ts',
+      line: 1669,
+      coveringGate: 'enum:fanout:check',
+    },
+  ]);
+});
+
+test('#537: a consumer naming members on the enum fires the fan-out obligation, as at the case head', () => {
+  const sites = enumFanoutSites(
+    diff(
+      '--- a/libs/web-vault/src/lib/vault/vaultExportImport.ts',
+      '+++ b/libs/web-vault/src/lib/vault/vaultExportImport.ts',
+      '@@ -0,0 +64,2 @@',
+      '+  if (envelope.blobs.addresses) out.push(VaultBlobType.Addresses);',
+      '+  if (envelope.blobs.mobileNumbers) out.push(VaultBlobType.MobileNumbers);',
+    ),
+  );
+  assert.deepEqual(
+    sites.map((s) => [s.line, s.coveringGate]),
+    [
+      [64, 'enum:fanout:check'],
+      [65, 'enum:fanout:check'],
+    ],
+  );
+});
+
+test('an enum-shaped line outside the guarded definition does not fire the fan-out obligation', () => {
+  assert.deepEqual(
+    enumFanoutSites(
+      diff(
+        '--- a/apps/myorganizer/src/a.ts',
+        '+++ b/apps/myorganizer/src/a.ts',
+        '@@ -0,0 +1,1 @@',
+        "+    Groceries: 'groceries',",
+      ),
+    ),
+    [],
+  );
+});
+
+test('the fan-out obligation fires on every enum enum:fanout:check guards', async () => {
+  const { GUARDED_ENUMS } = await import('../lib/enum-fanout-guarded.mjs');
+  assert.ok(GUARDED_ENUMS.length > 0);
+  for (const guard of GUARDED_ENUMS) {
+    // A member added where the enum is defined.
+    assert.equal(
+      enumFanoutSites(
+        diff(
+          `--- a/${guard.definedIn}`,
+          `+++ b/${guard.definedIn}`,
+          `@@ -1,0 +2,1 @@ export const ${guard.enum} = {`,
+          "+    Seventh: 'seventh',",
+        ),
+      ).length,
+      1,
+      `${guard.enum}: a member added in ${guard.definedIn} does not fire`,
+    );
+    // A consumer naming two members, anywhere the checker would scan it.
+    for (const root of [...guard.valueRoots, 'apps/myorganizer/src/']) {
+      const file = `${root}consumer.ts`;
+      assert.equal(
+        enumFanoutSites(
+          diff(
+            `--- a/${file}`,
+            `+++ b/${file}`,
+            '@@ -0,0 +1,1 @@',
+            `+  const both = [${guard.enum}.First, ${guard.enum}.Second];`,
+          ),
+        ).length,
+        1,
+        `${guard.enum}: a consumer in ${root} does not fire`,
+      );
+    }
+  }
+});
+
+test('excludePaths keeps a matching file out of every trigger path', () => {
+  const cat = assertObligationCatalogue(
+    catalogue([
+      obligation({
+        trigger: {
+          paths: [{ glob: 'libs/**', addedPattern: 'Colour\\.' }],
+          excludePaths: ['**/*.test.ts'],
+        },
+      }),
+    ]),
+  );
+  const { selected } = selectObligations({
+    catalogue: cat,
+    addedLines: parseAddedLines(
+      diff(
+        '--- a/libs/a.ts',
+        '+++ b/libs/a.ts',
+        '@@ -0,0 +1 @@',
+        '+  use(Colour.Red);',
+        '--- a/libs/a.test.ts',
+        '+++ b/libs/a.test.ts',
+        '@@ -0,0 +1 @@',
+        '+  expect(Colour.Red);',
+      ),
+    ),
+    head: 'abc',
+  });
+  assert.deepEqual(selected[0].sites, [{ file: 'libs/a.ts', line: 1 }]);
+  assert.throws(
+    () =>
+      assertObligationCatalogue(
+        catalogue([
+          obligation({ trigger: { paths: ['x'], excludePaths: 'x' } }),
+        ]),
+      ),
+    /excludePaths/,
+  );
+});
+
+test('#537: a test listing members as fixtures is not a site, so one finding answers the case', () => {
+  // A test site would carry the same omission answer as the consumer, and the
+  // answer-sheet check only counts a finding anchored in the site's own file —
+  // so the reviewer's one correct finding would leave the test sites
+  // contradicting themselves and void the replay.
+  for (const file of [
+    'libs/web-vault/src/lib/vault/vaultExportImportHardened.test.ts',
+    'apps/myorganizer/src/a.spec.tsx',
+  ])
+    assert.deepEqual(
+      enumFanoutSites(
+        diff(
+          `--- a/${file}`,
+          `+++ b/${file}`,
+          '@@ -0,0 +124,1 @@',
+          '+        VaultBlobType.Addresses,',
+        ),
+      ),
+      [],
+    );
 });

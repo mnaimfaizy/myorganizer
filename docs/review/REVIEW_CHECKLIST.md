@@ -19,7 +19,7 @@ noticing is nobody's job.
 
 ## Status
 
-**Wired.** `tools/config/review-obligations.json` is the machine form of the four
+**Wired.** `tools/config/review-obligations.json` is the machine form of the five
 entries below, matched against the diff by
 `yarn review:obligations:select` before the reviewer runs, and answered into
 `tmp/code-review/obligations.answers.json`. Completeness is reported by
@@ -69,6 +69,12 @@ and which incident bought it.
   "goldenCase": "case-id",
 }
 ```
+
+A trigger path may also carry `hunkPattern`, matched against the declaration
+git names in the hunk header (`@@ … @@ export const Foo = {`). Use it when an
+added line alone does not say what it belongs to. A trigger may carry
+`excludePaths`, globs kept out of every path, and an entry may carry
+`siteFields` stated per path (entry 1's `coveringGate`).
 
 Rules that keep the list honest:
 
@@ -281,11 +287,87 @@ while the code read as configuring none. Golden case
 
 ---
 
+## 5. A fan-out over a guarded enum covers every member
+
+**id** `enum-fanout-omits-a-member`
+**Fires when** the diff touches a guarded domain enum, in either of the two
+shapes its incidents took:
+
+- **A member is added where the enum is defined**: an added `Name: 'value',`
+  line inside `export const VaultBlobType = {` in the generated API client. The
+  enclosing declaration is read from git's hunk header (`hunkPattern`), so a
+  member added to any of the client's other enums does not fire.
+- **A consumer names its members**: an added `VaultBlobType.<Member>` line
+  anywhere under `apps/**` or `libs/**`, except test files (`excludePaths`). A
+  test that lists members as fixtures is not a consumer. A site there could
+  only be answered by a finding anchored in the test file.
+
+The guarded enums are the ones the enum fan-out checker guards, listed in
+`tools/scripts/lib/enum-fanout-guarded.mjs`. The trigger names the enum in its
+regexes, because a regex cannot import that list. The review test suite reads
+the list and fails if the trigger stops firing on any enum in it. It does not
+assert the reverse.
+
+A consumer that names the members only as property names (`data.tasks`) and
+never says `VaultBlobType` does not fire on its own. The #537 case fires
+because the same file also names members on the enum. Matching bare member
+values needs the member list at the reviewed head, which a line trigger does
+not have.
+
+**Given** `coveringGate` — the enum fan-out checker, on every site.
+
+**Answer**
+
+| Field       | What to write                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `members`   | The guarded enum and its members as defined at the head commit.                                                                |
+| `consumers` | Every scope at the head commit that enumerates those members, and whether each reaches the pinned table or lists them by hand. |
+| `omission`  | The first hand-enumerating scope that leaves a member out, and the member, or `none`.                                          |
+| `wiredBy`   | The hook, workflow job, or aggregate manifest entry that invokes `coveringGate`, or `none`.                                    |
+
+**Cites** `omission` unless `none`, and `wiredBy` unless `none`
+
+`omission` quotes one of the omitting scope's enumeration lines. For a member
+added to the enum, that scope is usually code the diff never touched.
+`wiredBy` is answered the way entry 1 answers it: by reading, not running.
+
+**Defect** — `omission` other than `none` while `wiredBy` is `none`. A
+hand-enumeration that leaves out a member of a guarded enum drops that member
+with no error. For `VaultBlobType`, that is User-owned ciphertext
+([ADR 0033](../adr/0033-local-vaults-are-user-owned-and-never-silently-destroyed.md)).
+When `wiredBy` names a line, the gate already fails any hand-enumeration of a
+guarded enum, so the omission is redundant under
+[ADR 0074](../adr/0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md).
+Raise the finding anchored in the **site's** file, naming the omitting scope.
+The answer-sheet check looks for it there.
+
+**Why `coveringGate` is stated here too** — at both incidents' heads,
+the enum fan-out checker did not exist, so nothing could suppress the finding. On
+`main` the checker is wired. The suppression has to follow what is true at the
+reviewed head. That is the question `wiredBy` already answers for entry 1
+([ADR 0098](../adr/0098-a-covering-gate-is-part-of-the-site-not-the-answer.md)).
+
+**Why this exists** — issues #512 and #537, recorded as
+[ADR 0053](../adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md).
+#512 added `Groceries` to `VaultBlobType` and touched no consumer, so the
+keep-server reconcile in `vaultMigration.ts`, which named five members by hand,
+destroyed grocery ciphertext. #537 was `envelopeFromLocalVault`, which listed
+the blob types as property names and left Tasks out of every hardened export.
+ADR 0053 postdates both case heads, and since
+[ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)
+a replay reviews the case head's tree, so the reviewer had no document to cite
+and both cases missed. This entry carries the lesson in the harness instead
+(#895). Golden case `groceries-blob-type-without-fanouts`. Its sibling
+`export-envelope-drops-tasks` pins this entry's rule id too, because
+`goldenCase` names one case.
+
+---
+
 ## Deferred candidates
 
 Real, incident-backed, and deliberately not in the first cohort. The first
 measurement needs a small list; a long one repeats the mistake this file exists
-to avoid. Promote them once the four above have been measured.
+to avoid. Promote them once the entries above have been measured.
 
 - **A destructive handler reachable from a confirmation.** Entry 2 fires on
   the three confirmation literals, which misses a handler named `delete…`,
