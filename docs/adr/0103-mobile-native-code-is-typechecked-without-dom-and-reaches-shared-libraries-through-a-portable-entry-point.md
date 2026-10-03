@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted. Amended 2026-09-26 (issue #740): the `libs/mobile/*` tsconfigs no longer inherit `dom` — see the last Consequence.
+accepted. Amended 2026-09-26 (issue #740): the `libs/mobile/*` tsconfigs no longer inherit `dom` — see the last Consequence. Amended 2026-10-03 (issue #892): the Node-types Consequence now points at ADR 0120.
 
 ## Context
 
@@ -41,7 +41,7 @@ The grilling session for #882 found four facts that changed the question:
 - [ADR 0039](0039-web-and-mobile-vaults-share-one-crypto-suite.md) and ADR 0064 hold unchanged. `vaultCrypto.ts` stays in `vault-core`, and mobile reaches the shared suite through the `VaultCrypto` interface, as `libs/vault-core/AGENTS.md` already required.
 - Native no longer loads `libs/auth/src/lib/auth.ts` at runtime, so the browser storage adapter is not constructed on Hermes.
 - `@myorganizer/<lib>/portable` is the first slash alias in `tsconfig.base.json` that does not name its own Nx project. The `/portable` suffix marks an entry point into an existing library, not a new project.
-- **`types: ["node"]` still over-admits.** The native program still accepts Node's global `crypto`, `Buffer`, and `process`, which Hermes does not provide. The Portable Entry Point rule in `mobile-platform:check` is what keeps a Node-only barrel out of native code until #892 declares the globals the native runtime actually has.
+- **Node types are gone too.** This ADR left `types: ["node"]` on the native program, which admitted Node's global `crypto`, `Buffer`, and `process`. [ADR 0120](0120-a-mobile-program-gets-node-types-only-if-it-runs-on-node.md) removed it from every non-spec mobile program (issue #892).
 - `mobile-platform:check` also fails a bare `react-native/…` subpath import (excluding the separate
   `@react-native/*` scope), across all four call forms — `from '...'`, `require('...')`,
   `require.resolve('...')`, and dynamic `import('...')`. Deep imports are deprecated at React Native

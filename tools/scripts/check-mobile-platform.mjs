@@ -72,10 +72,11 @@
 // `window` helpers — so mobile source reaches such a library only through its
 // `@myorganizer/<lib>/portable` alias (CONTEXT.md, Portable Entry Point). The
 // mobile native typecheck program has no `dom` in `lib`, which catches a
-// main-entry import only while the barrel happens to reach a *browser* global;
-// it still carries `types: ["node"]`, so a barrel reaching only `crypto`,
-// `Buffer`, or `process` would pass it and fail on Hermes (#892). This rule
-// holds the import itself, whatever the barrel reaches.
+// main-entry import only while the barrel happens to reach a *browser* global,
+// and no Node types (ADR 0120), which catches one reaching `crypto`, `Buffer`,
+// or `process`. A barrel reaching neither would pass both and still load into
+// the Metro bundle. This rule holds the import itself, whatever the barrel
+// reaches.
 //
 // The libraries it covers are read from `tsconfig.base.json`'s
 // `compilerOptions.paths`, never written here: every alias ending in

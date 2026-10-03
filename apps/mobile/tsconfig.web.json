@@ -3,12 +3,13 @@
   "compilerOptions": {
     "outDir": "../../dist/out-tsc",
     "lib": ["dom", "esnext"],
-    "types": ["node"],
+    "types": [],
     "moduleSuffixes": [".web", ""]
   },
   "files": [
     "../../node_modules/@nx/react-native/typings/svg.d.ts",
-    "src/main-web.tsx"
+    "src/main-web.tsx",
+    "src/runtime-globals.assert.web.ts"
   ],
   "include": []
 }
