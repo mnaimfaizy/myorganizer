@@ -8,6 +8,7 @@
     "isolatedModules": true,
     "lib": ["esnext"],
     "moduleResolution": "bundler",
-    "customConditions": ["react-native"]
+    "customConditions": ["react-native"],
+    "types": []
   }
 }

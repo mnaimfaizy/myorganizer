@@ -36,6 +36,11 @@
       "file": "docs/adr/0041-internal-notes-have-homes.md",
       "claim": "docs/general",
       "reason": "Rejected alternative: a catch-all named docs/general/. The directory does not exist and must not."
+    },
+    {
+      "file": "docs/adr/0120-a-mobile-program-gets-node-types-only-if-it-runs-on-node.md",
+      "claim": "libs/mobile/native-globals.d.ts",
+      "reason": "Names where a future declaration goes, not a file that exists. ADR 0120 decides the file is created with its first entry, in the same change as the first mobile consumer of a Hermes global the types lack; no such consumer exists yet. The entry goes stale, and is removed, when that file lands."
     }
   ]
 }
