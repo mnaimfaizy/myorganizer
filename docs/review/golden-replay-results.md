@@ -274,28 +274,29 @@ frontier case three times in one run, still one session at a time
 
 Newest last. "Cases" is the tier replayed, not the whole set.
 
-| Date       | Model             | Cases          | Result                      | Reviewer change under test                    |
-| ---------- | ----------------- | -------------- | --------------------------- | --------------------------------------------- |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 1 of 3                      | none — first measurement                      |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | none — same skill, re-run                     |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | reach-through checks added to Standards brief |
-| 2026-09-07 | `claude-sonnet-5` | 3 (pre-tier)   | 2 of 3                      | reach-through checks, re-run                  |
-| 2026-09-07 | `claude-sonnet-5` | 7 (pre-tier)   | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
-| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
-| 2026-09-07 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
-| 2026-09-08 | `claude-sonnet-5` | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
-| 2026-09-08 | `claude-sonnet-5` | 7 (`frontier`) | **void** — rate-limited     | none — first tier-selected run                |
-| 2026-09-08 | `claude-sonnet-5` | 6 (`frontier`) | **1 of 6**, 1 of 6 findings | none — first run after the retirement         |
-| 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 7**, 2 of 8 findings | wired-gate qualifier on the suppression rule  |
-| 2026-09-09 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 4 scorable**, 3 void | obligation worklist live (pre-fix triggers)   |
-| 2026-09-10 | `claude-sonnet-5` | 7 (all tiers)  | **2 of 6 scorable**, 1 void | corrected triggers; first dispatched run      |
-| 2026-09-11 | `claude-sonnet-5` | 1 (`guard`)    | **1 of 1**                  | reviewer containment and the allowlist check  |
-| 2026-09-11 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | PRD #713 integrated, on pull request #733     |
-| 2026-09-12 | `claude-sonnet-5` | 5 (`frontier`) | **5 of 5**                  | same branch, dispatched deliberately          |
-| 2026-09-12 | `claude-sonnet-5` | 4 (`frontier`) | **4 of 4**                  | third dispatch; the measurement #722 defines  |
-| 2026-09-22 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | ADR 0098 — `coveringGate` leaves the answer   |
-| 2026-09-23 | `claude-sonnet-5` | 6 (all tiers)  | **5 of 6**                  | same, plus the review response on #879        |
-| 2026-09-23 | `claude-sonnet-5` | 2 (`frontier`) | **1 of 2**                  | none — #884 touches only the measurement      |
+| Date       | Model               | Cases          | Result                      | Reviewer change under test                    |
+| ---------- | ------------------- | -------------- | --------------------------- | --------------------------------------------- |
+| 2026-09-07 | `claude-sonnet-5`   | 3 (pre-tier)   | 1 of 3                      | none — first measurement                      |
+| 2026-09-07 | `claude-sonnet-5`   | 3 (pre-tier)   | 2 of 3                      | none — same skill, re-run                     |
+| 2026-09-07 | `claude-sonnet-5`   | 3 (pre-tier)   | 2 of 3                      | reach-through checks added to Standards brief |
+| 2026-09-07 | `claude-sonnet-5`   | 3 (pre-tier)   | 2 of 3                      | reach-through checks, re-run                  |
+| 2026-09-07 | `claude-sonnet-5`   | 7 (pre-tier)   | **2 of 7**, 2 of 8 findings | reach-through checks, full set                |
+| 2026-09-07 | `claude-sonnet-5`   | 8 (all tiers)  | **1 of 8**, 1 of 9 findings | consequence checks added to Standards brief   |
+| 2026-09-07 | `claude-sonnet-5`   | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | consequence checks reverted                   |
+| 2026-09-08 | `claude-sonnet-5`   | 8 (all tiers)  | **2 of 8**, 2 of 9 findings | none — same brief, on `main` as base          |
+| 2026-09-08 | `claude-sonnet-5`   | 7 (`frontier`) | **void** — rate-limited     | none — first tier-selected run                |
+| 2026-09-08 | `claude-sonnet-5`   | 6 (`frontier`) | **1 of 6**, 1 of 6 findings | none — first run after the retirement         |
+| 2026-09-09 | `claude-sonnet-5`   | 7 (all tiers)  | **2 of 7**, 2 of 8 findings | wired-gate qualifier on the suppression rule  |
+| 2026-09-09 | `claude-sonnet-5`   | 7 (all tiers)  | **2 of 4 scorable**, 3 void | obligation worklist live (pre-fix triggers)   |
+| 2026-09-10 | `claude-sonnet-5`   | 7 (all tiers)  | **2 of 6 scorable**, 1 void | corrected triggers; first dispatched run      |
+| 2026-09-11 | `claude-sonnet-5`   | 1 (`guard`)    | **1 of 1**                  | reviewer containment and the allowlist check  |
+| 2026-09-11 | `claude-sonnet-5`   | 6 (all tiers)  | **5 of 6**                  | PRD #713 integrated, on pull request #733     |
+| 2026-09-12 | `claude-sonnet-5`   | 5 (`frontier`) | **5 of 5**                  | same branch, dispatched deliberately          |
+| 2026-09-12 | `claude-sonnet-5`   | 4 (`frontier`) | **4 of 4**                  | third dispatch; the measurement #722 defines  |
+| 2026-09-22 | `claude-sonnet-5`   | 6 (all tiers)  | **5 of 6**                  | ADR 0098 — `coveringGate` leaves the answer   |
+| 2026-09-23 | `claude-sonnet-5`   | 6 (all tiers)  | **5 of 6**                  | same, plus the review response on #879        |
+| 2026-09-23 | `claude-sonnet-5`   | 2 (`frontier`) | **1 of 2**                  | none — #884 touches only the measurement      |
+| 2026-10-02 | `claude-sonnet-5-5` | 11 (all tiers) | **5 of 8**, 3 clean passes  | enum fan-out obligation (#895), dispatched    |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26
@@ -706,6 +707,61 @@ Read that way, this run's result on the case is a void. And a replay's working
 tree is now the case head, standards included, with only the reviewer's
 harness laid over it from the pull request
 ([ADR 0102](../adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)).
+
+### The enum fan-out obligation, and a case with nothing to find
+
+Issue #895 added the review obligation `enum-fanout-omits-a-member`. Both ADR
+0053 cases had missed on #891's head (`48dfceb`). There the replay first
+reviewed the case head's tree, and ADR 0053, the only document naming the rule,
+postdates both heads. Run
+[37000957523](https://github.com/mnaimfaizy/myorganizer/actions/runs/37000957523)
+(2026-10-02, head `1e8f266`, dispatched with `tier: all`) replayed all 11 cases
+on `claude-sonnet-5-5`. It took 146 turns and $4.52 in total. There were no
+voids, and every answer sheet passed `review:obligations:check`.
+
+| Case                                             | Outcome    |
+| ------------------------------------------------ | ---------- |
+| `groceries-blob-type-without-fanouts`            | caught     |
+| `export-envelope-drops-tasks`                    | missed     |
+| `mail-test-setup-assigns-undefined-to-env`       | caught     |
+| `signup-password-wrapper-inside-formcontrol`     | caught     |
+| `import-confirm-is-bare-window-confirm`          | caught     |
+| `release-bump-leaves-generated-client-stale`     | caught     |
+| `youtube-run-refresh-gated-on-polled-liveness`   | missed     |
+| `e2e-export-download-read-through-download-path` | missed     |
+| `escaped-defect-negation-fix-lands-clean`        | clean-pass |
+| `trust-measurement-docs-land-clean`              | clean-pass |
+| `npm-advisory-rekey-lands-clean`                 | clean-pass |
+
+**`groceries-blob-type-without-fanouts` is winnable again.** The obligation
+fired on the one added member line inside `export const VaultBlobType = {`. The
+reviewer raised `obligation-enum-fanout-omits-a-member`, and the case scored
+recall 1.
+
+**`export-envelope-drops-tasks` has nothing to find at its head.** The
+obligation fired on the eight `VaultBlobType.<Member>` lines in
+`vaultExportImport.ts`. The reviewer answered that the enum has four members
+(Addresses, MobileNumbers, Subscriptions, Todos), that every consumer covers all
+four, and `omission: none`. That answer is true. At head `7fde881` neither
+`VaultBlobType` nor the vault libraries carry Tasks. `Tasks: 'tasks'` first
+appears in `e43c6eb`, merged in #126, 111 commits later. So the omission this
+case records was introduced by #126, the same shape as #512: a member added and
+no consumer touched. It was not introduced by the range the case replays.
+Before ADR 0102 the reviewer could read Tasks from the pull request's checkout.
+Under ADR 0102 no reviewer can find it, so the case should be re-pointed at
+#126's range or retired.
+
+**The void on #891.** On #891, run
+[35951455600](https://github.com/mnaimfaizy/myorganizer/actions/runs/35951455600)
+voided `mail-test-setup-assigns-undefined-to-env`. The void was not about this
+case's own entry. The sheet answered `run-the-gate-that-covers-this-change` with
+`wiredBy: none` on three `openapi:check` sites (`swagger.json`, `swagger.yaml`,
+`api-specs.openapi.yaml`) and raised no finding anchored in those files. That
+is three contradictions under ADR 0101. In this run the same case was caught
+with a sound sheet.
+
+The two other misses are both `frontier` cases, and neither touches a guarded
+enum.
 
 ### Recorded runs
 
