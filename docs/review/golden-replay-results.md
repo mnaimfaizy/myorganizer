@@ -748,8 +748,12 @@ appears in `e43c6eb`, merged in #126, 111 commits later. So the omission this
 case records was introduced by #126, the same shape as #512: a member added and
 no consumer touched. It was not introduced by the range the case replays.
 Before ADR 0102 the reviewer could read Tasks from the pull request's checkout.
-Under ADR 0102 no reviewer can find it, so the case should be re-pointed at
-#126's range or retired.
+Under ADR 0102 no reviewer can find it. So the case was re-pointed, in the
+same pull request, at #126's range: `0fca30d...e64797d`, base being the
+first parent of #126's merge commit on `feat/task-management`. At that head,
+`Tasks` is a member and `envelopeFromLocalVault` still stops at `todos`. The
+obligation fires on the added `Tasks` member line and in
+`vaultExportImport.ts`. That range has no scored run yet.
 
 **The void on #891.** On #891, run
 [35951455600](https://github.com/mnaimfaizy/myorganizer/actions/runs/35951455600)

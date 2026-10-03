@@ -35,12 +35,12 @@
     },
     {
       "id": "export-envelope-drops-tasks",
-      "title": "The hardened export envelope enumerates blob types by hand and omits Tasks",
-      "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #77",
+      "title": "Tasks is added to VaultBlobType and the hardened export envelope, which enumerates blob types by hand, is not touched",
+      "incident": "ADR 0053, issue #537, fixed by PR #540, introduced by PR #126 (git log -S \"Tasks: 'tasks'\" on the generated client → e43c6eb, carried by #126; re-pointed 2026-10-03 from the #77 range dea9122...7fde881, whose head has no Tasks member anywhere, so under ADR 0102 that range held nothing to find — docs/review/golden-replay-results.md, run 37000957523). #126 merged with a merge commit (0ec3abd) into the feat/task-management integration branch, not into main, so the merge base of its tip and main is the tip itself and the convention's range is empty; base is instead the merge commit's first parent on the integration branch, which keeps the range to #126's own 13 files.",
       "tier": "frontier",
-      "tierEvidence": "demoted 2026-09-22 on the miss in run 35723129169, and missed again in 35800528309 — both clean (recall 0, 10 and 9 other findings, no void and no turn exhaustion), ending a five-run streak. Lifetime 9 of 17. Two misses from a case near half is not itself a measurement: the same reason promotion takes three consecutive catches. Promoted 2026-09-12 on three consecutive catches; its 2026-09-07 promotion was reversed by the miss in 34105977391.",
-      "base": "dea9122c1854879044d51696dec93a57c89e914d",
-      "head": "7fde881c0a2f57d05bfc92a20c9cbb863dd52200",
+      "tierEvidence": "re-pointed 2026-10-03 to the #126 range; no scored run on this range yet, so it keeps its declared tier. On the #77 range it was demoted 2026-09-22 on the miss in run 35723129169 and missed again in 35800528309 and in every run after ADR 0102 — misses that measured the range, not the reviewer, because that head carries no Tasks member. Lifetime on the old range 9 of 17, which ADR 0116 reads from the results record by case id; none of those lines are about this range.",
+      "base": "0fca30ddf9e9e252fba5db2f845e19fddafaeb0b",
+      "head": "e64797d336ad49769845a2f89dc0dd23bd170c47",
       "spec": {
         "kind": "none",
         "foundBy": "none"
@@ -52,9 +52,12 @@
           "ruleId": "obligation-enum-fanout-omits-a-member",
           "source": "AGENTS\\.md|0053|REVIEW_CHECKLIST|obligation",
           "rule": "fan-?out|enum|every member|Record<|blob type",
-          "files": ["libs/web-vault/src/lib/vault/vaultExportImport.ts"],
+          "files": [
+            "libs/web-vault/src/lib/vault/vaultExportImport.ts",
+            "libs/app-api-client/src/api.ts"
+          ],
           "minSeverity": "should-fix",
-          "why": "envelopeFromLocalVault listed the blob types as property names and left Tasks out, so a hardened export silently dropped that blob from the day it was written (#537). The case head predates ADR 0053, and since ADR 0102 the replay reviews that head's tree, so no document there names the rule. `ruleId` pins obligation-enum-fanout-omits-a-member, the review obligation that carries the lesson in the harness instead (#895). The `source` and `rule` patterns still accept a reviewer that files it under ADR 0053."
+          "why": "the diff added Tasks to VaultBlobType and carried it through the legacy bundle path in vaultExportImport.ts, but envelopeFromLocalVault in the same file listed the other five blob types as property names and was not touched, so a hardened export silently dropped the Tasks blob (#537). The same shape as #512: a member added, a hand-enumerated consumer left behind. `ruleId` pins obligation-enum-fanout-omits-a-member, the review obligation that carries ADR 0053's lesson in the harness (#895), because ADR 0053 postdates this head. The `source` and `rule` patterns still accept a reviewer that files it under ADR 0053. The generated client is in `files` because the obligation fires on the added member line there and its answer-sheet check counts a finding anchored in the site's file."
         }
       ],
       "minRecall": 1
