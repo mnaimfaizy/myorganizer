@@ -98,6 +98,17 @@ every finding therefore looked acted on.
    fixed by issue #718 and issue #724, and no measurement is quoted against a
    window that predates them.
 
+   > **Amended by issue #940 — stable was not enough.** The identity above
+   > was stable and still coarser than a finding: 15 of the 36 ids that
+   > survived a push in the thirty days to 2026-10-05 labelled a different
+   > defect the second time — 14 counted here as ignored, one as
+   > acknowledged. The identity this
+   > rests on is now the one
+   > [ADR 0071](0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md)
+   > item 6 carries forward — the same axis, rule, and file, on overlapping
+   > lines — at report schema version `4`, and the measurements taken at
+   > version `3` are read with that bias in mind rather than re-quoted.
+
 8. **It is not a gate.** It reads weeks of other branches' pushes, downloads
    artifacts over the network, and has no fact to assert about the commit in
    front of it, so it carries a written opt-out in

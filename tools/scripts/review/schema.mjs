@@ -20,14 +20,16 @@ import { z } from 'zod';
 import { RULES_DISPLAY_PATH, ruleById, ruleIds } from './rules.mjs';
 
 /**
- * Bumped to 2 when `rule` left the identity tuple (issue #718), and to 3 when
- * the bounded `ruleId` replaced `source` in it (issue #724). The version is
- * what tells a run whether the stored artifact from the previous run is
- * comparable: identities minted at 2 mean nothing at 3, so the renderer says
- * there is no comparable previous run instead of announcing every finding new
- * and every prior finding resolved.
+ * Bumped to 2 when `rule` left the identity tuple (issue #718), to 3 when the
+ * bounded `ruleId` replaced `source` in it (issue #724), and to 4 when an id
+ * began to be carried forward from the previous report instead of re-derived
+ * from a tuple coarser than a finding (issue #940). The version is what tells
+ * a run whether the stored artifact from the previous run is comparable:
+ * identities minted at 3 mean nothing at 4, so the renderer says there is no
+ * comparable previous run instead of announcing every finding new and every
+ * prior finding resolved — and the validator carries no id out of one.
  */
-export const REPORT_SCHEMA_VERSION = 3;
+export const REPORT_SCHEMA_VERSION = 4;
 
 export const REVIEW_TIER_LABELS = /** @type {const} */ ([
   'review:auto',
@@ -56,9 +58,9 @@ export const VERDICT_VALUES = /** @type {const} */ ([
   'approve',
 ]);
 /**
- * What a finding is, for the purpose of recognising it again on the next run.
- * Every field is a closed vocabulary or a path the reviewer copies; nothing
- * here is prose it composes.
+ * What a finding must share with a finding of the previous run to be the same
+ * one. Every field is a closed vocabulary or a path the reviewer copies;
+ * nothing here is prose it composes.
  *
  * `rule` is deliberately absent: it is free-form text the model rewrites every
  * run, and a single Unicode arrow degrading to ASCII minted a new identity.
@@ -71,11 +73,29 @@ export const VERDICT_VALUES = /** @type {const} */ ([
  * source discriminates far too coarsely to be an identity on its own: one of
  * them, `smell-baseline`, covered all twelve Fowler smells, so two unrelated
  * smells in one file were one finding as far as the strip was concerned.
+ *
+ * Sharing these is necessary and, since issue #940, no longer enough: the two
+ * findings' lines must overlap as well (`assignFindingIds`).
  */
-export const FINDING_IDENTITY_FIELDS = /** @type {const} */ ([
+export const FINDING_MATCH_FIELDS = /** @type {const} */ ([
   'axis',
   'ruleId',
   'file',
+]);
+/**
+ * What a new finding's id is hashed from: the match fields, and the line the
+ * finding starts at.
+ *
+ * The line is what tells two findings of one rule in one file apart, which
+ * the match fields alone could not (issue #940): 15 of the 36 ids that
+ * survived a push in the 2026-10-05 window were a different defect under a
+ * reused id. It is hashed only when an id is minted. A finding that the
+ * previous report already held keeps that report's id, so the line it was
+ * first seen at stays in its id however the reviewer anchors it afterwards.
+ */
+export const FINDING_IDENTITY_FIELDS = /** @type {const} */ ([
+  ...FINDING_MATCH_FIELDS,
+  'startLine',
 ]);
 export const CONFIDENCE_VALUES = /** @type {const} */ ([
   'high',
@@ -429,35 +449,26 @@ export const bySeverity = (a, b) =>
   SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity];
 
 /**
- * Derived identity: axis + ruleId + file. Line is excluded so a rebase does
- * not mint a new finding, and `rule` is excluded so a reworded sentence does
- * not either (ADR 0071 item 6, amended by issue #718 and issue #724). Every
- * field here is a closed vocabulary or a path the reviewer copies rather than
- * composes.
+ * One accessor per identity field (ADR 0071 item 6, amended by issue #718,
+ * issue #724, and issue #940). An unlocated finding has neither a file nor a
+ * line, and hashes the empty string for both.
  */
 const IDENTITY_ACCESSORS =
-  /** @type {Record<typeof FINDING_IDENTITY_FIELDS[number], (f: object) => string>} */ ({
+  /** @type {Record<typeof FINDING_IDENTITY_FIELDS[number], (f: object) => string | number>} */ ({
     axis: (f) => f.axis,
     ruleId: (f) => f.ruleId,
     file: (f) => f.location?.file ?? '',
+    startLine: (f) => f.location?.startLine ?? '',
   });
 
 /**
- * `occurrence` is 0 for the first finding with this identity tuple in a
- * report and counts up for repeats, so two findings that share axis, ruleId,
- * and file keep distinct ids without the line entering the hash (ADR 0071
- * item 6). Repeats are numbered in startLine order, so the numbering survives
- * a rebase the same way the tuple does.
+ * The id a finding is given when no earlier report lends it one.
  *
- * Since issue #724 a repeat means two findings of the *same* rule in one file,
- * not — as it did while `source` stood here — two unrelated rules that happen
- * to be written down in the same document. What is left is genuinely one rule
- * applied twice, plus one residue: several unlocated spec findings of the same
- * kind all hash the empty file, and several `standard-other` findings in one
- * file do the same because the fallback is what a reviewer reaches for when it
- * cannot name the rule. Both are disambiguated by line order within the
- * report, and both cost churn — a resolve and a repost of feedback still on
- * the report — rather than the lost feedback of issue #718.
+ * `occurrence` is 0 unless the id is already taken in this report, and counts
+ * up until it is not. Since issue #940 that is rare: two findings of one rule
+ * starting at one line, several unlocated findings of one kind, or a finding
+ * minted at the line a finding of the previous report was first seen at —
+ * whether that one has drifted away under its carried id or has gone.
  */
 export const findingId = (finding, occurrence = 0) => {
   const tuple = FINDING_IDENTITY_FIELDS.map((field) =>
@@ -470,31 +481,128 @@ export const findingId = (finding, occurrence = 0) => {
     .slice(0, 12);
 };
 
-const assignFindingIds = (findings) => {
-  const byTuple = new Map();
-  const order = findings
+const matchKey = (finding) =>
+  JSON.stringify(
+    FINDING_MATCH_FIELDS.map((field) => IDENTITY_ACCESSORS[field](finding)),
+  );
+
+/** The lines a finding covers, or null when it names none. */
+const linesOf = ({ location }) => {
+  if (!location) return null;
+  const end = location.endLine ?? location.startLine;
+  return [Math.min(location.startLine, end), Math.max(location.startLine, end)];
+};
+
+/**
+ * Which earlier finding each of this report's findings is, if any.
+ *
+ * Two findings are the same one when they share the match fields and their
+ * lines overlap. Each earlier id is lent once, to the claimant sharing the
+ * most lines with it, then to the one starting nearest. Unlocated findings
+ * have no lines to compare, so they pair off by the match fields alone, in
+ * report order — the residue issue #940 leaves, as it was before.
+ *
+ * The two ranges are line numbers in two different commits, and nothing here
+ * maps one onto the other. A push that moves a defect clear of the lines it
+ * was reported at therefore reads as that finding gone and a new one raised.
+ * That is the cheap direction to be wrong in — a repost of feedback still on
+ * the report, not feedback lost — and across the 2026-10-05 window raw
+ * overlap recognised 17 of the 19 located findings that genuinely persisted.
+ *
+ * @returns {Map<number, string>} index in `findings` → the id it inherits
+ */
+const carriedIds = (findings, earlier) => {
+  const claims = [];
+  const unlocated = new Map();
+  earlier.forEach((before, e) => {
+    if (!linesOf(before)) {
+      const key = matchKey(before);
+      unlocated.set(key, [...(unlocated.get(key) ?? []), e]);
+    }
+  });
+  findings.forEach((now, n) => {
+    const lines = linesOf(now);
+    if (!lines) {
+      const e = unlocated.get(matchKey(now))?.shift();
+      if (e !== undefined) claims.push({ n, e, shared: Infinity, apart: 0 });
+      return;
+    }
+    earlier.forEach((before, e) => {
+      const was = linesOf(before);
+      if (!was || matchKey(before) !== matchKey(now)) return;
+      const shared =
+        Math.min(lines[1], was[1]) - Math.max(lines[0], was[0]) + 1;
+      if (shared > 0)
+        claims.push({ n, e, shared, apart: Math.abs(lines[0] - was[0]) });
+    });
+  });
+  claims.sort(
+    (a, b) =>
+      b.shared - a.shared || a.apart - b.apart || a.e - b.e || a.n - b.n,
+  );
+  const carried = new Map();
+  const lent = new Set();
+  for (const { n, e } of claims) {
+    if (carried.has(n) || lent.has(e)) continue;
+    carried.set(n, earlier[e].id);
+    lent.add(e);
+  }
+  return carried;
+};
+
+/**
+ * A finding the previous report already held keeps that report's id; every
+ * other finding is minted one. The reviewer still never sees its last report
+ * (ADR 0071 item 6) — this is the validator reading it, after the reviewer
+ * has exited.
+ *
+ * @param {object[]} findings this run's findings, as the reviewer wrote them
+ * @param {unknown} previous the previous run's normalized report, or null
+ */
+const assignFindingIds = (findings, previous) => {
+  // One entry per earlier id: an id two earlier findings share could be lent
+  // twice, and this report's ids must be unique whatever the last one held.
+  const seen = new Set();
+  const earlier = (
+    isComparableReport(previous) && Array.isArray(previous.findings)
+      ? previous.findings
+      : []
+  ).filter(
+    (f) => typeof f?.id === 'string' && !seen.has(f.id) && seen.add(f.id),
+  );
+  const carried = carriedIds(findings, earlier);
+  // Every earlier id is taken, lent or not. An id nobody inherited belongs to
+  // a finding that is gone, and minting it again for a new finding at the
+  // line that one was first seen at would read as the old one persisting.
+  const taken = new Set(earlier.map((f) => f.id));
+  const ids = new Array(findings.length);
+  findings
     .map((f, index) => ({ f, index }))
+    // Line order, so which of two same-tuple findings gets the plain id does
+    // not depend on the order the reviewer happened to list them in.
     .sort(
       (a, b) =>
         (a.f.location?.startLine ?? 0) - (b.f.location?.startLine ?? 0) ||
         a.index - b.index,
-    );
-  const ids = new Array(findings.length);
-  for (const { f, index } of order) {
-    const key = findingId(f);
-    const occurrence = byTuple.get(key) ?? 0;
-    byTuple.set(key, occurrence + 1);
-    ids[index] = findingId(f, occurrence);
-  }
+    )
+    .forEach(({ f, index }) => {
+      let id = carried.get(index);
+      for (let occurrence = 0; id === undefined; occurrence += 1) {
+        const minted = findingId(f, occurrence);
+        if (!taken.has(minted)) id = minted;
+      }
+      taken.add(id);
+      ids[index] = id;
+    });
   return findings.map((f, index) => ({ id: ids[index], ...f }));
 };
 
 /**
  * Whether a stored artifact from an earlier run can be diffed against this
- * one. Ids are only meaningful within a schema version — a report written
- * before `ruleId` replaced `source` in the tuple carries identities this run
- * can never mint — so a mismatch is "no comparable previous run", not
- * "everything resolved".
+ * one, or lend it ids. Ids are only meaningful within a schema version — a
+ * report written before ids were carried forward holds identities this run
+ * would never give the same findings — so a mismatch is "no comparable
+ * previous run", not "everything resolved".
  *
  * @param {unknown} raw a report read back from an artifact, of any vintage
  */
@@ -537,10 +645,17 @@ export const computeEffectiveTier = (report) => {
 /**
  * Validate a raw object and return the normalized report, or throw a ZodError.
  * This is the only path from reviewer output to anything that reads it.
+ *
+ * `previous` is the previous run's normalized report, when there is one. It
+ * lends ids and nothing else: no finding, severity, or verdict is read from
+ * it, and a report of another schema version lends none.
+ *
+ * @param {unknown} raw
+ * @param {{ previous?: unknown }} [options]
  */
-export const normalizeReport = (raw) => {
+export const normalizeReport = (raw, { previous = null } = {}) => {
   const input = ReportInputSchema.parse(raw);
-  const findings = assignFindingIds(input.findings);
+  const findings = assignFindingIds(input.findings, previous);
   return {
     ...input,
     findings,

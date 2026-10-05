@@ -15,10 +15,13 @@
  * a reviewer that named the defect defensibly differently as a miss.
  *
  * The strict-tuple annotation is the part that must track the tuple, because
- * it claims the validator's own hash would have matched. Since issue #724 that
- * hash is axis + ruleId + file, so an expectation says whether it is literal
- * enough to be a tuple by pinning `ruleId` to one catalogue id; an expectation
- * that pins none is simply never strict. Recall is matched over expected.
+ * it claims the reviewer named the finding exactly: the same axis, rule id,
+ * and file — the fields two findings must share to be one. An expectation
+ * says whether it is literal enough to be a tuple by pinning `ruleId` to one
+ * catalogue id (issue #724); an expectation that pins none is simply never
+ * strict. The line a finding starts at is in a minted id since issue #940 and
+ * is no part of this: no expectation can know it. Recall is matched over
+ * expected.
  *
  * A case may instead be clean-diff (issue #933): a known-good merged Pull
  * Request that measures false alarms rather than recall. It carries
@@ -44,7 +47,7 @@ import {
   replayMatrix,
 } from './golden-tiers.mjs';
 import { RULES_DISPLAY_PATH, ruleById } from './rules.mjs';
-import { FINDING_AXES, FINDING_SEVERITIES, findingId } from './schema.mjs';
+import { FINDING_AXES, FINDING_SEVERITIES } from './schema.mjs';
 
 // The tier vocabulary and the set's location are declared once, in the
 // dependency-free module the no-install replay job runs. This file may import
@@ -329,18 +332,15 @@ export const scoreCase = (goldenCase, normalized) => {
       continue;
     }
     used.add(hit.id);
-    // Would the strict tuple hash have matched? Only when the expectation is
-    // literal enough to be a tuple itself, which since issue #724 means it
-    // pins the `ruleId` the validator hashes. Recomputing this from the
-    // finding's own id would make the claim circular and always true.
+    // Did the reviewer name the very rule the expectation pins? Only an
+    // expectation literal enough to pin a `ruleId` can be strict (issue
+    // #724). The axis and the file are already equal — `matches` required
+    // them — so the rule id is all that is left of the fields two findings
+    // must share to be one (`FINDING_MATCH_FIELDS`). This compared a
+    // recomputed id until issue #940 put the start line in a minted id, which
+    // no expectation can know.
     const strict =
-      expected.ruleId !== undefined &&
-      hit.id ===
-        findingId({
-          axis: expected.axis,
-          ruleId: expected.ruleId,
-          location: { file: hit.location.file },
-        });
+      expected.ruleId !== undefined && hit.ruleId === expected.ruleId;
     matched.push({ expected: expected.id, finding: hit.id, strict });
   }
   const recall = matched.length / goldenCase.expected.length;

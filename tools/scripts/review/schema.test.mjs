@@ -309,64 +309,55 @@ test('a spec of kind none cannot carry a ref', () => {
   );
 });
 
-// The same rule applied twice in one file still shares a tuple — that is what
-// a repeat legitimately is — and the within-report disambiguator orders the
-// occurrences by line (issue #718).
-test('two findings with the same identity tuple in one report get distinct, stable ids', () => {
-  const at = (startLine, ruleId = 'standard-design-token-bypassed') => ({
-    axis: 'standards',
-    severity: 'should-fix',
-    summary: 's',
-    ruleId,
-    source: 'AGENTS.md',
-    rule: 'r',
-    evidence: {
-      kind: 'cited',
-      sourceKind: 'standard',
-      quote: 'q',
-      untrusted: false,
-    },
-    location: { file: 'libs/a.ts', startLine, headSha: 'a'.repeat(40) },
-  });
-  const envelope = (findings) => ({
-    schemaVersion: REPORT_SCHEMA_VERSION,
-    base: 'b'.repeat(40),
-    head: 'a'.repeat(40),
-    tier: null,
-    spec: { kind: 'none', foundBy: 'none' },
-    standardsSources: ['AGENTS.md'],
-    executed: [],
-    suppressed: { redundant: 0 },
-    model: 'm',
-    durationMs: 1,
-    findings,
-  });
+// The same rule applied twice in one file is two findings, and since issue #940
+// each is minted from its own start line rather than numbered against the
+// other — so fixing one no longer moves the survivor onto the vacated id.
+test('two findings of one rule in one file get distinct ids, and neither depends on the other', () => {
+  const at = (startLine, ruleId = 'standard-design-token-bypassed') =>
+    cited({
+      severity: 'should-fix',
+      ruleId,
+      location: { file: 'libs/a.ts', startLine, headSha: HEAD },
+    });
   const ids = (findings) =>
-    normalizeReport(envelope(findings)).findings.map((f) => f.id);
+    normalizeReport(envelope({ findings })).findings.map((f) => f.id);
 
-  // One rule broken at two lines of one file: one tuple, two occurrences.
   const [first, second] = ids([at(10), at(50)]);
   assert.notEqual(first, second);
   assert.equal(first, findingId(at(10)));
-  // Numbering follows startLine, not report order, so a reorder is stable.
+  assert.equal(second, findingId(at(50)));
+  // Report order decides nothing.
   assert.deepEqual(ids([at(50), at(10)]), [second, first]);
-  // A lone finding keeps the plain tuple id.
-  assert.deepEqual(ids([at(50)]), [first]);
+  // The survivor of a fix keeps the id it had. Before issue #940 it was
+  // renumbered onto the first one's id, which read as the first persisting.
+  assert.deepEqual(ids([at(50)]), [second]);
 
-  // The collision issue #724 removes: two *different* rules in one file are
-  // two identities, not one tuple with two occurrences. Before the bounded
-  // rule id they hashed `axis + source + file` and collided, so fixing one
-  // renumbered the survivor onto the vacated id — the report resolved a
-  // thread and re-posted the same feedback under another id.
+  // Two findings minted from the very same tuple — one rule cited twice at
+  // one line, or two unlocated findings of one kind — still need two ids.
+  const [a, b] = ids([at(10), at(10)]);
+  assert.equal(a, first);
+  assert.notEqual(a, b);
+  const unlocated = () => ({
+    axis: 'spec',
+    severity: 'should-fix',
+    summary: 's',
+    ruleId: 'spec-requirement-missing',
+    source: '#123',
+    rule: 'r',
+    evidence: {
+      kind: 'cited',
+      sourceKind: 'spec',
+      quote: 'q',
+      untrusted: true,
+    },
+  });
+  const [u1, u2] = ids([unlocated(), unlocated()]);
+  assert.notEqual(u1, u2);
+
+  // Two different rules in one file never were one identity (issue #724).
   const tokens = at(10, 'standard-design-token-bypassed');
-  const secrets = at(50, 'standard-secret-committed');
+  const secrets = at(10, 'standard-secret-committed');
   assert.notEqual(findingId(tokens), findingId(secrets));
-  const together = ids([tokens, secrets]);
-  assert.deepEqual(together, [findingId(tokens), findingId(secrets)]);
-  // Neither is an occurrence of the other, so removing one leaves the
-  // survivor's id exactly where it was.
-  assert.deepEqual(ids([secrets]), [together[1]]);
-  assert.deepEqual(ids([tokens]), [together[0]]);
 });
 
 test('a rule id outside the catalogue is rejected, and so is one off its axis', () => {
@@ -437,9 +428,11 @@ test('a quoted line, trusted or not, renders as one line of inline code', () => 
   assert.equal(standard, 'cited standard: `Use tokens not hex`');
 });
 
-test('finding identity ignores the line, the rule text, and the source, and changes with the file', () => {
+test('a freshly minted id ignores the rule text and the source, and changes with the file, the rule id, the axis, and the start line', () => {
   const a = cited();
-  const b = cited({ location: { ...a.location, startLine: 99 } });
+  const elsewhere = cited({ location: { ...a.location, startLine: 99 } });
+  // Only where the finding starts is hashed; how far it runs is not.
+  const longer = cited({ location: { ...a.location, endLine: 60 } });
   const c = cited({ location: { ...a.location, file: 'other.ts' } });
   // The same rule, rewritten the way a model rewrites it between runs: an
   // arrow degraded to ASCII, a clause reordered, a word swapped.
@@ -458,12 +451,209 @@ test('finding identity ignores the line, the rule text, and the source, and chan
     ruleId: 'spec-requirement-missing',
     source: '#123',
   });
-  assert.equal(findingId(a), findingId(b));
   assert.equal(findingId(a), findingId(reworded));
   assert.equal(findingId(a), findingId(otherSource));
+  assert.equal(findingId(a), findingId(longer));
+  assert.notEqual(findingId(a), findingId(elsewhere));
   assert.notEqual(findingId(a), findingId(c));
   assert.notEqual(findingId(a), findingId(differentRule));
   assert.notEqual(findingId(a), findingId(differentAxis));
+});
+
+// Issue #940. `axis + ruleId + file` was coarser than a finding: on #928 one id
+// labelled a curly-apostrophe gap on one push and an unrelated idiom on the
+// next, both `standard-missing-focused-test` in one file. The measurement read
+// that as a finding nobody acted on, and a `Review-ack` written for the first
+// covered the second. A finding now keeps an earlier id only when the previous
+// report held one of the same axis, rule, and file whose lines overlap its own.
+const sameRuleSameFile = (startLine, endLine, overrides = {}) =>
+  cited({
+    severity: 'should-fix',
+    ruleId: 'standard-missing-focused-test',
+    source: 'AGENTS.md',
+    location: {
+      file: 'tools/scripts/review/escaped-defects.mjs',
+      startLine,
+      ...(endLine ? { endLine } : {}),
+      headSha: HEAD,
+    },
+    ...overrides,
+  });
+const NEXT_HEAD = '9999999999999999999999999999999999999999';
+const runOf = (findings, previous = null, head = HEAD) =>
+  normalizeReport(envelope({ head, findings }), { previous });
+
+test('a different defect under the same rule in the same file is a new finding, not the old one persisting', () => {
+  const first = runOf([
+    sameRuleSameFile(188, 193, { summary: 'curly apostrophe is not negation' }),
+  ]);
+  const second = runOf(
+    [sameRuleSameFile(240, 246, { summary: 'the no-doubt idiom is negation' })],
+    first,
+    NEXT_HEAD,
+  );
+  assert.notEqual(second.findings[0].id, first.findings[0].id);
+  const md = renderReport(second, first, { hunks: false });
+  assert.match(md, /- new: 1 /);
+  assert.match(md, /- persisting: 0\n/);
+  assert.match(md, /- resolved: 1 /);
+});
+
+test('the same defect anchored a few lines away keeps its id across runs', () => {
+  // The reviewer does not anchor one defect at one line: across the 2026-10-05
+  // window it moved the start line of a genuinely persisting finding in 8 of
+  // 19 located cases. Hashing the line would have read each as fixed.
+  const first = runOf([sameRuleSameFile(34, 44)]);
+  const second = runOf(
+    [sameRuleSameFile(42, 44, { summary: 'reworded', rule: 'reworded too' })],
+    first,
+    NEXT_HEAD,
+  );
+  assert.equal(second.findings[0].id, first.findings[0].id);
+  // The id is the first run's, not one this run could have minted alone.
+  assert.notEqual(second.findings[0].id, findingId(second.findings[0]));
+  const md = renderReport(second, first, { hunks: false });
+  assert.match(md, /- persisting: 1 /);
+  // And it keeps holding: the third run inherits from the second.
+  const third = runOf([sameRuleSameFile(44)], second, HEAD);
+  assert.equal(third.findings[0].id, first.findings[0].id);
+});
+
+test('fixing one of two same-rule findings in a file leaves the survivor its own id', () => {
+  const first = runOf([sameRuleSameFile(10, 14), sameRuleSameFile(50, 58)]);
+  const [fixed, survivor] = first.findings.map((f) => f.id);
+  const second = runOf([sameRuleSameFile(52, 58)], first, NEXT_HEAD);
+  assert.deepEqual(
+    second.findings.map((f) => f.id),
+    [survivor],
+  );
+  assert.notEqual(survivor, fixed);
+});
+
+test('an earlier id is carried by at most one finding, and the closest claim wins', () => {
+  const first = runOf([sameRuleSameFile(20, 40)]);
+  const earlier = first.findings[0].id;
+  // Both overlap the earlier range; the one sharing more of it inherits.
+  const second = runOf(
+    [sameRuleSameFile(38, 60), sameRuleSameFile(22, 39)],
+    first,
+    NEXT_HEAD,
+  );
+  const [loose, close] = second.findings.map((f) => f.id);
+  assert.equal(close, earlier);
+  assert.notEqual(loose, earlier);
+  assert.equal(loose, findingId(second.findings[0]));
+});
+
+test('an id is never carried across a file or a rule', () => {
+  const first = runOf([sameRuleSameFile(10, 20)]);
+  const earlier = first.findings[0].id;
+  const idAfter = (finding) =>
+    runOf([finding], first, NEXT_HEAD).findings[0].id;
+  assert.notEqual(
+    idAfter(
+      sameRuleSameFile(10, 20, {
+        location: {
+          file: 'other.mjs',
+          startLine: 10,
+          endLine: 20,
+          headSha: HEAD,
+        },
+      }),
+    ),
+    earlier,
+  );
+  assert.notEqual(
+    idAfter(sameRuleSameFile(10, 20, { ruleId: 'standard-doc-claim-drifted' })),
+    earlier,
+  );
+  assert.equal(idAfter(sameRuleSameFile(10, 20)), earlier);
+});
+
+test('a finding minted beside a carried id never shares it', () => {
+  // The first finding was minted at line 10 and has since drifted down the
+  // file under its inherited id. A new finding at line 10 would mint the
+  // same hash; it must not end up with the id the older one still carries.
+  const first = runOf([sameRuleSameFile(10, 30)]);
+  const second = runOf([sameRuleSameFile(28, 40)], first, NEXT_HEAD);
+  const third = runOf(
+    [sameRuleSameFile(10, 12), sameRuleSameFile(35, 40)],
+    second,
+    HEAD,
+  );
+  const [fresh, carried] = third.findings.map((f) => f.id);
+  assert.equal(carried, first.findings[0].id);
+  assert.notEqual(fresh, carried);
+  // Nor the id of one that has just gone: the drifted finding is fixed and a
+  // new one appears at line 10. Minting the old id again would read as the
+  // old finding persisting.
+  const fourth = runOf([sameRuleSameFile(10, 12)], second, HEAD);
+  assert.notEqual(fourth.findings[0].id, first.findings[0].id);
+});
+
+test('a previous report that repeats an id, or carries no findings array, lends each id at most once', () => {
+  const first = runOf([sameRuleSameFile(10, 14), sameRuleSameFile(50, 58)]);
+  const repeated = {
+    ...first,
+    findings: first.findings.map((f) => ({ ...f, id: first.findings[0].id })),
+  };
+  const ids = runOf(
+    [sameRuleSameFile(10, 14), sameRuleSameFile(50, 58)],
+    repeated,
+    NEXT_HEAD,
+  ).findings.map((f) => f.id);
+  assert.equal(new Set(ids).size, 2);
+  const broken = { ...first, findings: 'not an array' };
+  assert.equal(
+    runOf([sameRuleSameFile(10, 14)], broken, NEXT_HEAD).findings.length,
+    1,
+  );
+});
+
+test('unlocated findings have no lines to compare, so they carry by axis and rule alone', () => {
+  // The residue issue #940 leaves: with no location there is nothing to tell
+  // two unlocated findings of one kind apart, so the earlier id is inherited
+  // in report order, as it was before.
+  const unlocated = (summary) => ({
+    axis: 'spec',
+    severity: 'should-fix',
+    summary,
+    ruleId: 'spec-requirement-missing',
+    source: '#123',
+    rule: 'r',
+    evidence: {
+      kind: 'cited',
+      sourceKind: 'spec',
+      quote: 'q',
+      untrusted: true,
+    },
+  });
+  const first = runOf([unlocated('one')]);
+  const second = runOf([unlocated('another')], first, NEXT_HEAD);
+  assert.equal(second.findings[0].id, first.findings[0].id);
+  // A located finding never inherits from an unlocated one.
+  const located = runOf(
+    [
+      {
+        ...unlocated('now located'),
+        location: { file: 'a.ts', startLine: 1, headSha: HEAD },
+      },
+    ],
+    first,
+    NEXT_HEAD,
+  );
+  assert.notEqual(located.findings[0].id, first.findings[0].id);
+});
+
+test('a previous report of another schema version lends no ids', () => {
+  const first = runOf([sameRuleSameFile(34, 44)]);
+  const older = {
+    ...first,
+    schemaVersion: REPORT_SCHEMA_VERSION - 1,
+    findings: first.findings.map((f) => ({ ...f, id: 'aaaaaaaaaaaa' })),
+  };
+  const second = runOf([sameRuleSameFile(34, 44)], older, NEXT_HEAD);
+  assert.equal(second.findings[0].id, findingId(second.findings[0]));
 });
 
 // The decisive test for issue #718. Before the tuple dropped `rule`, the

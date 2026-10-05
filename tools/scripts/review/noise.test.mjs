@@ -26,7 +26,7 @@ import {
   statusOf,
   summarizeNoise,
 } from './noise.mjs';
-import { REPORT_SCHEMA_VERSION } from './schema.mjs';
+import { REPORT_SCHEMA_VERSION, normalizeReport } from './schema.mjs';
 
 const sha = (c) => c.repeat(40);
 
@@ -298,6 +298,69 @@ test('a finding that survives three pushes is two ignored observations', () => {
   });
   assert.deepEqual(classesOf(rows), ['ignored', 'ignored', 'pending']);
   assert.deepEqual(rateOf(rows), { observations: 2, ignored: 2, rate: 1 });
+});
+
+// Issue #940. The measurement compares ids, so it is exactly as good as the
+// identity behind them. This runs the real validator across three pushes of
+// one branch — the #928 sequence — rather than hand-written ids: one rule,
+// one file, a defect fixed and an unrelated one raised, then that one left
+// alone. Under `axis + ruleId + file` the first two shared an id, so the fix
+// read as inaction and the acknowledgement written for the first defect
+// covered the second, which its author had never seen.
+test('a defect fixed and another raised under the same rule and file is acted on, and its acknowledgement does not travel', () => {
+  const report = (head, startLine, endLine, previous) =>
+    normalizeReport(
+      {
+        schemaVersion: REPORT_SCHEMA_VERSION,
+        base: sha('0'),
+        head,
+        tier: null,
+        spec: { kind: 'none', foundBy: 'none' },
+        standardsSources: ['AGENTS.md'],
+        executed: [],
+        suppressed: { redundant: 0 },
+        model: 'm',
+        durationMs: 1,
+        findings: [
+          {
+            axis: 'standards',
+            severity: 'nit',
+            summary: 's',
+            ruleId: 'standard-missing-focused-test',
+            source: 'AGENTS.md',
+            rule: 'r',
+            evidence: { kind: 'inferred', reasoning: 'r' },
+            location: {
+              file: 'tools/scripts/review/escaped-defects.mjs',
+              startLine,
+              endLine,
+              headSha: head,
+            },
+          },
+        ],
+      },
+      { previous },
+    );
+  const first = report(sha('a'), 188, 193, null);
+  const second = report(sha('b'), 240, 246, first);
+  const third = report(sha('c'), 241, 246, second);
+  const rows = observeBranch({
+    pushes: [
+      { headSha: sha('a'), report: first },
+      {
+        headSha: sha('b'),
+        report: second,
+        commits: [
+          {
+            sha: sha('b'),
+            message: `fix: x\n\n${OPT_OUT_MARKER}: ${first.findings[0].id} — declined`,
+          },
+        ],
+      },
+      { headSha: sha('c'), report: third },
+    ],
+  });
+  assert.deepEqual(classesOf(rows), ['acted-on', 'ignored', 'pending']);
 });
 
 test('every class has a role and the roles are the three that exist', () => {
