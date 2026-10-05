@@ -5,7 +5,14 @@ import {
   bytesToUtf8,
   utf8ToBytes,
 } from './bytes';
-import { pullAndSendVaultBlob, pullVaultBlob, readVaultBlob } from './sync';
+import { VAULT_BLOB_CONVERGE_STRATEGIES } from '@myorganizer/vault-core/portable';
+import {
+  pullAndSendVaultBlob,
+  pullVaultBlob,
+  readVaultBlob,
+  settleVaultBlobPull,
+  VaultBlobConflictError,
+} from './sync';
 
 // The real module reaches react-native-quick-crypto. Decryption here is the
 // identity, so a stored "ciphertext" is the envelope's own JSON.
@@ -351,5 +358,89 @@ describe('pullAndSendVaultBlob', () => {
     ).rejects.toBe(error);
     expect(onPulled).not.toHaveBeenCalled();
     expect(vaultApi.putVaultBlob).not.toHaveBeenCalled();
+  });
+});
+
+describe('a Vault Blob Type pinned to promptOnConflict', () => {
+  const serverEnvelope = { records: [{ id: 't1' }], deletions: {} };
+  const unsent = { records: [{ id: 't1' }, { id: 't2' }], deletions: {} };
+
+  beforeEach(() => {
+    jest.replaceProperty(VAULT_BLOB_CONVERGE_STRATEGIES, 'tasks', {
+      strategy: 'promptOnConflict',
+    } as never);
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('carries no unsent edit through a pull and sends nothing', async () => {
+    const vaultApi = apiReturning(serverEnvelope);
+    vaultApi.putVaultBlob = jest.fn();
+
+    const result = await pullAndSendVaultBlob({
+      vaultApi,
+      masterKey,
+      type: VaultBlobType.Tasks,
+      unsent,
+    });
+
+    expect(result).toEqual({
+      outcome: 'not-carried',
+      snapshot: { envelope: serverEnvelope, etag: '"v1"' },
+    });
+    expect(vaultApi.putVaultBlob).not.toHaveBeenCalled();
+  });
+});
+
+describe('settleVaultBlobPull', () => {
+  const snapshot = { envelope: { records: [], deletions: {} }, etag: '"v1"' };
+
+  it('holds nothing and shows no error after a pull with nothing unsent', () => {
+    expect(settleVaultBlobPull({ outcome: 'pulled', snapshot })).toEqual({
+      outcome: 'pulled',
+      writeError: null,
+      held: false,
+    });
+  });
+
+  it('reports a sent edit and stops holding it', () => {
+    expect(settleVaultBlobPull({ outcome: 'sent', snapshot })).toEqual({
+      outcome: 'sent',
+      writeError: null,
+      held: false,
+    });
+  });
+
+  it('drops an edit that was not carried and reports a conflict', () => {
+    expect(settleVaultBlobPull({ outcome: 'not-carried', snapshot })).toEqual({
+      outcome: 'pulled',
+      writeError: 'conflict',
+      held: false,
+    });
+  });
+
+  it('keeps holding an edit whose send failed, with the reason', () => {
+    expect(
+      settleVaultBlobPull({
+        outcome: 'send-failed',
+        snapshot,
+        error: { response: { status: 500 } },
+      }),
+    ).toEqual({ outcome: 'held', writeError: 'failed', held: true });
+  });
+
+  it('reports a send that kept conflicting as a conflict', () => {
+    expect(
+      settleVaultBlobPull({
+        outcome: 'send-failed',
+        snapshot,
+        error: new VaultBlobConflictError(
+          VaultBlobType.Tasks,
+          'retries-exhausted',
+        ),
+      }).writeError,
+    ).toBe('conflict');
   });
 });

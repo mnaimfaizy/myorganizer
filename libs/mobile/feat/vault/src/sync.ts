@@ -67,7 +67,9 @@ function httpStatus(error: unknown): number | undefined {
 // Re-exported for existing callers. `networkError.ts` is the module without a
 // react-native-quick-crypto import, so a caller outside this feature can
 // depend on it and stay loadable in a plain Node Jest environment.
-export { isNetworkError } from './networkError';
+import { isNetworkError } from './networkError';
+
+export { isNetworkError };
 
 /**
  * Reads one Vault Blob and decrypts it on device with the Master Key.
@@ -268,6 +270,65 @@ export async function pullAndSendVaultBlob(params: {
   } catch (error) {
     return { outcome: 'send-failed', snapshot: server, error };
   }
+}
+
+/**
+ * Why the last edit did not reach the server. The edit was reverted on
+ * screen; it was never kept anywhere else.
+ *
+ * - `conflict` — another device kept changing the blob under this one's
+ *   merged retries. Reloading reads the server's copy and sends the edit
+ *   merged with it.
+ * - `network` — the server could not be reached. Retrying resends the edit.
+ * - `failed` — anything else. Retrying resends the edit.
+ *
+ * Until a retry or a reload sends it, the edit is held by the hook that made
+ * it and nowhere else.
+ */
+export type VaultBlobWriteErrorKind = 'conflict' | 'network' | 'failed';
+
+export function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
+  if (err instanceof VaultBlobConflictError) return 'conflict';
+  return isNetworkError(err) ? 'network' : 'failed';
+}
+
+/**
+ * What a reload left behind, for a screen that has to act on it.
+ *
+ * - `sent` — an edit whose push had failed was merged and is now on the
+ *   server. A sheet still holding that edit's draft closes on this.
+ * - `held` — an edit whose push failed is still held: its send failed again,
+ *   the read failed, or the reload did not run.
+ * - `pulled` — nothing is held.
+ */
+export type VaultBlobReloadOutcome = 'pulled' | 'sent' | 'held';
+
+/**
+ * What a finished mobile Vault Pull means for the screen that asked for it:
+ * what its reload resolves, the write error to show, and whether the edit it
+ * handed in is still held. Kept beside the pull so the decision runs without
+ * a renderer.
+ *
+ * Only a failed send leaves the edit held. A `not-carried` edit is dropped
+ * and reported as a `conflict`, since the User has to make it again.
+ */
+export function settleVaultBlobPull(result: VaultBlobPullResult): {
+  outcome: VaultBlobReloadOutcome;
+  writeError: VaultBlobWriteErrorKind | null;
+  held: boolean;
+} {
+  if (result.outcome === 'send-failed') {
+    return {
+      outcome: 'held',
+      writeError: classifyWriteError(result.error),
+      held: true,
+    };
+  }
+  return {
+    outcome: result.outcome === 'sent' ? 'sent' : 'pulled',
+    writeError: result.outcome === 'not-carried' ? 'conflict' : null,
+    held: false,
+  };
 }
 
 /** How many PUTs a push makes before it stops merging and asks for a reload. */

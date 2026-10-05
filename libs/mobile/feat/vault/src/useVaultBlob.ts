@@ -4,48 +4,21 @@ import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
 
 import { useVaultSession } from './context/VaultSessionContext';
 import {
-  isNetworkError,
+  classifyWriteError,
   pullAndSendVaultBlob,
   pushVaultBlob,
-  VaultBlobConflictError,
+  settleVaultBlobPull,
+  type VaultBlobReloadOutcome,
   type VaultBlobSnapshot,
+  type VaultBlobWriteErrorKind,
 } from './sync';
+
+export type { VaultBlobReloadOutcome, VaultBlobWriteErrorKind };
 
 /** One edit to a Vault Blob, as a function of the envelope it applies to. */
 export type VaultBlobEdit = (
   envelope: VaultBlobEnvelope<unknown>,
 ) => VaultBlobEnvelope<unknown>;
-
-/**
- * Why the last edit did not reach the server. The edit was reverted on
- * screen; it was never kept anywhere else.
- *
- * - `conflict` — another device kept changing the blob under this one's
- *   merged retries. Reloading reads the server's copy and sends the edit
- *   merged with it.
- * - `network` — the server could not be reached. Retrying resends the edit.
- * - `failed` — anything else. Retrying resends the edit.
- *
- * Until a retry or a reload sends it, the edit is held by the hook that made
- * it and nowhere else.
- */
-export type VaultBlobWriteErrorKind = 'conflict' | 'network' | 'failed';
-
-function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
-  if (err instanceof VaultBlobConflictError) return 'conflict';
-  return isNetworkError(err) ? 'network' : 'failed';
-}
-
-/**
- * What a reload left behind, for a screen that has to act on it.
- *
- * - `sent` — an edit whose push had failed was merged and is now on the
- *   server. A sheet still holding that edit's draft closes on this.
- * - `held` — an edit whose push failed is still held: its send failed again,
- *   the read failed, or the reload did not run.
- * - `pulled` — nothing is held.
- */
-export type VaultBlobReloadOutcome = 'pulled' | 'sent' | 'held';
 
 /**
  * One Vault Blob, readable and editable on mobile.
@@ -135,13 +108,10 @@ export function useVaultBlob(type: VaultBlobType): {
         },
       });
       show(result.snapshot);
-      if (result.outcome === 'send-failed') {
-        setWriteError(classifyWriteError(result.error));
-        return 'held';
-      }
-      failedEditRef.current = null;
-      setWriteError(result.outcome === 'not-carried' ? 'conflict' : null);
-      return result.outcome === 'sent' ? 'sent' : 'pulled';
+      const settled = settleVaultBlobPull(result);
+      if (!settled.held) failedEditRef.current = null;
+      setWriteError(settled.writeError);
+      return settled.outcome;
     } catch (err) {
       setLoadError(err);
       return held ? 'held' : 'pulled';

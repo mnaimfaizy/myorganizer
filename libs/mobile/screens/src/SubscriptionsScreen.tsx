@@ -131,6 +131,7 @@ export function SubscriptionsScreen(): React.JSX.Element {
   const {
     snapshot,
     loading,
+    refreshing,
     loadError,
     writeError,
     reload,
@@ -173,6 +174,8 @@ export function SubscriptionsScreen(): React.JSX.Element {
     reloadAfterConflict,
   } = usePendingVaultEdit(apply, retry, reload);
 
+  const newBusy = pendingSubscriptionId !== null || refreshing;
+
   const openNew = useCallback((): void => setNewVisible(true), []);
 
   const createSubscription = useCallback(
@@ -205,11 +208,13 @@ export function SubscriptionsScreen(): React.JSX.Element {
 
   // Cancelling abandons the draft, including one whose push was refused: it
   // is dropped here so a later reload does not create it behind the User.
+  // Not while a create or a reload is in flight: a reload may be sending the
+  // refused draft, and `discard` cannot drop an edit that is on its way.
   const cancelNew = useCallback((): void => {
-    if (pendingSubscriptionId !== null) return;
+    if (newBusy) return;
     discard();
     setNewVisible(false);
-  }, [pendingSubscriptionId, discard]);
+  }, [newBusy, discard]);
 
   // A reload after a conflict sends the refused New Subscription. Once it is
   // on the server the sheet closes, as it does after a confirmed create — a
@@ -404,7 +409,7 @@ export function SubscriptionsScreen(): React.JSX.Element {
 
       <SubscriptionNewSheet
         visible={newVisible}
-        busy={newVisible && pendingSubscriptionId !== null}
+        busy={newVisible && newBusy}
         errorMessage={newError?.message}
         errorActionLabel={
           writeError === 'conflict' ? newError?.action : undefined
