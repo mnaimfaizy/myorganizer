@@ -1,4 +1,5 @@
 import { useCallback, useState } from 'react';
+import { settleConflictReload } from './pendingVaultEdit';
 import type {
   VaultBlobEdit,
   VaultBlobReloadOutcome,
@@ -81,15 +82,11 @@ export function usePendingVaultEdit<TId extends string = string>(
     [apply],
   );
 
-  // The reload sends the edit. `revertedId` is kept only while the edit is
-  // still held, so a send that fails again puts its note on the same row, and
-  // an id whose edit is settled cannot mark a row on some later failure.
-  // Resolves `true` when the edit reached the server, which is when a sheet
-  // still showing its draft closes.
+  // The reload sends the edit; `settleConflictReload` says what that leaves.
   const reloadAfterConflict = useCallback(async (): Promise<boolean> => {
-    const outcome = await reload();
-    if (outcome !== 'held') setRevertedId(null);
-    return outcome === 'sent';
+    const { keepReverted, sent } = settleConflictReload(await reload());
+    if (!keepReverted) setRevertedId(null);
+    return sent;
   }, [reload]);
 
   const retryFailedEdit = useCallback(async (): Promise<void> => {

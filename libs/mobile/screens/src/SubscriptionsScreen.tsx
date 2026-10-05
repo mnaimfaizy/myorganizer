@@ -13,6 +13,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
   newRecordId,
+  draftSheetBusy,
   usePendingVaultEdit,
   useVaultBlob,
   VAULT_WRITE_ERROR_COPY,
@@ -174,7 +175,10 @@ export function SubscriptionsScreen(): React.JSX.Element {
     reloadAfterConflict,
   } = usePendingVaultEdit(apply, retry, reload);
 
-  const newBusy = pendingSubscriptionId !== null || refreshing;
+  const newBusy = draftSheetBusy({
+    pendingId: pendingSubscriptionId,
+    refreshing,
+  });
 
   const openNew = useCallback((): void => setNewVisible(true), []);
 
@@ -208,8 +212,7 @@ export function SubscriptionsScreen(): React.JSX.Element {
 
   // Cancelling abandons the draft, including one whose push was refused: it
   // is dropped here so a later reload does not create it behind the User.
-  // Not while a create or a reload is in flight: a reload may be sending the
-  // refused draft, and `discard` cannot drop an edit that is on its way.
+  // Not while the sheet is busy (`draftSheetBusy`).
   const cancelNew = useCallback((): void => {
     if (newBusy) return;
     discard();
