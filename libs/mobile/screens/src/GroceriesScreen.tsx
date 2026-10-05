@@ -13,7 +13,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
   newRecordId,
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   useVaultBlob,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
@@ -100,7 +100,7 @@ export function GroceriesScreen(): React.JSX.Element {
     push,
     reloadAfterConflict,
     retryFailedEdit,
-  } = usePendingVaultEdit(apply, retry, reload);
+  } = useUnconfirmedEdit(apply, retry, reload);
   const [createVisible, setCreateVisible] = useState(false);
   const [renameTarget, setRenameTarget] = useState<ListTarget | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<ListTarget | null>(null);

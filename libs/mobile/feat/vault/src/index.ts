@@ -34,9 +34,9 @@ export type {
   VaultBlobWriteErrorKind,
 } from './useVaultBlob';
 export {
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   VAULT_WRITE_ERROR_COPY,
-} from './usePendingVaultEdit';
+} from './useUnconfirmedEdit';
 export { draftSheetBusy, settleConflictReload } from './unconfirmedEdit';
 export { newRecordId } from './recordId';
 export {

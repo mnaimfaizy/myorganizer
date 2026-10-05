@@ -22,7 +22,7 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   useVaultBlob,
   useVaultSession,
   VAULT_WRITE_ERROR_COPY,
@@ -228,7 +228,7 @@ export function SubscriptionDetailScreen(): React.JSX.Element {
   );
 
   const { pendingId, revertedId, push, reloadAfterConflict, retryFailedEdit } =
-    usePendingVaultEdit(apply, retry, reload);
+    useUnconfirmedEdit(apply, retry, reload);
 
   const [editVisible, setEditVisible] = useState(false);
 
