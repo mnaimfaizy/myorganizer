@@ -1,8 +1,8 @@
 // The guarded enums enum:fanout:check reads (ADR 0053). The review obligation
-// enum-fanout-omits-a-member (docs/review/REVIEW_CHECKLIST.md) names them in its
-// trigger regexes, which cannot import this; its test reads this list and fails
-// if the trigger stops firing on any enum here. Only that direction is asserted:
-// a trigger that also fired on an unguarded enum would cost sites, not a miss.
+// enum-fanout-omits-a-member (docs/review/REVIEW_CHECKLIST.md) reads them too:
+// its catalogue entry says "guardedEnums" and loadObligationCatalogue expands
+// that from this list, so the obligation fires on exactly this set. Its test
+// asserts both directions.
 
 /**
  * The guarded enums.

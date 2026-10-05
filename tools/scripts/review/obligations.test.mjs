@@ -8,6 +8,7 @@ import {
   assertObligationCatalogue,
   checkAnswers,
   defectHolds,
+  enumMemberValues,
   globToRegExp,
   loadObligationCatalogue,
   parseAddedLines,
@@ -946,8 +947,9 @@ test('every covering gate in the live catalogue names a real script', () => {
 // Both enum fan-out golden cases predate ADR 0053, and since ADR 0102 the
 // replay reviews the case head's tree, standards included, so the reviewer has
 // no document to cite. The obligation is the harness carrying the lesson
-// instead (#895). Its trigger names the guarded enums in regexes; the last test
-// below reads enum:fanout:check's own list and fails if any of them stops firing.
+// instead (#895). Its trigger is expanded from enum:fanout:check's own list;
+// the tests below fail if any guarded enum stops firing, or if the trigger
+// names an enum that list does not carry.
 
 const ENUM_FANOUT = 'enum-fanout-omits-a-member';
 
@@ -1108,5 +1110,177 @@ test('#537: a test listing members as fixtures is not a site, so one finding ans
         ),
       ),
       [],
+    );
+});
+
+// --- The trigger is generated from enum:fanout:check's list, not restated ---
+//
+// PR #998's review: a consumer that lists members as property names
+// (`localVault.data.tasks`) — the shape envelopeFromLocalVault actually had —
+// never wrote `VaultBlobType`, so a trigger on the enum's name alone could miss
+// it. The checker already knows where member values mean blob types
+// (`valueRoots`), and the selector can read the values at the reviewed head.
+
+const VAULT_MEMBERS = [
+  'addresses',
+  'groceries',
+  'mobileNumbers',
+  'subscriptions',
+  'tasks',
+  'todos',
+];
+
+const generatedSites = (diffText, membersOf = () => VAULT_MEMBERS) =>
+  selectObligations({
+    catalogue: loadObligationCatalogue(undefined, { membersOf }),
+    addedLines: parseAddedLines(diffText),
+    head: 'abc',
+  }).selected.find((o) => o.id === ENUM_FANOUT)?.sites ?? [];
+
+test('a consumer listing members as property names inside a value root fires', async () => {
+  const { GUARDED_ENUMS } = await import('../lib/enum-fanout-guarded.mjs');
+  for (const root of GUARDED_ENUMS[0].valueRoots) {
+    const file = `${root}lib/vault/envelope.ts`;
+    assert.deepEqual(
+      generatedSites(
+        diff(
+          `--- a/${file}`,
+          `+++ b/${file}`,
+          '@@ -0,0 +12,1 @@',
+          '+  if (localVault.data.tasks) {',
+        ),
+      ).map((s) => s.line),
+      [12],
+      `${root}: a property-name consumer does not fire`,
+    );
+  }
+});
+
+test('a member value outside the value roots does not fire', () => {
+  assert.deepEqual(
+    generatedSites(
+      diff(
+        '--- a/apps/myorganizer/src/a.ts',
+        '+++ b/apps/myorganizer/src/a.ts',
+        '@@ -0,0 +1,1 @@',
+        '+  const pending = project.tasks.filter(Boolean);',
+      ),
+    ),
+    [],
+  );
+});
+
+test('with no member values at head, only the enum-qualified shapes fire', () => {
+  const file = 'libs/web/vault/src/lib/vault/envelope.ts';
+  assert.deepEqual(
+    generatedSites(
+      diff(
+        `--- a/${file}`,
+        `+++ b/${file}`,
+        '@@ -0,0 +1,2 @@',
+        '+  if (localVault.data.tasks) {',
+        '+  out.push(VaultBlobType.Tasks);',
+      ),
+      () => [],
+    ).map((s) => s.line),
+    [2],
+  );
+});
+
+test('the catalogue names no enum: every one comes from the checker list, both ways', async () => {
+  const { GUARDED_ENUMS } = await import('../lib/enum-fanout-guarded.mjs');
+  const raw = JSON.parse(
+    readFileSync(
+      new URL('../../config/review-obligations.json', import.meta.url),
+      'utf8',
+    ),
+  );
+  const entry = raw.obligations.find((o) => o.id === ENUM_FANOUT);
+  for (const g of GUARDED_ENUMS)
+    assert.equal(
+      JSON.stringify(entry.trigger).includes(g.enum),
+      false,
+      `the catalogue restates ${g.enum}`,
+    );
+  // And the reverse: every enum the expanded trigger names is a guarded one.
+  const named = new Set();
+  for (const p of loadObligationCatalogue().obligations.find(
+    (o) => o.id === ENUM_FANOUT,
+  ).trigger.paths)
+    for (const s of [p.addedPattern, p.hunkPattern].filter(Boolean))
+      for (const m of s.matchAll(/([A-Z][A-Za-z0-9]+)(?:\\\.| = )/g))
+        named.add(m[1]);
+  assert.deepEqual(
+    [...named].sort(),
+    [...new Set(GUARDED_ENUMS.map((g) => g.enum))].sort(),
+  );
+});
+
+test('enumMemberValues reads a const-object enum out of the generated client', () => {
+  const source = [
+    'export const VaultBackupBlobType = {',
+    "    Addresses: 'addresses',",
+    '} as const;',
+    'export const VaultBlobType = {',
+    "    Addresses: 'addresses',",
+    "    Tasks: 'tasks',",
+    "    Todos: 'todos'",
+    '} as const;',
+  ].join('\n');
+  assert.deepEqual(enumMemberValues(source, 'VaultBlobType'), [
+    'addresses',
+    'tasks',
+    'todos',
+  ]);
+  assert.deepEqual(enumMemberValues(source, 'Missing'), []);
+  assert.deepEqual(enumMemberValues(null, 'VaultBlobType'), []);
+});
+
+test('the selector reads member values from the reviewed head, not the tooling tree', async () => {
+  const { main } = await import('./select-obligations.mjs');
+  const { mkdtempSync } = await import('node:fs');
+  const { tmpdir } = await import('node:os');
+  const { join } = await import('node:path');
+  const out = join(mkdtempSync(join(tmpdir(), 'select-')), 'w.json');
+  const file = 'libs/vault-core/src/lib/envelope.ts';
+  const reads = [];
+  main(['--base', 'b', '--head', 'h', '--out', out], {
+    run: () =>
+      diff(
+        `--- a/${file}`,
+        `+++ b/${file}`,
+        '@@ -0,0 +7,1 @@',
+        '+  if (local.data.chores) {',
+      ),
+    read: (head, path) => {
+      reads.push([head, path]);
+      return "export const VaultBlobType = {\n    Chores: 'chores'\n} as const;";
+    },
+  });
+  const worklist = JSON.parse(readFileSync(out, 'utf8'));
+  assert.deepEqual(
+    worklist.selected
+      .find((o) => o.id === ENUM_FANOUT)
+      .sites.map((s) => s.line),
+    [7],
+  );
+  assert.ok(reads.every(([head]) => head === 'h'));
+});
+
+test("the checker's declaration sites are not consumers and never a site", async () => {
+  const { GUARDED_ENUMS } = await import('../lib/enum-fanout-guarded.mjs');
+  for (const { path } of GUARDED_ENUMS[0].declarationSites)
+    assert.deepEqual(
+      generatedSites(
+        diff(
+          `--- a/${path}`,
+          `+++ b/${path}`,
+          '@@ -0,0 +2,2 @@',
+          "+  | 'tasks'",
+          '+  tasks: EncryptedBlobSchema.optional(),',
+        ),
+      ),
+      [],
+      `${path} fired`,
     );
 });

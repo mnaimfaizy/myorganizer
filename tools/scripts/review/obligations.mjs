@@ -33,6 +33,7 @@ import { join } from 'node:path';
 
 import { z } from 'zod';
 
+import { GUARDED_ENUMS } from '../lib/enum-fanout-guarded.mjs';
 import { globToRegExp } from '../lib/glob.mjs';
 import { citableLines } from '../lib/source-scan.mjs';
 
@@ -246,8 +247,107 @@ export const normalizeCitedFields = (citedFields = []) =>
         : { field: c.field, uncitedWhen: c.uncitedWhen },
   );
 
-export const loadObligationCatalogue = (path = OBLIGATIONS_PATH) =>
-  assertObligationCatalogue(JSON.parse(readFileSync(path, 'utf8')), path);
+/**
+ * The member values of a const-object enum in generated-client form
+ * (`export const X = {` … `Name: 'value',` … `}`), or [] when the source or
+ * the declaration is absent.
+ *
+ * @param {string|null|undefined} source
+ * @param {string} enumName
+ * @returns {string[]}
+ */
+export const enumMemberValues = (source, enumName) => {
+  if (!source) return [];
+  const lines = source.split('\n');
+  const start = lines.findIndex((l) =>
+    l.startsWith(`export const ${enumName} = {`),
+  );
+  if (start === -1) return [];
+  const values = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^\s*}/.test(line)) break;
+    const m = /^\s*[A-Za-z_$][\w$]*\s*:\s*'([^']*)'/.exec(line);
+    if (m) values.push(m[1]);
+  }
+  return values;
+};
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Expand a `trigger.guardedEnums` entry into concrete trigger paths, one set
+ * per enum enum:fanout:check guards (ADR 0053). The catalogue states what the
+ * entry is about; which enums those are, where they are defined, and where
+ * their bare values mean them is the checker's list, read here rather than
+ * restated in a regex that can drift from it (#895).
+ *
+ * Per enum, first match wins, so the narrow paths come first:
+ *   1. a member line inside the enum's own declaration, at `definedIn`;
+ *   2. inside each `valueRoot`, the enum named, or one of its values used as a
+ *      property name or string literal — the shape envelopeFromLocalVault had,
+ *      which never wrote the enum's name (#537);
+ *   3. anywhere else under apps/ or libs/, the enum named.
+ *
+ * `membersOf(guard)` supplies the values at the reviewed head. Without them,
+ * shape 2 falls back to the enum-qualified pattern alone.
+ *
+ * @param {object} cat the parsed catalogue
+ * @param {object[]} guarded the checker's list
+ * @param {(guard: object) => string[]} membersOf
+ */
+export const expandGuardedEnums = (cat, guarded, membersOf = () => []) => ({
+  ...cat,
+  obligations: (cat.obligations ?? []).map((o) => {
+    const spec = o.trigger?.guardedEnums;
+    if (spec === undefined) return o;
+    const { guardedEnums: _spec, ...rest } = o.trigger;
+    const facts = { ...spec };
+    const paths = [];
+    for (const g of guarded) {
+      const name = escapeRegExp(g.enum);
+      const qualified = `\\b${name}\\.[A-Z]`;
+      paths.push({
+        glob: g.definedIn,
+        hunkPattern: `^export const ${name} = \\{`,
+        addedPattern: "^\\s*[A-Z][A-Za-z0-9]*: '[^']*',?\\s*$",
+        ...facts,
+      });
+      const values = membersOf(g).map(escapeRegExp);
+      const byValue = values.length
+        ? `${qualified}|\\.(?:${values.join('|')})\\b|['"](?:${values.join('|')})['"]`
+        : qualified;
+      for (const root of g.valueRoots ?? [])
+        paths.push({ glob: `${root}**`, addedPattern: byValue, ...facts });
+      for (const glob of ['apps/**', 'libs/**'])
+        paths.push({ glob, addedPattern: qualified, ...facts });
+    }
+    // A declaration site lists the members because it is the list; the pin's
+    // `satisfies` clause ties it back, so the checker exempts it and so does
+    // this trigger.
+    const excludePaths = [
+      ...(rest.excludePaths ?? []),
+      ...guarded.flatMap((g) => (g.declarationSites ?? []).map((d) => d.path)),
+    ];
+    return { ...o, trigger: { ...rest, paths, excludePaths } };
+  }),
+});
+
+/**
+ * @param {string} [path]
+ * @param {{membersOf?: (guard: object) => string[]}} [options]
+ */
+export const loadObligationCatalogue = (
+  path = OBLIGATIONS_PATH,
+  { membersOf } = {},
+) =>
+  assertObligationCatalogue(
+    expandGuardedEnums(
+      JSON.parse(readFileSync(path, 'utf8')),
+      GUARDED_ENUMS,
+      membersOf,
+    ),
+    path,
+  );
 
 /**
  * Added lines only, with their line numbers in the head file. A removal cannot

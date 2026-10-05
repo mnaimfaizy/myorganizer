@@ -122,24 +122,9 @@
       ],
       "defect": "An omission other than \"none\" while wiredBy is \"none\" is a finding: a hand-enumerated consumer that leaves out a member of a guarded enum drops that member silently — for VaultBlobType, User-owned ciphertext, with no error and no recovery (ADR 0033) — and per ADR 0074 nothing at this head would have caught it. When wiredBy names a line, the gate already fails any hand-enumeration of a guarded enum, so the omission is redundant (ADR 0074): count it in suppressedRedundant instead.",
       "trigger": {
-        "paths": [
-          {
-            "glob": "libs/app-api-client/src/api.ts",
-            "hunkPattern": "^export const VaultBlobType = \\{",
-            "addedPattern": "^\\s*[A-Z][A-Za-z0-9]*: '[^']*',?\\s*$",
-            "coveringGate": "enum:fanout:check"
-          },
-          {
-            "glob": "apps/**",
-            "addedPattern": "\\bVaultBlobType\\.[A-Z]",
-            "coveringGate": "enum:fanout:check"
-          },
-          {
-            "glob": "libs/**",
-            "addedPattern": "\\bVaultBlobType\\.[A-Z]",
-            "coveringGate": "enum:fanout:check"
-          }
-        ],
+        "guardedEnums": {
+          "coveringGate": "enum:fanout:check"
+        },
         "excludePaths": [
           "**/*.test.ts",
           "**/*.test.tsx",

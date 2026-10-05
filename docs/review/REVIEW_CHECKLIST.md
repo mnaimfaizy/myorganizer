@@ -294,25 +294,30 @@ while the code read as configuring none. Golden case
 shapes its incidents took:
 
 - **A member is added where the enum is defined**: an added `Name: 'value',`
-  line inside `export const VaultBlobType = {` in the generated API client. The
-  enclosing declaration is read from git's hunk header (`hunkPattern`), so a
-  member added to any of the client's other enums does not fire.
-- **A consumer names its members**: an added `VaultBlobType.<Member>` line
-  anywhere under `apps/**` or `libs/**`, except test files (`excludePaths`). A
-  test that lists members as fixtures is not a consumer. A site there could
-  only be answered by a finding anchored in the test file.
+  line inside the enum's own declaration (for `VaultBlobType`,
+  `export const VaultBlobType = {` in the generated API client). The enclosing
+  declaration is read from git's hunk header (`hunkPattern`), so a member added
+  to any of the client's other enums does not fire.
+- **A consumer names its members**. Inside the checker's value roots, that is
+  the enum named (`VaultBlobType.Tasks`) or one of its values used as a
+  property name or string literal (`data.tasks`, `'tasks'`). That is the shape
+  `envelopeFromLocalVault` had, and it never wrote the enum's name. Anywhere
+  else under `apps/**` or `libs/**`, only the enum named counts, because
+  `.tasks` means something else there.
 
-The guarded enums are the ones the enum fan-out checker guards, listed in
-`tools/scripts/lib/enum-fanout-guarded.mjs`. The trigger names the enum in its
-regexes, because a regex cannot import that list. The review test suite reads
-the list and fails if the trigger stops firing on any enum in it. It does not
-assert the reverse.
+Two kinds of file are never a site (`excludePaths`):
 
-A consumer that names the members only as property names (`data.tasks`) and
-never says `VaultBlobType` does not fire on its own. The #537 case fires
-because the same file also names members on the enum. Matching bare member
-values needs the member list at the reviewed head, which a line trigger does
-not have.
+- **Test files.** A test that lists members as fixtures is not a consumer, and
+  a site there could only be answered by a finding anchored in the test file.
+- **The checker's declaration sites.** They list the members because they are
+  the list, and the pinned table's `satisfies` clause ties them back.
+
+The catalogue entry names no enum. It says `"guardedEnums"`, and the loader
+expands that from `tools/scripts/lib/enum-fanout-guarded.mjs`, the list the
+checker reads, into the paths above. The selector reads the member values at
+the reviewed head, not from the tooling tree, because a replay's head can
+predate members the tooling knows. Without values at that head, only the
+enum-named shapes fire.
 
 **Given** `coveringGate` — the enum fan-out checker, on every site.
 
