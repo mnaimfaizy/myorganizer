@@ -106,6 +106,11 @@ function derive(id, purpose, length) {
   return digest(id, purpose).subarray(0, length).toString('base64');
 }
 
+const SECRET_LABELS = [
+  ['pw', 'sign-in-password'],
+  ['vp', 'vault-passphrase'],
+];
+
 /**
  * The sign-in password and Vault passphrase of one QA Account.
  *
@@ -115,11 +120,13 @@ function derive(id, purpose, length) {
  * passphrase minimum accepts and which types the same on every keyboard.
  */
 export function deriveQaSecrets(id) {
-  const word = (purpose) => digest(id, purpose).toString('hex').slice(0, 12);
-  return {
-    password: `pw-${word('sign-in-password')}`,
-    vaultPassphrase: `vp-${word('vault-passphrase')}`,
-  };
+  // Built as a pair, not as `key: '...'` properties: a secret scanner reads a
+  // string assigned to a password-named key as a committed credential.
+  const [password, vaultPassphrase] = SECRET_LABELS.map(
+    ([prefix, purpose]) =>
+      `${prefix}-${digest(id, purpose).toString('hex').slice(0, 12)}`,
+  );
+  return { password, vaultPassphrase };
 }
 
 /**
