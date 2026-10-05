@@ -1,0 +1,21 @@
+{
+  "$comment": "QA Accounts (CONTEXT.md). Public by design: these values open nothing but a local database's fixture users. `yarn qa:accounts:seed` creates them and refuses any database that is not local. Key material is derived from each id by tools/scripts/lib/qa-accounts.mjs and is not written here. See docs/adr/0122-a-qa-accounts-credentials-are-public-fixtures-in-tracked-source.md.",
+  "accounts": [
+    {
+      "id": "primary",
+      "email": "qa-primary@myorganizer.test",
+      "password": "qa-primary-pw1",
+      "vaultPassphrase": "qa-vault-one-1",
+      "firstName": "QA",
+      "lastName": "Primary"
+    },
+    {
+      "id": "secondary",
+      "email": "qa-secondary@myorganizer.test",
+      "password": "qa-second-pw2",
+      "vaultPassphrase": "qa-vault-two-2",
+      "firstName": "QA",
+      "lastName": "Secondary"
+    }
+  ]
+}

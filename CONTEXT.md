@@ -538,6 +538,10 @@ _Avoid_: WIP commit (as the general name), draft commit, savepoint
 The manual verification a human performs for completed work before its Pull Request merges, carrying only what the automated suites do not already prove. Every claim it makes about existing coverage is marked as observed or reconstructed, because a reader trusts it to say what may be skipped. It is composed as an uncommitted working file in `tmp/`, whatever becomes of it afterwards.
 _Avoid_: Test plan, test matrix, QA cycle, verification checklist, regression plan
 
+**QA Account**:
+A User that exists only in a local database, created by the seeder and not by registration, for manual and agent QA. Its sign-in password, Vault passphrase and Recovery Key are public by design: they are plaintext held in tracked source or derived from it, and they open nothing outside a local database. The server holds a QA Account's Vault as Ciphertext, like any other. The User the live logout spec signs in as is not one.
+_Avoid_: Test account, throwaway account, test user, fixture user
+
 **QA Plan Issue**:
 A QA Plan for a PRD Issue, published as a GitHub issue labelled `qa`. Scenarios are checkboxes, closing it is the sign-off, and defects it finds become their own linked issues. A QA Plan for a single issue is not one of these — it stays the uncommitted working file it was composed as.
 _Avoid_: QA ticket, test ticket, validation issue
