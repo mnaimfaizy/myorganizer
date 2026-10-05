@@ -9,8 +9,9 @@ import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
  * The wording is the approved design's (Lists, Groc-Trip-Reverted,
  * Det-UL-Reverted, Groc-Trip-Conflict): a revert says it was not saved, why,
  * and that the row is back on the last saved copy — never that the edit is
- * held anywhere to send later, because the app is online-only and nothing is
+ * queued to send by itself, because the app is online-only and nothing is
  * ([ADR 0107](../../../../../docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md)).
+ * The screen still holds it, and it goes when the User retries or reloads.
  * The design draws only the offline revert; `failed` follows its shape
  * without the cause, which nothing on the device can name.
  *
@@ -74,8 +75,10 @@ export function usePendingVaultEdit<TId extends string = string>(
     [apply],
   );
 
+  // `revertedId` is left as it is: the reload sends the edit, and when that
+  // send fails the note has to land on the same row. Once the reload
+  // succeeds there is no write error, and nothing reads the id.
   const reloadAfterConflict = useCallback((): void => {
-    setRevertedId(null);
     void reload();
   }, [reload]);
 

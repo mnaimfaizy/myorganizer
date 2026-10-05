@@ -20,9 +20,10 @@ The issue was written as if mobile held a Local Vault. It does not ([ADR 0107](0
 
 1. **`pullVaultBlob` is the mobile Vault Pull.** It reads the server's copy and, when handed an unsent envelope, merges the two per record by `VAULT_BLOB_CONVERGE_STRATEGIES`. It writes nothing. `readVaultBlob` stays a plain read for callers that hold no edit.
 2. **Mobile still has one merge and one strategy lookup.** The pull and the push call the same private `converge` in `libs/mobile/feat/vault/src/sync.ts`. ADR 0107 item 3 named `pushVaultBlob` as the one place mobile decides convergence; this ADR widens that to the two entries of that module and nothing else.
-3. **`useVaultBlob.reload` pulls, then sends.** With a failed edit in hand it re-applies the edit to the copy it was made on, pulls, shows the server's copy, and pushes the merge under the ETag just read. A failed send puts the screen back on the server's copy and keeps the edit, as a failed `apply` does. A failed read leaves the edit and its error where they were.
-4. **`promptOnConflict` still fails closed.** A pull of a type pinned to it carries no edit; the hook reports `conflict` and the edit has to be made again. No type is pinned to it today.
-5. **Nothing is persisted.** The edit lives in the hook's memory and ends with the screen, exactly as before. This is not a Local Vault.
+3. **`useVaultBlob.reload` pulls, then sends.** The sequence is `pullAndSendVaultBlob`, a plain function in the same module. With a failed edit in hand it pulls, merges, and pushes the merge under the ETag just read. A failed send puts the screen back on the server's copy and keeps the edit, as a failed `apply` does. A failed read leaves the edit and its error where they were.
+4. **The unsent envelope is the one the edit produced when it was made.** The hook keeps that envelope beside the edit function and hands it to the pull as it stands. It does not run the edit again. Most edits stamp `updatedAt`, or a Deletion Log instant, when they run, so a second run at reload time would date the edit after a deletion another device made in between, and the merge would keep a record it should bury. Retry still runs the edit again, against the copy on screen, as ADR 0107 item 5 describes.
+5. **`promptOnConflict` still fails closed.** A pull of a type pinned to it carries no edit; the hook reports `conflict` and the edit has to be made again. No type is pinned to it today.
+6. **Nothing is persisted.** The edit lives in the hook's memory and ends with the screen, exactly as before. This is not a Local Vault.
 
 ## Considered Options
 
@@ -35,4 +36,5 @@ The issue was written as if mobile held a Local Vault. It does not ([ADR 0107](0
 - An edit that failed offline is sent by the next pull-to-refresh as well as by Retry.
 - After a `conflict`, Reload shows the latest copy with the edit merged into it, rather than without it. The notice copy is unchanged.
 - A record the edit changed is removed by the pull when another device deleted it at or after that change, and kept when the change is newer.
-- The hook's reload wiring has no test: `mobile-feat-vault` has no renderer. `pullVaultBlob` carries the merge behaviour and is tested in `sync.test.ts`.
+- After a `conflict` Reload whose send fails, the note returns to the same row: `usePendingVaultEdit` no longer clears the reverted id before reloading.
+- `pullVaultBlob` and `pullAndSendVaultBlob` are tested in `sync.test.ts`. What remains in the hook is state setting, which has no test because `mobile-feat-vault` has no renderer.

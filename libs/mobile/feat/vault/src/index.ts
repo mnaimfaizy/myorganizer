@@ -17,11 +17,16 @@ export { createVaultApi } from './api';
 export {
   isNetworkError,
   readVaultBlob,
+  pullAndSendVaultBlob,
   pullVaultBlob,
   pushVaultBlob,
   VaultBlobConflictError,
 } from './sync';
-export type { VaultBlobPull, VaultBlobSnapshot } from './sync';
+export type {
+  VaultBlobPull,
+  VaultBlobPullResult,
+  VaultBlobSnapshot,
+} from './sync';
 export { useVaultBlob } from './useVaultBlob';
 export type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
 export {

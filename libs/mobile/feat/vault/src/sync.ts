@@ -39,8 +39,10 @@ export interface VaultBlobSnapshot {
  *   the server moved since this device read it.
  * - `retries-exhausted` — the server moved again under every merged retry.
  *
- * Either way the edit is still in the caller's hands; reloading reads the
- * server's copy and the User can make the edit again.
+ * Either way the edit is still in the caller's hands. A reload pulls the
+ * server's copy and sends a `retries-exhausted` edit merged with it
+ * (`pullAndSendVaultBlob`); a `strategy` edit is not carried and has to be
+ * made again.
  */
 export class VaultBlobConflictError extends Error {
   constructor(
@@ -213,6 +215,58 @@ export async function pullVaultBlob(params: {
       return { server, converged: null };
     }
     throw err;
+  }
+}
+
+/**
+ * How a mobile Vault Pull ended, and the copy to show afterwards.
+ *
+ * - `pulled` — nothing was unsent; `snapshot` is the server's copy.
+ * - `sent` — the unsent edit was merged and its push confirmed; `snapshot` is
+ *   what the server now holds.
+ * - `not-carried` — the type is pinned to `promptOnConflict`; `snapshot` is
+ *   the server's copy and the edit has to be made again.
+ * - `send-failed` — the merge could not be pushed; `snapshot` is the server's
+ *   copy, `error` is why, and the edit is still the caller's to hold.
+ */
+export type VaultBlobPullResult =
+  | { outcome: 'pulled' | 'sent' | 'not-carried'; snapshot: VaultBlobSnapshot }
+  | { outcome: 'send-failed'; snapshot: VaultBlobSnapshot; error: unknown };
+
+/**
+ * A mobile Vault Pull carried through: pull, then send what the pull
+ * converged. It is the whole of what a reload does, kept out of the hook so
+ * it runs without a renderer.
+ *
+ * `onPulled` is called once the server's copy is read and before anything is
+ * sent, so a screen can show the merge while its push is in flight. A read
+ * that fails throws, and nothing about the unsent edit has changed.
+ */
+export async function pullAndSendVaultBlob(params: {
+  vaultApi: VaultApi;
+  masterKey: Uint8Array;
+  type: VaultBlobType;
+  unsent: VaultBlobEnvelope<unknown> | null;
+  onPulled?: (pull: VaultBlobPull) => void;
+}): Promise<VaultBlobPullResult> {
+  const { vaultApi, masterKey, type, unsent } = params;
+  const pull = await pullVaultBlob({ vaultApi, masterKey, type, unsent });
+  params.onPulled?.(pull);
+  const { server, converged } = pull;
+  if (unsent === null) return { outcome: 'pulled', snapshot: server };
+  if (converged === null) return { outcome: 'not-carried', snapshot: server };
+
+  try {
+    const snapshot = await pushVaultBlob({
+      vaultApi,
+      masterKey,
+      type,
+      edited: converged,
+      etag: server.etag,
+    });
+    return { outcome: 'sent', snapshot };
+  } catch (error) {
+    return { outcome: 'send-failed', snapshot: server, error };
   }
 }
 
