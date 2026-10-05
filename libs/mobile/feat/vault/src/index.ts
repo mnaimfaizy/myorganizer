@@ -28,7 +28,11 @@ export type {
   VaultBlobSnapshot,
 } from './sync';
 export { useVaultBlob } from './useVaultBlob';
-export type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
+export type {
+  VaultBlobEdit,
+  VaultBlobReloadOutcome,
+  VaultBlobWriteErrorKind,
+} from './useVaultBlob';
 export {
   usePendingVaultEdit,
   VAULT_WRITE_ERROR_COPY,

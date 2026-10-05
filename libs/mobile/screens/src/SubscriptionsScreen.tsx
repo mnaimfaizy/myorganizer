@@ -128,8 +128,16 @@ export function SubscriptionsScreen(): React.JSX.Element {
     useNavigation<NativeStackNavigationProp<SubscriptionsStackParamList>>();
   const rememberedScroll = useRememberedScroll('Subscriptions');
   const titleCollapse = useLargeTitleCollapse();
-  const { snapshot, loading, loadError, writeError, reload, apply, retry } =
-    useVaultBlob(VaultBlobType.Subscriptions);
+  const {
+    snapshot,
+    loading,
+    loadError,
+    writeError,
+    reload,
+    discard,
+    apply,
+    retry,
+  } = useVaultBlob(VaultBlobType.Subscriptions);
 
   const [filter, setFilter] = useState<SubscriptionListFilter>('active');
   const [newVisible, setNewVisible] = useState(false);
@@ -195,10 +203,22 @@ export function SubscriptionsScreen(): React.JSX.Element {
     [push],
   );
 
+  // Cancelling abandons the draft, including one whose push was refused: it
+  // is dropped here so a later reload does not create it behind the User.
   const cancelNew = useCallback((): void => {
     if (pendingSubscriptionId !== null) return;
+    discard();
     setNewVisible(false);
-  }, [pendingSubscriptionId]);
+  }, [pendingSubscriptionId, discard]);
+
+  // A reload after a conflict sends the refused New Subscription. Once it is
+  // on the server the sheet closes, as it does after a confirmed create — a
+  // draft left up would be created a second time.
+  const reloadNewAfterConflict = useCallback((): void => {
+    void reloadAfterConflict().then((sent) => {
+      if (sent) setNewVisible(false);
+    });
+  }, [reloadAfterConflict]);
 
   const openDetail = useCallback(
     (subscriptionId: string): void => {
@@ -389,7 +409,7 @@ export function SubscriptionsScreen(): React.JSX.Element {
         errorActionLabel={
           writeError === 'conflict' ? newError?.action : undefined
         }
-        onErrorAction={reloadAfterConflict}
+        onErrorAction={reloadNewAfterConflict}
         onCreate={createSubscription}
         onCancel={cancelNew}
       />

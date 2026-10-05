@@ -37,6 +37,17 @@ function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
 }
 
 /**
+ * What a reload left behind, for a screen that has to act on it.
+ *
+ * - `sent` — an edit whose push had failed was merged and is now on the
+ *   server. A sheet still holding that edit's draft closes on this.
+ * - `held` — an edit whose push failed is still held: its send failed again,
+ *   the read failed, or the reload did not run.
+ * - `pulled` — nothing is held.
+ */
+export type VaultBlobReloadOutcome = 'pulled' | 'sent' | 'held';
+
+/**
  * One Vault Blob, readable and editable on mobile.
  *
  * Mobile has no Local Vault, so an edit is applied to what is on screen and
@@ -52,7 +63,9 @@ function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
  * not send both end up on the server. The edit is not run again for this — a
  * second run would stamp it with the time of the reload, and a deletion made
  * elsewhere in between would lose to it. A read that fails leaves the edit
- * and its error where they were.
+ * and its error where they were. `discard` drops a held edit without sending
+ * it, for a screen whose User abandoned it; a later reload then has nothing
+ * to send.
  *
  * `apply` resolves `true` once the edit is on the server and `false` when it
  * is not. One request is in flight at a time: `apply` resolves `false`
@@ -68,7 +81,8 @@ export function useVaultBlob(type: VaultBlobType): {
   loadError: unknown;
   writing: boolean;
   writeError: VaultBlobWriteErrorKind | null;
-  reload: () => Promise<void>;
+  reload: () => Promise<VaultBlobReloadOutcome>;
+  discard: () => void;
   apply: (edit: VaultBlobEdit) => Promise<boolean>;
   retry: () => Promise<boolean>;
 } {
@@ -99,8 +113,10 @@ export function useVaultBlob(type: VaultBlobType): {
     setSnapshot(next);
   }, []);
 
-  const reload = useCallback(async (): Promise<void> => {
-    if (!masterKey || busyRef.current) return;
+  const reload = useCallback(async (): Promise<VaultBlobReloadOutcome> => {
+    if (!masterKey || busyRef.current) {
+      return failedEditRef.current ? 'held' : 'pulled';
+    }
     busyRef.current = true;
     const setBusy = snapshotRef.current ? setRefreshing : setLoading;
     setBusy(true);
@@ -121,12 +137,14 @@ export function useVaultBlob(type: VaultBlobType): {
       show(result.snapshot);
       if (result.outcome === 'send-failed') {
         setWriteError(classifyWriteError(result.error));
-        return;
+        return 'held';
       }
       failedEditRef.current = null;
       setWriteError(result.outcome === 'not-carried' ? 'conflict' : null);
+      return result.outcome === 'sent' ? 'sent' : 'pulled';
     } catch (err) {
       setLoadError(err);
+      return held ? 'held' : 'pulled';
     } finally {
       busyRef.current = false;
       setBusy(false);
@@ -175,6 +193,12 @@ export function useVaultBlob(type: VaultBlobType): {
     [masterKey, vaultApi, type, show],
   );
 
+  const discard = useCallback((): void => {
+    if (busyRef.current) return;
+    failedEditRef.current = null;
+    setWriteError(null);
+  }, []);
+
   const retry = useCallback(async (): Promise<boolean> => {
     const held = failedEditRef.current;
     return held ? apply(held.edit) : false;
@@ -188,6 +212,7 @@ export function useVaultBlob(type: VaultBlobType): {
     writing,
     writeError,
     reload,
+    discard,
     apply,
     retry,
   };

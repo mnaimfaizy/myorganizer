@@ -1,5 +1,9 @@
 import { useCallback, useState } from 'react';
-import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
+import type {
+  VaultBlobEdit,
+  VaultBlobReloadOutcome,
+  VaultBlobWriteErrorKind,
+} from './useVaultBlob';
 
 /**
  * What a refused Vault Push says, and what it offers instead — the one copy
@@ -45,6 +49,8 @@ export const VAULT_WRITE_ERROR_COPY = {
  * One id's worth of Unconfirmed Edit state (CONTEXT.md): which id a screen is
  * showing as pending, and which one was put back after a push failed.
  *
+ * `reloadAfterConflict` resolves `true` when the reload sent the edit.
+ *
  * A screen tracking two independent things — a line and a list-level bulk
  * action, say — calls this twice, once per id space. `apply` itself runs one
  * write at a time, so within one call there is never a second id waiting.
@@ -52,12 +58,12 @@ export const VAULT_WRITE_ERROR_COPY = {
 export function usePendingVaultEdit<TId extends string = string>(
   apply: (edit: VaultBlobEdit) => Promise<boolean>,
   retry: () => Promise<boolean>,
-  reload: () => Promise<void>,
+  reload: () => Promise<VaultBlobReloadOutcome>,
 ): {
   pendingId: TId | null;
   revertedId: TId | null;
   push: (id: TId, edit: VaultBlobEdit) => Promise<boolean>;
-  reloadAfterConflict: () => void;
+  reloadAfterConflict: () => Promise<boolean>;
   retryFailedEdit: () => Promise<void>;
 } {
   const [pendingId, setPendingId] = useState<TId | null>(null);
@@ -75,11 +81,15 @@ export function usePendingVaultEdit<TId extends string = string>(
     [apply],
   );
 
-  // `revertedId` is left as it is: the reload sends the edit, and when that
-  // send fails the note has to land on the same row. Once the reload
-  // succeeds there is no write error, and nothing reads the id.
-  const reloadAfterConflict = useCallback((): void => {
-    void reload();
+  // The reload sends the edit. `revertedId` is kept only while the edit is
+  // still held, so a send that fails again puts its note on the same row, and
+  // an id whose edit is settled cannot mark a row on some later failure.
+  // Resolves `true` when the edit reached the server, which is when a sheet
+  // still showing its draft closes.
+  const reloadAfterConflict = useCallback(async (): Promise<boolean> => {
+    const outcome = await reload();
+    if (outcome !== 'held') setRevertedId(null);
+    return outcome === 'sent';
   }, [reload]);
 
   const retryFailedEdit = useCallback(async (): Promise<void> => {
