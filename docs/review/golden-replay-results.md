@@ -298,6 +298,7 @@ Newest last. "Cases" is the tier replayed, not the whole set.
 | 2026-09-23 | `claude-sonnet-5`   | 2 (`frontier`) | **1 of 2**                  | none — #884 touches only the measurement      |
 | 2026-10-02 | `claude-sonnet-5-5` | 11 (all tiers) | **5 of 8**, 3 clean passes  | enum fan-out obligation (#895), dispatched    |
 | 2026-10-03 | `claude-sonnet-5-5` | 11 (all tiers) | **6 of 8**, 3 clean passes  | same, export case re-pointed at #126's range  |
+| 2026-10-05 | `claude-sonnet-5-5` | 11 (all tiers) | **6 of 8**, 3 clean passes  | same, trigger generated from the checker list |
 
 Cost of the seven-case run: roughly $14 across seven reviewer sessions of 40
 to 60 turns each. Run 46 was one guard case: 56 turns of an 80-turn budget, 26
@@ -784,6 +785,19 @@ cases caught, plus 3 clean passes.
 - **The misses are the same two `frontier` cases as in the previous run:**
   `youtube-run-refresh-gated-on-polled-liveness` and
   `e2e-export-download-read-through-download-path`.
+
+### The generated trigger, same result
+
+The review of #998 found that the trigger named `VaultBlobType` in hand-written
+regexes and missed a consumer that lists members only as property names. The
+trigger is now expanded from the checker's own list, and inside the checker's
+value roots it also matches member values read at the reviewed head. Run
+[37252554904](https://github.com/mnaimfaizy/myorganizer/actions/runs/37252554904)
+(2026-10-05, head `2921046`, dispatched with `tier: all`) replayed the 11
+cases on that trigger. It took 143 turns and $4.84 in total, with no voids.
+The result is unchanged: 6 of 8 pattern cases caught and 3 clean passes. Both
+enum fan-out cases were caught, and the misses are the same two `frontier`
+cases.
 
 ### Recorded runs
 
