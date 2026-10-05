@@ -93,6 +93,22 @@ When executing remotely:
 For Cloud Agent **service ports, Postgres, MailHog, and frontend `PORT=4200`**, follow
 `AGENTS.md` → Cursor Cloud specific instructions. Do not duplicate those env facts here.
 
+### QA Accounts
+
+Sign in as a **QA Account** (`CONTEXT.md`). Do not register a User by hand, and do not keep
+credentials in `tmp/`.
+
+- `yarn qa:accounts:seed` creates the accounts in the local database, each a verified User whose
+  Vault already exists. Run it first in every Setup; it changes nothing when they are already there.
+- `yarn qa:accounts` prints each account's email, password, Vault passphrase and Recovery Key.
+  Read the values from that output when you type them.
+- `primary` is for ordinary scenarios. `secondary` is for a scenario that needs a second User.
+- If the seed reports a Vault Blob as unreadable, or a scenario left the Vault in a state you cannot
+  use, `yarn qa:accounts:seed --restore --account <id>` returns that Vault to empty. It deletes the
+  account's vault data, so say so in the Execution record when you run it.
+- Register by hand only when registration, verification, or first-time Vault creation is the thing
+  under test.
+
 ## Core Rules
 
 - **The residue rule.** Every line you keep must survive one question: _would a passing CI run
@@ -242,6 +258,9 @@ Preconditions: an open Pull Request and branch still apply. If you do not alread
 Follow the plan's Setup exactly. For Cloud Agent environment facts, see Remote / Cloud Agent handoff
 above.
 
+Run `yarn qa:accounts:seed` before the first sign-in, whether or not the plan lists it (see QA
+Accounts above).
+
 If scenarios touch a Recovery Key or vault secret, obey **Vault / crypto scenario hazards** before
 the first unlock attempt.
 
@@ -333,7 +352,8 @@ each with the reason and the tracking issue. Prevents hours lost to known breaka
 
 ## Setup
 Exact commands, ports, services, and accounts needed. Assume a cold machine.
-Include vault/crypto capture steps when scenarios need a Recovery Key.
+Start with `yarn qa:accounts:seed` and name the QA Account each scenario signs in as.
+Include vault/crypto capture steps when scenarios need a Recovery Key other than a QA Account's.
 
 ## Scenarios
 Numbered. Each carries:
