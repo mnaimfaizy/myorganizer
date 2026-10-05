@@ -14,6 +14,8 @@ That had three costs:
 - Reading a credential out of an untracked file is the shape a permission layer exists to refuse. A QA run of PR #999 stopped at "Unlock your Vault" for that reason.
 - The Recovery Key was random, so a recovery scenario needed a capture step, and a damaged Vault could only be thrown away.
 
+Issue #1004 tracks the change.
+
 The repository already commits sign-in fixtures for the live logout Playwright spec (`apps/myorganizer-e2e/src/e2e/helpers/liveAuth.ts`), and every vault spec carries its passphrase as a literal.
 
 ## Decision
