@@ -1,5 +1,10 @@
 import { useCallback, useState } from 'react';
-import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
+import { settleConflictReload } from './unconfirmedEdit';
+import type {
+  VaultBlobEdit,
+  VaultBlobReloadOutcome,
+  VaultBlobWriteErrorKind,
+} from './useVaultBlob';
 
 /**
  * What a refused Vault Push says, and what it offers instead — the one copy
@@ -9,8 +14,9 @@ import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
  * The wording is the approved design's (Lists, Groc-Trip-Reverted,
  * Det-UL-Reverted, Groc-Trip-Conflict): a revert says it was not saved, why,
  * and that the row is back on the last saved copy — never that the edit is
- * held anywhere to send later, because the app is online-only and nothing is
+ * queued to send by itself, because the app is online-only and nothing is
  * ([ADR 0107](../../../../../docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md)).
+ * The screen still holds it, and it goes when the User retries or reloads.
  * The design draws only the offline revert; `failed` follows its shape
  * without the cause, which nothing on the device can name.
  *
@@ -18,7 +24,9 @@ import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
  * merged retry (ADR 0107). No Vault Blob Type is pinned to `promptOnConflict`,
  * so the `strategy` reason is not reached. The way forward is to look, which
  * is why the offer is Reload and not Retry — the other two are ordinary
- * failures and resend the edit.
+ * failures and resend the edit. The reload is a Vault Pull, so it also sends
+ * the edit, merged with what it finds
+ * ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
  */
 export const VAULT_WRITE_ERROR_COPY = {
   conflict: {
@@ -42,6 +50,8 @@ export const VAULT_WRITE_ERROR_COPY = {
  * One id's worth of Unconfirmed Edit state (CONTEXT.md): which id a screen is
  * showing as pending, and which one was put back after a push failed.
  *
+ * `reloadAfterConflict` resolves `true` when the reload sent the edit.
+ *
  * A screen tracking two independent things — a line and a list-level bulk
  * action, say — calls this twice, once per id space. `apply` itself runs one
  * write at a time, so within one call there is never a second id waiting.
@@ -49,12 +59,12 @@ export const VAULT_WRITE_ERROR_COPY = {
 export function usePendingVaultEdit<TId extends string = string>(
   apply: (edit: VaultBlobEdit) => Promise<boolean>,
   retry: () => Promise<boolean>,
-  reload: () => Promise<void>,
+  reload: () => Promise<VaultBlobReloadOutcome>,
 ): {
   pendingId: TId | null;
   revertedId: TId | null;
   push: (id: TId, edit: VaultBlobEdit) => Promise<boolean>;
-  reloadAfterConflict: () => void;
+  reloadAfterConflict: () => Promise<boolean>;
   retryFailedEdit: () => Promise<void>;
 } {
   const [pendingId, setPendingId] = useState<TId | null>(null);
@@ -72,9 +82,11 @@ export function usePendingVaultEdit<TId extends string = string>(
     [apply],
   );
 
-  const reloadAfterConflict = useCallback((): void => {
-    setRevertedId(null);
-    void reload();
+  // The reload sends the edit; `settleConflictReload` says what that leaves.
+  const reloadAfterConflict = useCallback(async (): Promise<boolean> => {
+    const { keepReverted, sent } = settleConflictReload(await reload());
+    if (!keepReverted) setRevertedId(null);
+    return sent;
   }, [reload]);
 
   const retryFailedEdit = useCallback(async (): Promise<void> => {

@@ -10,9 +10,15 @@ and decrypts on device. `pushVaultBlob` is the mobile Vault Push: read-modify-wr
 server under `If-Match`, merging a newer server copy by the pinned strategy in `vault-core` and
 refusing a `promptOnConflict` type — see
 [ADR 0107](../../../../docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md).
-Screens edit through `useVaultBlob`, which reverts a failed push and never holds the edit anywhere
-else. There is still no storage adapter; adding one is a decision to record, not an implementation
-detail to fill in — see
+`pullVaultBlob` is the mobile Vault Pull: it reads the server's copy and merges an edit whose push
+failed into it by the same strategy, so a reload does not drop that edit — see
+[ADR 0121](../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md).
+Screens edit through `useVaultBlob`, which reverts a failed push and holds that edit in memory
+only: a retry or a reload sends it, `discard` drops it, and it is never persisted. What that hook
+decides lives in `createVaultBlobController`, and what a screen decides from a reload's outcome in
+`unconfirmedEdit.ts` — plain modules with no React import, so they are tested in this lib's node
+Jest project; put new hook logic there, not in the hook. There is still no storage adapter; adding
+one is a decision to record, not an implementation detail to fill in — see
 [ADR 0047](../../../../docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md).
 
 `crypto.ts` has a `crypto.web.ts` platform variant. Metro never selects it, so iOS and Android
@@ -40,7 +46,8 @@ as `crypto.ts` does, so the web target has one copy of them.
 
 - Keep plaintext and the Master Key in device memory while unlocked.
 - Reuse `vault-core` types and the same ciphertext blob contract as the web vault.
-- Decide convergence only in `pushVaultBlob`, from `VAULT_BLOB_CONVERGE_STRATEGIES`. Express an edit
+- Decide convergence only in `sync.ts`'s `converge`, which `pushVaultBlob` and `pullVaultBlob` both
+  call, from `VAULT_BLOB_CONVERGE_STRATEGIES`. Express an edit
   as a function of the envelope (`putVaultRecord`, `deleteVaultRecord`) so a retry and a merge can
   re-apply it; a delete must write the Deletion Log, not just drop the record.
 

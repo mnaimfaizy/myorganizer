@@ -39,8 +39,10 @@ export interface VaultBlobSnapshot {
  *   the server moved since this device read it.
  * - `retries-exhausted` — the server moved again under every merged retry.
  *
- * Either way the edit is still in the caller's hands; reloading reads the
- * server's copy and the User can make the edit again.
+ * Either way the edit is still in the caller's hands. A reload pulls the
+ * server's copy and sends a `retries-exhausted` edit merged with it
+ * (`pullAndSendVaultBlob`); a `strategy` edit is not carried and has to be
+ * made again.
  */
 export class VaultBlobConflictError extends Error {
   constructor(
@@ -65,13 +67,15 @@ function httpStatus(error: unknown): number | undefined {
 // Re-exported for existing callers. `networkError.ts` is the module without a
 // react-native-quick-crypto import, so a caller outside this feature can
 // depend on it and stay loadable in a plain Node Jest environment.
-export { isNetworkError } from './networkError';
+import { isNetworkError } from './networkError';
+
+export { isNetworkError };
 
 /**
  * Reads one Vault Blob and decrypts it on device with the Master Key.
  *
- * A read, not a Vault Pull: mobile keeps no Local Vault, so nothing is
- * converged on the way in — the result is simply what the server holds.
+ * A read, not a Vault Pull: nothing is converged on the way in — the result
+ * is simply what the server holds. `pullVaultBlob` is the pull.
  *
  * A server with no blob of this type (404) reads as an empty envelope with no
  * ETag, so an edit made against it writes the first copy. Every other failure
@@ -165,6 +169,166 @@ function converge(
     throw new VaultBlobConflictError(type, 'strategy');
   }
   return strategy.merge(local, remote);
+}
+
+/**
+ * What a mobile Vault Pull found: the server's copy, and what an edit this
+ * device has not sent becomes against it.
+ *
+ * `converged` is `null` when no unsent edit was handed in, and when the blob
+ * type's pinned strategy is `promptOnConflict` — the edit is then not carried
+ * and has to be made again. Otherwise it is an envelope the server has not
+ * seen, and it is the caller's to send under `server.etag`.
+ */
+export interface VaultBlobPull {
+  server: VaultBlobSnapshot;
+  converged: VaultBlobEnvelope<unknown> | null;
+}
+
+/**
+ * Reads one Vault Blob and converges it with an edit this device has not
+ * sent — the mobile Vault Pull
+ * ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
+ *
+ * Mobile keeps no Local Vault, so the only thing an arriving copy can
+ * discard is an edit whose push failed. `unsent` is that edit applied to the
+ * envelope it was made on. It is merged per record with the server's copy by
+ * the same pinned strategy a push reads, so the edit survives the pull, and a
+ * record another device deleted since stays deleted. A server holding no
+ * blob has nothing to merge against, and the edit stands as it is.
+ *
+ * Nothing is written. Throws whatever `readVaultBlob` throws.
+ */
+export async function pullVaultBlob(params: {
+  vaultApi: VaultApi;
+  masterKey: Uint8Array;
+  type: VaultBlobType;
+  unsent: VaultBlobEnvelope<unknown> | null;
+}): Promise<VaultBlobPull> {
+  const { vaultApi, masterKey, type, unsent } = params;
+  const server = await readVaultBlob({ vaultApi, masterKey, type });
+  if (unsent === null) return { server, converged: null };
+  if (server.etag === null) return { server, converged: unsent };
+
+  try {
+    return { server, converged: converge(type, unsent, server.envelope) };
+  } catch (err) {
+    if (err instanceof VaultBlobConflictError) {
+      return { server, converged: null };
+    }
+    throw err;
+  }
+}
+
+/**
+ * How a mobile Vault Pull ended, and the copy to show afterwards.
+ *
+ * - `pulled` — nothing was unsent; `snapshot` is the server's copy.
+ * - `sent` — the unsent edit was merged and its push confirmed; `snapshot` is
+ *   what the server now holds.
+ * - `not-carried` — the type is pinned to `promptOnConflict`; `snapshot` is
+ *   the server's copy and the edit has to be made again.
+ * - `send-failed` — the merge could not be pushed; `snapshot` is the server's
+ *   copy, `error` is why, and the edit is still the caller's to hold.
+ */
+export type VaultBlobPullResult =
+  | { outcome: 'pulled' | 'sent' | 'not-carried'; snapshot: VaultBlobSnapshot }
+  | { outcome: 'send-failed'; snapshot: VaultBlobSnapshot; error: unknown };
+
+/**
+ * A mobile Vault Pull carried through: pull, then send what the pull
+ * converged. It is the whole of what a reload does, kept out of the hook so
+ * it runs without a renderer.
+ *
+ * `onPulled` is called once the server's copy is read and before anything is
+ * sent, so a screen can show the merge while its push is in flight. A read
+ * that fails throws, and nothing about the unsent edit has changed.
+ */
+export async function pullAndSendVaultBlob(params: {
+  vaultApi: VaultApi;
+  masterKey: Uint8Array;
+  type: VaultBlobType;
+  unsent: VaultBlobEnvelope<unknown> | null;
+  onPulled?: (pull: VaultBlobPull) => void;
+}): Promise<VaultBlobPullResult> {
+  const { vaultApi, masterKey, type, unsent } = params;
+  const pull = await pullVaultBlob({ vaultApi, masterKey, type, unsent });
+  params.onPulled?.(pull);
+  const { server, converged } = pull;
+  if (unsent === null) return { outcome: 'pulled', snapshot: server };
+  if (converged === null) return { outcome: 'not-carried', snapshot: server };
+
+  try {
+    const snapshot = await pushVaultBlob({
+      vaultApi,
+      masterKey,
+      type,
+      edited: converged,
+      etag: server.etag,
+    });
+    return { outcome: 'sent', snapshot };
+  } catch (error) {
+    return { outcome: 'send-failed', snapshot: server, error };
+  }
+}
+
+/**
+ * Why the last edit did not reach the server. The edit was reverted on
+ * screen; it was never kept anywhere else.
+ *
+ * - `conflict` — another device kept changing the blob under this one's
+ *   merged retries. Reloading reads the server's copy and sends the edit
+ *   merged with it.
+ * - `network` — the server could not be reached. Retrying resends the edit.
+ * - `failed` — anything else. Retrying resends the edit.
+ *
+ * Until a retry or a reload sends it, the edit is held by the hook that made
+ * it and nowhere else.
+ */
+export type VaultBlobWriteErrorKind = 'conflict' | 'network' | 'failed';
+
+export function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
+  if (err instanceof VaultBlobConflictError) return 'conflict';
+  return isNetworkError(err) ? 'network' : 'failed';
+}
+
+/**
+ * What a reload left behind, for a screen that has to act on it.
+ *
+ * - `sent` — an edit whose push had failed was merged and is now on the
+ *   server. A sheet still holding that edit's draft closes on this.
+ * - `held` — an edit whose push failed is still held: its send failed again,
+ *   the read failed, or the reload did not run.
+ * - `pulled` — nothing is held.
+ */
+export type VaultBlobReloadOutcome = 'pulled' | 'sent' | 'held';
+
+/**
+ * What a finished mobile Vault Pull means for the screen that asked for it:
+ * what its reload resolves, the write error to show, and whether the edit it
+ * handed in is still held. Kept beside the pull so the decision runs without
+ * a renderer.
+ *
+ * Only a failed send leaves the edit held. A `not-carried` edit is dropped
+ * and reported as a `conflict`, since the User has to make it again.
+ */
+export function settleVaultBlobPull(result: VaultBlobPullResult): {
+  outcome: VaultBlobReloadOutcome;
+  writeError: VaultBlobWriteErrorKind | null;
+  held: boolean;
+} {
+  if (result.outcome === 'send-failed') {
+    return {
+      outcome: 'held',
+      writeError: classifyWriteError(result.error),
+      held: true,
+    };
+  }
+  return {
+    outcome: result.outcome === 'sent' ? 'sent' : 'pulled',
+    writeError: result.outcome === 'not-carried' ? 'conflict' : null,
+    held: false,
+  };
 }
 
 /** How many PUTs a push makes before it stops merging and asks for a reload. */

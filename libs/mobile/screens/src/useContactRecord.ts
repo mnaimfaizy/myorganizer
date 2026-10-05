@@ -84,7 +84,7 @@ export interface UsageLocationEdits {
 export interface ContactRecord<K extends ContactKind> {
   loading: boolean;
   loadError: unknown;
-  reload: () => Promise<void>;
+  reload: () => Promise<unknown>;
   /** The record, or `null` when the payload holds none — deleted on another
    * device while this screen was open. */
   contact: ContactByKind[K] | null;
@@ -159,7 +159,7 @@ export function useContactRecord<K extends ContactKind>(
   const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
 
   const retryEdit = useCallback((): void => {
-    if (writeError === 'conflict') reloadAfterConflict();
+    if (writeError === 'conflict') void reloadAfterConflict();
     else void retryFailedEdit();
   }, [writeError, reloadAfterConflict, retryFailedEdit]);
 

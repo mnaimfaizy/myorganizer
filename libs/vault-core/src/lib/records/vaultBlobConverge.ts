@@ -86,8 +86,8 @@ function overRecords<TRecord>(
  * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512).
  *
  * The table says which strategy, never when to apply it. Each runtime decides
- * that in exactly one place: `convergeVaultBlob` on web, `pushVaultBlob` on
- * mobile.
+ * that in exactly one place: `convergeVaultBlob` on web, `converge` in
+ * `libs/mobile/feat/vault/src/sync.ts` on mobile.
  */
 export const VAULT_BLOB_CONVERGE_STRATEGIES = {
   addresses: { strategy: 'mergeById', merge: overRecords(mergeAddresses) },

@@ -1,36 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
 
 import { useVaultSession } from './context/VaultSessionContext';
-import {
-  isNetworkError,
-  readVaultBlob,
-  pushVaultBlob,
-  VaultBlobConflictError,
-  type VaultBlobSnapshot,
+import type {
+  VaultBlobReloadOutcome,
+  VaultBlobSnapshot,
+  VaultBlobWriteErrorKind,
 } from './sync';
+import {
+  createVaultBlobController,
+  INITIAL_VAULT_BLOB_STATE,
+  type VaultBlobController,
+  type VaultBlobEdit,
+  type VaultBlobState,
+} from './vaultBlobController';
 
-/** One edit to a Vault Blob, as a function of the envelope it applies to. */
-export type VaultBlobEdit = (
-  envelope: VaultBlobEnvelope<unknown>,
-) => VaultBlobEnvelope<unknown>;
-
-/**
- * Why the last edit did not reach the server. The edit was reverted on
- * screen; it was never kept anywhere else.
- *
- * - `conflict` — another device changed the blob in a way this one will not
- *   merge. Reloading shows the server's copy; the edit has to be made again.
- * - `network` — the server could not be reached. Retrying resends the edit.
- * - `failed` — anything else. Retrying resends the edit.
- */
-export type VaultBlobWriteErrorKind = 'conflict' | 'network' | 'failed';
-
-function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
-  if (err instanceof VaultBlobConflictError) return 'conflict';
-  return isNetworkError(err) ? 'network' : 'failed';
-}
+export type { VaultBlobEdit, VaultBlobReloadOutcome, VaultBlobWriteErrorKind };
 
 /**
  * One Vault Blob, readable and editable on mobile.
@@ -41,12 +26,27 @@ function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
  * confirmed and `writeError` says why; `retry` sends the same edit again. An
  * edit is never held anywhere but this hook's state, and never outlives it.
  *
+ * `reload` is the mobile Vault Pull ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
+ * An edit whose push failed is not dropped by it: the envelope that edit
+ * produced when the User made it is merged per record with the copy that
+ * arrives and sent, so what another device changed and what this one could
+ * not send both end up on the server. The edit is not run again for this — a
+ * second run would stamp it with the time of the reload, and a deletion made
+ * elsewhere in between would lose to it. A read that fails leaves the edit
+ * and its error where they were. `discard` drops a held edit without sending
+ * it, for a screen whose User abandoned it; a later reload then has nothing
+ * to send.
+ *
  * `apply` resolves `true` once the edit is on the server and `false` when it
  * is not. One request is in flight at a time: `apply` resolves `false`
  * without doing anything while a read or a write is running, and `reload`
  * does nothing while a write is, so neither can show a copy the other has
  * already moved past. `reload` shows `loading` only when there is nothing on
  * screen yet; re-reading over a list shows `refreshing` instead.
+ *
+ * All of that is decided in `createVaultBlobController`, which has no React
+ * in it and is tested on its own. This hook hands it the session and renders
+ * the state it reports.
  */
 export function useVaultBlob(type: VaultBlobType): {
   snapshot: VaultBlobSnapshot | null;
@@ -55,103 +55,41 @@ export function useVaultBlob(type: VaultBlobType): {
   loadError: unknown;
   writing: boolean;
   writeError: VaultBlobWriteErrorKind | null;
-  reload: () => Promise<void>;
+  reload: () => Promise<VaultBlobReloadOutcome>;
+  discard: () => void;
   apply: (edit: VaultBlobEdit) => Promise<boolean>;
   retry: () => Promise<boolean>;
 } {
   const { masterKey, vaultApi } = useVaultSession();
+  const [state, setState] = useState<VaultBlobState>(INITIAL_VAULT_BLOB_STATE);
 
-  const [snapshot, setSnapshot] = useState<VaultBlobSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<unknown>(null);
-  const [writing, setWriting] = useState(false);
-  const [writeError, setWriteError] = useState<VaultBlobWriteErrorKind | null>(
-    null,
-  );
+  // Read by the controller at the start of each call, so one controller —
+  // and the edit it may be holding — outlives a change of Master Key.
+  const sessionRef = useRef({ vaultApi, masterKey, type });
+  useEffect(() => {
+    sessionRef.current = { vaultApi, masterKey, type };
+  });
 
-  // Read by the callbacks below so an edit always applies to the newest copy,
-  // not to whichever one a closure captured.
-  const snapshotRef = useRef<VaultBlobSnapshot | null>(null);
-  const busyRef = useRef(false);
-  const failedEditRef = useRef<VaultBlobEdit | null>(null);
-
-  const show = useCallback((next: VaultBlobSnapshot | null): void => {
-    snapshotRef.current = next;
-    setSnapshot(next);
-  }, []);
-
-  const reload = useCallback(async (): Promise<void> => {
-    if (!masterKey || busyRef.current) return;
-    busyRef.current = true;
-    const setBusy = snapshotRef.current ? setRefreshing : setLoading;
-    setBusy(true);
-    setLoadError(null);
-    setWriteError(null);
-    failedEditRef.current = null;
-    try {
-      show(await readVaultBlob({ vaultApi, masterKey, type }));
-    } catch (err) {
-      setLoadError(err);
-    } finally {
-      busyRef.current = false;
-      setBusy(false);
-    }
-  }, [masterKey, vaultApi, type, show]);
+  const controllerRef = useRef<VaultBlobController | null>(null);
+  if (controllerRef.current === null) {
+    controllerRef.current = createVaultBlobController({
+      getSession: () => sessionRef.current,
+      onState: setState,
+    });
+  }
+  const controller = controllerRef.current;
 
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    void controller.reload();
+  }, [controller, masterKey, vaultApi, type]);
 
+  const reload = useCallback(() => controller.reload(), [controller]);
+  const discard = useCallback(() => controller.discard(), [controller]);
   const apply = useCallback(
-    async (edit: VaultBlobEdit): Promise<boolean> => {
-      const base = snapshotRef.current;
-      if (!masterKey || !base || busyRef.current) return false;
-
-      busyRef.current = true;
-      setWriting(true);
-      setWriteError(null);
-      failedEditRef.current = null;
-      try {
-        const edited = edit(base.envelope);
-        show({ envelope: edited, etag: base.etag });
-        show(
-          await pushVaultBlob({
-            vaultApi,
-            masterKey,
-            type,
-            edited,
-            etag: base.etag,
-          }),
-        );
-        return true;
-      } catch (err) {
-        show(base);
-        failedEditRef.current = edit;
-        setWriteError(classifyWriteError(err));
-        return false;
-      } finally {
-        busyRef.current = false;
-        setWriting(false);
-      }
-    },
-    [masterKey, vaultApi, type, show],
+    (edit: VaultBlobEdit) => controller.apply(edit),
+    [controller],
   );
+  const retry = useCallback(() => controller.retry(), [controller]);
 
-  const retry = useCallback(async (): Promise<boolean> => {
-    const edit = failedEditRef.current;
-    return edit ? apply(edit) : false;
-  }, [apply]);
-
-  return {
-    snapshot,
-    loading,
-    refreshing,
-    loadError,
-    writing,
-    writeError,
-    reload,
-    apply,
-    retry,
-  };
+  return { ...state, reload, discard, apply, retry };
 }
