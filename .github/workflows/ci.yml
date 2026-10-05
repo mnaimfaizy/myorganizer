@@ -753,6 +753,9 @@ jobs:
       - name: Escape Copy reader gate contracts
         run: corepack yarn escape-copy-reader:test
 
+      - name: QA Account seeder contracts
+        run: corepack yarn qa:accounts:test
+
       # The meta-gate: asserts every check-*.mjs is invoked by some hook or
       # workflow, resolving one level of indirection through the aggregate's
       # manifest. Nine checkers ran nowhere when ADR 0043 was written.

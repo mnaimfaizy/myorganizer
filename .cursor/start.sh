@@ -43,4 +43,7 @@ echo "==> Applying database migrations"
 corepack enable
 corepack yarn nx run backend:migrate
 
+echo "==> Seeding QA Accounts"
+corepack yarn qa:accounts:seed
+
 echo "==> start.sh complete"
