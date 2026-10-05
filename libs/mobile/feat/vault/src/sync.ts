@@ -70,8 +70,8 @@ export { isNetworkError } from './networkError';
 /**
  * Reads one Vault Blob and decrypts it on device with the Master Key.
  *
- * A read, not a Vault Pull: mobile keeps no Local Vault, so nothing is
- * converged on the way in — the result is simply what the server holds.
+ * A read, not a Vault Pull: nothing is converged on the way in — the result
+ * is simply what the server holds. `pullVaultBlob` is the pull.
  *
  * A server with no blob of this type (404) reads as an empty envelope with no
  * ETag, so an edit made against it writes the first copy. Every other failure
@@ -165,6 +165,55 @@ function converge(
     throw new VaultBlobConflictError(type, 'strategy');
   }
   return strategy.merge(local, remote);
+}
+
+/**
+ * What a mobile Vault Pull found: the server's copy, and what an edit this
+ * device has not sent becomes against it.
+ *
+ * `converged` is `null` when no unsent edit was handed in, and when the blob
+ * type's pinned strategy is `promptOnConflict` — the edit is then not carried
+ * and has to be made again. Otherwise it is an envelope the server has not
+ * seen, and it is the caller's to send under `server.etag`.
+ */
+export interface VaultBlobPull {
+  server: VaultBlobSnapshot;
+  converged: VaultBlobEnvelope<unknown> | null;
+}
+
+/**
+ * Reads one Vault Blob and converges it with an edit this device has not
+ * sent — the mobile Vault Pull
+ * ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
+ *
+ * Mobile keeps no Local Vault, so the only thing an arriving copy can
+ * discard is an edit whose push failed. `unsent` is that edit applied to the
+ * envelope it was made on. It is merged per record with the server's copy by
+ * the same pinned strategy a push reads, so the edit survives the pull, and a
+ * record another device deleted since stays deleted. A server holding no
+ * blob has nothing to merge against, and the edit stands as it is.
+ *
+ * Nothing is written. Throws whatever `readVaultBlob` throws.
+ */
+export async function pullVaultBlob(params: {
+  vaultApi: VaultApi;
+  masterKey: Uint8Array;
+  type: VaultBlobType;
+  unsent: VaultBlobEnvelope<unknown> | null;
+}): Promise<VaultBlobPull> {
+  const { vaultApi, masterKey, type, unsent } = params;
+  const server = await readVaultBlob({ vaultApi, masterKey, type });
+  if (unsent === null) return { server, converged: null };
+  if (server.etag === null) return { server, converged: unsent };
+
+  try {
+    return { server, converged: converge(type, unsent, server.envelope) };
+  } catch (err) {
+    if (err instanceof VaultBlobConflictError) {
+      return { server, converged: null };
+    }
+    throw err;
+  }
 }
 
 /** How many PUTs a push makes before it stops merging and asks for a reload. */

@@ -59,6 +59,9 @@ Three facts decided its shape:
    pulls first, so a blob another device created since this one's 404 is
    merged into, not overwritten. The remaining window between that pull and
    the PUT is accepted until the contract carries `If-None-Match: *`.
+
+   > **Superseded in part by [ADR 0121](0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md).** `pullVaultBlob` converges too, through the same `converge` in the same module. A reload no longer drops an edit whose push failed; it merges and sends it.
+
 4. **`promptOnConflict` fails closed on mobile.** No mobile screen writes
    Groceries yet, so there is nothing to build a prompt for. The branch throws
    `VaultBlobConflictError`, and the screen offers Reload. It never keeps

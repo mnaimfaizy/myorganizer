@@ -18,7 +18,9 @@ import type { VaultBlobEdit, VaultBlobWriteErrorKind } from './useVaultBlob';
  * merged retry (ADR 0107). No Vault Blob Type is pinned to `promptOnConflict`,
  * so the `strategy` reason is not reached. The way forward is to look, which
  * is why the offer is Reload and not Retry — the other two are ordinary
- * failures and resend the edit.
+ * failures and resend the edit. The reload is a Vault Pull, so it also sends
+ * the edit, merged with what it finds
+ * ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
  */
 export const VAULT_WRITE_ERROR_COPY = {
   conflict: {

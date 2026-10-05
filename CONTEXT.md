@@ -317,7 +317,7 @@ it will show later, which is earlier than the app going to the background ([ADR 
 _Avoid_: blur screen, screen shield, app switcher mask, lock screen
 
 **Unconfirmed Edit**:
-An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. It is plaintext and client-only: it lives only in memory, never outlives the screen that made it, and reaches the server solely as the Ciphertext its Vault Push sends.
+An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. A reverted edit is still held by the screen that made it, and the next Vault Pull or retry sends it. It is plaintext and client-only: it lives only in memory, never outlives the screen that made it, and reaches the server solely as the Ciphertext its Vault Push sends.
 _Avoid_: pending edit, queued edit, sync state, dirty row
 
 ## Vault
@@ -371,7 +371,7 @@ Sending one changed Vault Blob to the server. Distinct from Vault Reconcile: a p
 _Avoid_: vault sync (unqualified), upload, save to server, backup
 
 **Vault Pull**:
-Taking one Vault Blob from the server and converging it with the Local Vault. The complement of Vault Push, and never a replacement: an arriving Vault Blob is merged against what the device already holds, so a pull cannot discard a local edit the server has not seen.
+Taking one Vault Blob from the server and converging it with the Local Vault. The complement of Vault Push, and never a replacement: an arriving Vault Blob is merged against what the device already holds, so a pull cannot discard a local edit the server has not seen. On mobile, which keeps no Local Vault, the only such edit is an Unconfirmed Edit whose Vault Push failed: a pull merges it with the arriving copy per the pinned strategy and sends the result, and persists nothing ([ADR 0121](docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
 _Avoid_: fetch, download, refresh, sync down
 
 **Vault Pull Pass**:

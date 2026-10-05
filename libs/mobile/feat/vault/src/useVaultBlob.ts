@@ -5,7 +5,7 @@ import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
 import { useVaultSession } from './context/VaultSessionContext';
 import {
   isNetworkError,
-  readVaultBlob,
+  pullVaultBlob,
   pushVaultBlob,
   VaultBlobConflictError,
   type VaultBlobSnapshot,
@@ -20,10 +20,14 @@ export type VaultBlobEdit = (
  * Why the last edit did not reach the server. The edit was reverted on
  * screen; it was never kept anywhere else.
  *
- * - `conflict` — another device changed the blob in a way this one will not
- *   merge. Reloading shows the server's copy; the edit has to be made again.
+ * - `conflict` — another device kept changing the blob under this one's
+ *   merged retries. Reloading reads the server's copy and sends the edit
+ *   merged with it.
  * - `network` — the server could not be reached. Retrying resends the edit.
  * - `failed` — anything else. Retrying resends the edit.
+ *
+ * Until a retry or a reload sends it, the edit is held by the hook that made
+ * it and nowhere else.
  */
 export type VaultBlobWriteErrorKind = 'conflict' | 'network' | 'failed';
 
@@ -40,6 +44,12 @@ function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
  * When the push fails the screen goes back to the last copy the server
  * confirmed and `writeError` says why; `retry` sends the same edit again. An
  * edit is never held anywhere but this hook's state, and never outlives it.
+ *
+ * `reload` is the mobile Vault Pull ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
+ * An edit whose push failed is not dropped by it: the edit is merged per
+ * record with the copy that arrives and sent, so what another device changed
+ * and what this one could not send both end up on the server. A read that
+ * fails leaves the edit where it was.
  *
  * `apply` resolves `true` once the edit is on the server and `false` when it
  * is not. One request is in flight at a time: `apply` resolves `false`
@@ -87,10 +97,44 @@ export function useVaultBlob(type: VaultBlobType): {
     const setBusy = snapshotRef.current ? setRefreshing : setLoading;
     setBusy(true);
     setLoadError(null);
-    setWriteError(null);
-    failedEditRef.current = null;
+    const base = snapshotRef.current;
+    const edit = failedEditRef.current;
     try {
-      show(await readVaultBlob({ vaultApi, masterKey, type }));
+      const { server, converged } = await pullVaultBlob({
+        vaultApi,
+        masterKey,
+        type,
+        unsent: base && edit ? edit(base.envelope) : null,
+      });
+      show(server);
+      setWriteError(null);
+      failedEditRef.current = null;
+      if (!edit) return;
+      if (!converged) {
+        // Pinned to `promptOnConflict`: the edit is not carried.
+        setWriteError('conflict');
+        return;
+      }
+
+      setWriting(true);
+      try {
+        show({ envelope: converged, etag: server.etag });
+        show(
+          await pushVaultBlob({
+            vaultApi,
+            masterKey,
+            type,
+            edited: converged,
+            etag: server.etag,
+          }),
+        );
+      } catch (err) {
+        show(server);
+        failedEditRef.current = edit;
+        setWriteError(classifyWriteError(err));
+      } finally {
+        setWriting(false);
+      }
     } catch (err) {
       setLoadError(err);
     } finally {

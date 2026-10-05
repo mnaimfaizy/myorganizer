@@ -10,6 +10,9 @@ and decrypts on device. `pushVaultBlob` is the mobile Vault Push: read-modify-wr
 server under `If-Match`, merging a newer server copy by the pinned strategy in `vault-core` and
 refusing a `promptOnConflict` type — see
 [ADR 0107](../../../../docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md).
+`pullVaultBlob` is the mobile Vault Pull: it reads the server's copy and merges an edit whose push
+failed into it by the same strategy, so a reload does not drop that edit — see
+[ADR 0121](../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md).
 Screens edit through `useVaultBlob`, which reverts a failed push and never holds the edit anywhere
 else. There is still no storage adapter; adding one is a decision to record, not an implementation
 detail to fill in — see
@@ -40,7 +43,8 @@ as `crypto.ts` does, so the web target has one copy of them.
 
 - Keep plaintext and the Master Key in device memory while unlocked.
 - Reuse `vault-core` types and the same ciphertext blob contract as the web vault.
-- Decide convergence only in `pushVaultBlob`, from `VAULT_BLOB_CONVERGE_STRATEGIES`. Express an edit
+- Decide convergence only in `sync.ts`'s `converge`, which `pushVaultBlob` and `pullVaultBlob` both
+  call, from `VAULT_BLOB_CONVERGE_STRATEGIES`. Express an edit
   as a function of the envelope (`putVaultRecord`, `deleteVaultRecord`) so a retry and a merge can
   re-apply it; a delete must write the Deletion Log, not just drop the record.
 
