@@ -435,7 +435,7 @@ jobs:
             --out "$RUNNER_TEMP/normalized.carried.json"; then
             mv "$RUNNER_TEMP/normalized.carried.json" tmp/code-review/normalized.json
           else
-            echo '::warning title=Finding ids not carried forward::Validating against the previous report failed (see this step's log), so every finding in this run carries a freshly minted id and reads as new.'
+            echo '::warning title=Finding ids not carried forward::Validating against the previous report failed (see the log of this step), so every finding in this run carries a freshly minted id and reads as new.'
           fi
 
       - name: Render the report
