@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { settleConflictReload } from './pendingVaultEdit';
+import { settleConflictReload } from './unconfirmedEdit';
 import type {
   VaultBlobEdit,
   VaultBlobReloadOutcome,

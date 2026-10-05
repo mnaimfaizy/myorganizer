@@ -1,4 +1,4 @@
-import { draftSheetBusy, settleConflictReload } from './pendingVaultEdit';
+import { draftSheetBusy, settleConflictReload } from './unconfirmedEdit';
 
 describe('settleConflictReload', () => {
   it('keeps the note on its row while the edit is still held', () => {

@@ -37,7 +37,7 @@ export {
   usePendingVaultEdit,
   VAULT_WRITE_ERROR_COPY,
 } from './usePendingVaultEdit';
-export { draftSheetBusy, settleConflictReload } from './pendingVaultEdit';
+export { draftSheetBusy, settleConflictReload } from './unconfirmedEdit';
 export { newRecordId } from './recordId';
 export {
   copyConfirmationMessage,

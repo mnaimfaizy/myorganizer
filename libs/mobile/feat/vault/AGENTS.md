@@ -16,7 +16,7 @@ failed into it by the same strategy, so a reload does not drop that edit — see
 Screens edit through `useVaultBlob`, which reverts a failed push and holds that edit in memory
 only: a retry or a reload sends it, `discard` drops it, and it is never persisted. What that hook
 decides lives in `createVaultBlobController`, and what a screen decides from a reload's outcome in
-`pendingVaultEdit.ts` — plain modules with no React import, so they are tested in this lib's node
+`unconfirmedEdit.ts` — plain modules with no React import, so they are tested in this lib's node
 Jest project; put new hook logic there, not in the hook. There is still no storage adapter; adding
 one is a decision to record, not an implementation detail to fill in — see
 [ADR 0047](../../../../docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md).
