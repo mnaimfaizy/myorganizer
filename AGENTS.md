@@ -53,7 +53,7 @@ repository-managed environment in `.cursor/` handles this instead of Docker:
   generated JWT secrets, and generates the Prisma client.
 - `.cursor/start.sh` (per-boot) starts PostgreSQL on port **5453** (matching `.env` and
   `docker-compose.yml`), ensures the role/database exist, starts MailHog (**SMTP 1025 / UI 8025**),
-  and applies Prisma migrations.
+  applies Prisma migrations, and seeds the QA Accounts.
 
 Testing on a Cloud Agent:
 
@@ -64,6 +64,7 @@ Testing on a Cloud Agent:
 - Verify email flows via the MailHog UI/API at `http://localhost:8025` (the app sends to
   `localhost:1025`). Login and refresh require a verified email, so register → read the
   verification email from MailHog → verify → login.
+- To sign in without that round-trip, use a QA Account: `yarn qa:accounts` prints the values.
 - `next dev` rewrites `apps/myorganizer/AGENTS.md` (its `nextjs-agent-rules` block); do not commit
   that incidental change unless it is the point of your work.
 
@@ -116,6 +117,7 @@ Testing on a Cloud Agent:
 - Documented file-ref check: `yarn docs:file-refs:check` (asserts a backticked repo-relative path, or a named `libs/`/`apps/` module, resolves on disk; `docs/research/` is skipped as frozen history; remaining exemptions carry a written reason in `tools/config/doc-file-refs-exemptions.json`). See [ADR 0093](docs/adr/0093-a-markdown-file-ref-is-asserted-against-the-tree.md).
 - Escape Copy reader build: `yarn escape-copy-reader:build` (bundles `apps/escape-copy-reader` into one self-contained HTML file plus `SHA256SUMS.txt` under `dist/escape-copy-reader/`; `.github/workflows/publish-github-release.yml` runs it and attaches both to every GitHub Release). See [ADR 0064](docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md).
 - Escape Copy reader gate: `yarn escape-copy-reader:check` (builds the reader and opens a freshly produced envelope under both secrets, comparing every Vault Blob Type's plaintext, and fails a stale schema version, any network/storage reach, a design-token mismatch, or a checksum that doesn't match the published file; judgments live in `tools/scripts/lib/escape-copy-reader-gate.mjs`, `yarn escape-copy-reader:test` covers them). See [ADR 0064](docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md).
+- QA Accounts: `yarn qa:accounts:seed` creates the local database's QA Accounts as verified users with unlockable vaults, or puts their password and vault meta back (`--restore` also empties the vault; `--account <id>` picks one); `yarn qa:accounts` prints their sign-in values, Recovery Key included. It refuses any database that is not local, and `yarn qa:accounts:test` covers that. See [ADR 0122](docs/adr/0122-a-qa-accounts-credentials-are-public-fixtures-in-tracked-source.md).
 - Mobile platform check: `yarn mobile-platform:check` (parses `apps/mobile` and `libs/mobile` and fails a bare `react-native/…` subpath import, a browser global, or an import of a shared library's main entry point where a `@myorganizer/<lib>/portable` alias exists; `--print` lists what was scanned; exemptions carry a written reason in `tools/config/mobile-platform-exemptions.json`). See [ADR 0103](docs/adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md).
 - Committed Upstream Brief reports: `yarn upstream:briefs:check` (re-validates every structured `*.json` report committed under the brief directory, checking each local citation against the commit the report itself records; `yarn upstream:briefs:test` covers the contract, renderer, CLIs, ledger, and checker). See [ADR 0084](docs/adr/0084-an-upstream-brief-is-anchored-to-what-is-installed-and-accepted-on-checked-evidence.md) and [ADR 0018](docs/adr/0018-upstream-brief-portable-instruction-audit.md); shape and memory in [REPORT.md](.agents/skills/upstream-brief/REPORT.md), [LEDGER.md](.agents/skills/upstream-brief/LEDGER.md), and [SKILL.md](.agents/skills/upstream-brief/SKILL.md).
 - Prisma migration history check: `yarn prisma:migrations:check` (asserts migration directory naming, no duplicate timestamps, a non-empty `migration.sql`, no stray `.sql` file, and lock-file/schema provider agreement; `yarn prisma:migrations:test` covers it). See [ADR 0094](docs/adr/0094-a-prisma-migration-is-gated-on-the-tree-and-against-a-database.md) (the same-timestamp hazard is [ADR 0042](docs/adr/0042-adr-numbers-are-claims-until-merged.md)'s, one layer down).
