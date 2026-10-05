@@ -33,6 +33,7 @@ import { join } from 'node:path';
 
 import { z } from 'zod';
 
+import { GUARDED_ENUMS } from '../lib/enum-fanout-guarded.mjs';
 import { globToRegExp } from '../lib/glob.mjs';
 import { citableLines } from '../lib/source-scan.mjs';
 
@@ -206,11 +207,23 @@ export function assertObligationCatalogue(cat, source = 'obligations') {
           fail(`${where}: ${g.glob}: addedPattern must be a string`);
         compile(g.addedPattern, `${where} (${g.glob})`);
       }
+      if (g.hunkPattern !== undefined) {
+        if (typeof g.hunkPattern !== 'string')
+          fail(`${where}: ${g.glob}: hunkPattern must be a string`);
+        compile(g.hunkPattern, `${where} (${g.glob})`);
+      }
     }
     if (t.addedPattern !== undefined) {
       if (typeof t.addedPattern !== 'string')
         fail(`${where}: trigger.addedPattern must be a string`);
       compile(t.addedPattern, where);
+    }
+    if (t.excludePaths !== undefined) {
+      if (
+        !Array.isArray(t.excludePaths) ||
+        t.excludePaths.some((g) => typeof g !== 'string' || !g)
+      )
+        fail(`${where}: trigger.excludePaths must be an array of globs`);
     }
   }
   return cat;
@@ -234,18 +247,123 @@ export const normalizeCitedFields = (citedFields = []) =>
         : { field: c.field, uncitedWhen: c.uncitedWhen },
   );
 
-export const loadObligationCatalogue = (path = OBLIGATIONS_PATH) =>
-  assertObligationCatalogue(JSON.parse(readFileSync(path, 'utf8')), path);
+/**
+ * The member values of a const-object enum in generated-client form
+ * (`export const X = {` … `Name: 'value',` … `}`), or [] when the source or
+ * the declaration is absent.
+ *
+ * @param {string|null|undefined} source
+ * @param {string} enumName
+ * @returns {string[]}
+ */
+export const enumMemberValues = (source, enumName) => {
+  if (!source) return [];
+  const lines = source.split('\n');
+  const start = lines.findIndex((l) =>
+    l.startsWith(`export const ${enumName} = {`),
+  );
+  if (start === -1) return [];
+  const values = [];
+  for (const line of lines.slice(start + 1)) {
+    if (/^\s*}/.test(line)) break;
+    const m = /^\s*[A-Za-z_$][\w$]*\s*:\s*'([^']*)'/.exec(line);
+    if (m) values.push(m[1]);
+  }
+  return values;
+};
+
+const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Expand a `trigger.guardedEnums` entry into concrete trigger paths, one set
+ * per enum enum:fanout:check guards (ADR 0053). The catalogue states what the
+ * entry is about; which enums those are, where they are defined, and where
+ * their bare values mean them is the checker's list, read here rather than
+ * restated in a regex that can drift from it (#895).
+ *
+ * Per enum, first match wins, so the narrow paths come first:
+ *   1. a member line inside the enum's own declaration, at `definedIn`;
+ *   2. inside each `valueRoot`, the enum named, or one of its values used as a
+ *      property name or string literal — the shape envelopeFromLocalVault had,
+ *      which never wrote the enum's name (#537);
+ *   3. anywhere else under apps/ or libs/, the enum named.
+ *
+ * `membersOf(guard)` supplies the values at the reviewed head. Without them,
+ * shape 2 falls back to the enum-qualified pattern alone.
+ *
+ * @param {object} cat the parsed catalogue
+ * @param {object[]} guarded the checker's list
+ * @param {(guard: object) => string[]} membersOf
+ */
+export const expandGuardedEnums = (cat, guarded, membersOf = () => []) => ({
+  ...cat,
+  obligations: (cat.obligations ?? []).map((o) => {
+    const spec = o.trigger?.guardedEnums;
+    if (spec === undefined) return o;
+    const { guardedEnums: _spec, ...rest } = o.trigger;
+    const facts = { ...spec };
+    const paths = [];
+    for (const g of guarded) {
+      const name = escapeRegExp(g.enum);
+      const qualified = `\\b${name}\\.[A-Z]`;
+      paths.push({
+        glob: g.definedIn,
+        hunkPattern: `^export const ${name} = \\{`,
+        addedPattern: "^\\s*[A-Z][A-Za-z0-9]*: '[^']*',?\\s*$",
+        ...facts,
+      });
+      const values = membersOf(g).map(escapeRegExp);
+      const byValue = values.length
+        ? `${qualified}|\\.(?:${values.join('|')})\\b|['"](?:${values.join('|')})['"]`
+        : qualified;
+      for (const root of g.valueRoots ?? [])
+        paths.push({ glob: `${root}**`, addedPattern: byValue, ...facts });
+      for (const glob of ['apps/**', 'libs/**'])
+        paths.push({ glob, addedPattern: qualified, ...facts });
+    }
+    // A declaration site lists the members because it is the list; the pin's
+    // `satisfies` clause ties it back, so the checker exempts it and so does
+    // this trigger.
+    const excludePaths = [
+      ...(rest.excludePaths ?? []),
+      ...guarded.flatMap((g) => (g.declarationSites ?? []).map((d) => d.path)),
+    ];
+    return { ...o, trigger: { ...rest, paths, excludePaths } };
+  }),
+});
+
+/**
+ * @param {string} [path]
+ * @param {{membersOf?: (guard: object) => string[]}} [options]
+ */
+export const loadObligationCatalogue = (
+  path = OBLIGATIONS_PATH,
+  { membersOf } = {},
+) =>
+  assertObligationCatalogue(
+    expandGuardedEnums(
+      JSON.parse(readFileSync(path, 'utf8')),
+      GUARDED_ENUMS,
+      membersOf,
+    ),
+    path,
+  );
 
 /**
  * Added lines only, with their line numbers in the head file. A removal cannot
  * carry a site the reviewer is asked to inspect at `<head>`, and context lines
  * would fire an obligation on code the diff never touched.
+ *
+ * Each line also carries `context` when git's hunk header names one: the
+ * nearest line above the hunk that starts a declaration. That is how a trigger
+ * tells a member added to one enum from a member added to the next, in a
+ * generated file that declares dozens, without reading the head tree.
  */
 export const parseAddedLines = (diffText) => {
   const byFile = new Map();
   let file = null;
   let lineNo = 0;
+  let context = '';
   for (const raw of diffText.split('\n')) {
     if (raw.startsWith('+++ b/')) {
       file = raw.slice(6);
@@ -254,13 +372,19 @@ export const parseAddedLines = (diffText) => {
       continue;
     }
     if (raw.startsWith('@@')) {
-      const m = /@@ -\d+(?:,\d+)? \+(\d+)/.exec(raw);
+      const m = /@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@ ?(.*)/.exec(raw);
       lineNo = m ? Number(m[1]) : 0;
+      context = m ? m[2].trim() : '';
       continue;
     }
     if (!file) continue;
     if (raw.startsWith('+')) {
-      byFile.get(file).push({ line: lineNo, text: raw.slice(1) });
+      const text = raw.slice(1);
+      byFile
+        .get(file)
+        .push(
+          context ? { line: lineNo, text, context } : { line: lineNo, text },
+        );
       lineNo += 1;
     } else if (raw.startsWith('-') || raw.startsWith('\\')) {
       // a removal or "\ No newline"; neither advances the head line number
@@ -300,11 +424,23 @@ export const selectObligations = ({
               p.addedPattern === undefined
                 ? entryPattern
                 : compile(p.addedPattern, `${o.id} (${p.glob})`),
+            // Matched against the declaration enclosing the hunk, not the
+            // line: a member line alone does not say which enum it is in.
+            hunk:
+              p.hunkPattern === undefined
+                ? null
+                : compile(p.hunkPattern, `${o.id} (${p.glob})`),
             facts: facts(p),
           },
     );
+    // Kept out of every path at once. A site's answer can only be satisfied by
+    // a finding anchored in the site's own file (raisedForSite), so a file the
+    // entry is not about — a test listing members as fixtures — is not noise
+    // but a contradiction the reviewer cannot avoid.
+    const excluded = (o.trigger.excludePaths ?? []).map(globToRegExp);
     const sites = [];
     for (const [file, lines] of addedLines) {
+      if (excluded.some((g) => g.test(file))) continue;
       const rule = rules.find((r) => r.glob.test(file));
       if (!rule) continue;
       if (!rule.pattern) {
@@ -312,7 +448,8 @@ export const selectObligations = ({
         sites.push({ file, line: lines[0]?.line ?? 1, ...rule.facts });
         continue;
       }
-      for (const { line, text } of lines) {
+      for (const { line, text, context = '' } of lines) {
+        if (rule.hunk && !rule.hunk.test(context)) continue;
         if (rule.pattern.test(text)) sites.push({ file, line, ...rule.facts });
       }
     }

@@ -114,6 +114,13 @@
       "axes": ["standards"],
       "cites": "docs/review/REVIEW_CHECKLIST.md"
     },
+    {
+      "id": "obligation-enum-fanout-omits-a-member",
+      "family": "obligation",
+      "title": "A fan-out over a guarded enum covers every member",
+      "axes": ["standards"],
+      "cites": "docs/review/REVIEW_CHECKLIST.md"
+    },
 
     {
       "id": "reach-through-member-added-to-a-set",

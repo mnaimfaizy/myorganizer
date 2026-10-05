@@ -17,6 +17,7 @@ import { writeFileSync } from 'node:fs';
 
 import { cannotRun, isMain, parseArgs } from './cli.mjs';
 import {
+  enumMemberValues,
   loadObligationCatalogue,
   parseAddedLines,
   selectObligations,
@@ -25,17 +26,22 @@ import {
 const USAGE =
   'usage: select-obligations.mjs --base <sha> --head <sha> [--out <path>] [--catalogue <path>]';
 
-export const main = (argv, { run = gitDiff } = {}) => {
+export const main = (argv, { run = gitDiff, read = gitShow } = {}) => {
   const bail = cannotRun('review-obligations-select');
   const { flags } = parseArgs(argv);
   if (!flags.base || !flags.head) bail(USAGE);
   if ('out' in flags && !flags.out) bail('--out needs a path');
 
+  // A guarded enum's member values are read at the reviewed head, never from
+  // the tooling tree: a replay's head predates members the tooling knows.
+  const membersOf = (guard) =>
+    enumMemberValues(read(flags.head, guard.definedIn), guard.enum);
+
   let catalogue;
   try {
     catalogue = flags.catalogue
-      ? loadObligationCatalogue(flags.catalogue)
-      : loadObligationCatalogue();
+      ? loadObligationCatalogue(flags.catalogue, { membersOf })
+      : loadObligationCatalogue(undefined, { membersOf });
   } catch (err) {
     bail(err.message);
   }
@@ -72,5 +78,19 @@ const gitDiff = (base, head) =>
     encoding: 'utf8',
     maxBuffer: 64 * 1024 * 1024,
   });
+
+// A file absent at head is not an error: the enum may postdate the range, and
+// the trigger then falls back to the enum-qualified shapes.
+const gitShow = (head, path) => {
+  try {
+    return execFileSync('git', ['show', `${head}:${path}`], {
+      encoding: 'utf8',
+      maxBuffer: 64 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch {
+    return null;
+  }
+};
 
 if (isMain(import.meta.url)) main(process.argv.slice(2));
