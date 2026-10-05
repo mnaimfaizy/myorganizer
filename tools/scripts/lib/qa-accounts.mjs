@@ -169,6 +169,21 @@ export function vaultMetaMatches(stored, minted) {
   );
 }
 
+/**
+ * What on a stored QA Account's User row is off the fixture: any of
+ * `password`, `verification`, `disabled`. Empty when a seed has nothing to
+ * write, which is what makes a second run change nothing.
+ */
+export function qaUserDrift({ user, passwordMatches }) {
+  const drift = [];
+  if (!passwordMatches) drift.push('password');
+  if (!user.email_verification_timestamp || user.email_verification_token) {
+    drift.push('verification');
+  }
+  if (user.disabled) drift.push('disabled');
+  return drift;
+}
+
 /** Parses the CLI's arguments; `error` names the first one it does not know. */
 export function parseQaAccountsArgs(argv) {
   const [command = 'print', ...rest] = argv;

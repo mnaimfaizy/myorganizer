@@ -31,6 +31,7 @@ import {
   deriveQaKeyMaterial,
   localDatabaseRefusal,
   parseQaAccountsArgs,
+  qaUserDrift,
   readQaAccounts,
   vaultMetaMatches,
 } from './lib/qa-accounts.mjs';
@@ -88,31 +89,50 @@ async function seedAccount({ prisma, mint, bcrypt, account }) {
     throw new Error(`the minted vault for "${account.id}" does not open`);
   }
 
-  const password = await bcrypt.hash(account.password, 10);
-  const name = `${account.firstName} ${account.lastName}`;
-  const user = await prisma.user.upsert({
-    where: { email: account.email },
-    update: {
-      password,
-      email_verification_timestamp: new Date(),
-      email_verification_token: null,
-      disabled: false,
-    },
-    create: {
-      email: account.email,
-      password,
-      first_name: account.firstName,
-      last_name: account.lastName,
-      name,
-      email_verification_timestamp: new Date(),
-      blacklisted_tokens: [],
-    },
-  });
+  const notes = [];
+  let user = await prisma.user.findUnique({ where: { email: account.email } });
+  if (!user) {
+    user = await prisma.user.create({
+      data: {
+        email: account.email,
+        password: await bcrypt.hash(account.password, 10),
+        first_name: account.firstName,
+        last_name: account.lastName,
+        name: `${account.firstName} ${account.lastName}`,
+        email_verification_timestamp: new Date(),
+        blacklisted_tokens: [],
+      },
+    });
+    notes.push('user created');
+  } else {
+    // Only what drifted is written, so a second run changes nothing.
+    const drift = qaUserDrift({
+      user,
+      passwordMatches: await bcrypt.compare(account.password, user.password),
+    });
+    if (drift.length > 0) {
+      await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          ...(drift.includes('password') && {
+            password: await bcrypt.hash(account.password, 10),
+          }),
+          ...(drift.includes('verification') && {
+            email_verification_timestamp: new Date(),
+            email_verification_token: null,
+          }),
+          ...(drift.includes('disabled') && { disabled: false }),
+        },
+      });
+      notes.push(`user ${drift.join(', ')} put back`);
+    } else {
+      notes.push('user unchanged');
+    }
+  }
 
   const stored = await prisma.encryptedVault.findUnique({
     where: { userId: user.id },
   });
-  const notes = [];
   if (!stored) {
     await prisma.encryptedVault.create({ data: { userId: user.id, ...meta } });
     notes.push('vault created');

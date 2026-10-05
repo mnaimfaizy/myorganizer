@@ -8,6 +8,7 @@ import {
   localDatabaseRefusal,
   parseQaAccountsArgs,
   qaAccountsProblem,
+  qaUserDrift,
   readQaAccounts,
   vaultMetaMatches,
 } from './qa-accounts.mjs';
@@ -204,6 +205,45 @@ describe('vaultMetaMatches', () => {
         meta,
       ),
       false,
+    );
+  });
+});
+
+describe('qaUserDrift', () => {
+  const seeded = {
+    email_verification_timestamp: new Date(),
+    email_verification_token: null,
+    disabled: false,
+  };
+
+  it('finds nothing to write on a User still on the fixture', () => {
+    assert.deepEqual(qaUserDrift({ user: seeded, passwordMatches: true }), []);
+  });
+
+  it('names each thing that moved', () => {
+    assert.deepEqual(qaUserDrift({ user: seeded, passwordMatches: false }), [
+      'password',
+    ]);
+    assert.deepEqual(
+      qaUserDrift({
+        user: { ...seeded, email_verification_timestamp: null },
+        passwordMatches: true,
+      }),
+      ['verification'],
+    );
+    assert.deepEqual(
+      qaUserDrift({
+        user: { ...seeded, email_verification_token: 'pending' },
+        passwordMatches: true,
+      }),
+      ['verification'],
+    );
+    assert.deepEqual(
+      qaUserDrift({
+        user: { ...seeded, disabled: true },
+        passwordMatches: false,
+      }),
+      ['password', 'disabled'],
     );
   });
 });
