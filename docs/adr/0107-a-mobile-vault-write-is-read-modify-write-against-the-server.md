@@ -70,12 +70,16 @@ Three facts decided its shape:
 
    > **Superseded in part by [ADR 0113](0113-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md).** Groceries is no longer pinned to `promptOnConflict`, so this branch does not apply to it. The branch still fails closed for any Vault Blob Type that is.
 
+   > **Superseded in part by [ADR 0121](0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md).** After a push whose server copy kept moving under every retry, Reload no longer shows the server's copy without the edit: it merges the edit and sends it. A type pinned to `promptOnConflict` still keeps neither side.
+
 5. **Offline blocks; nothing is held.** A failed push reverts the screen to
    the last server-confirmed copy and says why: a conflict, the network, or
    anything else. Retry re-applies the same edit function to the current
    copy. A typed task title stays in its field until the push lands. The
    edit lives only in memory and never outlives the screen, which keeps ADR
    0047's rule that mobile does not persist vault data.
+
+   > **Superseded in part by [ADR 0121](0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md).** The heading overstates it: the screen holds the failed edit in memory, which is what Retry resends. A reload now sends it too, merged with the server's copy as the edit first produced it, and a screen can discard it. It is still never persisted and never outlives the screen.
 
 ## Consequences
 

@@ -1,24 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
 
 import { useVaultSession } from './context/VaultSessionContext';
-import {
-  classifyWriteError,
-  pullAndSendVaultBlob,
-  pushVaultBlob,
-  settleVaultBlobPull,
-  type VaultBlobReloadOutcome,
-  type VaultBlobSnapshot,
-  type VaultBlobWriteErrorKind,
+import type {
+  VaultBlobReloadOutcome,
+  VaultBlobSnapshot,
+  VaultBlobWriteErrorKind,
 } from './sync';
+import {
+  createVaultBlobController,
+  INITIAL_VAULT_BLOB_STATE,
+  type VaultBlobController,
+  type VaultBlobEdit,
+  type VaultBlobState,
+} from './vaultBlobController';
 
-export type { VaultBlobReloadOutcome, VaultBlobWriteErrorKind };
-
-/** One edit to a Vault Blob, as a function of the envelope it applies to. */
-export type VaultBlobEdit = (
-  envelope: VaultBlobEnvelope<unknown>,
-) => VaultBlobEnvelope<unknown>;
+export type { VaultBlobEdit, VaultBlobReloadOutcome, VaultBlobWriteErrorKind };
 
 /**
  * One Vault Blob, readable and editable on mobile.
@@ -46,6 +43,10 @@ export type VaultBlobEdit = (
  * does nothing while a write is, so neither can show a copy the other has
  * already moved past. `reload` shows `loading` only when there is nothing on
  * screen yet; re-reading over a list shows `refreshing` instead.
+ *
+ * All of that is decided in `createVaultBlobController`, which has no React
+ * in it and is tested on its own. This hook hands it the session and renders
+ * the state it reports.
  */
 export function useVaultBlob(type: VaultBlobType): {
   snapshot: VaultBlobSnapshot | null;
@@ -60,130 +61,35 @@ export function useVaultBlob(type: VaultBlobType): {
   retry: () => Promise<boolean>;
 } {
   const { masterKey, vaultApi } = useVaultSession();
+  const [state, setState] = useState<VaultBlobState>(INITIAL_VAULT_BLOB_STATE);
 
-  const [snapshot, setSnapshot] = useState<VaultBlobSnapshot | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [loadError, setLoadError] = useState<unknown>(null);
-  const [writing, setWriting] = useState(false);
-  const [writeError, setWriteError] = useState<VaultBlobWriteErrorKind | null>(
-    null,
-  );
+  // Read by the controller at the start of each call, so one controller —
+  // and the edit it may be holding — outlives a change of Master Key.
+  const sessionRef = useRef({ vaultApi, masterKey, type });
+  useEffect(() => {
+    sessionRef.current = { vaultApi, masterKey, type };
+  });
 
-  // Read by the callbacks below so an edit always applies to the newest copy,
-  // not to whichever one a closure captured.
-  const snapshotRef = useRef<VaultBlobSnapshot | null>(null);
-  const busyRef = useRef(false);
-  // The edit whose push failed, and the envelope it produced when it was
-  // made. `retry` runs `edit` again; `reload` merges `edited` as it stands.
-  const failedEditRef = useRef<{
-    edit: VaultBlobEdit;
-    edited: VaultBlobEnvelope<unknown>;
-  } | null>(null);
-
-  const show = useCallback((next: VaultBlobSnapshot | null): void => {
-    snapshotRef.current = next;
-    setSnapshot(next);
-  }, []);
-
-  const reload = useCallback(async (): Promise<VaultBlobReloadOutcome> => {
-    if (!masterKey || busyRef.current) {
-      return failedEditRef.current ? 'held' : 'pulled';
-    }
-    busyRef.current = true;
-    const setBusy = snapshotRef.current ? setRefreshing : setLoading;
-    setBusy(true);
-    setLoadError(null);
-    const held = failedEditRef.current;
-    try {
-      const result = await pullAndSendVaultBlob({
-        vaultApi,
-        masterKey,
-        type,
-        unsent: held?.edited ?? null,
-        onPulled: ({ server, converged }) => {
-          if (!converged) return;
-          setWriting(true);
-          show({ envelope: converged, etag: server.etag });
-        },
-      });
-      show(result.snapshot);
-      const settled = settleVaultBlobPull(result);
-      if (!settled.held) failedEditRef.current = null;
-      setWriteError(settled.writeError);
-      return settled.outcome;
-    } catch (err) {
-      setLoadError(err);
-      return held ? 'held' : 'pulled';
-    } finally {
-      busyRef.current = false;
-      setBusy(false);
-      setWriting(false);
-    }
-  }, [masterKey, vaultApi, type, show]);
+  const controllerRef = useRef<VaultBlobController | null>(null);
+  if (controllerRef.current === null) {
+    controllerRef.current = createVaultBlobController({
+      getSession: () => sessionRef.current,
+      onState: setState,
+    });
+  }
+  const controller = controllerRef.current;
 
   useEffect(() => {
-    void reload();
-  }, [reload]);
+    void controller.reload();
+  }, [controller, masterKey, vaultApi, type]);
 
+  const reload = useCallback(() => controller.reload(), [controller]);
+  const discard = useCallback(() => controller.discard(), [controller]);
   const apply = useCallback(
-    async (edit: VaultBlobEdit): Promise<boolean> => {
-      const base = snapshotRef.current;
-      if (!masterKey || !base || busyRef.current) return false;
-
-      busyRef.current = true;
-      setWriting(true);
-      setWriteError(null);
-      failedEditRef.current = null;
-      // Held on a failure as the edit stood when the User made it.
-      let edited = base.envelope;
-      try {
-        edited = edit(base.envelope);
-        show({ envelope: edited, etag: base.etag });
-        show(
-          await pushVaultBlob({
-            vaultApi,
-            masterKey,
-            type,
-            edited,
-            etag: base.etag,
-          }),
-        );
-        return true;
-      } catch (err) {
-        show(base);
-        failedEditRef.current = { edit, edited };
-        setWriteError(classifyWriteError(err));
-        return false;
-      } finally {
-        busyRef.current = false;
-        setWriting(false);
-      }
-    },
-    [masterKey, vaultApi, type, show],
+    (edit: VaultBlobEdit) => controller.apply(edit),
+    [controller],
   );
+  const retry = useCallback(() => controller.retry(), [controller]);
 
-  const discard = useCallback((): void => {
-    if (busyRef.current) return;
-    failedEditRef.current = null;
-    setWriteError(null);
-  }, []);
-
-  const retry = useCallback(async (): Promise<boolean> => {
-    const held = failedEditRef.current;
-    return held ? apply(held.edit) : false;
-  }, [apply]);
-
-  return {
-    snapshot,
-    loading,
-    refreshing,
-    loadError,
-    writing,
-    writeError,
-    reload,
-    discard,
-    apply,
-    retry,
-  };
+  return { ...state, reload, discard, apply, retry };
 }

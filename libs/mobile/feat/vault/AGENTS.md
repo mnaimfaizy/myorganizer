@@ -14,7 +14,8 @@ refusing a `promptOnConflict` type — see
 failed into it by the same strategy, so a reload does not drop that edit — see
 [ADR 0121](../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md).
 Screens edit through `useVaultBlob`, which reverts a failed push and never holds the edit anywhere
-else. There is still no storage adapter; adding one is a decision to record, not an implementation
+else. What that hook decides lives in `createVaultBlobController`, a plain module with no React
+import, so it is tested in this lib's node Jest project; put new hook logic there, not in the hook. There is still no storage adapter; adding one is a decision to record, not an implementation
 detail to fill in — see
 [ADR 0047](../../../../docs/adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md).
 
