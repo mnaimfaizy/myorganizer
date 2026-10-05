@@ -73,6 +73,51 @@ test('validator: --tier pins the classifier output over the envelope, and only a
   assert.equal(run(VALIDATE, [FIXTURE, '--tier']).status, 2);
 });
 
+test('validator: --previous carries an id across runs, and refuses a file that is not a normalized report', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'review-'));
+  const first = join(dir, 'first.json');
+  assert.equal(run(VALIDATE, [FIXTURE, '--out', first]).status, 0);
+  const before = JSON.parse(readFileSync(first, 'utf8'));
+
+  // The next run anchors a multi-line finding one line further in, as a
+  // reviewer does. Alone, that mints a different id; handed the previous
+  // report, the finding is recognised as the one already raised.
+  const report = JSON.parse(readFileSync(FIXTURE, 'utf8'));
+  for (const f of report.findings)
+    if (f.location?.endLine > f.location?.startLine) f.location.startLine += 1;
+  const moved = join(dir, 'moved.json');
+  writeFileSync(moved, JSON.stringify(report));
+  const ids = (args) => {
+    const out = join(dir, 'out.json');
+    const result = run(VALIDATE, [moved, ...args, '--out', out]);
+    assert.equal(result.status, 0, result.stderr);
+    return JSON.parse(readFileSync(out, 'utf8')).findings.map((f) => f.id);
+  };
+  const located = report.findings.filter(
+    (f) => f.location?.endLine > f.location?.startLine,
+  ).length;
+  assert.ok(located > 0, 'the fixture must carry a multi-line finding');
+  assert.deepEqual(
+    ids(['--previous', first]),
+    before.findings.map((f) => f.id),
+  );
+  assert.notDeepEqual(
+    ids([]),
+    before.findings.map((f) => f.id),
+  );
+
+  // A report of another vintage lends nothing and is not an error.
+  const older = join(dir, 'older.json');
+  writeFileSync(older, JSON.stringify({ schemaVersion: 1, findings: [] }));
+  assert.deepEqual(ids(['--previous', older]), ids([]));
+
+  // The raw report carries this schema version and no ids: not normalized.
+  const raw = run(VALIDATE, [moved, '--previous', FIXTURE]);
+  assert.equal(raw.status, 2);
+  assert.match(raw.stderr, /is not a normalized report/);
+  assert.equal(run(VALIDATE, [moved, '--previous']).status, 2);
+});
+
 test('renderer: exit 2 when handed a raw report instead of a normalized one', () => {
   const result = run(RENDER, [FIXTURE]);
   assert.equal(result.status, 2);

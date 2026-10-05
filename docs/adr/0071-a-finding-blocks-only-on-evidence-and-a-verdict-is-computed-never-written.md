@@ -134,6 +134,55 @@ writes it.**
    >
    > `schemaVersion` moves to `3`, for the same reason and with the same two readers.
 
+   > **Amended by issue #940 — an id is carried forward from the previous report, and minted from
+   > `axis + ruleId + file + startLine` only when there is nothing to carry.**
+   > The #724 amendment called what was left of the collision "a repeat of the _same_ rule in one
+   > file — which is what a repeat should mean". Measured, it is not what a repeat means. Of the 36
+   > ids that survived a push in the thirty days to 2026-10-05, 15 labelled a different defect on
+   > the second push than on the first, 20 the same defect, and one could not be told
+   > ([the 2026-10-05 brief](../research/2026-10-05-a-finding-id-is-carried-not-rederived.md)). A
+   > defect fixed and another raised under the same rule in the same file read as one finding
+   > nobody acted on, so the effective-false-positive rate
+   > ([ADR 0079](0079-an-effective-false-positive-is-a-finding-nobody-acted-on.md)) was published
+   > at 9.6% over a window whose hand-labelled rate is about 4.6%, with three of its four rules
+   > over budget there only because of it; and a `Review-ack` written for one finding covered the
+   > next one to take its id.
+   >
+   > No field can be added to the hash to close this, which is why the decision is not "add the
+   > line". The reviewer does not anchor one defect at one line: of the 19 located findings that
+   > genuinely persisted, 8 started at a different line on the next push. Hashing `startLine`, or
+   > the text of that line, reads each of those as fixed and re-raised — among them one declined
+   > blocking finding on five consecutive pushes, which is issue #718 again in a milder form.
+   > Hashing prose is issue #718 exactly. A hash recognises a finding only if the reviewer writes
+   > the same thing twice, and the one thing that distinguishes two findings of one rule in one
+   > file — where they are — is the thing it does not write the same way twice.
+   >
+   > So identity stops being a pure function of one report. The validator is handed the previous
+   > run's normalized report and a finding keeps that report's id when the two share `axis`,
+   > `ruleId`, and `file` **and their line ranges overlap**; each earlier id is lent once, to the
+   > finding sharing the most lines with it. Every other finding is minted an id from
+   > `axis + ruleId + file + startLine`, so two findings of one rule in one file are distinct from
+   > the moment they are raised and fixing one no longer renumbers the other. Replayed over the
+   > same window, overlap agrees with the hand labels on 28 of 35 pairs where the old tuple agreed
+   > on 20.
+   >
+   > This does not feed the reviewer its last report. The first sentence of this item stands: each
+   > run reviews fresh, and the previous report is read by the validator after the reviewer has
+   > exited — the same file, at the same point, that the renderer already read for the strip. It
+   > lends ids and nothing else.
+   >
+   > Three residues, named so that nobody has to rediscover them. The two ranges are line numbers
+   > in two different commits and nothing maps one onto the other, so a push that moves a defect
+   > clear of the lines it was reported at reads as resolved and re-raised: churn, the cheap
+   > direction. Two different defects on overlapping lines are still one finding (4 of the 35).
+   > And an unlocated finding has no lines, so unlocated findings of one rule still pair off in
+   > report order, exactly as before (1 of the 35). A run that is not handed its previous report carries nothing
+   > and reads every finding as new — which is what the interactive skill does unless it passes
+   > `--previous`, and what CI does when the artifact has expired.
+   >
+   > `schemaVersion` moves to `4`, for the same reason and with the same two readers, and now a
+   > third: the validator carries no id out of a report of another version.
+
 7. **Two axes stay two.** Every finding carries `axis: standards | spec`. The prose report renders two
    sections and sorts by severity within each, never across them, so ADR 0017's refusal to rerank one
    axis against the other is preserved in a single array. In the interactive skill, one sub-agent per
@@ -190,9 +239,10 @@ A golden set lives in `tools/config/review-golden-set.json` as expected findings
 `axis + source + rule + file`, where `source` and `rule` are patterns and `file` is a set, so recall is
 a match over expected rather than a hash comparison — and it stays that way, because a case is a
 historical measurement and tightening it to one exact id would score a reviewer that named the defect
-defensibly differently as a miss. The strict-tuple annotation beside each match does hash what the
-validator hashes (`axis + ruleId + file` since item 6's #724 amendment), so an expectation says
-whether it is literal enough to be a tuple by pinning `ruleId`; one that pins none is never strict.
+defensibly differently as a miss. The strict-tuple annotation beside each match compares the fields
+two findings must share to be one (`axis + ruleId + file`, item 6's #724 and #940 amendments), so an
+expectation says whether it is literal enough to be a tuple by pinning `ruleId`; one that pins none
+is never strict.
 It is seeded
 from incidents the repo already documents — the enum fan-out losses behind
 [ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md), the unstyled groceries

@@ -32,9 +32,14 @@
  * stable until recently: free-form `rule` prose put 38 of 38 consecutive
  * reports at zero persisting findings (issue #718), and the `source` that
  * replaced it collapsed twelve Fowler smells into one identity (issue #724).
- * Every identity this module compares is `axis + ruleId + file` at report
- * schema {@link REPORT_SCHEMA_VERSION}; a pair that spans anything older is
- * `incomparable`, never an observation.
+ * And an identity that was stable was still coarser than a finding: of the 36
+ * ids that survived a push in the 2026-10-05 window, 15 labelled a different
+ * defect under the same rule in the same file — 14 read here as a finding
+ * nobody acted on, one as acknowledged (issue #940). An id is now carried forward only onto a
+ * finding of the same axis, rule, and file whose lines overlap the earlier
+ * one's, which the validator decides and this module only reads. Every
+ * identity compared here is at report schema {@link REPORT_SCHEMA_VERSION}; a
+ * pair that spans anything older is `incomparable`, never an observation.
  *
  * Everything here is pure. `measure-noise.mjs` reads git, calls `gh`, and
  * exits.

@@ -1241,15 +1241,20 @@
         <dt>validator</dt>
         <dd id="note-validator">
           Rejects the report whole on any schema violation (ADR 0071 item 5).
-          Derives each finding's id from
-          <code>axis + ruleId + file</code>, line and <code>rule</code>
-          excluded &mdash; <code>rule</code> is prose the reviewer rewrites
-          every run, not a copied citation (ADR 0071 item 6, amended by issue
-          #718). Rejects a <code>ruleId</code> that is not in the bounded
+          Assigns each finding's id after the reviewer has exited, from the
+          previous run's normalized report: a finding keeps that report's id
+          when the two share <code>axis</code>, <code>ruleId</code> and
+          <code>file</code> and their line ranges overlap; every other
+          finding is minted an id from
+          <code>axis + ruleId + file + startLine</code>. The previous report
+          lends ids and nothing else, and one of another schema version lends
+          none. <code>rule</code> stays out of identity &mdash; it is prose
+          the reviewer rewrites every run, not a copied citation (ADR 0071
+          item 6, amended by issues #718, #724, #940). Rejects a <code>ruleId</code> that is not in the bounded
           rule catalogue, or one used on the wrong axis &mdash; and a
           rejected report is rejected whole. An id only means anything
           within one report schema version
-          (<code>REPORT_SCHEMA_VERSION</code>, currently <code>3</code>): a
+          (<code>REPORT_SCHEMA_VERSION</code>, currently <code>4</code>): a
           stored artifact whose <code>schemaVersion</code> does not match
           this run's is not diffable at all &mdash; see Panel E. Computes the
           verdict: any <code>blocking</code> means
@@ -1358,12 +1363,12 @@
         </div>
         <div class="frow gr">
           <div class="fname">location</div>
-          <div class="fdesc">Optional file + line range. Its presence, not its content, decides whether a <code>blocking</code> finding can post as an inline comment (Panel E) or only in the summary.</div>
-          <div class="fclass">GATE READS</div>
+          <div class="fdesc">Optional file + line range. Its presence decides whether a <code>blocking</code> finding can post as an inline comment (Panel E) or only in the summary. Its content is read for identity too: the file is matched, and the line range (<code>startLine</code>..<code>endLine</code>) must overlap the earlier finding's for the id to carry over; <code>startLine</code> is also hashed into a newly minted id.</div>
+          <div class="fclass">GATE READS &middot; IDENTITY</div>
         </div>
         <div class="frow gr">
           <div class="fname">ruleId</div>
-          <div class="fdesc">The one identity field the reviewer chooses rather than copies: one id from a bounded catalogue of five families (<code>tools/config/review-rules.json</code>). The validator rejects an id that is not in the catalogue, and rejects an id used on the wrong axis &mdash; a rejected report is rejected whole. Feeds <code>id</code> below, together with <code>axis</code> and <code>file</code>.</div>
+          <div class="fdesc">The one identity field the reviewer chooses rather than copies: one id from a bounded catalogue of five families (<code>tools/config/review-rules.json</code>). The validator rejects an id that is not in the catalogue, and rejects an id used on the wrong axis &mdash; a rejected report is rejected whole. Matches a finding to the previous run's, together with <code>axis</code> and <code>file</code>, and is hashed into a newly minted <code>id</code> (see <code>id</code> below).</div>
           <div class="fclass">GATE READS &middot; IDENTITY</div>
         </div>
         <div class="frow gr">
@@ -1378,8 +1383,8 @@
         </div>
         <div class="frow gr">
           <div class="fname">id</div>
-          <div class="fdesc">Derived from <code>axis + ruleId + file</code>, line and <code>rule</code> excluded &mdash; never written by the reviewer. Used to diff new / persisting / resolved findings against the previous artifact, and only comparable within one report schema version.</div>
-          <div class="fclass">GATE READS &middot; DERIVED</div>
+          <div class="fdesc">Carried from the previous report when a finding shares its <code>axis</code>, <code>ruleId</code> and <code>file</code> and the line ranges overlap; otherwise minted from <code>axis + ruleId + file + startLine</code>. Never written by the reviewer. Used to diff new / persisting / resolved findings against the previous artifact, and only comparable within one report schema version.</div>
+          <div class="fclass">GATE READS &middot; CARRIED OR MINTED</div>
         </div>
         <div class="frow do">
           <div class="fname">remedy</div>
@@ -1401,18 +1406,23 @@
         Two <i>different</i> rules cited in the same file are two identities
         now: the bounded <code>ruleId</code> discriminates where a free-form
         <code>source</code> used to collapse them (issue #724). What remains
-        a repeat is one rule applied twice &mdash; which is what a repeat
-        should mean. Two residues are worth naming honestly, both still
-        ordered by line and both still costing churn rather than lost
-        feedback: several unlocated <code>spec</code> findings of the same
-        kind all hash the empty <code>file</code>, so they still collide with
-        each other; and several <code>standard-other</code> findings in one
-        file do the same, because the fallback is what a reviewer reaches for
-        when it cannot name the rule. The disambiguator orders those repeats
-        by line and renumbers on the next run, so fixing one of two colliding
-        findings moves the survivor onto the vacated id &mdash; <b>churn, a
-        resolve plus a repost of feedback that is still on the report</b>,
-        not the silent loss the old four-field tuple produced.
+        a repeat is one rule applied twice. Until issue #940 the id was
+        hashed from the rule and file alone, so a defect fixed and another
+        raised under the same rule in the same file read as one finding. Now
+        an earlier id is lent once, to the finding sharing the most lines
+        with it, so fixing one of two same-rule findings in a file does not
+        renumber the survivor onto the vacated id. Four residues are worth
+        naming honestly: (1) the two line ranges are line numbers in two
+        different commits and nothing maps one onto the other, so a push that
+        moves a defect clear of the lines it was reported at reads as
+        resolved and re-raised &mdash; <b>churn, a resolve plus a repost of
+        feedback that is still on the report</b>, not lost feedback; (2) two
+        different defects on overlapping lines are still one finding; (3) an
+        unlocated finding has no lines, so unlocated findings of one rule
+        still pair off by <code>axis</code> and <code>ruleId</code> alone, in
+        report order; (4) a run not handed its previous report carries
+        nothing and reads every finding as new. The reviewer never sees its
+        last report: the validator reads it after the reviewer has exited.
       </p>
       <div class="callout" style="margin-top: 16px">
         <div class="ctitle">The reading test &mdash; for finding identity</div>
@@ -1421,7 +1431,9 @@
           a <code>rule</code> sentence, a <code>summary</code> &mdash; no
           finding changes identity. If it touches <code>axis</code>, the
           chosen <code>ruleId</code>, or the file a finding is located at,
-          every open thread for that finding is orphaned.&rdquo;
+          every open thread for that finding is orphaned. So does a change
+          that makes the reviewer locate a finding on lines that no longer
+          overlap where it was last reported: it gets a new id.&rdquo;
         </blockquote>
       </div>
       <h3 class="small" style="margin: 18px 0 4px">
@@ -1639,7 +1651,7 @@
         findings that carry a <code>location</code>. The strip has two
         forms: a new/persisting/resolved diff against the previous artifact,
         but only when that artifact's <code>schemaVersion</code> matches this
-        run's <code>REPORT_SCHEMA_VERSION</code> (currently <code>3</code>);
+        run's <code>REPORT_SCHEMA_VERSION</code> (currently <code>4</code>);
         otherwise the second form below, because ids minted under a different
         schema version are not comparable at all.
       </p>
@@ -1671,7 +1683,7 @@
         >
         <p class="small" style="margin: 8px 0 0; font-family: var(--mono)">
           No comparable previous run: the stored report is report schema
-          <code>2</code>, this run is <code>3</code>.<br />
+          <code>3</code>, this run is <code>4</code>.<br />
           - finding identities are only comparable within a schema version,
           so nothing below is marked new, persisting, or resolved.
         </p>
@@ -1679,8 +1691,8 @@
       <p class="small muted" style="margin-top: 12px">
         The strip is not the only reader the version scopes: an inline
         thread's marker carries it too, as
-        <code>&lt;!-- code-review:finding:v3:&lt;id&gt; --&gt;</code>
-        (currently <code>3</code>). A thread minted at an earlier version is
+        <code>&lt;!-- code-review:finding:v4:&lt;id&gt; --&gt;</code>
+        (currently <code>4</code>). A thread minted at an earlier version is
         neither reused nor resolved &mdash; it is left for a human, exactly
         like a human's own thread &mdash; because without that, the version
         bump would have stopped the strip's mass auto-resolve and delivered
@@ -1698,8 +1710,8 @@
     <div class="pbody">
       <p>
         <code>tools/config/review-golden-set.json</code> holds expected
-        findings as the same tuples, hashed the same way; recall is set
-        intersection. Replay is a required check on Pull Requests touching the
+        findings as patterns over a finding's axis, source, rule, and file,
+        not as ids; recall is a match over what was expected. Replay is a required check on Pull Requests touching the
         skill, schema, validator, renderer, or workflow. The set is seeded from
         the ADR 0053 and ADR 0065 incidents. The envelope's <code>model</code>
         and <code>durationMs</code> feed the trust ratchet &mdash; how a prompt
@@ -1733,7 +1745,7 @@
     "findingEvidenceKinds": ["executed", "cited", "inferred"],
     "findingAxes": ["standards", "spec"],
     "verdictValues": ["request-changes", "comment", "approve"],
-    "findingIdentityFields": ["axis", "ruleId", "file"],
+    "findingIdentityFields": ["axis", "ruleId", "file", "startLine"],
     "ruleFamilies": [
       "smell",
       "obligation",
@@ -1741,7 +1753,7 @@
       "standard",
       "spec"
     ],
-    "reportSchemaVersion": 3,
+    "reportSchemaVersion": 4,
     "requiredCheckContexts": [
       "Authoritative Lockfile Policy",
       "Secure Install Review",

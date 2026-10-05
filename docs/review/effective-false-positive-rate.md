@@ -127,6 +127,7 @@ next push — and "ignored" is the numerator.
 | ---------- | ------------------------ | -----: | -----------: | ------: | ------------------ | ----------------- |
 | 2026-09-11 | 2026-08-12 to 2026-09-11 |      0 |            0 |       0 | **not measurable** | —                 |
 | 2026-09-28 | 2026-08-28 to 2026-09-27 |    124 |           67 |       6 | **9.0%**           | `standard-other`  |
+| 2026-10-05 | 2026-09-05 to 2026-10-05 |    605 |          281 |      27 | **9.6%**           | four — see below  |
 
 ### The first measurement (2026-09-11)
 
@@ -169,6 +170,35 @@ Taken for issue #925.
 
 The interpretation is in
 [the 2026-09-28 brief](../research/2026-09-28-the-first-trust-measurements-with-gh.md).
+
+### The third measurement (2026-10-05)
+
+Taken for issue #940, and the last at report schema version `3`.
+
+- **9.6% overall**: 520 findings observed across 605 reviewed pushes on 140
+  branches; 281 counted, of which 254 were acted on and 27 ignored; 9
+  acknowledged with `Review-ack`.
+- **Four rules over budget**: `spec-requirement-missing` (9 of 35),
+  `spec-requirement-implemented-wrong` (4 of 31), `standard-other` (3 of 26),
+  and `smell-duplicated-code` (6 of 59).
+- **The window may be incomplete**: 362 of the 605 pushes carry a stored
+  report, and nine pushes' commit messages could not be read.
+- The saved gather is kept out of the tree for size; see #940.
+
+**Read this number as an overstatement.** Every id that survived a push in
+this window was read by hand: of 36, 15 labelled a different defect the second
+time — a defect fixed and another raised under the same rule in the same file.
+Fourteen were counted here as ignored and one as acknowledged. By those labels the rate is about 4.6%, and only
+`spec-requirement-missing` is over budget. The same bias is in the second
+measurement and was not measured there.
+
+It is the last measurement it applies to. From report schema version `4` an
+id is carried forward only onto a finding of the same axis, rule, and file
+whose lines overlap the earlier one's
+([ADR 0071](../adr/0071-a-finding-blocks-only-on-evidence-and-a-verdict-is-computed-never-written.md)
+item 6), and every pair stored before that is `incomparable`, so the next
+entry starts from an empty ledger. The interpretation is in
+[the 2026-10-05 brief](../research/2026-10-05-a-finding-id-is-carried-not-rederived.md).
 
 ## Reproduce
 
