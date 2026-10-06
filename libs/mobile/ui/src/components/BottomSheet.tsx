@@ -16,6 +16,7 @@ import { useReduceMotion } from '../hooks/useReduceMotion';
 import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ColorMode, ThemeColors } from '../theme';
+import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Icon } from './Icon';
 import { SurfaceContext } from './surface';
@@ -164,6 +165,9 @@ function FitSheet({
   const insets = useSafeAreaInsets();
   const { height: windowHeight } = useWindowDimensions();
   const closeFeedback = usePressFeedback('borderless');
+  const closeFocus = useFocusRing();
+  // The scrim is full-bleed, so its ring goes inside the screen edge.
+  const scrimFocus = useFocusRing('inset');
   const dark = theme.mode === 'dark';
   const avoidKeyboard = useAvoidKeyboard();
 
@@ -176,8 +180,14 @@ function FitSheet({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
-        style={[styles.scrim, { backgroundColor: theme.colors.scrim }]}
+        style={[
+          styles.scrim,
+          { backgroundColor: theme.colors.scrim },
+          scrimFocus.ringStyle,
+        ]}
         onPress={onDismiss}
+        onFocus={scrimFocus.onFocus}
+        onBlur={scrimFocus.onBlur}
       />
       <View
         accessibilityViewIsModal
@@ -231,6 +241,8 @@ function FitSheet({
                 accessibilityRole="button"
                 accessibilityLabel="Close"
                 onPress={onDismiss}
+                onFocus={closeFocus.onFocus}
+                onBlur={closeFocus.onBlur}
                 android_ripple={closeFeedback.android_ripple}
                 style={({ pressed }) => [
                   styles.close,
@@ -240,6 +252,7 @@ function FitSheet({
                     borderRadius: theme.radii.full,
                   },
                   closeFeedback.pressedStyle(pressed),
+                  closeFocus.ringStyle,
                 ]}
               >
                 <Icon name="close" size={22} color="popoverForeground" />
@@ -386,6 +399,7 @@ function NavAction({
 }): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback();
+  const focus = useFocusRing();
   return (
     <Pressable
       accessibilityRole="button"
@@ -393,6 +407,8 @@ function NavAction({
       accessibilityState={{ disabled, busy }}
       disabled={disabled}
       onPress={onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
       android_ripple={feedback.android_ripple}
       style={({ pressed }) => [
         styles.navAction,
@@ -404,6 +420,7 @@ function NavAction({
           borderRadius: theme.radii.md,
         },
         feedback.pressedStyle(pressed),
+        focus.ringStyle,
         disabled && !busy && styles.dimmed,
       ]}
     >

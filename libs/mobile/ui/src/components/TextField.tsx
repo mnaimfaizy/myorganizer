@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET, TEXT_SCALE_CAP } from '../metrics';
+import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Glyph } from './glyphs';
 import { Icon, type IconName } from './Icon';
@@ -313,11 +314,15 @@ function Accessory({
 }): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback('borderless');
+  // Inset: an outside ring would run over the field's own edge.
+  const focus = useFocusRing('inset');
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={label}
       onPress={onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
       android_ripple={feedback.android_ripple}
       style={({ pressed }) => [
         styles.accessory,
@@ -327,6 +332,7 @@ function Accessory({
           borderRadius: theme.radii.full,
         },
         feedback.pressedStyle(pressed),
+        focus.ringStyle,
       ]}
     >
       {children}

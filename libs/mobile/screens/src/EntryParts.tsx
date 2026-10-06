@@ -13,6 +13,7 @@ import {
   Icon,
   MIN_TOUCH_TARGET,
   Text,
+  useFocusRing,
   usePressFeedback,
   useTheme,
   type ColorMode,
@@ -134,6 +135,7 @@ export function BackLink({
 }): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback();
+  const focus = useFocusRing();
   return (
     <View style={styles.backRow}>
       <Pressable
@@ -142,6 +144,8 @@ export function BackLink({
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={onPress}
+        onFocus={focus.onFocus}
+        onBlur={focus.onBlur}
         android_ripple={feedback.android_ripple}
         style={({ pressed }) => [
           styles.back,
@@ -154,6 +158,7 @@ export function BackLink({
             borderRadius: theme.radii.md,
           },
           feedback.pressedStyle(pressed),
+          focus.ringStyle,
         ]}
       >
         <Icon name="chevronLeft" size={24} strokeWidth={2.4} />

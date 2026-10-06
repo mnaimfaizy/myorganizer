@@ -10,6 +10,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ThemeColors } from '../theme';
 import type { TypeScaleStep } from '../typeScale';
+import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
@@ -111,6 +112,7 @@ export function InlineNotice({
 }: InlineNoticeProps): React.JSX.Element {
   const theme = useTheme();
   const actionFeedback = usePressFeedback();
+  const actionFocus = useFocusRing();
   const { icon: toneIcon, glyph, text } = TONES[tone];
   const { iconSize, step, panel } = VARIANTS[variant];
 
@@ -162,6 +164,8 @@ export function InlineNotice({
           accessibilityRole="button"
           accessibilityLabel={actionLabel}
           onPress={onAction}
+          onFocus={actionFocus.onFocus}
+          onBlur={actionFocus.onBlur}
           android_ripple={actionFeedback.android_ripple}
           style={({ pressed }) => [
             styles.action,
@@ -174,6 +178,7 @@ export function InlineNotice({
               borderColor: theme.colors.controlEdge,
             },
             actionFeedback.pressedStyle(pressed),
+            actionFocus.ringStyle,
           ]}
         >
           {actionIcon != null && (

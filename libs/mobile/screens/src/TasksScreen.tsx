@@ -46,6 +46,7 @@ import {
   StatusPill,
   Text,
   TextField,
+  useFocusRing,
   useLargeTitleCollapse,
   usePressFeedback,
   useTheme,
@@ -974,6 +975,7 @@ function CollapsedComposer({
 }): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback('bounded');
+  const focus = useFocusRing();
   const hasDraft = draft.trim().length > 0;
 
   return (
@@ -981,6 +983,8 @@ function CollapsedComposer({
       accessibilityRole="button"
       accessibilityLabel={hasDraft ? `Add a task: ${draft}` : 'Add a task'}
       onPress={onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
       android_ripple={feedback.android_ripple}
       style={({ pressed }) => [
         styles.collapsed,
@@ -995,6 +999,7 @@ function CollapsedComposer({
           backgroundColor: theme.colors.card,
         },
         feedback.pressedStyle(pressed),
+        focus.ringStyle,
       ]}
     >
       <Icon name="plus" size={20} strokeWidth={2.4} />
