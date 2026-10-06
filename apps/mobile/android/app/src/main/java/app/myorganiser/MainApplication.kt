@@ -6,6 +6,8 @@ import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
+import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags
+import com.facebook.react.internal.featureflags.ReactNativeNewArchitectureFeatureFlagsDefaults
 import app.myorganiser.appinfo.RNAppInfoPackage
 import app.myorganiser.biometrickeystore.RNBiometricKeystorePackage
 import app.myorganiser.keepawake.RNKeepAwakePackage
@@ -33,5 +35,25 @@ class MainApplication : Application(), ReactApplication {
   override fun onCreate() {
     super.onCreate()
     loadReactNative(this)
+    ReactNativeFeatureFlags.dangerouslyForceOverride(KeyboardFocusFeatureFlags())
   }
+}
+
+/**
+ * React Native's stable feature flags with its custom keyboard focus search turned off.
+ *
+ * With `enableCustomFocusSearchOnClippedElementsAndroid` on, a scroll view second-guesses Android
+ * whenever Tab or Shift+Tab would move focus out of it: it searches its own content again and, if
+ * anything in there counts as "forward", sends focus to that instead. Its test for "forward" also
+ * accepts a control that merely sits further right, however far above. So Tab from the last control
+ * in a scroll view jumped back up to an earlier one whenever something above it reached further
+ * right, and never got to what follows the scroll view: on Tasks it cycled between "Work" and
+ * "Show done" and never reached the composer or the tab bar (#1015).
+ *
+ * The search exists to reach views `removeClippedSubviews` has detached, which nothing in this app
+ * sets. Android's own focus order is the right one here, so the flag is off. `loadReactNative`
+ * has already installed the stable flags and they can be set only once, hence the forced override.
+ */
+private class KeyboardFocusFeatureFlags : ReactNativeNewArchitectureFeatureFlagsDefaults() {
+  override fun enableCustomFocusSearchOnClippedElementsAndroid(): Boolean = false
 }
