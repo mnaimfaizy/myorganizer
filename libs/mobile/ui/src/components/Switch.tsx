@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
+import { useFocusRing } from '../hooks/useFocusRing';
 import { Text } from './Text';
 
 export interface SwitchProps {
@@ -28,6 +29,11 @@ export interface SwitchProps {
  * The platform switch, themed, rather than a drawn one: it is the control
  * every other app on the device uses for this, and its gesture, its animation,
  * and its screen-reader behaviour are the ones the User already knows.
+ *
+ * The focus ring is drawn on a wrapper rather than on the platform switch:
+ * the switch's own bounds are the platform's — a pill on iOS, a box wider
+ * than its track on Android — and a ring following them would be a different
+ * shape on each. The switch reports its focus; the wrapper draws it.
  */
 export function Switch({
   value,
@@ -39,6 +45,7 @@ export function Switch({
   style,
 }: SwitchProps): React.JSX.Element {
   const theme = useTheme();
+  const focus = useFocusRing();
 
   return (
     <View
@@ -54,18 +61,22 @@ export function Switch({
           {hint != null && <Text variant="caption">{hint}</Text>}
         </View>
       )}
-      <RNSwitch
-        accessibilityLabel={accessibilityLabel ?? label}
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-        trackColor={{
-          false: theme.colors.muted,
-          true: theme.colors.primary,
-        }}
-        thumbColor={theme.colors.raisedSurface}
-        ios_backgroundColor={theme.colors.muted}
-      />
+      <View style={[{ borderRadius: theme.radii.full }, focus.ringStyle]}>
+        <RNSwitch
+          accessibilityLabel={accessibilityLabel ?? label}
+          value={value}
+          onValueChange={onValueChange}
+          onFocus={focus.onFocus}
+          onBlur={focus.onBlur}
+          disabled={disabled}
+          trackColor={{
+            false: theme.colors.muted,
+            true: theme.colors.primary,
+          }}
+          thumbColor={theme.colors.raisedSurface}
+          ios_backgroundColor={theme.colors.muted}
+        />
+      </View>
     </View>
   );
 }
