@@ -69,9 +69,10 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 /// only be reached with the arrows.
 ///
 /// It is a runtime override of a React Native method, not an extension point.
-/// Remove it when React Native sets `focusable` on iOS itself, and check it
-/// on every React Native upgrade: if the class or the method is renamed this
-/// does nothing, silently, and #1013 comes back.
+/// Remove it when React Native sets `focusable` on iOS itself. If an upgrade
+/// renames the class or the method there is nothing left to override: a debug
+/// build stops at launch saying so, and a release build carries on without
+/// the shim — which is #1013 again, so the upgrade is where to catch it.
 enum KeyboardFocusShim {
   private static let viewClassName = "RCTViewComponentView"
 
@@ -87,6 +88,9 @@ enum KeyboardFocusShim {
       let method = class_getInstanceMethod(
         viewClass, #selector(getter: UIView.canBecomeFocused))
     else {
+      assertionFailure(
+        "KeyboardFocusShim: \(viewClassName).canBecomeFocused is gone; "
+          + "Full Keyboard Access cannot reach the app's controls (#1013)")
       return
     }
 
@@ -100,6 +104,9 @@ enum KeyboardFocusShim {
     // the method found: setting it would change every UIView in the process.
     let groupSelector = #selector(getter: UIView.focusGroupIdentifier)
     guard let inherited = class_getInstanceMethod(viewClass, groupSelector) else {
+      assertionFailure(
+        "KeyboardFocusShim: \(viewClassName).focusGroupIdentifier is gone; "
+          + "Tab will not stop on every control (#1013)")
       return
     }
     typealias GroupGetter = @convention(c) (UIView, Selector) -> NSString?
@@ -111,10 +118,16 @@ enum KeyboardFocusShim {
       }
       return "app.myorganiser.focus.\(ObjectIdentifier(view).hashValue)" as NSString
     }
-    class_addMethod(
+    let added = class_addMethod(
       viewClass, groupSelector,
       imp_implementationWithBlock(focusGroupIdentifier),
       method_getTypeEncoding(inherited))
+    // False means React Native now defines the method itself, and adding one
+    // would have been ignored.
+    assert(
+      added,
+      "KeyboardFocusShim: \(viewClassName) defines focusGroupIdentifier itself; "
+        + "Tab will not stop on every control (#1013)")
   }
 
   private static func takesFocus(_ view: UIView, viewClass: AnyClass) -> Bool {
