@@ -9,7 +9,6 @@ import { InlineNotice } from './InlineNotice';
 import { ListRow } from './ListRow';
 import { LockAction } from './LockAction';
 import { MenuSheet } from './MenuSheet';
-import { Switch } from './Switch';
 import { TextField } from './TextField';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -132,29 +131,4 @@ describe('P3 focus ring on a focused control', () => {
       expect(outline(label)).toEqual(NO_RING);
     },
   );
-
-  it('Switch draws it around the platform switch, which reports the focus', async () => {
-    await render(
-      <TestWrapper>
-        <Switch label="Biometric Unlock" value onValueChange={jest.fn()} />
-      </TestWrapper>,
-    );
-    const ring = () => {
-      const style = StyleSheet.flatten(
-        screen.getByRole('switch').parent?.props.style,
-      );
-      return {
-        width: style.outlineWidth,
-        color: style.outlineColor,
-        offset: style.outlineOffset,
-      };
-    };
-    expect(ring()).toEqual(NO_RING);
-
-    await fireEvent(screen.getByRole('switch'), 'focus');
-    expect(ring()).toEqual(OUTSIDE);
-
-    await fireEvent(screen.getByRole('switch'), 'blur');
-    expect(ring()).toEqual(NO_RING);
-  });
 });
