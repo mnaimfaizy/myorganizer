@@ -45,6 +45,14 @@ The approved design for the Mobile App v1 ([PRD #908](https://github.com/mnaimfa
 | Motion notes   | [Motion.dc.html](artboards/Motion.dc.html)     | 1440 × 3124 |
 | Platform notes | [Platform.dc.html](artboards/Platform.dc.html) | 1440 × 2300 |
 
+**App icon**
+
+| Artboard | File                                         | Size        |
+| -------- | -------------------------------------------- | ----------- |
+| App icon | [AppIcon.dc.html](artboards/AppIcon.dc.html) | 1440 × 1780 |
+
+The App icon artboard was drawn in this repository for [#945](https://github.com/mnaimfaizy/myorganizer/issues/945), in the export's format, because the canvas had no app-icon artboard at the exported version. It is not on the canvas and so not in `canvas.json`; the next export should carry it across. It states the icon's construction and every colour; the files both platforms ship are generated from the same shield by `yarn mobile:app-icon:generate`.
+
 ### 1 · Entry and unlock
 
 **1 · Login**

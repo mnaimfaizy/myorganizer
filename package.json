@@ -93,6 +93,7 @@
     "escape-copy-reader:build": "node tools/scripts/build-escape-copy-reader.mjs",
     "escape-copy-reader:check": "node tools/scripts/check-escape-copy-reader.mjs",
     "escape-copy-reader:test": "node --test tools/scripts/check-escape-copy-reader.test.mjs",
+    "mobile:app-icon:generate": "node tools/scripts/generate-mobile-app-icon.mjs",
     "mobile-platform:check": "node tools/scripts/check-mobile-platform.mjs",
     "mobile-platform:test": "node --test tools/scripts/check-mobile-platform.test.mjs",
     "prisma:migrations:check": "node tools/scripts/check-prisma-migrations.mjs",
