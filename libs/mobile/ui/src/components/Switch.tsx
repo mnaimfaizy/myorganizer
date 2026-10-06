@@ -35,7 +35,7 @@ export interface SwitchProps {
  * focus listener — and it ignores `focusable`, which only plain views
  * implement, so a wrapper can neither hear the switch's focus nor take it
  * over. A keyboard User sees Android's own halo on the thumb instead. A ring
- * here needs a native change, not more JavaScript (#947).
+ * here needs a native change, not more JavaScript (#1017).
  */
 export function Switch({
   value,
