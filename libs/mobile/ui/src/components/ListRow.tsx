@@ -269,6 +269,50 @@ export interface ListRowProps {
   style?: StyleProp<ViewStyle>;
 }
 
+/** One swipe action. Its own component so that each tile owns its ring. */
+function PanelAction({ action }: { action: SwipeAction }): React.JSX.Element {
+  const theme = useTheme();
+  const focus = useFocusRing('inset');
+  const tone = TONE[action.tone ?? 'neutral'];
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={action.label}
+      onPress={action.onPress}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
+      style={[
+        styles.action,
+        {
+          width: ACTION_WIDTH,
+          gap: theme.spacing.xs,
+          backgroundColor: theme.colors[tone.fill],
+        },
+        focus.ringStyle,
+      ]}
+    >
+      <Icon
+        name={action.icon}
+        size={20}
+        color={tone.text}
+        strokeWidth={tone.stroke}
+      />
+      {/* The sheet sets this at 12/16/600 — `label-caps` without its
+          capitals. It takes `caption` at 600, the nearest step that
+          keeps the case. */}
+      <Text
+        variant="caption"
+        weight="semibold"
+        color={tone.text}
+        numberOfLines={1}
+      >
+        {action.label}
+      </Text>
+    </Pressable>
+  );
+}
+
 function ActionPanel({
   actions,
   side,
@@ -280,43 +324,9 @@ function ActionPanel({
 
   return (
     <View style={[styles.panel, side === 'left' ? styles.left : styles.right]}>
-      {actions.map((action) => {
-        const tone = TONE[action.tone ?? 'neutral'];
-        return (
-          <Pressable
-            key={action.id}
-            accessibilityRole="button"
-            accessibilityLabel={action.label}
-            onPress={action.onPress}
-            style={[
-              styles.action,
-              {
-                width: ACTION_WIDTH,
-                gap: theme.spacing.xs,
-                backgroundColor: theme.colors[tone.fill],
-              },
-            ]}
-          >
-            <Icon
-              name={action.icon}
-              size={20}
-              color={tone.text}
-              strokeWidth={tone.stroke}
-            />
-            {/* The sheet sets this at 12/16/600 — `label-caps` without its
-                capitals. It takes `caption` at 600, the nearest step that
-                keeps the case. */}
-            <Text
-              variant="caption"
-              weight="semibold"
-              color={tone.text}
-              numberOfLines={1}
-            >
-              {action.label}
-            </Text>
-          </Pressable>
-        );
-      })}
+      {actions.map((action) => (
+        <PanelAction key={action.id} action={action} />
+      ))}
     </View>
   );
 }

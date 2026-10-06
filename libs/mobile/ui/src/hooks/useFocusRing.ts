@@ -33,8 +33,10 @@ const OFFSET = {
  * returns: it spread its own Pressability handlers after the caller's props,
  * and its Pressability config carried no `onFocus`/`onBlur`. React Native
  * 0.87's `Pressable` passes both into that config, so the ring is now
- * reachable. It has not been seen on a device with a keyboard attached; until
- * it has, treat the ring as wired rather than as verified.
+ * reachable, and `focusRing.test.tsx` holds it there by firing focus at
+ * rendered controls rather than at this hook. It has not been seen on a
+ * device with a keyboard attached; until it has, treat the ring as wired
+ * rather than as verified.
  */
 export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
   focused: boolean;

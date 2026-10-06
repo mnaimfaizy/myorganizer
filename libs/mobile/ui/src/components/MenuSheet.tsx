@@ -4,6 +4,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ThemeColors } from '../theme';
 import { BottomSheet } from './BottomSheet';
+import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
@@ -118,6 +119,7 @@ function MenuRow({
 }): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback();
+  const focus = useFocusRing('inset');
   const color: keyof ThemeColors = item.destructive
     ? 'errorEdge'
     : 'foreground';
@@ -135,6 +137,8 @@ function MenuRow({
         if (item.keepOpen !== true) onDismiss();
         item.onPress();
       }}
+      onFocus={focus.onFocus}
+      onBlur={focus.onBlur}
       android_ripple={feedback.android_ripple}
       style={({ pressed }) => [
         styles.row,
@@ -147,6 +151,7 @@ function MenuRow({
         },
         last && styles.lastRow,
         feedback.pressedStyle(pressed),
+        focus.ringStyle,
       ]}
     >
       {item.icon != null && <Icon name={item.icon} size={22} color={color} />}

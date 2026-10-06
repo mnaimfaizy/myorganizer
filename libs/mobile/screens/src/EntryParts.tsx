@@ -13,6 +13,7 @@ import {
   Icon,
   MIN_TOUCH_TARGET,
   Text,
+  useFocusRing,
   usePressFeedback,
   useTheme,
   type ColorMode,
@@ -134,6 +135,7 @@ export function BackLink({
 }): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback();
+  const focus = useFocusRing();
   return (
     <View style={styles.backRow}>
       <Pressable
@@ -142,6 +144,8 @@ export function BackLink({
         accessibilityState={{ disabled }}
         disabled={disabled}
         onPress={onPress}
+        onFocus={focus.onFocus}
+        onBlur={focus.onBlur}
         android_ripple={feedback.android_ripple}
         style={({ pressed }) => [
           styles.back,
@@ -154,6 +158,7 @@ export function BackLink({
             borderRadius: theme.radii.md,
           },
           feedback.pressedStyle(pressed),
+          focus.ringStyle,
         ]}
       >
         <Icon name="chevronLeft" size={24} strokeWidth={2.4} />
@@ -205,6 +210,13 @@ export function OrDivider({ label }: { label: string }): React.JSX.Element {
  * sheets pin actions to the foot with a spacer), and moves out of the
  * keyboard's way on both platforms — Android's enforced edge-to-edge leaves
  * `adjustResize` resizing nothing.
+ *
+ * A scroll view clips at its own edge, and a focus ring is drawn 4pt outside
+ * its control, so a control that reaches the column's edge — a full-width
+ * button, a link pulled into the gutter, the first row — lost that side of
+ * its ring. The scroll view therefore spans the `Screen` gutter and gives
+ * the same space back as padding: the column sits where it sat, and the clip
+ * moves out to the screen edge.
  */
 export function EntryScroll({
   children,
@@ -213,11 +225,25 @@ export function EntryScroll({
   children: React.ReactNode;
   contentStyle?: ViewStyle;
 }): React.JSX.Element {
+  const theme = useTheme();
   return (
     <KeyboardAvoidingView style={styles.fill} behavior="padding">
       <ScrollView
-        style={styles.fill}
-        contentContainerStyle={[styles.grow, contentStyle]}
+        style={[
+          styles.fill,
+          {
+            marginHorizontal: -theme.spacing.gutter,
+            marginTop: -theme.spacing.xs,
+          },
+        ]}
+        contentContainerStyle={[
+          styles.grow,
+          {
+            paddingHorizontal: theme.spacing.gutter,
+            paddingTop: theme.spacing.xs,
+          },
+          contentStyle,
+        ]}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >

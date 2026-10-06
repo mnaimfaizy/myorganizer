@@ -6,6 +6,7 @@ import {
   Icon,
   MIN_TOUCH_TARGET,
   Text,
+  useFocusRing,
   usePressFeedback,
   useTheme,
 } from '@myorganizer/mobile/ui';
@@ -161,6 +162,9 @@ export function DateField({
 }: DateFieldProps): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback('bounded');
+  // Both sit inside the field's own edge, so each ring is inset.
+  const valueFocus = useFocusRing('inset');
+  const clearFocus = useFocusRing('inset');
   const picker = useCalendarDatePicker({
     title: label,
     onChange,
@@ -202,6 +206,8 @@ export function DateField({
           accessibilityState={{ disabled }}
           disabled={disabled}
           onPress={open}
+          onFocus={valueFocus.onFocus}
+          onBlur={valueFocus.onBlur}
           android_ripple={feedback.android_ripple}
           style={({ pressed }) => [
             styles.value,
@@ -213,6 +219,7 @@ export function DateField({
               borderRadius: theme.radii.md,
             },
             feedback.pressedStyle(pressed),
+            valueFocus.ringStyle,
           ]}
         >
           <Icon name="calendar" size={20} color="mutedForeground" />
@@ -228,9 +235,16 @@ export function DateField({
             accessibilityRole="button"
             accessibilityLabel={clearLabel ?? `Clear ${label.toLowerCase()}`}
             onPress={() => onChange(null)}
+            onFocus={clearFocus.onFocus}
+            onBlur={clearFocus.onBlur}
             style={[
               styles.clear,
-              { minHeight: MIN_TOUCH_TARGET, minWidth: MIN_TOUCH_TARGET },
+              {
+                minHeight: MIN_TOUCH_TARGET,
+                minWidth: MIN_TOUCH_TARGET,
+                borderRadius: theme.radii.md,
+              },
+              clearFocus.ringStyle,
             ]}
           >
             <Icon name="close" size={20} color="mutedForeground" />

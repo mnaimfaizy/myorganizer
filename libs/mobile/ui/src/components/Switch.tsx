@@ -28,6 +28,14 @@ export interface SwitchProps {
  * The platform switch, themed, rather than a drawn one: it is the control
  * every other app on the device uses for this, and its gesture, its animation,
  * and its screen-reader behaviour are the ones the User already knows.
+ *
+ * It draws no P3 focus ring, and that is the platform's limit rather than an
+ * omission. React Native 0.87's Android switch never reports its focus —
+ * `ReactSwitchManager.addEventEmitters` replaces the step that attaches the
+ * focus listener — and it ignores `focusable`, which only plain views
+ * implement, so a wrapper can neither hear the switch's focus nor take it
+ * over. A keyboard User sees Android's own halo on the thumb instead. A ring
+ * here needs a native change, not more JavaScript (#1017).
  */
 export function Switch({
   value,
