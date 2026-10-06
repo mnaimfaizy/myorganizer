@@ -156,6 +156,48 @@ describe('createVaultBlobController', () => {
     });
   });
 
+  it('does not push an edit that returns the envelope it was given', async () => {
+    const { server, controller, state } = setup({
+      records: [first],
+      deletions: {},
+    });
+    await controller.reload();
+
+    await expect(controller.apply((envelope) => envelope)).resolves.toBe(false);
+
+    expect(server.api.putVaultBlob).not.toHaveBeenCalled();
+    expect(state()).toMatchObject({
+      snapshot: { envelope: { records: [first] }, etag: '"v1"' },
+      writing: false,
+      writeError: 'not-applied',
+    });
+  });
+
+  it('holds nothing for an edit that was not applied', async () => {
+    const { server, controller, state } = setup();
+    await controller.reload();
+    await controller.apply((envelope) => envelope);
+
+    await expect(controller.retry()).resolves.toBe(false);
+    await expect(controller.reload()).resolves.toBe('pulled');
+
+    expect(server.api.putVaultBlob).not.toHaveBeenCalled();
+    expect(state().writeError).toBeNull();
+  });
+
+  it('drops the edit a failed push left held once a later edit is not applied', async () => {
+    const { server, controller } = setup();
+    await controller.reload();
+    server.failWrites = true;
+    await controller.apply(addTask(first));
+    server.failWrites = false;
+
+    await controller.apply((envelope) => envelope);
+
+    await expect(controller.reload()).resolves.toBe('pulled');
+    expect(server.envelope().records).toEqual([]);
+  });
+
   it('resends a failed edit on retry', async () => {
     const { server, controller, state } = setup();
     await controller.reload();

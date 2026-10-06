@@ -14,7 +14,10 @@ refusing a `promptOnConflict` type — see
 failed into it by the same strategy, so a reload does not drop that edit — see
 [ADR 0121](../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md).
 Screens edit through `useVaultBlob`, which reverts a failed push and holds that edit in memory
-only: a retry or a reload sends it, `discard` drops it, and it is never persisted. What that hook
+only: a retry or a reload sends it, `discard` drops it, and it is never persisted. An edit that
+returns the envelope it was given changed nothing, so it is neither pushed nor held and `apply`
+reports it as `not-applied`; an edit function that cannot apply signals that by returning its
+argument, never a copy of it. What that hook
 decides lives in `createVaultBlobController`, and what a screen decides from a reload's outcome in
 `unconfirmedEdit.ts` — plain modules with no React import, so they are tested in this lib's node
 Jest project; put new hook logic there, not in the hook. There is still no storage adapter; adding

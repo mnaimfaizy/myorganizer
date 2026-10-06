@@ -38,7 +38,9 @@ export type { VaultBlobEdit, VaultBlobReloadOutcome, VaultBlobWriteErrorKind };
  * to send.
  *
  * `apply` resolves `true` once the edit is on the server and `false` when it
- * is not. One request is in flight at a time: `apply` resolves `false`
+ * is not. An edit that returns the envelope it was given changed nothing: it
+ * is not pushed and not held, `apply` resolves `false`, and `writeError` is
+ * `not-applied`. One request is in flight at a time: `apply` resolves `false`
  * without doing anything while a read or a write is running, and `reload`
  * does nothing while a write is, so neither can show a copy the other has
  * already moved past. `reload` shows `loading` only when there is nothing on

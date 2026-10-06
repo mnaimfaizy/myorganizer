@@ -37,7 +37,11 @@ export {
   useUnconfirmedEdit,
   VAULT_WRITE_ERROR_COPY,
 } from './useUnconfirmedEdit';
-export { draftSheetBusy, settleConflictReload } from './unconfirmedEdit';
+export {
+  draftSheetBusy,
+  recoversByReload,
+  settleConflictReload,
+} from './unconfirmedEdit';
 export { newRecordId } from './recordId';
 export {
   copyConfirmationMessage,

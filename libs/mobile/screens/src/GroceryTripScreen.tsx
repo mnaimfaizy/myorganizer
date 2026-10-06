@@ -27,6 +27,7 @@ import {
   useUnconfirmedEdit,
   useVaultBlob,
   useVaultSession,
+  recoversByReload,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
@@ -495,8 +496,15 @@ export function GroceryTripScreen(): React.JSX.Element {
         : 'normal';
 
   const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
-  const retryLineEdit =
-    writeError === 'conflict' ? reloadAfterConflict : retryFailedEdit;
+  const retryLineEdit = recoversByReload(writeError)
+    ? reloadAfterConflict
+    : retryFailedEdit;
+  // A `not-applied` add was never sent and its reload sends nothing, so the
+  // just-added row goes rather than settling into reading as added.
+  const retryAddedLine = (): void => {
+    if (writeError === 'not-applied') setAddedLine(null);
+    void retryLineEdit();
+  };
 
   const renderLine = (
     line: TripLine,
@@ -709,7 +717,7 @@ export function GroceryTripScreen(): React.JSX.Element {
           message={notice.message}
           actionLabel={notice.action}
           onAction={() =>
-            void (writeError === 'conflict'
+            void (recoversByReload(writeError)
               ? reloadAfterBulkConflict()
               : retryBulkAction())
           }
@@ -862,7 +870,7 @@ export function GroceryTripScreen(): React.JSX.Element {
         justAdded={justAdded}
         revertedReason={notice?.message}
         retryLabel={notice?.action}
-        onRetry={retryLineEdit}
+        onRetry={retryAddedLine}
         busy={writing}
         onAddExisting={addExistingItem}
         onCreate={createItemAndAdd}

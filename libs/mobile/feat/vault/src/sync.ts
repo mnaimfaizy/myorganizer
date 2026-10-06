@@ -273,19 +273,27 @@ export async function pullAndSendVaultBlob(params: {
 }
 
 /**
- * Why the last edit did not reach the server. The edit was reverted on
- * screen; it was never kept anywhere else.
+ * Why the last edit did not reach the server. The screen is back on the last
+ * copy the server confirmed; the edit was never kept anywhere else.
  *
  * - `conflict` — another device kept changing the blob under this one's
  *   merged retries. Reloading reads the server's copy and sends the edit
  *   merged with it.
  * - `network` — the server could not be reached. Retrying resends the edit.
  * - `failed` — anything else. Retrying resends the edit.
+ * - `not-applied` — the edit returned the envelope it was given, so there was
+ *   nothing to send and nothing was. Running it again on the same copy would
+ *   return the same envelope, so it is not held; reloading shows the copy the
+ *   User has to make the edit against.
  *
- * Until a retry or a reload sends it, the edit is held by the hook that made
- * it and nowhere else.
+ * Until a retry or a reload sends it, any other edit is held by the hook that
+ * made it and nowhere else.
  */
-export type VaultBlobWriteErrorKind = 'conflict' | 'network' | 'failed';
+export type VaultBlobWriteErrorKind =
+  | 'conflict'
+  | 'network'
+  | 'failed'
+  | 'not-applied';
 
 export function classifyWriteError(err: unknown): VaultBlobWriteErrorKind {
   if (err instanceof VaultBlobConflictError) return 'conflict';

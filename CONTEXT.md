@@ -317,7 +317,7 @@ it will show later, which is earlier than the app going to the background ([ADR 
 _Avoid_: blur screen, screen shield, app switcher mask, lock screen
 
 **Unconfirmed Edit**:
-An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. A reverted edit is still held by the screen that made it, and the next Vault Pull or retry sends it. It is plaintext and client-only: it lives only in memory, never outlives the screen that made it, and reaches the server solely as the Ciphertext its Vault Push sends.
+An edit a mobile screen shows before the server has confirmed its Vault Push. It ends in one of two ways: confirmed, after which it is ordinary data, or reverted to the last copy the server confirmed, with the reason and a retry offered. A reverted edit is still held by the screen that made it, and the next Vault Pull or retry sends it. An edit that changes nothing — its edit function hands back the envelope it was given — is the exception: no Vault Push is made for it, it is reported as not saved, and it is not held, because there is nothing to send. It is plaintext and client-only: it lives only in memory, never outlives the screen that made it, and reaches the server solely as the Ciphertext its Vault Push sends.
 _Avoid_: pending edit, queued edit, sync state, dirty row
 
 ## Vault

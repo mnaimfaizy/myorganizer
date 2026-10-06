@@ -16,6 +16,7 @@ import {
   newRecordId,
   useUnconfirmedEdit,
   useVaultBlob,
+  recoversByReload,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import { VaultBlobType } from '@myorganizer/app-api-client';
@@ -420,8 +421,9 @@ export function TasksScreen(): React.JSX.Element {
   // --- Rows ------------------------------------------------------------------
 
   const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
-  const onRetry =
-    writeError === 'conflict' ? reloadAfterConflict : retryFailedEdit;
+  const onRetry = recoversByReload(writeError)
+    ? reloadAfterConflict
+    : retryFailedEdit;
 
   const rowState = (id: string): ListRowState =>
     pendingTaskId === id

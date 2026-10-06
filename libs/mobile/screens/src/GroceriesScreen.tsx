@@ -15,6 +15,7 @@ import {
   newRecordId,
   useUnconfirmedEdit,
   useVaultBlob,
+  recoversByReload,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
@@ -228,7 +229,7 @@ export function GroceriesScreen(): React.JSX.Element {
         revertedReason={notice?.message}
         retryLabel={notice?.action}
         onRetry={
-          writeError === 'conflict' ? reloadAfterConflict : retryFailedEdit
+          recoversByReload(writeError) ? reloadAfterConflict : retryFailedEdit
         }
       />
     );
@@ -296,7 +297,7 @@ export function GroceriesScreen(): React.JSX.Element {
                   message={notice.message}
                   actionLabel={notice.action}
                   onAction={() =>
-                    void (writeError === 'conflict'
+                    void (recoversByReload(writeError)
                       ? reloadAfterConflict()
                       : retryFailedEdit())
                   }

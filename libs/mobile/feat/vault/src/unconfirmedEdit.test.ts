@@ -1,4 +1,8 @@
-import { draftSheetBusy, settleConflictReload } from './unconfirmedEdit';
+import {
+  draftSheetBusy,
+  recoversByReload,
+  settleConflictReload,
+} from './unconfirmedEdit';
 
 describe('settleConflictReload', () => {
   it('keeps the note on its row while the edit is still held', () => {
@@ -34,5 +38,17 @@ describe('draftSheetBusy', () => {
 
   it('is busy while a reload may be sending a refused draft', () => {
     expect(draftSheetBusy({ pendingId: null, refreshing: true })).toBe(true);
+  });
+});
+
+describe('recoversByReload', () => {
+  it('offers a reload when resending the edit cannot help', () => {
+    expect(recoversByReload('conflict')).toBe(true);
+    expect(recoversByReload('not-applied')).toBe(true);
+  });
+
+  it('offers a retry when the edit only failed to arrive', () => {
+    expect(recoversByReload('network')).toBe(false);
+    expect(recoversByReload('failed')).toBe(false);
   });
 });

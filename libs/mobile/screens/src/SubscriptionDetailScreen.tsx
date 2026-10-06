@@ -25,6 +25,7 @@ import {
   useUnconfirmedEdit,
   useVaultBlob,
   useVaultSession,
+  recoversByReload,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
@@ -357,7 +358,7 @@ export function SubscriptionDetailScreen(): React.JSX.Element {
               actionLabel={notice.action}
               actionIcon="retry"
               onAction={() =>
-                void (writeError === 'conflict'
+                void (recoversByReload(writeError)
                   ? reloadAfterConflict()
                   : retryFailedEdit())
               }
