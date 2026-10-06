@@ -23,10 +23,15 @@ import type {
  * A `conflict` here is `retries-exhausted`: the server moved again under every
  * merged retry (ADR 0107). No Vault Blob Type is pinned to `promptOnConflict`,
  * so the `strategy` reason is not reached. The way forward is to look, which
- * is why the offer is Reload and not Retry — the other two are ordinary
- * failures and resend the edit. The reload is a Vault Pull, so it also sends
+ * is why the offer is Reload and not Retry — `network` and `failed` are
+ * ordinary failures and resend the edit. The reload is a Vault Pull, so it also sends
  * the edit, merged with what it finds
  * ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
+ *
+ * `not-applied` is an edit that changed nothing, so nothing was sent and
+ * nothing is held. The design does not draw it either; it offers Reload
+ * because resending cannot help. `recoversByReload` says which action a kind
+ * takes.
  */
 export const VAULT_WRITE_ERROR_COPY = {
   conflict: {
@@ -40,6 +45,10 @@ export const VAULT_WRITE_ERROR_COPY = {
   failed: {
     message: 'Not saved. Showing the last saved copy.',
     action: 'Retry',
+  },
+  'not-applied': {
+    message: 'Not saved — this could not be changed. Reload to see the latest.',
+    action: 'Reload',
   },
 } as const satisfies Record<
   VaultBlobWriteErrorKind,

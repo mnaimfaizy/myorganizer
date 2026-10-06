@@ -16,6 +16,7 @@ import {
   draftSheetBusy,
   useUnconfirmedEdit,
   useVaultBlob,
+  recoversByReload,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
@@ -415,7 +416,7 @@ export function SubscriptionsScreen(): React.JSX.Element {
         busy={newVisible && newBusy}
         errorMessage={newError?.message}
         errorActionLabel={
-          writeError === 'conflict' ? newError?.action : undefined
+          recoversByReload(writeError) ? newError?.action : undefined
         }
         onErrorAction={reloadNewAfterConflict}
         onCreate={createSubscription}

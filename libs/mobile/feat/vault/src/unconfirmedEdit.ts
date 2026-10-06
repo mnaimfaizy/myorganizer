@@ -1,7 +1,28 @@
-import type { VaultBlobReloadOutcome } from './sync';
+import type { VaultBlobReloadOutcome, VaultBlobWriteErrorKind } from './sync';
 
 /**
- * What a screen does once the reload it offered after a `conflict` has
+ * How a screen gets past each refused Vault Push: `reload` reads the server's
+ * copy, `retry` resends the held edit. A `not-applied` edit is not held, so
+ * there is nothing to resend — the copy on screen is what it could not apply
+ * to, and a fresh one is the only thing that can change that.
+ */
+const VAULT_WRITE_ERROR_RECOVERY = {
+  conflict: 'reload',
+  network: 'retry',
+  failed: 'retry',
+  'not-applied': 'reload',
+} as const satisfies Record<VaultBlobWriteErrorKind, 'reload' | 'retry'>;
+
+/** Whether the action a write error's note offers is a reload, not a retry. */
+export function recoversByReload(
+  kind: VaultBlobWriteErrorKind | null,
+): boolean {
+  return kind !== null && VAULT_WRITE_ERROR_RECOVERY[kind] === 'reload';
+}
+
+/**
+ * What a screen does once the reload it offered — after a `conflict`, or
+ * after an edit that was `not-applied` and so left nothing held — has
  * settled ([ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
  *
  * - `keepReverted` — the edit is still held, so its note stays on the row it

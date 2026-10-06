@@ -3,6 +3,7 @@ import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
   useUnconfirmedEdit,
   useVaultBlob,
+  recoversByReload,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import type { ListRowState } from '@myorganizer/mobile/ui';
@@ -159,7 +160,7 @@ export function useContactRecord<K extends ContactKind>(
   const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
 
   const retryEdit = useCallback((): void => {
-    if (writeError === 'conflict') void reloadAfterConflict();
+    if (recoversByReload(writeError)) void reloadAfterConflict();
     else void retryFailedEdit();
   }, [writeError, reloadAfterConflict, retryFailedEdit]);
 

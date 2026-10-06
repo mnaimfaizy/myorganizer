@@ -11,7 +11,13 @@ import {
   type VaultBlobWriteErrorKind,
 } from './sync';
 
-/** One edit to a Vault Blob, as a function of the envelope it applies to. */
+/**
+ * One edit to a Vault Blob, as a function of the envelope it applies to.
+ *
+ * An edit that cannot apply returns the envelope it was given — the same
+ * reference, not a copy. `apply` reads that as nothing to send; a copy with
+ * the same contents would be pushed and reported as saved.
+ */
 export type VaultBlobEdit = (
   envelope: VaultBlobEnvelope<unknown>,
 ) => VaultBlobEnvelope<unknown>;
@@ -44,8 +50,9 @@ export interface VaultBlobController {
 
 /**
  * Everything `useVaultBlob` decides, with no React in it, so it runs in the
- * node Jest project: one request in flight at a time, the edit held after a
- * failed push, the revert, and what a reload does with that edit
+ * node Jest project: one request in flight at a time, the edit that changes
+ * nothing and so is never pushed, the edit held after a failed push, the
+ * revert, and what a reload does with that edit
  * ([ADR 0107](../../../../../docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md),
  * [ADR 0121](../../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)).
  * The hook supplies the session and renders the state it is handed.
@@ -120,6 +127,12 @@ export function createVaultBlobController(params: {
     let edited = base.envelope;
     try {
       edited = edit(base.envelope);
+      // An edit that cannot apply hands back the envelope it was given.
+      // Pushing that would report a change that was never made as saved.
+      if (edited === base.envelope) {
+        set({ writeError: 'not-applied' });
+        return false;
+      }
       set({ snapshot: { envelope: edited, etag: base.etag } });
       set({
         snapshot: await pushVaultBlob({

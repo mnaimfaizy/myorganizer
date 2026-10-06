@@ -17,6 +17,7 @@ import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
   useUnconfirmedEdit,
   useVaultBlob,
+  recoversByReload,
   VAULT_WRITE_ERROR_COPY,
   type VaultBlobEdit,
 } from '@myorganizer/mobile/feat-vault';
@@ -399,7 +400,7 @@ export function TaskDetailScreen(): React.JSX.Element {
         actionLabel={notice.action}
         actionIcon="retry"
         onAction={() =>
-          void (writeError === 'conflict'
+          void (recoversByReload(writeError)
             ? reloadAfterConflict()
             : retryFailedEdit())
         }
