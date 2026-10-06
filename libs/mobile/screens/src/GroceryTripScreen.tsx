@@ -24,7 +24,7 @@ import {
 } from '@myorganizer/mobile/core';
 import {
   newRecordId,
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   useVaultBlob,
   useVaultSession,
   VAULT_WRITE_ERROR_COPY,
@@ -186,7 +186,7 @@ export function GroceryTripScreen(): React.JSX.Element {
     push,
     reloadAfterConflict,
     retryFailedEdit,
-  } = usePendingVaultEdit(apply, retry, reload);
+  } = useUnconfirmedEdit(apply, retry, reload);
   // The same Unconfirmed Edit shape one level up, for an edit that is not
   // about one line — Uncheck All, Remove Checked From List, Rename. A second,
   // independent call rather than reusing the one above: the hook runs one
@@ -199,7 +199,7 @@ export function GroceryTripScreen(): React.JSX.Element {
     push: pushBulk,
     reloadAfterConflict: reloadAfterBulkConflict,
     retryFailedEdit: retryBulkAction,
-  } = usePendingVaultEdit<BulkAction>(apply, retry, reload);
+  } = useUnconfirmedEdit<BulkAction>(apply, retry, reload);
 
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [amountDraft, setAmountDraft] = useState('');

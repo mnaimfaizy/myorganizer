@@ -15,7 +15,7 @@ import {
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   useVaultBlob,
   VAULT_WRITE_ERROR_COPY,
   type VaultBlobEdit,
@@ -168,7 +168,7 @@ export function TaskDetailScreen(): React.JSX.Element {
   );
 
   const { pendingId, revertedId, push, reloadAfterConflict, retryFailedEdit } =
-    usePendingVaultEdit(apply, retry, reload);
+    useUnconfirmedEdit(apply, retry, reload);
 
   // Seeded once per Task id: re-seeding on every snapshot would overwrite
   // whatever the User has typed and not yet blurred away from every time a

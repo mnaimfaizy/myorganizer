@@ -14,7 +14,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import {
   newRecordId,
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   useVaultBlob,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
@@ -198,7 +198,7 @@ export function TasksScreen(): React.JSX.Element {
     push,
     reloadAfterConflict,
     retryFailedEdit,
-  } = usePendingVaultEdit(apply, retry, reload);
+  } = useUnconfirmedEdit(apply, retry, reload);
 
   const [undo, setUndo] = useState<PendingUndo | null>(null);
   // The Task just captured, so its row arrives with the enter beat.

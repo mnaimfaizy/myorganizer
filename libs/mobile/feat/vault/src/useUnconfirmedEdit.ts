@@ -48,7 +48,7 @@ export const VAULT_WRITE_ERROR_COPY = {
 
 /**
  * One id's worth of Unconfirmed Edit state (CONTEXT.md): which id a screen is
- * showing as pending, and which one was put back after a push failed.
+ * pushing right now, and which one was put back after a push failed.
  *
  * `reloadAfterConflict` resolves `true` when the reload sent the edit.
  *
@@ -56,7 +56,7 @@ export const VAULT_WRITE_ERROR_COPY = {
  * action, say — calls this twice, once per id space. `apply` itself runs one
  * write at a time, so within one call there is never a second id waiting.
  */
-export function usePendingVaultEdit<TId extends string = string>(
+export function useUnconfirmedEdit<TId extends string = string>(
   apply: (edit: VaultBlobEdit) => Promise<boolean>,
   retry: () => Promise<boolean>,
   reload: () => Promise<VaultBlobReloadOutcome>,

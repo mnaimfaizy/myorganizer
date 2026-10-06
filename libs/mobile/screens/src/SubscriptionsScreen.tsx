@@ -14,7 +14,7 @@ import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
   newRecordId,
   draftSheetBusy,
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   useVaultBlob,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
@@ -173,7 +173,7 @@ export function SubscriptionsScreen(): React.JSX.Element {
     revertedId: revertedSubscriptionId,
     push,
     reloadAfterConflict,
-  } = usePendingVaultEdit(apply, retry, reload);
+  } = useUnconfirmedEdit(apply, retry, reload);
 
   const newBusy = draftSheetBusy({
     pendingId: pendingSubscriptionId,

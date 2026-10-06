@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { VaultBlobType } from '@myorganizer/app-api-client';
 import {
-  usePendingVaultEdit,
+  useUnconfirmedEdit,
   useVaultBlob,
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
@@ -130,7 +130,7 @@ export function useContactRecord<K extends ContactKind>(
   );
 
   const { pendingId, revertedId, push, reloadAfterConflict, retryFailedEdit } =
-    usePendingVaultEdit(apply, retry, reload);
+    useUnconfirmedEdit(apply, retry, reload);
 
   const toggle = useUsageLocationToggle(contact, push);
 
