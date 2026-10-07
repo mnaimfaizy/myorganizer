@@ -602,6 +602,10 @@ _Avoid_: Gate Tier (a different question), Review Tier (a different question), s
 An entry in `tools/config/review-obligations.json` — whose human-readable form is `docs/review/REVIEW_CHECKLIST.md` — naming a question a reviewer must answer in writing about a hunk a selector already matched against the diff, so that noticing a documented failure mode is nobody's job to remember. Every answer field that claims something about source must cite it; whether an Obligation was raised as a Finding is read out of the reviewer's own report, never taken from the answer sheet's own declaration ([ADR 0078](docs/adr/0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)). An unanswered Obligation is reported and blocks nobody — thoroughness is not itself a gate.
 _Avoid_: checklist item, requirement (alone), review question, mandate
 
+**Standards Source**:
+A document a code review's Standards axis was held to: the standards index, a document that index names, or an Agent Guide. A review is held to one in either of two ways, and they are not the same fact: the reviewer opened it, or the Harness placed it in the session without anyone opening it. The second is loaded, never opened, and the two are not reported as one. Searching a document is not opening it. The Review Checklist is not a Standards Source — its entries reach the reviewer as Obligations.
+_Avoid_: standards read, sources (unqualified), reference, citation (a different sense)
+
 **Escaped Defect**:
 A defect whose root cause is a Pull Request the code reviewer **saw and passed** — `approve` or `comment`, the two verdicts that do not block (ADR 0077). A Pull Request the reviewer never saw is not one, nor is one it asked changes on that merged anyway, and neither is ever counted as one. The escaped-defect rate is escaped defects over the Pull Requests the reviewer passed in the same window, and it is the reviewer's trust measure; golden recall is a regression signal and is not this.
 _Avoid_: miss, false negative, regression (for this sense), leaked bug
