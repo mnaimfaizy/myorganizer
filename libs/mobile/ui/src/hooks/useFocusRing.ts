@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import type { ViewStyle } from 'react-native';
 import { useTheme } from '../useTheme';
+import { useInFrontFocusLayer } from './focusLayer';
 
 /** Where the ring sits: around the control, or inside a full-bleed one. */
 export type FocusRingPlacement = 'outside' | 'inset';
@@ -34,9 +35,16 @@ const OFFSET = {
  * and its Pressability config carried no `onFocus`/`onBlur`. React Native
  * 0.87's `Pressable` passes both into that config, so the ring is now
  * reachable, and `focusRing.test.tsx` holds it there by firing focus at
- * rendered controls rather than at this hook. It has not been seen on a
- * device with a keyboard attached; until it has, treat the ring as wired
- * rather than as verified.
+ * rendered controls rather than at this hook. It has been seen drawing on an
+ * Android emulator driven by hardware key events, not on a physical device.
+ * It does not draw on iOS, where React Native sends these two events only on
+ * tvOS (#1021).
+ *
+ * The ring is drawn only in the layer in front. A control behind an open
+ * sheet can hold its window's focus without ever being sent a blur (see
+ * `focusLayer.ts`), and a ring there says focus is somewhere it is not.
+ * `focused` stays what the control was told, so the ring returns with the
+ * sheet's dismissal if the control still has focus.
  */
 export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
   focused: boolean;
@@ -48,10 +56,11 @@ export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
   const [focused, setFocused] = useState(false);
   const onFocus = useCallback(() => setFocused(true), []);
   const onBlur = useCallback(() => setFocused(false), []);
+  const inFront = useInFrontFocusLayer();
 
   const ringStyle = useMemo<ViewStyle | null>(
     () =>
-      focused
+      focused && inFront
         ? {
             outlineWidth: RING_WIDTH,
             outlineStyle: 'solid',
@@ -59,7 +68,7 @@ export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
             outlineOffset: OFFSET[placement],
           }
         : null,
-    [focused, placement, theme.colors.focus],
+    [focused, inFront, placement, theme.colors.focus],
   );
 
   return { focused, onFocus, onBlur, ringStyle };

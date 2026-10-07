@@ -16,6 +16,7 @@ import { useReduceMotion } from '../hooks/useReduceMotion';
 import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ColorMode, ThemeColors } from '../theme';
+import { FocusLayerContext, useFocusLayer } from '../hooks/focusLayer';
 import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { Icon } from './Icon';
@@ -113,6 +114,9 @@ const NAV_BAR_HEIGHT = 56;
  */
 export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
   const reduceMotion = useReduceMotion();
+  // The sheet is its own window, so it is its own focus layer: while it is
+  // up, no control behind it draws a focus ring.
+  const focusLayer = useFocusLayer(props.visible);
 
   return (
     <Modal
@@ -128,11 +132,13 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
       statusBarTranslucent
       navigationBarTranslucent
     >
-      {props.navBar === undefined ? (
-        <FitSheet {...props} />
-      ) : (
-        <FormSheet {...props} navBar={props.navBar} />
-      )}
+      <FocusLayerContext.Provider value={focusLayer}>
+        {props.navBar === undefined ? (
+          <FitSheet {...props} />
+        ) : (
+          <FormSheet {...props} navBar={props.navBar} />
+        )}
+      </FocusLayerContext.Provider>
     </Modal>
   );
 }

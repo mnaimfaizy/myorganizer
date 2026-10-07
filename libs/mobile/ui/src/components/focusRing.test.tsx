@@ -132,3 +132,73 @@ describe('P3 focus ring on a focused control', () => {
     },
   );
 });
+
+/**
+ * A sheet is a window of its own on Android, and the screen behind it keeps
+ * its focused control without that control ever being sent a blur. So these
+ * cases never fire one: the ring has to go because the sheet is up.
+ */
+describe('P3 focus ring behind an open sheet', () => {
+  const Screen = ({ sheet }: { sheet: boolean }) => (
+    <TestWrapper>
+      <LockAction onPress={jest.fn()} />
+      <MenuSheet
+        visible={sheet}
+        onDismiss={jest.fn()}
+        title="Auto-lock"
+        items={[{ id: 'now', label: 'Immediately', onPress: jest.fn() }]}
+      />
+    </TestWrapper>
+  );
+
+  it('is not drawn on a control that still has focus, and returns when the sheet closes', async () => {
+    const view = await render(<Screen sheet={false} />);
+    await fireEvent(screen.getByLabelText('Lock vault'), 'focus');
+    expect(outline('Lock vault')).toEqual(OUTSIDE);
+
+    await view.rerender(<Screen sheet />);
+    expect(outline('Lock vault')).toEqual(NO_RING);
+
+    await view.rerender(<Screen sheet={false} />);
+    expect(outline('Lock vault')).toEqual(OUTSIDE);
+  });
+
+  it('is not drawn on a control that takes focus while the sheet is up', async () => {
+    await render(<Screen sheet />);
+    await fireEvent(
+      screen.getByLabelText('Lock vault', { includeHiddenElements: true }),
+      'focus',
+    );
+    await fireEvent(screen.getByLabelText('Immediately'), 'focus');
+
+    expect(outline('Lock vault')).toEqual(NO_RING);
+    expect(outline('Immediately')).toEqual(INSET);
+  });
+
+  it('is drawn in the sheet in front when one sheet is open inside another', async () => {
+    await render(
+      <TestWrapper>
+        <BottomSheet
+          visible
+          onDismiss={jest.fn()}
+          title="Edit"
+          navBar={{ actionLabel: 'Save', onAction: jest.fn() }}
+        >
+          <MenuSheet
+            visible
+            onDismiss={jest.fn()}
+            items={[{ id: 'rename', label: 'Rename', onPress: jest.fn() }]}
+          />
+        </BottomSheet>
+      </TestWrapper>,
+    );
+    await fireEvent(
+      screen.getByLabelText('Save', { includeHiddenElements: true }),
+      'focus',
+    );
+    await fireEvent(screen.getByLabelText('Rename'), 'focus');
+
+    expect(outline('Save')).toEqual(NO_RING);
+    expect(outline('Rename')).toEqual(INSET);
+  });
+});
