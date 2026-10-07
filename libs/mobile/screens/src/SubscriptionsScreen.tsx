@@ -39,6 +39,7 @@ import {
   Text,
   useFocusRing,
   useLargeTitleCollapse,
+  staticElement,
   usePressFeedback,
   useTheme,
   type ListRowState,
@@ -627,7 +628,8 @@ function MonthlyEquivalentExplainer({
           {examples.map((example) => (
             <View
               key={example.id}
-              accessible
+              // Joined as TalkBack joins the two lines of an `accessible` row.
+              {...staticElement(`${example.label}. ${example.equivalent}`)}
               style={[
                 styles.example,
                 {
@@ -637,13 +639,19 @@ function MonthlyEquivalentExplainer({
               ]}
             >
               <Text
+                importantForAccessibility="no"
                 variant="bodySm"
                 style={[styles.exampleLabel, styles.figures]}
                 numberOfLines={2}
               >
                 {example.label}
               </Text>
-              <Text variant="bodySm" weight="semibold" style={styles.figures}>
+              <Text
+                importantForAccessibility="no"
+                variant="bodySm"
+                weight="semibold"
+                style={styles.figures}
+              >
                 {example.equivalent}
               </Text>
             </View>

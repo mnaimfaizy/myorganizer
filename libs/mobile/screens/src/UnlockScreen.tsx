@@ -11,6 +11,7 @@ import {
   Screen,
   Text,
   TextField,
+  staticElement,
   useIsOffline,
   useTheme,
 } from '@myorganizer/mobile/ui';
@@ -354,10 +355,10 @@ export function UnlockScreen(): React.JSX.Element {
  */
 function AutoLockReason(): React.JSX.Element {
   const theme = useTheme();
-  const autoLockDelay = useAutoLockDelay();
+  const reason = describeAutoLock(useAutoLockDelay());
   return (
     <View
-      accessible
+      {...staticElement(reason)}
       style={[
         styles.reason,
         // 4 above the email line; the glyph sits 6 from the text, which
@@ -366,7 +367,9 @@ function AutoLockReason(): React.JSX.Element {
       ]}
     >
       <Icon name="lock" size={16} color="brand" />
-      <Text variant="bodySm">{describeAutoLock(autoLockDelay)}</Text>
+      <Text importantForAccessibility="no" variant="bodySm">
+        {reason}
+      </Text>
     </View>
   );
 }

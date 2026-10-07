@@ -63,9 +63,8 @@ export interface BrandMarkProps {
  * with the check in the colour that sits on violet.
  *
  * One accessibility element named "MyOrganizer"; the parts are not read. It
- * is a picture and not a control, so the mark on its own is no keyboard stop
- * (`staticElement`). A lockup with the wordmark stays `accessible`: the word
- * is text of its own, which `staticElement` would let TalkBack land on a
+ * is a picture and not a control, so it is no keyboard stop (`staticElement`),
+ * and the wordmark is kept from the screen reader so that it is not read a
  * second time.
  */
 export function BrandMark({
@@ -80,7 +79,7 @@ export function BrandMark({
 
   return (
     <View
-      {...(word === null ? staticElement() : { accessible: true })}
+      {...staticElement()}
       accessibilityRole="image"
       accessibilityLabel="MyOrganizer"
       style={[
@@ -116,6 +115,7 @@ export function BrandMark({
       </Svg>
       {word !== null && (
         <Text
+          importantForAccessibility="no"
           variant="display"
           color="foreground"
           numberOfLines={1}

@@ -6,6 +6,7 @@ import {
   Icon,
   MIN_TOUCH_TARGET,
   Text,
+  staticElement,
   useFocusRing,
   usePressFeedback,
   useTheme,
@@ -253,13 +254,18 @@ export function DateField({
       </View>
       {hasError && (
         <View
-          accessible
+          {...staticElement(error)}
           accessibilityRole="alert"
           accessibilityLiveRegion="assertive"
           style={[styles.error, { gap: theme.spacing.sm }]}
         >
           <Icon name="warning" size={14} color="errorEdge" />
-          <Text variant="caption" weight="medium" color="errorText">
+          <Text
+            importantForAccessibility="no"
+            variant="caption"
+            weight="medium"
+            color="errorText"
+          >
             {error}
           </Text>
         </View>

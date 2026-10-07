@@ -13,6 +13,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET, TEXT_SCALE_CAP } from '../metrics';
 import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
+import { staticElement } from '../staticElement';
 import { Glyph } from './glyphs';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
@@ -277,15 +278,17 @@ export function TextField({
       {hint != null && !hasError && <Text variant="caption">{hint}</Text>}
       {hasError && (
         // The glyph and the line are one accessibility element, announced as
-        // an alert: a View carrying only a role is not an element on iOS.
+        // an alert, and no keyboard stop (`staticElement`): a View carrying
+        // only a role is not an element on iOS.
         <View
-          accessible
+          {...staticElement(error)}
           accessibilityRole="alert"
           accessibilityLiveRegion="assertive"
           style={[styles.error, { gap: theme.spacing.sm }]}
         >
           <Icon name="warning" size={14} color="errorEdge" />
           <Text
+            importantForAccessibility="no"
             variant="caption"
             weight="medium"
             color="errorText"

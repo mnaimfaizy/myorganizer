@@ -12,6 +12,7 @@ import type { ThemeColors } from '../theme';
 import type { TypeScaleStep } from '../typeScale';
 import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
+import { staticElement } from '../staticElement';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
 
@@ -133,12 +134,13 @@ export function InlineNotice({
       ]}
     >
       {/* The icon and the message are one accessibility element, announced as
-          an alert. `accessible` is what makes that true: a View carrying only
-          a role is not an accessibility element on iOS, so the role reads as
-          set while nothing is announced. The action stays outside this group
-          so that grouping the message does not swallow the button. */}
+          an alert, and no keyboard stop (`staticElement`): a View carrying
+          only a role is not an accessibility element on iOS, so the role
+          reads as set while nothing is announced. The action stays outside
+          this group so that grouping the message does not swallow the
+          button. */}
       <View
-        accessible
+        {...staticElement(message)}
         accessibilityRole="alert"
         accessibilityLiveRegion="assertive"
         style={[styles.message, { gap: theme.spacing.sm }]}
@@ -155,7 +157,12 @@ export function InlineNotice({
             color={iconColor ?? glyph}
           />
         </View>
-        <Text variant={step} color={text} style={styles.messageText}>
+        <Text
+          importantForAccessibility="no"
+          variant={step}
+          color={text}
+          style={styles.messageText}
+        >
           {message}
         </Text>
       </View>

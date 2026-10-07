@@ -8,6 +8,7 @@ import Animated, {
 import { useTheme } from '../useTheme';
 import { MOTION } from '../motion';
 import { useReduceMotion } from '../hooks/useReduceMotion';
+import { staticElement } from '../staticElement';
 import { Text } from './Text';
 
 export interface ProgressMeterProps {
@@ -64,11 +65,12 @@ export function ProgressMeter({
 
   return (
     <View
-      // `accessible` is what makes the role and the value real: a View
-      // carrying only a role is not an accessibility element on iOS, so the
-      // value would never be announced. The meter holds nothing interactive,
-      // so grouping it costs nothing.
-      accessible
+      // One accessibility element is what makes the role and the value real:
+      // a View carrying only a role is not one on iOS, so the value would
+      // never be announced. It is no keyboard stop (`staticElement`) when it
+      // has a label to be read by; a meter without one is read by its `meta`,
+      // which only plain `accessible` folds in on Android.
+      {...(label != null ? staticElement() : { accessible: true })}
       accessibilityRole="progressbar"
       accessibilityLabel={label}
       accessibilityValue={
@@ -82,6 +84,7 @@ export function ProgressMeter({
         <View style={[styles.labels, { gap: theme.spacing.sm }]}>
           {label != null && (
             <Text
+              importantForAccessibility="no"
               variant="bodySm"
               weight="semibold"
               style={styles.label}
@@ -90,7 +93,14 @@ export function ProgressMeter({
               {label}
             </Text>
           )}
-          {meta != null && <Text variant="caption">{meta}</Text>}
+          {meta != null && (
+            <Text
+              importantForAccessibility={label != null ? 'no' : undefined}
+              variant="caption"
+            >
+              {meta}
+            </Text>
+          )}
         </View>
       )}
       <View
