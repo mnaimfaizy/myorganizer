@@ -125,6 +125,7 @@ export {
 } from './components/SegmentedControl';
 export { Skeleton, type SkeletonProps } from './components/Skeleton';
 export { Snackbar, type SnackbarProps } from './components/Snackbar';
+export { StackHeader, type StackHeaderProps } from './components/StackHeader';
 export {
   StatusPill,
   type StatusPillProps,
