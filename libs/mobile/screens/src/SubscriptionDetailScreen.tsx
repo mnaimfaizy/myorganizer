@@ -47,6 +47,7 @@ import {
   StatusPill,
   Text,
   useFocusRing,
+  staticElement,
   usePressFeedback,
   useTheme,
   type StatusTone,
@@ -124,12 +125,23 @@ function DetailRow({
   const press = usePressFeedback();
   const focus = useFocusRing('inset');
 
+  // A row that does nothing is one static element named by its label, so
+  // what it draws is kept from the screen reader (`staticElement`).
+  const hidden = onPress == null ? 'no-hide-descendants' : undefined;
   const content = (
     <>
-      <Text variant="bodySm" color="mutedForeground" style={styles.label}>
+      <Text
+        importantForAccessibility={hidden}
+        variant="bodySm"
+        color="mutedForeground"
+        style={styles.label}
+      >
         {label}
       </Text>
-      <View style={[styles.value, { gap: theme.spacing.sm }]}>
+      <View
+        importantForAccessibility={hidden}
+        style={[styles.value, { gap: theme.spacing.sm }]}
+      >
         {accessory}
         <Text
           variant="body"
@@ -159,7 +171,7 @@ function DetailRow({
   if (onPress == null) {
     return (
       <View
-        accessible
+        {...staticElement()}
         accessibilityLabel={`${label}, ${value}`}
         style={rowStyle}
       >

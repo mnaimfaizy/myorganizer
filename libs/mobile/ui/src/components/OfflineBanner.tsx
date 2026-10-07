@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../useTheme';
 import { useIsOffline } from '../hooks/useIsOffline';
+import { staticElement } from '../staticElement';
 import type { ThemeColors } from '../theme';
 import { Glyph, type GlyphName } from './glyphs';
 import { Text } from './Text';
@@ -116,7 +117,7 @@ export function OfflineBanner({
 
   return (
     <View
-      accessible
+      {...staticElement()}
       accessibilityRole="text"
       accessibilityLabel={message}
       accessibilityLiveRegion="polite"
@@ -133,11 +134,16 @@ export function OfflineBanner({
       ]}
     >
       {mark === 'spinner' ? (
-        <ActivityIndicator size="small" color={theme.colors[text]} />
+        // Android's spinner is a screen reader stop of its own ("in
+        // progress") unless what holds it hides it.
+        <View importantForAccessibility="no-hide-descendants">
+          <ActivityIndicator size="small" color={theme.colors[text]} />
+        </View>
       ) : (
         <Glyph name={mark} size={18} color={text} />
       )}
       <Text
+        importantForAccessibility="no"
         variant="bodySm"
         weight="semibold"
         color={text}
