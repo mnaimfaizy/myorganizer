@@ -67,12 +67,13 @@ export function ProgressMeter({
     <View
       // One accessibility element is what makes the role and the value real:
       // a View carrying only a role is not one on iOS, so the value would
-      // never be announced. It is no keyboard stop (`staticElement`) when it
-      // has a label to be read by; a meter without one is read by its `meta`,
-      // which only plain `accessible` folds in on Android.
-      {...(label != null ? staticElement() : { accessible: true })}
+      // never be announced. It is no keyboard stop (`staticElement`), so on
+      // Android it is named here rather than by its children: by its label,
+      // or by its `meta` when it has none, which is the text plain
+      // `accessible` used to fold in. iOS goes on reading the `meta` itself.
       accessibilityRole="progressbar"
       accessibilityLabel={label}
+      {...staticElement(label ?? meta)}
       accessibilityValue={
         accessibilityValueText != null
           ? { text: accessibilityValueText }
@@ -94,10 +95,7 @@ export function ProgressMeter({
             </Text>
           )}
           {meta != null && (
-            <Text
-              importantForAccessibility={label != null ? 'no' : undefined}
-              variant="caption"
-            >
+            <Text importantForAccessibility="no" variant="caption">
               {meta}
             </Text>
           )}
