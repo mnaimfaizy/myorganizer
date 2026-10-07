@@ -15,6 +15,7 @@ import {
   LockAction,
   StackHeader,
   TabBar,
+  useReturnFocusOnLeave,
   useTheme,
   type Theme,
 } from '@myorganizer/mobile/ui';
@@ -83,6 +84,9 @@ const PUSHED_SCREEN_OPTIONS: NativeStackNavigationOptions = {
  *   to the first focusable view in mount order, so the first Tab landed in
  *   the content and the bar came last, after the tab bar. A screen layout has
  *   no such wrapper: the bar is mounted first and is the first stop.
+ *
+ * Leaving it hands focus back to the control that opened it, which Android
+ * would otherwise give to the tab bar (#1034, `useReturnFocusOnLeave`).
  */
 function PushedScreenLayout({
   children,
@@ -93,6 +97,7 @@ function PushedScreenLayout({
   navigation: { goBack: () => void };
   options: NativeStackNavigationOptions;
 }): React.JSX.Element {
+  useReturnFocusOnLeave();
   const title =
     typeof options.headerTitle === 'string'
       ? options.headerTitle

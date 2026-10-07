@@ -40,7 +40,8 @@ class MainApplication : Application(), ReactApplication {
 }
 
 /**
- * React Native's stable feature flags with its custom keyboard focus search turned off.
+ * React Native's stable feature flags with two changed for a hardware keyboard: its custom focus
+ * search turned off, and focus requests from JavaScript turned on.
  *
  * With `enableCustomFocusSearchOnClippedElementsAndroid` on, a scroll view second-guesses Android
  * whenever Tab or Shift+Tab would move focus out of it: it searches its own content again and, if
@@ -53,7 +54,15 @@ class MainApplication : Application(), ReactApplication {
  * The search exists to reach views `removeClippedSubviews` has detached, which nothing in this app
  * sets. Android's own focus order is the right one here, so the flag is off. `loadReactNative`
  * has already installed the stable flags and they can be set only once, hence the forced override.
+ *
+ * With `enableImperativeFocus` off, `focus()` and `blur()` on anything but a text input do nothing:
+ * JavaScript sends no command, and `ReactViewManager` ignores one. The app needs `focus()` once, to
+ * put focus back on the control that opened a pushed screen when that screen is popped; Android
+ * gives it to the first tab-bar item instead (#1034, `focusReturn.ts`). The flag is experimental
+ * and switches on nothing else on Android. A text input is focused through its own path either way.
  */
 private class KeyboardFocusFeatureFlags : ReactNativeNewArchitectureFeatureFlagsDefaults() {
   override fun enableCustomFocusSearchOnClippedElementsAndroid(): Boolean = false
+
+  override fun enableImperativeFocus(): Boolean = true
 }
