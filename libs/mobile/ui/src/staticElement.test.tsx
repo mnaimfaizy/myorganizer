@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
-import { Platform } from 'react-native';
+import { Platform, View } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
 import { ThemeProvider } from './useTheme';
 import { BrandMark } from './components/BrandMark';
@@ -97,6 +97,13 @@ describe('staticElement', () => {
       <ProgressMeter label="Picked up" meta="1 of 4" value={0.25} />,
     ],
     [
+      // Named by its `meta`, the text it was read by while it was `accessible`.
+      'ProgressMeter without a label',
+      'progressbar',
+      '1 of 4',
+      <ProgressMeter meta="1 of 4" value={0.25} />,
+    ],
+    [
       'OfflineBanner',
       'text',
       'You’re offline — changes can’t be saved',
@@ -146,8 +153,7 @@ describe('staticElement', () => {
     });
   });
 
-  it('keeps the text of an unlabelled ProgressMeter readable', async () => {
-    jest.replaceProperty(Platform, 'OS', 'android');
+  it('leaves an unlabelled ProgressMeter to be read by its text on iOS', async () => {
     await render(
       <TestWrapper>
         <ProgressMeter meta="1 of 4" value={0.25} />
@@ -155,7 +161,30 @@ describe('staticElement', () => {
     );
     const meter = screen.getByRole('progressbar');
     expect(meter.props.accessible).toBe(true);
-    expect(readableTexts(meter)).toEqual(['1 of 4']);
+    expect(meter.props.accessibilityLabel).toBeUndefined();
+    expect(screen.getByText('1 of 4')).toBeOnTheScreen();
+  });
+
+  it('keeps a ProgressMeter with no text out of the Tab order on Android', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    await render(
+      <TestWrapper>
+        <View testID="host">
+          <ProgressMeter value={0.25} />
+        </View>
+      </TestWrapper>,
+    );
+    // Not `getByRole`: with no label it is no accessibility element to Jest.
+    const [meter] = screen.getByTestId('host').children as Node[];
+    expect(meter.props.accessibilityRole).toBe('progressbar');
+    expect(meter.props.accessible).toBe(false);
+    expect(meter.props.screenReaderFocusable).toBe(true);
+    expect(meter.props.accessibilityLabel).toBeUndefined();
+    expect(meter.props.accessibilityValue).toEqual({
+      min: 0,
+      max: 100,
+      now: 25,
+    });
   });
 });
 

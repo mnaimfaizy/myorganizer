@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Platform } from 'react-native';
+import { Platform, StyleSheet, View } from 'react-native';
 import {
   createBottomTabNavigator,
   type BottomTabBarProps,
@@ -13,6 +13,7 @@ import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import {
   FONT_FAMILY,
   LockAction,
+  StackHeader,
   TabBar,
   useTheme,
   type Theme,
@@ -51,14 +52,72 @@ interface PushedScreen {
 }
 
 /**
- * What a pushed screen's header looks like: drawn on both platforms, because
- * the back affordance is the way out of it, and without the large title,
- * which belongs to a tab's root and not to a screen inside it.
+ * What a pushed screen's header looks like on iOS: the native bar, whose back
+ * affordance is the way out of it, without the large title, which belongs to
+ * a tab's root and not to a screen inside it.
+ *
+ * Android turns the native bar off and draws the same bar itself — see
+ * `PushedScreenLayout`.
  */
 const PUSHED_SCREEN_OPTIONS: NativeStackNavigationOptions = {
-  headerShown: true,
+  headerShown: Platform.OS === 'ios',
   headerLargeTitle: false,
 };
+
+/**
+ * A pushed screen on Android: this app's own bar, then the screen.
+ *
+ * The bar is drawn from the same options the native bar reads — `headerTitle`
+ * over `title`, and `headerRight` — so a screen sets its header the one way on
+ * both platforms.
+ *
+ * Two things about Android decide where it is drawn (#1029):
+ *
+ * - **Not by the native stack.** Its bar is an AppCompat `Toolbar`, which
+ *   Android keeps out of the Tab order on a touchscreen device, so a hardware
+ *   keyboard reached none of Back, Edit, "⋯", or Lock on any pushed screen
+ *   (`StackHeader` has the mechanism).
+ * - **Not through the stack's `header` option either.** React Navigation
+ *   wraps that header in a view with `zIndex: 1`, and React Native mounts a
+ *   raised view after its siblings. Android gives the first Tab on a screen
+ *   to the first focusable view in mount order, so the first Tab landed in
+ *   the content and the bar came last, after the tab bar. A screen layout has
+ *   no such wrapper: the bar is mounted first and is the first stop.
+ */
+function PushedScreenLayout({
+  children,
+  navigation,
+  options,
+}: {
+  children: React.ReactElement;
+  navigation: { goBack: () => void };
+  options: NativeStackNavigationOptions;
+}): React.JSX.Element {
+  const title =
+    typeof options.headerTitle === 'string'
+      ? options.headerTitle
+      : (options.title ?? '');
+
+  return (
+    <View style={styles.pushedScreen}>
+      <StackHeader
+        title={title}
+        onBack={navigation.goBack}
+        trailing={options.headerRight?.({
+          tintColor: options.headerTintColor,
+          canGoBack: true,
+        })}
+      />
+      {children}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  pushedScreen: {
+    flex: 1,
+  },
+});
 
 /**
  * The native header's type and colour from the token theme, for both colour
@@ -116,8 +175,9 @@ function headerChrome(theme: Theme): NativeStackNavigationOptions {
  *
  * The header options here are the iOS half of the title rule: the native large
  * title, with Lock trailing it. On Android `headerShown` is false and the
- * screen draws `TabScreenHeader` instead — but a *pushed* screen shows the
- * native header on both, which is where its back affordance comes from.
+ * screen draws `TabScreenHeader` instead; a *pushed* screen has a bar with a
+ * back affordance on both — the native one on iOS, `PushedScreenLayout`'s on
+ * Android.
  */
 function tabStack(
   name: TabName,
@@ -148,6 +208,11 @@ function tabStack(
             name={screen.name}
             component={screen.component}
             options={{ ...PUSHED_SCREEN_OPTIONS, ...screen.options }}
+            layout={
+              Platform.OS === 'android'
+                ? (props) => <PushedScreenLayout {...props} />
+                : undefined
+            }
           />
         ))}
       </Stack.Navigator>

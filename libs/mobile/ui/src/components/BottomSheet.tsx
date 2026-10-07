@@ -9,6 +9,8 @@ import {
   StyleSheet,
   View,
   useWindowDimensions,
+  type AccessibilityActionEvent,
+  type PressableProps,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../useTheme';
@@ -160,6 +162,55 @@ function useAvoidKeyboard(): boolean {
   return Platform.OS === 'ios' || keyboardVisible;
 }
 
+/** The one accessibility action the scrim declares on Android. */
+const SCRIM_ACTIONS = [{ name: 'activate' }] as const;
+
+/**
+ * What takes the scrim out of the Tab order on Android and leaves it a
+ * control a screen reader can still land on and activate.
+ *
+ * The scrim comes first in the sheet's window and covers all of it, so a
+ * hardware keyboard's first Tab landed there, ahead of the sheet's own
+ * controls, and the ring it drew went round the whole display (#1028). A
+ * keyboard does not need the stop: Back and Escape reach the sheet's
+ * `onRequestClose`.
+ *
+ * `accessible` is the Tab stop on Android (see `staticElement.ts`), and a
+ * `Pressable` asks for a second one through `focusable`, which is also what
+ * installs the native click listener a screen reader's double-tap reaches. So
+ * both go, `screenReaderFocusable` keeps TalkBack landing on the scrim, and
+ * the `activate` action is the double-tap's way back to `onDismiss`. A touch
+ * never went through that listener — `onPress` is the responder system's —
+ * so a tap on the scrim dismisses as it did.
+ *
+ * iOS is left as it was: it has no Tab order for `accessible` to join.
+ *
+ * Called at render rather than held as a constant, so a spec can render either
+ * platform's answer.
+ */
+function scrimKeyboardSkip(
+  onDismiss: () => void,
+): Pick<
+  PressableProps,
+  | 'accessible'
+  | 'focusable'
+  | 'screenReaderFocusable'
+  | 'accessibilityActions'
+  | 'onAccessibilityAction'
+> | null {
+  return Platform.OS === 'android'
+    ? {
+        accessible: false,
+        focusable: false,
+        screenReaderFocusable: true,
+        accessibilityActions: SCRIM_ACTIONS,
+        onAccessibilityAction: (event: AccessibilityActionEvent) => {
+          if (event.nativeEvent.actionName === 'activate') onDismiss();
+        },
+      }
+    : null;
+}
+
 function FitSheet({
   onDismiss,
   title,
@@ -172,8 +223,6 @@ function FitSheet({
   const { height: windowHeight } = useWindowDimensions();
   const closeFeedback = usePressFeedback('borderless');
   const closeFocus = useFocusRing();
-  // The scrim is full-bleed, so its ring goes inside the screen edge.
-  const scrimFocus = useFocusRing('inset');
   const dark = theme.mode === 'dark';
   const avoidKeyboard = useAvoidKeyboard();
 
@@ -186,14 +235,9 @@ function FitSheet({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Dismiss"
-        style={[
-          styles.scrim,
-          { backgroundColor: theme.colors.scrim },
-          scrimFocus.ringStyle,
-        ]}
+        style={[styles.scrim, { backgroundColor: theme.colors.scrim }]}
         onPress={onDismiss}
-        onFocus={scrimFocus.onFocus}
-        onBlur={scrimFocus.onBlur}
+        {...scrimKeyboardSkip(onDismiss)}
       />
       <View
         accessibilityViewIsModal

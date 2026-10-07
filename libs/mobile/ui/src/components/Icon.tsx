@@ -48,6 +48,7 @@ export type IconName =
   | 'listRemove'
   | 'calendar'
   | 'arrowUp'
+  | 'arrowLeft'
   | 'home'
   | 'call'
   | 'person'
@@ -275,6 +276,8 @@ const PATHS = {
   calendar: [rect(4, 5, 16, 16, 2), 'M4 10h16', 'M9 3v4', 'M15 3v4'],
   // An arrow rising: the capture composer's round Save.
   arrowUp: ['M12 19V5', 'M6 11l6-6 6 6'],
+  // An arrow pointing back: the way out of a pushed screen on Android.
+  arrowLeft: ['M19 12H5', 'M11 6l-6 6 6 6'],
   // The glyphs below are traced from the Details sheet (5 · Details).
   // A house: an Address, and the Housing Organisation Type.
   home: ['M3 11l9-7 9 7', 'M5 10v10h14V10'],
