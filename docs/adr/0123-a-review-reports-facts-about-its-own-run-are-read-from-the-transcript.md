@@ -50,9 +50,10 @@ reviewer has exited. The reviewer does not write it.**
    list them.
 3. **An interactive run has no transcript to read.** Its fields stay self-reported, and the report
    marks them as such.
-4. **Two transcript facts fail `Agent Review Ran`.** No sub-agent read an axis's brief. Or a finding
-   in the report is not equal, field for field, to a finding a sub-agent returned. Both are facts
-   about the pipeline
+4. **Two transcript facts fail `Agent Review Ran`.** No sub-agent read the brief of an axis that was
+   meant to run: the Standards axis always, the Spec axis only when the spec is not `none`. Or a
+   finding in the report is not equal, field for field, to a finding a sub-agent returned. Both are
+   facts about the pipeline
    ([ADR 0073](0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md)):
    the axis did not run as built, or the main agent authored a finding. Dropping a Standards finding
    under the one-axis-per-defect rule is not a change.
