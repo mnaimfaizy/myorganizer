@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { COMFORTABLE_ROW_HEIGHT } from '../metrics';
 import { lightTheme } from '../theme';
@@ -691,7 +691,10 @@ describe('ListRow Component', () => {
           />
         </TestWrapper>,
       );
-      const action = screen.getByRole('button', { name: 'Done' });
+      // Behind a closed row, so not an accessibility element until swiped.
+      const action = screen.getByLabelText('Done', {
+        includeHiddenElements: true,
+      });
       const style = StyleSheet.flatten(action.props.style);
       expect(style.backgroundColor).toBe(lightTheme.colors.primary);
       expect(style.width).toBe(88);
@@ -805,6 +808,74 @@ describe('ListRow Component', () => {
         'notificationWarning',
         expect.any(Object),
       );
+    });
+  });
+
+  /**
+   * What a hardware keyboard may stop on. Android puts a view in the Tab
+   * order when it is `accessible` or `focusable`, so both are asserted: a
+   * control nobody can see, and a row that does nothing, must carry neither.
+   *
+   * The swipe that reveals an action is not performed here: its callbacks are
+   * worklets, and the Reanimated double this project runs under does not
+   * dispatch a gesture to a worklet.
+   */
+  describe('keyboard stops', () => {
+    afterEach(() => jest.restoreAllMocks());
+
+    const deleteAction = () =>
+      screen.getByLabelText('Delete', { includeHiddenElements: true });
+    const row = (
+      <TestWrapper>
+        <ListRow
+          title="Milk"
+          onPress={jest.fn()}
+          rightActions={[
+            { id: 'del', label: 'Delete', icon: 'trash', onPress: jest.fn() },
+          ]}
+        />
+      </TestWrapper>
+    );
+
+    it('keeps a swipe action behind a closed row out of the Tab order and away from a screen reader', async () => {
+      await render(row);
+
+      expect(deleteAction().props.accessible).toBe(false);
+      expect(deleteAction().props.focusable).toBe(false);
+      expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+      // The row still offers it.
+      expect(
+        screen.getByRole('button', { name: 'Milk' }).props.accessibilityActions,
+      ).toEqual([{ name: 'del', label: 'Delete' }]);
+    });
+
+    it('keeps a pressable row a keyboard stop', async () => {
+      await render(row);
+      const milk = screen.getByLabelText('Milk');
+      expect(milk.props.accessible).toBe(true);
+      expect(milk.props.focusable).toBe(true);
+    });
+
+    it('reads a row that does nothing as one element that is no keyboard stop on Android', async () => {
+      jest.replaceProperty(Platform, 'OS', 'android');
+      await render(
+        <TestWrapper>
+          <ListRow title="Version" value="1.0 (1)" />
+        </TestWrapper>,
+      );
+      const version = screen.getByLabelText('Version');
+      expect(version.props.accessible).toBe(false);
+      expect(version.props.focusable).toBe(false);
+      expect(version.props.screenReaderFocusable).toBe(true);
+    });
+
+    it('keeps a row that does nothing an accessibility element on iOS', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Version" value="1.0 (1)" />
+        </TestWrapper>,
+      );
+      expect(screen.getByLabelText('Version').props.accessible).toBe(true);
     });
   });
 });

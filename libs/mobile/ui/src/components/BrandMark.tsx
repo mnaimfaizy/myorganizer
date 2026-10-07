@@ -6,6 +6,7 @@ import {
   colorSecondary,
   colorTertiary,
 } from '@myorganizer/design-tokens';
+import { staticElement } from '../staticElement';
 import { useTheme } from '../useTheme';
 import { fontCutFor } from '../typeScale';
 import { Text } from './Text';
@@ -61,7 +62,11 @@ export interface BrandMarkProps {
  * colour with the theme is two logos. Violet to trust teal, top to bottom,
  * with the check in the colour that sits on violet.
  *
- * One accessibility element named "MyOrganizer"; the parts are not read.
+ * One accessibility element named "MyOrganizer"; the parts are not read. It
+ * is a picture and not a control, so the mark on its own is no keyboard stop
+ * (`staticElement`). A lockup with the wordmark stays `accessible`: the word
+ * is text of its own, which `staticElement` would let TalkBack land on a
+ * second time.
  */
 export function BrandMark({
   lockup = 'stacked',
@@ -75,7 +80,7 @@ export function BrandMark({
 
   return (
     <View
-      accessible
+      {...(word === null ? staticElement() : { accessible: true })}
       accessibilityRole="image"
       accessibilityLabel="MyOrganizer"
       style={[
