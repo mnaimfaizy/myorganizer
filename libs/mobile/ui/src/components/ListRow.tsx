@@ -18,6 +18,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
+import { staticElement } from '../staticElement';
 import { useTheme } from '../useTheme';
 import { COMFORTABLE_ROW_HEIGHT, MIN_TOUCH_TARGET } from '../metrics';
 import { haptics } from '../haptics';
@@ -269,8 +270,21 @@ export interface ListRowProps {
   style?: StyleProp<ViewStyle>;
 }
 
-/** One swipe action. Its own component so that each tile owns its ring. */
-function PanelAction({ action }: { action: SwipeAction }): React.JSX.Element {
+/**
+ * One swipe action. Its own component so that each tile owns its ring.
+ *
+ * A button only while a swipe has it `revealed`. Behind a closed row it is
+ * drawn but covered, and a control nobody can see must not take a Tab press:
+ * it did, after every row, with its ring hidden behind the row (#1022). Both
+ * props go, because on Android `accessible` alone keeps a view focusable.
+ */
+function PanelAction({
+  action,
+  revealed,
+}: {
+  action: SwipeAction;
+  revealed: boolean;
+}): React.JSX.Element {
   const theme = useTheme();
   const focus = useFocusRing('inset');
   const tone = TONE[action.tone ?? 'neutral'];
@@ -279,6 +293,8 @@ function PanelAction({ action }: { action: SwipeAction }): React.JSX.Element {
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={action.label}
+      accessible={revealed}
+      focusable={revealed}
       onPress={action.onPress}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
@@ -316,16 +332,25 @@ function PanelAction({ action }: { action: SwipeAction }): React.JSX.Element {
 function ActionPanel({
   actions,
   side,
+  revealed,
 }: {
   actions: readonly SwipeAction[];
   side: 'left' | 'right';
+  /** Whether a swipe has the panel out from behind the row. */
+  revealed: boolean;
 }): React.JSX.Element {
   const theme = useTheme();
 
   return (
-    <View style={[styles.panel, side === 'left' ? styles.left : styles.right]}>
+    <View
+      // Covered by a closed row, so hidden from a screen reader as well: the
+      // row itself offers every one of these as an accessibility action.
+      accessibilityElementsHidden={!revealed}
+      importantForAccessibility={revealed ? 'auto' : 'no-hide-descendants'}
+      style={[styles.panel, side === 'left' ? styles.left : styles.right]}
+    >
       {actions.map((action) => (
-        <PanelAction key={action.id} action={action} />
+        <PanelAction key={action.id} action={action} revealed={revealed} />
       ))}
     </View>
   );
@@ -533,6 +558,10 @@ export function ListRow({
 
   const offsetX = useSharedValue(0);
   const startX = useSharedValue(0);
+  // Whether a swipe has the action panels out from behind the sheet. Set as
+  // the drag starts and cleared once the row has settled shut, so the panels
+  // are controls for exactly as long as they can be seen.
+  const [revealed, setRevealed] = useState(false);
 
   const pan = useMemo(
     () =>
@@ -546,6 +575,9 @@ export function ListRow({
         .onBegin(() => {
           startX.value = offsetX.value;
         })
+        .onStart(() => {
+          runOnJS(setRevealed)(true);
+        })
         .onUpdate((event) => {
           const next = startX.value + event.translationX;
           offsetX.value = Math.min(Math.max(next, -rightWidth), leftWidth);
@@ -557,7 +589,16 @@ export function ListRow({
               : offsetX.value < -rightWidth * OPEN_FRACTION
                 ? -rightWidth
                 : 0;
-          offsetX.value = reduceMotion ? open : withSpring(open, SPRING);
+          const shut = open === 0;
+          if (reduceMotion) {
+            offsetX.value = open;
+            if (shut) runOnJS(setRevealed)(false);
+            return;
+          }
+          offsetX.value = withSpring(open, SPRING, (finished) => {
+            // A drag that catches the row mid-spring leaves it revealed.
+            if (finished && shut) runOnJS(setRevealed)(false);
+          });
         }),
     [leftWidth, rightWidth, offsetX, startX, reduceMotion],
   );
@@ -680,6 +721,10 @@ export function ListRow({
   // A toggle that cannot be flipped refuses presses and announces as
   // disabled, but is not dimmed here: the screen dims it as drawn.
   const pressDisabled = disabled || toggle?.disabled === true;
+  // A row that does nothing when activated — Account's Version — is read as
+  // one element and is no keyboard stop.
+  const interactive =
+    !pressDisabled && (onPress != null || checked != null || toggle != null);
   const bleed = checkboxBleed(leading);
   const tile = ICON_TILE[leadingIconSize];
   const height = ROW_MIN_HEIGHT[size][subtitle == null ? 'single' : 'double'];
@@ -694,10 +739,14 @@ export function ListRow({
     >
       <View style={[styles.track, { backgroundColor: theme.colors.card }]}>
         {leftActions.length > 0 && !disabled && (
-          <ActionPanel actions={leftActions} side="left" />
+          <ActionPanel actions={leftActions} side="left" revealed={revealed} />
         )}
         {rightActions.length > 0 && !disabled && (
-          <ActionPanel actions={rightActions} side="right" />
+          <ActionPanel
+            actions={rightActions}
+            side="right"
+            revealed={revealed}
+          />
         )}
         <GestureDetector gesture={pan}>
           <Animated.View style={sheet}>
@@ -726,10 +775,8 @@ export function ListRow({
               }))}
               onAccessibilityAction={onAccessibilityAction}
               disabled={pressDisabled}
-              focusable={
-                !pressDisabled &&
-                (onPress != null || checked != null || toggle != null)
-              }
+              {...(interactive ? null : staticElement())}
+              focusable={interactive}
               onPress={onPress}
               onLongPress={onLongPress}
               onFocus={focus.onFocus}
