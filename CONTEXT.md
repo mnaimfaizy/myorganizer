@@ -603,7 +603,7 @@ An entry in `tools/config/review-obligations.json` — whose human-readable form
 _Avoid_: checklist item, requirement (alone), review question, mandate
 
 **Standards Source**:
-A document a code review's Standards axis was held to: the standards index, a document that index names, or an Agent Guide. On a review run in CI, which Standards Sources a review had is a fact read from what the reviewer opened and never one the reviewer writes; on an interactive review it is the reviewer's own statement, and the report says which of the two it carries. Searching a document is not opening it, and a Standards Source the Harness places in every session is in force without being opened, so it is named as loaded and never listed as opened. The Review Checklist is not a Standards Source — its entries reach the reviewer as Obligations.
+A document a code review's Standards axis was held to: the standards index, a document that index names, or an Agent Guide. A review is held to one in either of two ways, and they are not the same fact: the reviewer opened it, or the Harness placed it in the session without anyone opening it. The second is loaded, never opened, and the two are not reported as one. Searching a document is not opening it. The Review Checklist is not a Standards Source — its entries reach the reviewer as Obligations.
 _Avoid_: standards read, sources (unqualified), reference, citation (a different sense)
 
 **Escaped Defect**:
