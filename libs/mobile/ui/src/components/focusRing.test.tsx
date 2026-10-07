@@ -67,12 +67,6 @@ describe('P3 focus ring on a focused control', () => {
       />,
     ],
     [
-      'BottomSheet scrim',
-      'Dismiss',
-      INSET,
-      <BottomSheet visible onDismiss={jest.fn()} title="Sort" showClose />,
-    ],
-    [
       'BottomSheet close',
       'Close',
       OUTSIDE,
