@@ -23,9 +23,11 @@ export const TAB_SCREEN_EDGES =
 /**
  * The safe-area edges a screen pushed inside a tab takes.
  *
- * It has a native header on both platforms — the stack draws one with a back
- * affordance, which is the way back out of it — so it never insets its own
- * top, and the tab bar still owns the bottom.
+ * It has a bar above it on both platforms — the native stack's on iOS, the
+ * app's own on Android (`PushedScreenLayout` in `MainTabs`), each with a back
+ * affordance, which is the way back out of it — and that bar clears the top
+ * inset, so the screen never insets its own top, and the tab bar still owns
+ * the bottom.
  */
 export const STACK_SCREEN_EDGES = ['left', 'right'] as const;
 
