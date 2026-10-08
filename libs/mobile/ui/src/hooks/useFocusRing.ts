@@ -1,7 +1,13 @@
-import { useCallback, useMemo, useState } from 'react';
-import type { ViewStyle } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { FocusEvent, ViewStyle } from 'react-native';
 import { useTheme } from '../useTheme';
 import { useInFrontFocusLayer } from './focusLayer';
+import {
+  focusTargetOf,
+  noteBlur,
+  noteFocus,
+  type FocusTarget,
+} from './focusReturn';
 
 /** Where the ring sits: around the control, or inside a full-bleed one. */
 export type FocusRingPlacement = 'outside' | 'inset';
@@ -45,17 +51,39 @@ const OFFSET = {
  * `focusLayer.ts`), and a ring there says focus is somewhere it is not.
  * `focused` stays what the control was told, so the ring returns with the
  * sheet's dismissal if the control still has focus.
+ *
+ * A control that hands `onFocus` its event also names the view focus can be
+ * returned to once a screen it opened leaves (see `focusReturn.ts`). A text
+ * input draws its ring without this hook, so it is never that view: it takes
+ * focus in touch mode too, and returning focus to one would raise the
+ * keyboard on a touch user.
  */
 export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
   focused: boolean;
-  onFocus: () => void;
+  onFocus: (event?: FocusEvent) => void;
   onBlur: () => void;
   ringStyle: ViewStyle | null;
 } {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
-  const onFocus = useCallback(() => setFocused(true), []);
-  const onBlur = useCallback(() => setFocused(false), []);
+  const view = useRef<FocusTarget | null>(null);
+  const onFocus = useCallback((event?: FocusEvent) => {
+    setFocused(true);
+    view.current = focusTargetOf(event?.currentTarget);
+    if (view.current !== null) noteFocus(view);
+  }, []);
+  const onBlur = useCallback(() => {
+    setFocused(false);
+    noteBlur(view);
+  }, []);
+  // A control removed while focused may never be sent its blur.
+  useEffect(
+    () => () => {
+      noteBlur(view);
+      view.current = null;
+    },
+    [],
+  );
   const inFront = useInFrontFocusLayer();
 
   const ringStyle = useMemo<ViewStyle | null>(

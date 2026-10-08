@@ -179,7 +179,7 @@ export function Button({
           : labelRipple(theme, roles.label)
       }
       onFocus={(event) => {
-        ring.onFocus();
+        ring.onFocus(event);
         onFocus?.(event);
       }}
       onBlur={(event) => {
