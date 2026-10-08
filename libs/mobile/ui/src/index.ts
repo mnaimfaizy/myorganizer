@@ -33,6 +33,7 @@ export { useKeyboardVisible } from './hooks/useKeyboardVisible';
 export { useAppState } from './hooks/useAppState';
 export { useFocusRing, type FocusRingPlacement } from './hooks/useFocusRing';
 export { useReturnFocusOnLeave } from './hooks/focusReturn';
+export { useFocusWithin } from './hooks/useFocusWithin';
 export { staticElement } from './staticElement';
 export {
   usePressFeedback,

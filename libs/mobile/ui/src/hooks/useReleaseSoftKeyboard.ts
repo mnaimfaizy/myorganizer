@@ -39,8 +39,8 @@ function hideSoftKeyboard(input: TextInputInstance): void {
  * between two text inputs, by Tab or by the keyboard's own "next", therefore
  * leaves the keyboard alone.
  *
- * An input removed by its own blur — the Tasks composer collapses on it — is
- * gone before that check, so it closes the keyboard as it leaves instead.
+ * An input removed before that check has run — by its own blur, or by
+ * whatever its blur set off — closes the keyboard as it leaves instead.
  *
  * Touch does not come through here with the keyboard up: a tap on a button
  * leaves focus in the input, and `Keyboard.dismiss()` has hidden the keyboard
