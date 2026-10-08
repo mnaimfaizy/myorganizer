@@ -89,12 +89,9 @@ The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh
 - Use the generated API client when it covers the endpoint.
 - Add or update focused tests for changed behavior.
 - Keep docs concise and link to existing docs when possible.
-- Notes have homes, and there is no catch-all directory ([ADR 0041](docs/adr/0041-internal-notes-have-homes.md)): planning and history in GitHub issues, durable decisions in `docs/adr/`, feature behaviour in `docs/features/`, cited investigation in `docs/research/` (date-prefixed `YYYY-MM-DD-slug.md`, frozen at that date), and short-lived working files in `tmp/` (gitignored, never committed). `yarn docs:notes:check` enforces the directory names and the date prefix.
-- An approved design is committed under `docs/design/<design>/` before anything is built to it ([ADR 0110](docs/adr/0110-an-approved-design-is-committed-to-the-repo.md)): the design tool's export, byte for byte, with a README naming its source link, version, and every artboard. Work that builds to a design links **both** the committed folder (a slice names its artboards by path) **and** the tool link. A later change is re-exported and committed on its own.
+- Before adding a file under `docs/`, committing a design, writing an ADR, or adding a `check-*.mjs`, read [the repository conventions](docs/agents/repository-conventions.md): where notes live (short-lived working files go in `tmp/`, gitignored and never committed), how an approved design is committed, how an ADR is numbered and authored `accepted`, and what a checker header declares.
 - Standards live in the documents indexed by [`CODING_STANDARDS.md`](CODING_STANDARDS.md). Add a rule to its source document and link, rather than restating it in the index.
 - `CONTEXT.md` is the domain glossary — read it before changing domain language, and sharpen or extend a term it already carries instead of redefining it. A new term touching encrypted data must say whether it means plaintext (client-only) or ciphertext (server-storable).
-- ADRs in `docs/adr/` are numbered sequentially from `0001`: scan for the highest existing number, then name the file `NNNN-lowercase-hyphen-slug.md`. If another pull request merges your number first, renumber yours; never renumber a merged ADR — supersede it ([ADR 0042](docs/adr/0042-adr-numbers-are-claims-until-merged.md)). Gaps are legal. Author an ADR `accepted`, never `proposed` ([ADR 0097](docs/adr/0097-an-adr-is-authored-accepted.md)). `yarn adr:numbering:check` and `yarn adr:status:check` enforce both.
-- An artifact states no claim it does not assert ([ADR 0085](docs/adr/0085-an-artifact-states-no-claim-it-does-not-assert.md)). A `check-*.mjs` header declares which direction(s) it asserts and why any omitted direction is omitted, and a contract suite proves the checker fails on the drift that header claims to catch. A House Explainer Page asserts the facts it states, or states less (see the `design-brief` Skill).
 - Code fanning out over a domain enum reaches one `as const satisfies Record<EnumType, …>` table; it does not re-enumerate the members in an object literal, an if-chain, or a list of `if` statements. `yarn enum:fanout:check` enforces it for guarded enums ([ADR 0053](docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
 - Before issuing 3 or more consecutive read/search operations to locate something in the codebase, stop and delegate to `CodeExplorer` (`.github/agents/explore.agent.md`) with an Explore Request: a `Goal` sentence, optionally `Known Locations`, `Search Hints`, `Supplied Evidence` (output of a command you ran for it — it has no shell), `Depth` (`quick` or `thorough`), `Out of Scope`, and `Expected Output`.
 - Keep `.github/agents` as the canonical Sub-agent body source. Keep `CodeExplorer` in `.cursor/agents/explore.md` on `model: composer-2.5`.
@@ -178,16 +175,6 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 | `gate:standard`   | Matching specialist hop for the artifact                                                             |
 | `gate:full`       | Full mandatory pipelines                                                                             |
 
-| File Pattern                                              | Skill                                                                                                           |
-| --------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `*.spec.ts` (Playwright E2E)                              | `.agents/skills/playwright-e2e-workflow/SKILL.md`                                                               |
-| `*.test.ts` (Jest)                                        | `.agents/skills/unit-test-delegation-workflow/SKILL.md`                                                         |
-| `*.stories.tsx`                                           | `.agents/skills/storybook-delegation-workflow/SKILL.md`                                                         |
-| Components in `libs/web/ui/` / `libs/web/pages/`          | `.agents/skills/component-builder/SKILL.md`                                                                     |
-| API Contract (controllers, DTOs, Prisma for HTTP)         | `.agents/skills/backend-api-contract-change/SKILL.md`                                                           |
-| House Explainer Page (`docs/**/*.html`)                   | `.agents/skills/design-brief/SKILL.md` → `Designer`                                                             |
-| Mobile app / library (`apps/mobile/**`, `libs/mobile/**`) | No specialist hop — direct edit; gate is lint + typecheck + format (ADR 0005) plus `yarn mobile-platform:check` |
-
 ### Key Anti-Patterns
 
 ❌ Skip specialists on behavioral (`standard`/`full`) test or component work.
@@ -196,7 +183,7 @@ Do not treat every test/component touch as a full multi-agent pipeline. Classify
 
 ### Before You Edit Any File
 
-Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix.
+Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix. The matrix routes each file pattern (Playwright, Jest, stories, components, API Contract, House Explainer Page, mobile) to its Skill per tier.
 
 ## Do Not
 
