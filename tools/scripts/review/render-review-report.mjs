@@ -322,9 +322,13 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
       ? 'none (tightened to review:human)'
       : `${report.spec.kind} ${report.spec.ref} (found by ${report.spec.foundBy})`;
   const tierText = report.effectiveTier ?? 'interactive';
+  // `null` is a transcript that carried no figures; absent is a report that
+  // never had any. Only the first is something to say.
   const costText = report.cost
     ? ` · ${report.cost.inputTokens} in / ${report.cost.outputTokens} out tokens`
-    : '';
+    : report.cost === null
+      ? ' · tokens unknown'
+      : '';
   const parts = [
     verdictHeading(report.verdict),
     '',

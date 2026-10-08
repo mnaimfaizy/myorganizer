@@ -144,6 +144,13 @@ for word. The dispatch message carried none of that text. That is one run on one
 release that stops loading the files into sub-agents makes the note false, and the brief then has
 to tell the sub-agent to open them.
 
+The envelope's optional `cost`, its input and output token counts, was left self-reported by item 1
+and is read from the transcript since issue #1057. The figures are summed over every model the
+`result` event lists under `modelUsage`, because the event's top-level `usage` counts the main
+agent's turns alone and most of a review is spent in its sub-agents. Input counts fresh, cache-read,
+and cache-written tokens together. A `result` event that lacks a figure for any model records the
+cost as unknown, never as zero and never as what the reviewer wrote.
+
 A finding's own executed evidence, its command and exit code, is still self-reported and can still
 earn Blocking. Checking it against the transcript needs matching rules of its own and is issue
 #1039.

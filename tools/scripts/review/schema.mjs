@@ -397,6 +397,11 @@ export const SpecSourceSchema = z
  * The envelope as a reviewer writes it. `strictObject` is what rejects a
  * hand-written `verdict`, `effectiveTier`, or finding `id`.
  */
+const CostSchema = z.strictObject({
+  inputTokens: z.int().nonnegative(),
+  outputTokens: z.int().nonnegative(),
+});
+
 const envelopeFields = {
   schemaVersion: z.literal(REPORT_SCHEMA_VERSION),
   base: sha,
@@ -413,12 +418,7 @@ const envelopeFields = {
    * harness exposes usage; the trust ratchet reads it where present and
    * falls back to model plus wall-clock.
    */
-  cost: z
-    .strictObject({
-      inputTokens: z.int().nonnegative(),
-      outputTokens: z.int().nonnegative(),
-    })
-    .optional(),
+  cost: CostSchema.optional(),
 };
 
 export const ReportInputSchema = z.strictObject({
@@ -469,6 +469,12 @@ export const RunFactsSchema = z
     cliVersion: nonEmpty.nullable(),
     models: z.array(nonEmpty).nullable(),
     durationMs: z.int().nonnegative().nullable(),
+    /**
+     * Token figures summed over the result event's `modelUsage`, or `null`
+     * when it does not carry them. Optional, so a facts file written before
+     * the figures were read still parses; absent reads as `null`.
+     */
+    cost: CostSchema.nullable().optional(),
     dispatches: z.int().nonnegative().nullable(),
     axes: AxesFactsSchema,
     standardsSources: z.array(nonEmpty).nullable(),
@@ -568,6 +574,11 @@ export const NormalizedReportSchema = z.strictObject({
   standardsSources: z.array(nonEmpty).nullable(),
   executed: z.array(nonEmpty).nullable(),
   durationMs: z.int().nonnegative().nullable(),
+  /**
+   * `null` is a transcript that did not carry the figures. Absent is a
+   * report with no transcript whose reviewer reported none.
+   */
+  cost: CostSchema.nullable().optional(),
   runFactsFrom: z.enum(RUN_FACTS_SOURCES).optional(),
   runFacts: RunFactsSummarySchema.nullable().optional(),
   findings: z.array(
@@ -877,6 +888,7 @@ const runFactsFor = (input, rawFacts, worklist) => {
     standardsSources: readable ? facts.standardsSources : null,
     executed: readable ? facts.executed : null,
     durationMs: facts.durationMs,
+    cost: facts.cost ?? null,
     model: facts.models?.length ? facts.models.join(', ') : UNKNOWN_MODEL,
     runFactsFrom: 'transcript',
     runFacts: {

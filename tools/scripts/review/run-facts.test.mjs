@@ -544,3 +544,64 @@ test('the validator refuses a facts file that is not one, rather than fall back'
     2,
   );
 });
+
+// --- token figures (issue #1057) --------------------------------------------
+
+const CLAIMED_COST = { inputTokens: 1, outputTokens: 1 };
+const READ_COST = { inputTokens: 1289953, outputTokens: 8088 };
+
+test('with facts, the token figures are the transcripts and not the reviewers', () => {
+  const report = normalizeReport(envelope({ cost: CLAIMED_COST }), {
+    facts: facts({ cost: READ_COST }),
+  });
+  assert.deepEqual(report.cost, READ_COST);
+  // A reviewer that reported none still gets the transcript's.
+  assert.deepEqual(
+    normalizeReport(envelope(), { facts: facts({ cost: READ_COST }) }).cost,
+    READ_COST,
+  );
+});
+
+test('a transcript without the figures records them as unknown, not the claim and not zero', () => {
+  for (const given of [
+    facts({ cost: null }),
+    // A facts file written before the figures were read has no such key.
+    facts(),
+    unknownFacts(),
+  ]) {
+    const report = normalizeReport(envelope({ cost: CLAIMED_COST }), {
+      facts: given,
+    });
+    assert.equal(report.cost, null);
+    assert.ok(NormalizedReportSchema.safeParse(report).success);
+    assert.match(
+      renderReport(report, null, { hunks: false }),
+      /· tokens unknown/,
+    );
+  }
+});
+
+test('without facts, the report keeps the reviewers token figures and says so', () => {
+  const claimed = normalizeReport(envelope({ cost: CLAIMED_COST }));
+  assert.deepEqual(claimed.cost, CLAIMED_COST);
+  assert.equal(claimed.runFactsFrom, 'reviewer');
+  assert.match(
+    renderReport(claimed, null, { hunks: false }),
+    /· 1 in \/ 1 out tokens/,
+  );
+  // None reported and no transcript: there is nothing to call unknown.
+  const silent = normalizeReport(envelope());
+  assert.equal('cost' in silent, false);
+  assert.doesNotMatch(renderReport(silent, null, { hunks: false }), /tokens/);
+});
+
+test('the figures read from a real transcript reach the published line', () => {
+  const report = normalizeReport(envelope({ cost: CLAIMED_COST }), {
+    facts: fixtureFacts('cli-2.1.293-template-two-findings'),
+  });
+  assert.deepEqual(report.cost, READ_COST);
+  assert.match(
+    renderReport(report, null, { hunks: false }),
+    /· 1289953 in \/ 8088 out tokens/,
+  );
+});
