@@ -1,5 +1,6 @@
 import React from 'react';
 import { act, renderHook } from '@testing-library/react-native';
+import type { FocusEvent } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { lightTheme } from '../theme';
 import { useFocusRing } from './useFocusRing';
@@ -7,6 +8,10 @@ import { useFocusRing } from './useFocusRing';
 const wrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider appearance="light">{children}</ThemeProvider>
 );
+
+/** A focus or blur event as far as the hook reads one. */
+const eventAt = (target: unknown, currentTarget: unknown) =>
+  ({ target, currentTarget }) as unknown as FocusEvent;
 
 describe('useFocusRing', () => {
   it('draws nothing until focused', async () => {
@@ -38,5 +43,38 @@ describe('useFocusRing', () => {
     await act(() => result.current.onFocus());
     await act(() => result.current.onBlur());
     expect(result.current.ringStyle).toBeNull();
+  });
+
+  // Focus and blur bubble: a row is sent its checkbox's (#1047).
+  describe('on a control with a ringed control inside it', () => {
+    const row = { focus: jest.fn() };
+    const checkbox = { focus: jest.fn() };
+
+    it('draws the ring for its own focus', async () => {
+      const { result } = await renderHook(() => useFocusRing(), { wrapper });
+      await act(() => result.current.onFocus(eventAt(row, row)));
+      expect(result.current.ringStyle).not.toBeNull();
+    });
+
+    it('draws no ring when the control inside it takes focus', async () => {
+      const { result } = await renderHook(() => useFocusRing(), { wrapper });
+      await act(() => result.current.onFocus(eventAt(checkbox, row)));
+      expect(result.current.focused).toBe(false);
+      expect(result.current.ringStyle).toBeNull();
+    });
+
+    it('keeps its ring when the control inside it loses focus', async () => {
+      const { result } = await renderHook(() => useFocusRing(), { wrapper });
+      await act(() => result.current.onFocus(eventAt(row, row)));
+      await act(() => result.current.onBlur(eventAt(checkbox, row)));
+      expect(result.current.ringStyle).not.toBeNull();
+    });
+
+    it('clears the ring on its own blur', async () => {
+      const { result } = await renderHook(() => useFocusRing(), { wrapper });
+      await act(() => result.current.onFocus(eventAt(row, row)));
+      await act(() => result.current.onBlur(eventAt(row, row)));
+      expect(result.current.ringStyle).toBeNull();
+    });
   });
 });
