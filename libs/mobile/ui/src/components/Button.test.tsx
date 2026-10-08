@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { render, screen } from '@testing-library/react-native';
+import { fireEvent, render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
 import { ThemeProvider } from '../useTheme';
 import { FONT_FAMILY } from '../typeScale';
@@ -140,5 +140,75 @@ describe('Button Component', () => {
     expect(StyleSheet.flatten(sheet.props.style).backgroundColor).toBe(
       '#1d283a',
     );
+  });
+});
+
+/**
+ * Android takes focus from a view as it is disabled, and gives it to the first
+ * focusable view in the window. A confirm sheet makes all three of its buttons
+ * inert while its answer is saved, so the one the keyboard was on lost focus,
+ * and a save that failed left it on the first of them — "Delete task", for an
+ * Enter on "Archive instead" (#1085).
+ */
+describe('Button inert while it holds keyboard focus', () => {
+  const renderButton = (
+    state: { busy?: boolean; disabled?: boolean },
+    onPress = jest.fn(),
+  ) => (
+    <TestWrapper>
+      <Button label="Archive instead" onPress={onPress} {...state} />
+    </TestWrapper>
+  );
+  const button = () => screen.getByRole('button', { name: 'Archive instead' });
+  /** The control's own focus or blur, as React Native names it. */
+  const own = () => ({ target: button(), currentTarget: button() });
+
+  it('is disabled when it goes busy without holding focus', async () => {
+    await render(renderButton({ busy: true }));
+    expect(button().props.accessibilityState.disabled).toBe(true);
+  });
+
+  it.each([{ busy: true }, { disabled: true }])(
+    'stays an enabled view when it goes inert with focus on it (%o)',
+    async (inert) => {
+      const view = await render(renderButton({}));
+      await fireEvent(button(), 'focus', own());
+      await view.rerender(renderButton(inert));
+
+      expect(button().props.accessibilityState.disabled).toBe(false);
+    },
+  );
+
+  it('still says it is busy, and still refuses a press', async () => {
+    const onPress = jest.fn();
+    const view = await render(renderButton({}, onPress));
+    await fireEvent(button(), 'focus', own());
+    await view.rerender(renderButton({ busy: true }, onPress));
+
+    expect(button().props.accessibilityState.busy).toBe(true);
+    // Through the responder, as a key or a touch arrives: `fireEvent.press`
+    // would call the `onPress` this test handed `Button`, past the view.
+    await userEvent.setup().press(button());
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it('is disabled for real once focus moves on', async () => {
+    const view = await render(renderButton({}));
+    await fireEvent(button(), 'focus', own());
+    await view.rerender(renderButton({ busy: true }));
+    await fireEvent(button(), 'blur', own());
+
+    expect(button().props.accessibilityState.disabled).toBe(true);
+  });
+
+  it('takes presses again, focus still on it, when the save is over', async () => {
+    const onPress = jest.fn();
+    const view = await render(renderButton({}, onPress));
+    await fireEvent(button(), 'focus', own());
+    await view.rerender(renderButton({ busy: true }, onPress));
+    await view.rerender(renderButton({}, onPress));
+
+    await userEvent.setup().press(button());
+    expect(onPress).toHaveBeenCalledTimes(1);
   });
 });
