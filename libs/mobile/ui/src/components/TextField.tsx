@@ -13,6 +13,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET, TEXT_SCALE_CAP } from '../metrics';
 import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
+import { useReleaseSoftKeyboard } from '../hooks/useReleaseSoftKeyboard';
 import { staticElement } from '../staticElement';
 import { Glyph } from './glyphs';
 import { Icon, type IconName } from './Icon';
@@ -116,6 +117,7 @@ export function TextField({
   const inputRef = useRef<TextInputInstance>(null);
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  const releaseSoftKeyboard = useReleaseSoftKeyboard(inputRef);
   const delayFocus = autoFocus === true && Platform.OS === 'android';
 
   useEffect(() => {
@@ -240,6 +242,7 @@ export function TextField({
           }}
           onBlur={(e) => {
             setFocused(false);
+            releaseSoftKeyboard();
             onBlur?.(e);
           }}
           {...rest}
