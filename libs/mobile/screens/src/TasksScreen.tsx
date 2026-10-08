@@ -47,6 +47,7 @@ import {
   Text,
   TextField,
   useFocusRing,
+  useFocusWithin,
   useLargeTitleCollapse,
   usePressFeedback,
   useTheme,
@@ -219,7 +220,7 @@ export function TasksScreen(): React.JSX.Element {
   const [context, setContext] = useState<TaskContext | undefined>();
   const [menu, setMenu] = useState<ComposerMenu | null>(null);
   // A picker over the composer takes the keyboard's focus with it; the
-  // composer stays open under it rather than collapsing on that blur.
+  // composer stays open under it rather than collapsing as focus leaves.
   const pickerOpen = useRef(false);
 
   const datePicker = useCalendarDatePicker({
@@ -237,6 +238,14 @@ export function TasksScreen(): React.JSX.Element {
     onClose: () => {
       pickerOpen.current = false;
     },
+  });
+
+  // Focus anywhere in the composer keeps it open; it collapses once focus has
+  // left the title, the chips and Save together (#1046). A picker over the
+  // composer is not that: it takes the window's focus with it and gives it
+  // back.
+  const composerFocus = useFocusWithin(() => {
+    if (!pickerOpen.current) setComposerOpen(false);
   });
 
   const resetComposer = useCallback((): void => {
@@ -771,6 +780,13 @@ export function TasksScreen(): React.JSX.Element {
               content, so it stays reachable while browsing any group. */}
           {composerOpen ? (
             <View
+              // A view of its own on Android, so Tab walks it in reading
+              // order. Flattened, it is a sibling of its own controls that
+              // spans both their rows, and Android then orders the lot left
+              // to right: the chips, then the title, then Save.
+              collapsable={false}
+              onFocus={composerFocus.onFocus}
+              onBlur={composerFocus.onBlur}
               style={[
                 styles.composer,
                 {
@@ -794,13 +810,11 @@ export function TasksScreen(): React.JSX.Element {
               >
                 <TextField
                   autoFocus
+                  autoFocusPromptly
                   placeholder="Add a task"
                   value={title}
                   onChangeText={setTitle}
                   onSubmitEditing={capture}
-                  onBlur={() => {
-                    if (!pickerOpen.current) setComposerOpen(false);
-                  }}
                   returnKeyType="done"
                   accessibilityLabel="New task title"
                   containerStyle={styles.captureInput}

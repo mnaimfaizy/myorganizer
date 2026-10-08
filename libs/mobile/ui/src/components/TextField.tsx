@@ -87,6 +87,15 @@ export interface TextFieldProps extends TextInputProps {
   onClear?: () => void;
   /** The clear accessory's label. Defaults to "Clear <label>". */
   clearLabel?: string;
+  /**
+   * Takes focus as the field mounts, on Android too, instead of after
+   * `ANDROID_AUTOFOCUS_DELAY_MS`. For a field that appears in a window
+   * already on screen and taking keys — the Tasks composer, opened by Enter
+   * on a hardware keyboard, where everything typed during the wait went to
+   * no field at all (#1046). Not for a field that mounts with its screen or
+   * its sheet: that is the case the wait is for.
+   */
+  autoFocusPromptly?: boolean;
 }
 
 export function TextField({
@@ -111,6 +120,7 @@ export function TextField({
   editable,
   value,
   autoFocus,
+  autoFocusPromptly = false,
   ...rest
 }: TextFieldProps): React.JSX.Element {
   const theme = useTheme();
@@ -118,7 +128,8 @@ export function TextField({
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const releaseSoftKeyboard = useReleaseSoftKeyboard(inputRef);
-  const delayFocus = autoFocus === true && Platform.OS === 'android';
+  const delayFocus =
+    autoFocus === true && !autoFocusPromptly && Platform.OS === 'android';
 
   useEffect(() => {
     if (!delayFocus) return;
