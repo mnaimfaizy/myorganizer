@@ -233,11 +233,21 @@ whatever the two sub-agents already returned — an unanswered obligation fails 
 
 Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 0041).
 
-**You assemble; you do not review.** Four rules hold for this whole step:
+**You assemble; you do not review.** Five rules hold for this whole step:
 
 - **A finding a sub-agent returned goes into the envelope field for field.** Do not reword a
-  summary, change a severity, fill in a missing field, or correct a value. A reply that breaks the
-  contract is re-run, as below; it is not repaired.
+  summary, change a severity, fill in a missing field, or correct a value.
+- **A reply that breaks the contract is re-run once, never repaired.** That covers a reply the
+  validator rejects and one you cannot read as a single JSON object. Write the reasons to
+  `tmp/code-review/<axis>.rejected.txt` and dispatch that sub-agent again with the same template
+  and this one extra line, which is the only addition the template ever takes:
+
+  ```
+  - retry: your first reply was rejected; the reasons are in tmp/code-review/<axis>.rejected.txt
+  ```
+
+  If the second reply breaks the contract too, stop and report it.
+
 - **The only findings you write yourself are obligation findings from step 4**: one whose answer
   meets its entry's `defectWhen`, raised under that obligation's mirrored rule id at the site's
   file. Nothing else in the envelope originates with you.
@@ -249,7 +259,9 @@ Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 004
   keep the Spec one. This is the one point in the process where both axes' findings are in the same
   hands, which is why the rule is applied here and not asked of either sub-agent (PR #819).
 
-Use the Standards sub-agent's `standardsSources` for the envelope field of the same name.
+The envelope's `standardsSources` is the list the Standards sub-agent returned, like every other
+field it returned. Issue #1031 replaces it in CI with a list read from the transcript; until that
+lands, the reply is the only source there is.
 
 ```json
 {
@@ -280,17 +292,9 @@ axis, rule id, and file, on overlapping lines — keeps its id, and every other 
 one (ADR 0071 item 6, issue #940). Without it every finding reads as new. Pass it to the validator
 only; never show the earlier report to a sub-agent, which reviews fresh.
 
-- **Exit 1** — the report was rejected. Print the issues, and write them to
-  `tmp/code-review/<axis>.rejected.txt`. Re-run only the sub-agent whose findings failed, once, with
-  the same dispatch template and this one extra line:
-
-  ```
-  - retry: your first reply was rejected; the validator's reasons are in tmp/code-review/<axis>.rejected.txt
-  ```
-
-  If it fails again, stop and report the rejection; do not edit findings by hand, and do not
-  downgrade a severity to make it pass.
-
+- **Exit 1** — the report was rejected. Print the issues, then re-run only the sub-agent whose
+  findings failed, under the re-run rule above. Do not edit findings by hand, and do not downgrade
+  a severity to make it pass.
 - **Exit 0** — render and print:
 
 ```bash

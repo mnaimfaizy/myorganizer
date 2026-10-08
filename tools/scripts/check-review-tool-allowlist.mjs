@@ -604,9 +604,9 @@ export function extractInstructions(text, { file, scripts = new Set() } = {}) {
 
     // A shell fence is a list of commands, so every line is one. Any other
     // fence is read the way prose is — by its inline spans — because the
-    // skill's reach-through block is an unlabelled fence pasted verbatim into
-    // a sub-agent prompt, and its item 3 hands the reviewer a `git grep`
-    // invocation. Skipping the whole fence would hide a block of instructions
+    // Standards brief's reach-through block is an unlabelled fence the
+    // sub-agent reads as instructions, and its item 3 hands the reviewer a
+    // `git grep` invocation. Skipping the whole fence would hide a block of instructions
     // for being formatted like a quotation. The finding-contract fence carries
     // no spans, so it still yields nothing.
     if (fence !== null) {

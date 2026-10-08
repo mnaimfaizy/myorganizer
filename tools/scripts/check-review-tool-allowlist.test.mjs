@@ -215,8 +215,8 @@ test('a fenced shell block and an inline span are both instruction sites', () =>
 });
 
 test('a fence that is not shell is read the way prose is', () => {
-  // The skill's reach-through block is an unlabelled fence pasted verbatim
-  // into a sub-agent prompt, and it hands the reviewer a `git grep`. Skipping
+  // The Standards brief's reach-through block is an unlabelled fence the
+  // sub-agent reads as instructions, and it hands the reviewer a `git grep`. Skipping
   // the fence whole would hide a block of instructions for being formatted
   // like a quotation; the finding-contract fence beside it carries no spans,
   // so it still yields nothing.

@@ -60,7 +60,10 @@ reviewer has exited. The reviewer does not write it.**
    and is not a failure: a finding the main agent raised from an obligation answer, carrying that
    obligation's mirrored rule id at a site the worklist names. The worklist and the report are both
    files, so this stays a fact the pipeline can read
-   ([ADR 0078](0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)).
+   ([ADR 0078](0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)). This
+   exception was added to the ADR after it merged and before anything implemented it. It corrects
+   an oversight in how the rule was first written and reverses nothing, so it is made here and not
+   in a superseding ADR.
 5. **Three transcript facts tighten the effective tier and are published.** The Standards sub-agent
    read its brief but never opened `CODING_STANDARDS.md`. A dispatch carried text beyond the skill's
    fixed template. Or the transcript's shape could not be read. Together they cost at most one tier

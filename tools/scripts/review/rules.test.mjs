@@ -53,8 +53,8 @@ test('the schema version is pinned', () => {
 test('ids are unique lowercase slugs that announce their own family', () => {
   rejects(catalogue([rule({ id: 'Standard-Example' })]), /lowercase slug/);
   rejects(catalogue([rule(), rule()]), /duplicate rule id standard-example/);
-  // The skill pastes these ids into the reviewer's prompt and the gate scans
-  // that prose for them by prefix, so an id that hides its family is a gate
+  // Each brief file lists its axis's ids in prose and the gate scans that
+  // prose for them by prefix, so an id that hides its family is a gate
   // that quietly stops matching.
   rejects(
     catalogue([rule({ id: 'example-thing' })]),
