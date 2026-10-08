@@ -17,7 +17,10 @@ Screens edit through `useVaultBlob`, which reverts a failed push and holds that 
 only: a retry or a reload sends it, `discard` drops it, and it is never persisted. An edit that
 returns the envelope it was given changed nothing, so it is neither pushed nor held and `apply`
 reports it as `not-applied`; an edit function that cannot apply signals that by returning its
-argument, never a copy of it. What that hook
+argument, never a copy of it. Each call of `useVaultBlob` holds its own copy, so a list and the
+detail screen pushed over it are two copies of one Vault Blob Type: a write the server confirmed
+for one is handed to the other in memory (`vaultBlobPeers.ts`, #1041), and the other takes it only
+while it has no request in flight and holds no edit whose push failed. What that hook
 decides lives in `createVaultBlobController`, and what a screen decides from a reload's outcome in
 `unconfirmedEdit.ts` — plain modules with no React import, so they are tested in this lib's node
 Jest project; put new hook logic there, not in the hook. There is still no storage adapter; adding
@@ -53,6 +56,9 @@ as `crypto.ts` does, so the web target has one copy of them.
   call, from `VAULT_BLOB_CONVERGE_STRATEGIES`. Express an edit
   as a function of the envelope (`putVaultRecord`, `deleteVaultRecord`) so a retry and a merge can
   re-apply it; a delete must write the Deletion Log, not just drop the record.
+- Publish to a controller's peers only a write the server confirmed, never a copy that was only
+  read: a read can be older than a write that landed after it started, and an ETag cannot order
+  them. Keep `writing`, `writeError`, and a held edit each controller's own.
 
 ## Do Not
 

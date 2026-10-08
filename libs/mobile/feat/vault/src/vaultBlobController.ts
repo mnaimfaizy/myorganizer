@@ -10,6 +10,7 @@ import {
   type VaultBlobSnapshot,
   type VaultBlobWriteErrorKind,
 } from './sync';
+import type { ConfirmedVaultBlobWrite, VaultBlobPeers } from './vaultBlobPeers';
 
 /**
  * One edit to a Vault Blob, as a function of the envelope it applies to.
@@ -46,6 +47,12 @@ export interface VaultBlobController {
   apply: (edit: VaultBlobEdit) => Promise<boolean>;
   retry: () => Promise<boolean>;
   discard: () => void;
+  /**
+   * Starts taking the writes other controllers had confirmed; the function
+   * returned stops it. A controller that never joins, or has left, still
+   * publishes its own.
+   */
+  join: () => () => void;
 }
 
 /**
@@ -59,6 +66,23 @@ export interface VaultBlobController {
  *
  * `getSession` is read at the start of each call, so a controller outlives a
  * change of Master Key. Nothing here is persisted.
+ *
+ * Two screens on one Vault Blob Type each have a controller, and so each a
+ * copy. A write the server confirmed is published to `peers`, so the list
+ * under a detail screen shows what was changed there without a request of its
+ * own (#1041):
+ *
+ * - Only a confirmed write is published — an `apply` that landed, or the edit
+ *   a reload sent. A plain read is not: it can be older than a write that
+ *   landed after it started, and an ETag cannot say which came first.
+ * - A controller takes a published write only when it is not busy and holds
+ *   no edit whose push failed. Otherwise its own copy stands, and its next
+ *   push or reload converges it, as before.
+ * - A write is taken only under the Master Key object it was written under
+ *   and for the same Vault Blob Type, so nothing crosses a lock, a sign-out,
+ *   or a change of key — in either direction.
+ *
+ * `writing`, `writeError`, and the held edit stay each controller's own.
  */
 export function createVaultBlobController(params: {
   getSession: () => {
@@ -67,6 +91,8 @@ export function createVaultBlobController(params: {
     type: VaultBlobType;
   };
   onState: (state: VaultBlobState) => void;
+  /** The other controllers to tell, and hear from. None when omitted. */
+  peers?: VaultBlobPeers;
 }): VaultBlobController {
   let state = INITIAL_VAULT_BLOB_STATE;
   let busy = false;
@@ -78,6 +104,22 @@ export function createVaultBlobController(params: {
   const set = (patch: Partial<VaultBlobState>): void => {
     state = { ...state, ...patch };
     params.onState(state);
+  };
+
+  const receive = (write: ConfirmedVaultBlobWrite): void => {
+    const { masterKey, type } = params.getSession();
+    if (busy || held !== null) return;
+    if (masterKey !== write.masterKey || type !== write.type) return;
+    // What a reload would have read, so a failed first read is settled too.
+    set({ snapshot: write.snapshot, loading: false, loadError: null });
+  };
+
+  const publish = (
+    type: VaultBlobType,
+    masterKey: Uint8Array,
+    snapshot: VaultBlobSnapshot,
+  ): void => {
+    params.peers?.publish({ type, masterKey, snapshot }, receive);
   };
 
   const reload = async (): Promise<VaultBlobReloadOutcome> => {
@@ -105,6 +147,7 @@ export function createVaultBlobController(params: {
       const settled = settleVaultBlobPull(result);
       if (!settled.held) held = null;
       set({ snapshot: result.snapshot, writeError: settled.writeError });
+      if (result.outcome === 'sent') publish(type, masterKey, result.snapshot);
       return settled.outcome;
     } catch (err) {
       set({ loadError: err });
@@ -134,15 +177,15 @@ export function createVaultBlobController(params: {
         return false;
       }
       set({ snapshot: { envelope: edited, etag: base.etag } });
-      set({
-        snapshot: await pushVaultBlob({
-          vaultApi,
-          masterKey,
-          type,
-          edited,
-          etag: base.etag,
-        }),
+      const confirmed = await pushVaultBlob({
+        vaultApi,
+        masterKey,
+        type,
+        edited,
+        etag: base.etag,
       });
+      set({ snapshot: confirmed });
+      publish(type, masterKey, confirmed);
       return true;
     } catch (err) {
       held = { edit, edited };
@@ -162,5 +205,10 @@ export function createVaultBlobController(params: {
     set({ writeError: null });
   };
 
-  return { reload, apply, retry, discard };
+  const join = (): (() => void) => {
+    const leave = params.peers?.join(receive);
+    return () => leave?.();
+  };
+
+  return { reload, apply, retry, discard, join };
 }
