@@ -105,11 +105,13 @@ version nobody remembers to raise.
 
 ## Consequences
 
-Nothing in the tree does any of this at the commit that adds this ADR. The skill still copies the
-sub-agent's list into the envelope, and the report schema is still version 4. Issue #1031 carries the
-implementation as three pull requests, and holds the parts of the design this ADR leaves out as
-ordinary implementation: where the briefs live, how the command rules are worded, and what the
-briefs say about the always-on agent policy.
+When this ADR was written, nothing in the tree did any of this: the skill copied the sub-agent's
+list into the envelope. Issue #1031 carries the implementation as three pull requests. The first
+moved the briefs into files and fixed the dispatch template. The second reads the run facts from the
+transcript and publishes them, enforcing nothing. Items 4, 5 and 7, which fail a check, tighten a
+tier, and void a replay, arrive with the third. The issue also holds the parts of the design this
+ADR leaves out as ordinary implementation: where the briefs live, how the command rules are worded,
+and what the briefs say about the always-on agent policy.
 
 A required-eligible check now depends on the transcript format of a CLI this repository does not
 version. Item 6 is what keeps a format change from reading as "no sub-agent read its brief" on every

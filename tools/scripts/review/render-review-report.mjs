@@ -36,6 +36,29 @@ import {
 } from './schema.mjs';
 
 /**
+ * A duration as a person reads one: `45 s`, `1 min 52 s`, `1 h 3 min`.
+ *
+ * The comment used to print raw milliseconds (`112403 ms`), which nobody
+ * reads at a glance. Seconds are dropped once the run passes an hour, and
+ * anything under a second is `under 1 s`, because the report measures a
+ * review session and not a function call.
+ *
+ * @param {number} ms a non-negative duration in milliseconds
+ */
+export const formatDuration = (ms) => {
+  const totalSeconds = Math.round(ms / 1000);
+  if (totalSeconds < 1) return 'under 1 s';
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0)
+    return minutes > 0 ? `${hours} h ${minutes} min` : `${hours} h`;
+  if (minutes > 0)
+    return seconds > 0 ? `${minutes} min ${seconds} s` : `${minutes} min`;
+  return `${seconds} s`;
+};
+
+/**
  * A path as inline code. A path here is one a sub-agent chose to open, so a
  * backtick in it is dropped rather than allowed to end the span.
  */
@@ -275,7 +298,7 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
     `- range: \`${report.base.slice(0, 7)}...${report.head.slice(0, 7)}\``,
     `- tier: ${tierText}`,
     `- spec: ${specText}`,
-    `- model: ${report.model} · ${report.durationMs === null ? 'duration unknown' : `${report.durationMs} ms`}${costText}`,
+    `- model: ${report.model} · ${report.durationMs === null ? 'duration unknown' : formatDuration(report.durationMs)}${costText}`,
     ...renderRunFacts(report),
     `- suppressed as redundant with deterministic checks: ${report.suppressed.redundant}`,
     '',

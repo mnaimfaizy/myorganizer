@@ -8,7 +8,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 
-import { renderReport, renderRunFacts } from './render-review-report.mjs';
+import {
+  formatDuration,
+  renderReport,
+  renderRunFacts,
+} from './render-review-report.mjs';
 import {
   NormalizedReportSchema,
   REPORT_SCHEMA_VERSION,
@@ -372,6 +376,30 @@ test('unknown is printed as unknown, not as none', () => {
     { hunks: false },
   );
   assert.match(md, /model: unknown · duration unknown/);
+});
+
+test('a duration is printed the way a person reads one', () => {
+  assert.equal(formatDuration(0), 'under 1 s');
+  assert.equal(formatDuration(499), 'under 1 s');
+  assert.equal(formatDuration(45108), '45 s');
+  assert.equal(formatDuration(60000), '1 min');
+  assert.equal(formatDuration(112403), '1 min 52 s');
+  // Rounding carries into the next unit instead of printing `60 s`.
+  assert.equal(formatDuration(59600), '1 min');
+  assert.equal(formatDuration(3600000), '1 h');
+  assert.equal(formatDuration(3780000), '1 h 3 min');
+  // Past an hour the seconds are noise.
+  assert.equal(formatDuration(3785000), '1 h 3 min');
+
+  const md = renderReport(
+    normalizeReport(envelope(), { facts: facts() }),
+    null,
+    {
+      hunks: false,
+    },
+  );
+  assert.match(md, /model: claude-sonnet-5-5 · 1 min 52 s/);
+  assert.doesNotMatch(md, /\d ms\b/);
 });
 
 test('an interactive report says its run facts are self-reported', () => {
