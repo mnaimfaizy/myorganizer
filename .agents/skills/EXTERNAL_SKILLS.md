@@ -39,7 +39,7 @@ Thirteen personal-scope approvals were removed in [ADR 0032](../../docs/adr/0032
 Specifically excluded, with reasons that outlive the tier:
 
 - `vercel-labs/next-skills@*` — the package ships no valid skills, and `AGENTS.md` already pins `node_modules/next/dist/docs/` as the Next.js source of truth. A third-party opinion pack would compete with version-matched official docs.
-- `wshobson/agents@tailwind-design-system` — conflicts with `AGENTS.md:68`, which makes `tokens.json` the single source of truth and forbids hard-coded values.
+- `wshobson/agents@tailwind-design-system` — conflicts with `AGENTS.md:99`, which makes `tokens.json` the single source of truth and forbids hard-coded values.
 - `vercel-labs/agent-skills@vercel-composition-patterns` — ComponentBuilder already mandates the compound/composition pattern, and ComponentReviewer enforces it.
 - `wshobson/agents@nodejs-backend-patterns` — `backend-api-contract-change` plus the TSOA and Prisma conventions are more specific.
 - Generic duplicate packs with weaker fit or lower-signal descriptions.
