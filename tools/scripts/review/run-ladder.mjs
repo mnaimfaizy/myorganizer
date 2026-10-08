@@ -20,23 +20,9 @@
  * Pure: no file is read here. `normalizeReport` in schema.mjs is the caller.
  */
 import { obligationRuleId } from './obligations.mjs';
+import { RUN_FAILURES, TIGHTENING_FACTS } from './run-ladder-terms.mjs';
 
-/** What fails `Agent Review Ran`, and voids a golden replay (ADR 0101). */
-export const RUN_FAILURES = /** @type {const} */ ([
-  'brief-not-read',
-  'finding-not-returned',
-]);
-
-/**
- * What tightens the effective tier. However many hold, they cost one step
- * together, on top of the separate step a missing spec costs.
- */
-export const TIGHTENING_FACTS = /** @type {const} */ ([
-  'index-not-opened',
-  'dispatch-off-template',
-  'transcript-unreadable',
-  'reply-unparseable',
-]);
+export { RUN_FAILURES, TIGHTENING_FACTS };
 
 const AXIS_NAMES = { standards: 'Standards', spec: 'Spec' };
 

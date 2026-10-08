@@ -12,7 +12,9 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
-import { RUN_FAILURES } from './run-ladder.mjs';
+// The terms file, not run-ladder.mjs: this module is read before any
+// dependency is installed, and the ladder reaches zod.
+import { RUN_FAILURES } from './run-ladder-terms.mjs';
 
 export class GoldenResultError extends Error {
   constructor(message) {
@@ -52,7 +54,7 @@ const CLEAN_OUTCOMES = Object.freeze(['clean-pass', 'clean-fail']);
  * (`prevented`, classified by `classify-reviewer-run.mjs`), the obligation
  * answer sheet failing `review:obligations:check` (ADR 0101), the two run
  * facts that fail `Agent Review Ran` in production (ADR 0123 item 7:
- * `RUN_FAILURES` in run-ladder.mjs — no sub-agent read an axis's brief, or a
+ * `RUN_FAILURES` in run-ladder-terms.mjs — no sub-agent read an axis's brief, or a
  * reported finding was not one a sub-agent returned), and a residual
  * `unknown` for a run that produced no valid report for a reason none of the
  * above names.
