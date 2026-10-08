@@ -1,6 +1,6 @@
 # Dependency and Supply Chain Security Plan
 
-Last updated: 2026-04-14
+Last updated: 2026-10-08
 
 ## Purpose
 
@@ -83,6 +83,26 @@ Every new direct dependency should answer all of the following before merge:
 3. Eradicate: remove the package, clear caches, and rotate any reachable secrets.
 4. Recover: rebuild from a known-good lockfile, rerun audit checks, and compare the new dependency tree to the prior one.
 5. Review: document timeline, blast radius, and permanent control changes in `docs/SECURITY`.
+
+## Where The npm Audit Runs, And What To Do When It Fails
+
+`Secure Install Review` runs `yarn npm audit --all --recursive --severity high`. See [ADR 0124](../adr/0124-the-npm-audit-runs-on-main-and-a-failure-there-is-one-tracked-issue.md) for the reasons.
+
+- A pull request is audited only when it changes dependencies: `yarn.lock`, `.yarnrc.yml`, or a dependency field in any `package.json`.
+- A push to `main` or a release branch is always audited.
+
+The audit reads the live advisory database. A new advisory against a package already in the tree therefore fails the next push to `main`, whatever that push changed. This is the expected way a new advisory surfaces. It is not a fault in the pull request that was merged.
+
+When the audit fails on `main`:
+
+1. Find the open issue titled `[automation] npm audit is failing on main`. CI opens it on the first failing push and comments on it at each later one. It lists each advisory's package, installed version, advisory id and vulnerable range.
+2. Bump each listed package past its vulnerable range on a branch. Follow the `dep-sync` Skill for the version documents.
+3. Open the pull request. It is audited because it changes dependencies, so it shows whether the bump clears the advisories.
+4. Merge it. The first green push to `main` comments on the issue, and closes it if it carries no triage state label.
+
+Until then every push to `main` fails at the audit step, and the build and test jobs after it are skipped. Do not work around this by auditing every pull request or by letting later jobs run.
+
+If no upstream fix exists yet, an audit ignore scoped to that advisory id is the only exception (Package manager policy, item 8).
 
 ## Commands To Use During Reviews
 
