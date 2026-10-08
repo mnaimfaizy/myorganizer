@@ -206,15 +206,26 @@ test('findings under a transcript that shows no dispatch make the shape unknown'
   assert.match(withFinding.runFacts.shapeReason, /shows no sub-agent dispatch/);
   assert.equal(withFinding.standardsSources, null);
 
-  // No findings and no dispatch is a reviewer that dispatched nothing: a
-  // fact, and a readable one.
-  const clean = normalizeReport(envelope(), { facts: noDispatch });
+  // So does a report that names a standards source: the list is not
+  // believed, but naming one says a Standards sub-agent ran. A CLI release
+  // that renamed the dispatch tool would otherwise publish "none opened" on
+  // every clean pull request.
+  const namesASource = normalizeReport(envelope(), { facts: noDispatch });
+  assert.equal(namesASource.runFacts.shape, 'unknown');
+  assert.match(namesASource.runFacts.shapeReason, /names 3 standards source/);
+
+  // No findings, no source named, and no dispatch is a reviewer that
+  // dispatched nothing: a fact, and a readable one.
+  const clean = normalizeReport(envelope({ standardsSources: [] }), {
+    facts: noDispatch,
+  });
   assert.equal(clean.runFacts.shape, 'readable');
   assert.deepEqual(clean.standardsSources, []);
 
   // An obligation finding is the main agent's own and proves no dispatch.
   const obligation = normalizeReport(
     envelope({
+      standardsSources: [],
       findings: [
         finding({
           ruleId: 'obligation-run-the-gate-that-covers-this-change',
@@ -300,6 +311,18 @@ test('each thin-review fact gets its own line', () => {
   );
   assert.match(text, /Spec brief: \*\*not read\*\*/);
   assert.match(text, /standards index: \*\*not opened\*\*/);
+});
+
+test('a reply that is not a bare JSON object gets a line', () => {
+  const text = lines(
+    normalizeReport(envelope(), {
+      facts: facts({
+        axes: { standards: axis(), spec: axis({ replyIsJson: false }) },
+      }),
+    }),
+  );
+  assert.match(text, /Spec reply: \*\*not a bare JSON object\*\*/);
+  assert.doesNotMatch(text, /Standards reply/);
 });
 
 test('an unread Standards brief is not also reported as an unopened index', () => {
@@ -417,6 +440,50 @@ test('a missing transcript is written down as unknown, with an annotation', () =
     /^::error::the reviewer transcript could not be read/,
   );
   assert.equal(JSON.parse(readFileSync(factsPath, 'utf8')).shape, 'unknown');
+});
+
+test('the validator annotates a transcript that reads cleanly and cannot be right', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'run-facts-'));
+  const reportPath = join(dir, 'report.json');
+  writeFileSync(reportPath, JSON.stringify(envelope()));
+  const factsPath = join(dir, 'facts.json');
+  writeFileSync(
+    factsPath,
+    JSON.stringify(
+      facts({
+        dispatches: 0,
+        axes: {
+          standards: axis({
+            dispatched: false,
+            briefRead: false,
+            onTemplate: null,
+            toolCalls: 0,
+          }),
+          spec: axis({
+            dispatched: false,
+            briefRead: false,
+            onTemplate: null,
+            toolCalls: 0,
+          }),
+        },
+        standardsSources: [],
+        indexOpened: false,
+        executed: [],
+      }),
+    ),
+  );
+  const validated = run('validate-review-report.mjs', [
+    reportPath,
+    '--facts',
+    factsPath,
+    '--out',
+    join(dir, 'normalized.json'),
+  ]);
+  assert.equal(validated.status, 0, validated.stderr);
+  assert.match(
+    validated.stdout,
+    /^::error::the reviewer transcript does not account for this report \(Claude Code CLI 2\.1\.293\)/,
+  );
 });
 
 test('the facts command needs somewhere to write', () => {

@@ -441,6 +441,12 @@ const AxisFactsSchema = z.strictObject({
   briefRead: z.boolean(),
   /** Every dispatch of this axis was the fixed template; null if none was sent. */
   onTemplate: z.boolean().nullable(),
+  /**
+   * Every reply of this axis was one JSON object and nothing else; null if
+   * the transcript holds no reply for it. Optional, so a report normalized
+   * before replies were read still parses.
+   */
+  replyIsJson: z.boolean().nullable().optional(),
   toolCalls: z.int().nonnegative(),
 });
 
@@ -770,9 +776,11 @@ export const UNKNOWN_MODEL = 'unknown';
  * The run-fact fields of a normalized report.
  *
  * A transcript that reads cleanly and shows no dispatch at all, under a
- * report that has findings, is treated as unreadable: findings have to have
- * come from somewhere, and the likelier explanation is a dispatch this
- * reader no longer recognises than a reviewer that dispatched nothing. An
+ * report that has findings or names a standards source, is treated as
+ * unreadable: those have to have come from somewhere, and the likelier
+ * explanation is a dispatch this reader no longer recognises than a reviewer
+ * that dispatched nothing. Read the other way, a CLI release that renamed
+ * the dispatch tool would publish "none opened" on every pull request. An
  * obligation finding is the main agent's own and proves no dispatch, so it
  * does not count.
  */
@@ -783,8 +791,11 @@ const runFactsFor = (input, rawFacts) => {
   const returned = input.findings.filter(
     (f) => !f.ruleId.startsWith('obligation-'),
   );
+  // What the reviewer wrote under `standardsSources` is not believed, but a
+  // reviewer that names one is saying a Standards sub-agent ran.
+  const claimsARun = returned.length > 0 || input.standardsSources.length > 0;
   const unseen =
-    facts.shape === 'readable' && facts.dispatches === 0 && returned.length > 0;
+    facts.shape === 'readable' && facts.dispatches === 0 && claimsARun;
   const readable = facts.shape === 'readable' && !unseen;
   return {
     standardsSources: readable ? facts.standardsSources : null,
@@ -795,7 +806,7 @@ const runFactsFor = (input, rawFacts) => {
     runFacts: {
       shape: readable ? 'readable' : 'unknown',
       shapeReason: unseen
-        ? `the report has ${returned.length} finding(s) and the transcript shows no sub-agent dispatch`
+        ? `the report has ${returned.length} finding(s) and names ${input.standardsSources.length} standards source(s), and the transcript shows no sub-agent dispatch`
         : facts.shapeReason,
       cliVersion: facts.cliVersion,
       dispatches: readable ? facts.dispatches : null,

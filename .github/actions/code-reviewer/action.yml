@@ -57,6 +57,13 @@ outputs:
   validated:
     description: true when tmp/code-review/normalized.json was written.
     value: ${{ steps.validate.outputs.validated }}
+  facts-file:
+    description: >-
+      Path of the run facts file read from the reviewer transcript (ADR 0123).
+      It is outside the workspace and always written. Any step that validates
+      the report again must pass it as `--facts`: a validation without it
+      puts the reviewer's own claims back into the normalized report.
+    value: ${{ steps.facts.outputs.facts_file }}
   rejected-file:
     description: Path of the file holding the rejection reason when validation failed.
     value: ${{ steps.validate.outputs.rejected_file }}

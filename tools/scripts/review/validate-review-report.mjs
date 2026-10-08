@@ -101,6 +101,16 @@ export const main = (argv) => {
     process.exit(1);
   }
 
+  // The reader annotates a transcript it could not read. This is the one
+  // case it cannot see: the transcript read cleanly and only the report
+  // shows it cannot be right.
+  if (facts?.shape === 'readable' && normalized.runFacts?.shape === 'unknown') {
+    const message = `the reviewer transcript does not account for this report (Claude Code CLI ${normalized.runFacts.cliVersion ?? 'unknown'}): ${normalized.runFacts.shapeReason}. Its run facts are recorded as unknown. If this appears on every review, the transcript format changed under tools/scripts/review/transcript-facts.mjs.`;
+    console.log(
+      `::error::${message.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`,
+    );
+  }
+
   const text = `${JSON.stringify(normalized, null, 2)}\n`;
   if (flags.out) {
     writeFileSync(flags.out, text);

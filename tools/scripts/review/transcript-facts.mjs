@@ -202,8 +202,50 @@ const emptyAxis = () => ({
   dispatched: false,
   briefRead: false,
   onTemplate: null,
+  replyIsJson: null,
   toolCalls: 0,
 });
+
+const textOf = (content) =>
+  typeof content === 'string'
+    ? content
+    : Array.isArray(content)
+      ? content
+          .map((part) => (isObject(part) ? (part.text ?? '') : ''))
+          .join('')
+      : '';
+
+/**
+ * Whether a sub-agent's reply is one JSON object and nothing else.
+ *
+ * The harness wraps a reply before the main agent sees it: a framing line
+ * ahead of it, every line indented, and an `agentId:` trailer with usage
+ * figures after it. Those are the harness's and are taken off first. What is
+ * left is the sub-agent's own message. A code fence around the object, or a
+ * sentence after it, makes it not a bare object — which is what the briefs
+ * ask for, and what a later comparison of reported findings to returned ones
+ * has to be able to parse.
+ *
+ * @param {unknown} content a tool_result block's content
+ */
+export const replyIsBareJson = (content) => {
+  let text = textOf(content);
+  if (text.startsWith('[Subagent hand-back]'))
+    text = text.slice(text.indexOf('\n') + 1);
+  const trailer = text.search(/^agentId:/m);
+  if (trailer !== -1) text = text.slice(0, trailer);
+  text = text
+    .split('\n')
+    .map((line) => line.replace(/^ {2}/, ''))
+    .join('\n')
+    .trim();
+  if (!text.startsWith('{')) return false;
+  try {
+    return isObject(JSON.parse(text));
+  } catch {
+    return false;
+  }
+};
 
 /**
  * Read a transcript.
@@ -276,6 +318,24 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     }
   }
 
+  // What each dispatch returned to the main agent.
+  const replies = new Map();
+  for (const event of objects) {
+    if (event.type !== 'user' || (event.parent_tool_use_id ?? null) !== null)
+      continue;
+    const blocks = Array.isArray(event.message?.content)
+      ? event.message.content
+      : [];
+    for (const block of blocks) {
+      if (
+        isObject(block) &&
+        block.type === 'tool_result' &&
+        dispatches.has(block.tool_use_id)
+      )
+        replies.set(block.tool_use_id, block.content);
+    }
+  }
+
   const attributed = [...dispatches.keys()].filter((id) => childCalls.has(id));
   if (dispatches.size > 0 && attributed.length === 0)
     return unknownFacts(
@@ -321,6 +381,13 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     const onTemplate = isOnTemplate(axis, dispatch.prompt);
     entry.onTemplate =
       entry.onTemplate === null ? onTemplate : entry.onTemplate && onTemplate;
+    // Every reply of an axis must be a bare object; a dispatch with no reply
+    // in the transcript says nothing either way.
+    if (replies.has(id)) {
+      const bare = replyIsBareJson(replies.get(id));
+      entry.replyIsJson =
+        entry.replyIsJson === null ? bare : entry.replyIsJson && bare;
+    }
     entry.toolCalls += calls.length;
     if (axis === 'standards') standardsOpened.push(...openedHere);
   }

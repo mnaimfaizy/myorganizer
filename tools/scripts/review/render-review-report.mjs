@@ -105,6 +105,10 @@ export const renderRunFacts = (report) => {
       lines.push(
         `- ${AXIS_NAMES[axis]} brief: **not read** — no sub-agent opened it${a.dispatched ? '' : ', and no dispatch named it'}`,
       );
+    if (a.replyIsJson === false)
+      lines.push(
+        `- ${AXIS_NAMES[axis]} reply: **not a bare JSON object** — it cannot be compared with the findings reported`,
+      );
     if (a.dispatched && a.onTemplate === false)
       lines.push(
         `- ${AXIS_NAMES[axis]} dispatch: **carried text beyond the skill's template**`,

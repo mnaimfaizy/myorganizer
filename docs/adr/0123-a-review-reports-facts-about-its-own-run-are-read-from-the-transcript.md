@@ -42,7 +42,10 @@ reviewer has exited. The reviewer does not write it.**
    `executed`, `durationMs`, and `model` from it. The CLI version is recorded beside the model. The
    report schema version stays at 4. This ADR first said 5. The version exists to say whether
    finding ids are comparable between runs, and this decision does not change a finding's identity,
-   so the new fields are optional additions and a report written before them still lends its ids.
+   so the new fields are optional additions and a report written before them still lends its ids. This
+   reverses what the ADR said, and it is made here and not in a superseding ADR for one reason:
+   nothing was ever built or run at version 5, so there is no decision in force to supersede, only
+   a sentence that was wrong before anyone acted on it.
 2. **A Standards Source is listed when the Standards sub-agent opened it.** Opened means a tool call
    that returns a file's content by path: the Read tool at any range, `cat`, or
    `git show <sha>:<path>`. A search is not an open. A file qualifies when it is

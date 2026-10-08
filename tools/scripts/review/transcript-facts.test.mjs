@@ -20,6 +20,7 @@ import { BRIEFS, RETRY_LINE, axisNamedBy, isOnTemplate } from './briefs.mjs';
 import {
   filesOpenedBy,
   readTranscriptFacts,
+  replyIsBareJson,
   standardsDocumentTest,
 } from './transcript-facts.mjs';
 
@@ -252,6 +253,37 @@ test('executed is the sub-agents commands, verbatim, and none of the main agents
   assert.ok(!f.executed.some((c) => c.includes('review:validate')));
   // Both sub-agents ran the --stat diff; it is listed once.
   assert.equal(new Set(f.executed).size, f.executed.length);
+});
+
+// --- what a sub-agent returned ---------------------------------------------
+
+const FRAME =
+  '[Subagent hand-back] The text below is the final report of a subagent.\n';
+const TRAILER = '\nagentId: abc (use SendMessage)\n<usage>tool_uses: 3</usage>';
+
+test('a reply is a bare JSON object once the harness framing is taken off', () => {
+  assert.ok(replyIsBareJson('{"findings":[]}'));
+  assert.ok(replyIsBareJson(`${FRAME}  {"findings":[]}${TRAILER}`));
+  assert.ok(replyIsBareJson(`${FRAME}  {\n    "findings": []\n  }${TRAILER}`));
+  assert.ok(replyIsBareJson([{ type: 'text', text: '{"findings":[]}' }]));
+});
+
+test('a fence, a sentence, or anything that is not an object is not a bare reply', () => {
+  assert.ok(!replyIsBareJson('```json\n{"findings":[]}\n```'));
+  assert.ok(!replyIsBareJson('{"findings":[]}\n\nI found nothing.'));
+  assert.ok(!replyIsBareJson('Here it is: {"findings":[]}'));
+  assert.ok(!replyIsBareJson('[]'));
+  assert.ok(!replyIsBareJson(''));
+  assert.ok(!replyIsBareJson(undefined));
+});
+
+test('the first brief-file run fenced its replies; the second did not', () => {
+  const fenced = facts('cli-2.1.293-template-sequential-fenced');
+  assert.equal(fenced.axes.standards.replyIsJson, false);
+  assert.equal(fenced.axes.spec.replyIsJson, false);
+  const bare = facts('cli-2.1.293-template');
+  assert.equal(bare.axes.standards.replyIsJson, true);
+  assert.equal(bare.axes.spec.replyIsJson, true);
 });
 
 // --- cannot tell is its own answer ------------------------------------------
