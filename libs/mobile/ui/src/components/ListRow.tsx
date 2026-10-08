@@ -99,6 +99,16 @@ const ICON_TILE = {
   { tile: number; glyph: number }
 >;
 
+/**
+ * How short a leaving row gets before it is removed: one pixel, not none.
+ * Android takes keyboard focus from a view whose size reaches zero, and from
+ * whatever inside it held it, and gives it to the first focusable view in the
+ * window. A row that closed to nothing with its checkbox focused had lost the
+ * focus before it was removed, so there was none left to hand to the next row
+ * (#1068, `useFocusSuccession`). The row is fully transparent by then.
+ */
+const LEAVE_FLOOR = StyleSheet.hairlineWidth;
+
 /** The one spring in this library, so every row settles the same way. */
 const SPRING = { damping: 20, stiffness: 220 } as const;
 
@@ -679,7 +689,10 @@ export function ListRow({
       transform: [{ translateY: rise }],
       ...(leaving.value
         ? {
-            height: measuredHeight.value * (1 - leave.value),
+            height: Math.max(
+              measuredHeight.value * (1 - leave.value),
+              LEAVE_FLOOR,
+            ),
             overflow: 'hidden',
           }
         : {}),
