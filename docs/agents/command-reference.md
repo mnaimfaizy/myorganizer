@@ -77,6 +77,7 @@ The on-demand command catalogue for the root [Agent Guide](../../AGENTS.md#comma
 
 ## Mobile
 
+- Mobile typecheck: `mobile:typecheck` runs a native program with no `dom` and a web program (`tsconfig.web.json`) that resolves `.web` Platform Variants, and `apps/mobile/src/runtime-globals.assert.ts` fails it if Node types return. See [ADR 0103](../adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md) and [ADR 0120](../adr/0120-a-mobile-program-gets-node-types-only-if-it-runs-on-node.md).
 - Mobile platform check: `yarn mobile-platform:check` (parses `apps/mobile` and `libs/mobile` and fails a bare `react-native/…` subpath import, a browser global, or an import of a shared library's main entry point where a `@myorganizer/<lib>/portable` alias exists; `--print` lists what was scanned; exemptions carry a written reason in `tools/config/mobile-platform-exemptions.json`). See [ADR 0103](../adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md).
 
 ## Dependencies
