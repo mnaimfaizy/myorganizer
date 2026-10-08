@@ -23,7 +23,7 @@ You receive the full TestReviewer output:
 
 - `## TestReviewer Verdict` — must be APPROVED to proceed
 - `## Files changed` (from the original TestScaffold output) — test file path(s)
-- Project name and run command (e.g., `yarn nx test tasks`)
+- Project name and run command (e.g., `yarn nx test backend`)
 - `## Notes for TestRunner` — any timing or environment notes
 
 You do not need TestReviewer's checklist and should not ask for it. Your job is
