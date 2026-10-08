@@ -1,5 +1,5 @@
 // Asserts that every CI validation of the reviewer's report is handed the
-// run facts file (issue #1031, ADR 0123).
+// run facts file and the obligation worklist (issue #1031, ADR 0123).
 //
 // The validator overwrites the report's own claims about its run only when it
 // is given `--facts`. A validation without it writes a normalized report
@@ -10,7 +10,12 @@
 // review after the first on a branch would have published the reviewer's
 // claims. Nothing failed, because each validation is correct on its own.
 //
-// Direction: workflows → `--facts`, one way. A validation the reviewer runs
+// `--worklist` rides with it since the facts are enforced: the validator
+// fails a reported finding no sub-agent returned, and the worklist is how it
+// knows an obligation finding is the main agent's to write. A validation
+// without it would fail every such finding as authored.
+//
+// Direction: workflows → `--facts` and `--worklist`, one way. A validation the reviewer runs
 // inside its own session is not matched: it has no transcript to read yet,
 // and the action validates again after it exits.
 import assert from 'node:assert/strict';
@@ -63,7 +68,7 @@ test('the scan finds a validation and reads its continuation lines', () => {
   assert.deepEqual(validationsIn('# run review:validate on the report'), []);
 });
 
-test('every CI validation of the report passes --facts', () => {
+test('every CI validation of the report passes --facts and --worklist', () => {
   const all = WORKFLOW_FILES.flatMap((file) =>
     validationsIn(readFileSync(file, 'utf8')).map((v) => ({ file, ...v })),
   );
@@ -74,10 +79,16 @@ test('every CI validation of the report passes --facts', () => {
     all.length >= 3,
     `expected at least 3 validations of the report across the workflows, found ${all.length}`,
   );
-  for (const { file, line, command } of all)
+  for (const { file, line, command } of all) {
     assert.match(
       command,
       /--facts /,
       `${file}:${line} validates the report without --facts, so its output carries the reviewer's own claims about its run`,
     );
+    assert.match(
+      command,
+      /--worklist tmp\/code-review\/obligations\.json\b/,
+      `${file}:${line} validates the report without --worklist, so an obligation finding fails as one the main agent authored`,
+    );
+  }
 });

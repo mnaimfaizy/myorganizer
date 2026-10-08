@@ -3,7 +3,7 @@
 //
 //   node tools/scripts/review/validate-review-report.mjs <report.json>
 //     [--out <normalized.json>] [--tier <review:label>] [--previous <normalized.json>]
-//     [--facts <run-facts.json>]
+//     [--facts <run-facts.json>] [--worklist <obligations.json>]
 //
 // A report is accepted whole or rejected whole. On rejection every schema
 // issue is printed, one per line, and nothing is written — a partial verdict
@@ -24,12 +24,26 @@
 // not the reviewer's to state (ADR 0123). Without it the report keeps what
 // the reviewer wrote and is marked `runFactsFrom: reviewer`.
 //
+// With --facts the run is also judged (run-ladder.mjs). A fact that fails
+// `Agent Review Ran` — no sub-agent read an axis's brief, or a reported
+// finding is not one a sub-agent returned — is written to
+// `runFacts.failures` and printed; a fact that tightens the tier is written
+// to `runFacts.tightenedBy` and moves `effectiveTier`. Neither rejects the
+// report: it met its contract, and the caller fails the check from the
+// normalized file, so the findings are still published.
+//
+// --worklist is the obligation worklist the selector wrote. It is read for
+// one thing: which findings the main agent was meant to write itself, which
+// no sub-agent returned and which are not a failure. A path that does not
+// exist is a run with no worklist, as it is everywhere else in the pipeline.
+//
 // Exit 0 = valid, normalized report written or printed.
 // Exit 1 = invalid report (the reviewer's output does not meet the contract).
 // Exit 2 = the script could not run (missing file, unreadable JSON, a
 //          --previous of this schema version that is not a normalized report,
-//          or a --facts that is not a run facts file).
-import { writeFileSync } from 'node:fs';
+//          a --facts that is not a run facts file, or a --worklist that
+//          exists and is not JSON).
+import { existsSync, writeFileSync } from 'node:fs';
 import { ZodError } from 'zod';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
@@ -42,7 +56,7 @@ import {
 } from './schema.mjs';
 
 const USAGE =
-  'usage: validate-review-report.mjs <report.json> [--out <path>] [--tier <review:label>] [--previous <normalized.json>] [--facts <run-facts.json>]';
+  'usage: validate-review-report.mjs <report.json> [--out <path>] [--tier <review:label>] [--previous <normalized.json>] [--facts <run-facts.json>] [--worklist <obligations.json>]';
 
 export const main = (argv) => {
   const bail = cannotRun('review-validate');
@@ -91,9 +105,15 @@ export const main = (argv) => {
       );
   }
 
+  let worklist = null;
+  if ('worklist' in flags) {
+    if (!flags.worklist) bail('--worklist needs a path');
+    if (existsSync(flags.worklist)) worklist = readJsonOr(flags.worklist, bail);
+  }
+
   let normalized;
   try {
-    normalized = normalizeReport(raw, { previous, facts });
+    normalized = normalizeReport(raw, { previous, facts, worklist });
   } catch (err) {
     if (!(err instanceof ZodError)) throw err;
     console.error('review-validate: report rejected');
@@ -110,6 +130,13 @@ export const main = (argv) => {
       `::error::${message.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`,
     );
   }
+
+  // Printed, not annotated: the report is validated twice in CI, and the
+  // step that fails the check writes the one annotation.
+  for (const failure of normalized.runFacts?.failures ?? [])
+    console.log(
+      `review-validate: run failure (${failure.reason}): ${failure.detail}`,
+    );
 
   const text = `${JSON.stringify(normalized, null, 2)}\n`;
   if (flags.out) {

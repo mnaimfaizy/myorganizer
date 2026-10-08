@@ -16,6 +16,10 @@
 // And the replay checks the reviewer's obligation answer sheet before it
 // scores, as production does, or a run production would fail as a pipeline
 // fault is recorded as a miss (ADR 0101).
+// And it reads the run failures the validator recorded before it scores,
+// and hands the normalized report to the recorder: a review that did not run
+// as built is a void, and every line carries the Claude Code CLI version and
+// the run facts that tighten a tier in production (ADR 0123 item 7).
 // And the repeat count: the scheduled replay runs each case standing at
 // frontier three times and every other case once, a label or a dispatch runs
 // every case once, and the workflow asks for that matrix and keeps each
@@ -34,6 +38,7 @@ import {
   loadGoldenSet,
   replayObligationCheckFindings,
   replayRepetitionFindings,
+  replayRunFactsFindings,
   replayTriggerFindings,
 } from './review/golden.mjs';
 import {
@@ -106,6 +111,9 @@ for (const f of replayTriggerFindings(workflow))
   findings.push(`${REPLAY_WORKFLOW}: ${f}`);
 
 for (const f of replayObligationCheckFindings(workflow))
+  findings.push(`${REPLAY_WORKFLOW}: ${f}`);
+
+for (const f of replayRunFactsFindings(workflow))
   findings.push(`${REPLAY_WORKFLOW}: ${f}`);
 
 let records;
