@@ -32,6 +32,7 @@ import {
   Button,
   Checkbox,
   Chip,
+  ChipScroller,
   EmptyState,
   Icon,
   IconButton,
@@ -827,18 +828,7 @@ export function TasksScreen(): React.JSX.Element {
                   disabled={writing || title.trim().length === 0}
                 />
               </View>
-              <ScrollView
-                horizontal
-                keyboardShouldPersistTaps="handled"
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[
-                  styles.chipRow,
-                  {
-                    gap: theme.spacing.sm,
-                    paddingHorizontal: theme.spacing.md,
-                  },
-                ]}
-              >
+              <ChipScroller>
                 <Chip
                   label="Today"
                   icon="calendar"
@@ -898,7 +888,7 @@ export function TasksScreen(): React.JSX.Element {
                   selected={context != null}
                   onPress={() => openPicker(() => setMenu('context'))}
                 />
-              </ScrollView>
+              </ChipScroller>
               <Text
                 variant="caption"
                 style={{ paddingHorizontal: theme.spacing.md }}
@@ -1062,10 +1052,6 @@ const styles = StyleSheet.create({
   },
   captureInput: {
     flex: 1,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   collapsed: {
     flexDirection: 'row',
