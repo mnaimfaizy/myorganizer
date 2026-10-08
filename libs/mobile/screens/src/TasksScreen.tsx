@@ -1,4 +1,10 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Keyboard,
@@ -68,7 +74,6 @@ import {
   describeDue,
   formatEstimate,
   labelledValues,
-  localDateOnlyString,
   selectClosedTaskSections,
   selectOpenTaskGroups,
   taskStatus,
@@ -79,13 +84,20 @@ import {
   type DecryptedTask,
   type TaskContextFilter,
 } from './taskModel';
+import {
+  captureLanded,
+  draftAfterLanding,
+  nextUnsentCapture,
+  tasksToSend,
+  taskToCapture,
+  type DueChoice,
+  type TaskDraft,
+  type UnsentCapture,
+} from './taskCapture';
 import { TASKS_ROUTES, type TasksStackParamList } from './tasksStack';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
 import { describeVaultLoadError } from './vaultLoadError';
 import { useRememberedScroll } from './useRememberedScroll';
-
-/** Which due date, if any, a captured Task starts with. */
-type DueChoice = 'none' | 'today' | 'tomorrow' | 'custom';
 
 /** Which of the composer's pickers is up. */
 type ComposerMenu = 'priority' | 'context';
@@ -213,9 +225,10 @@ export function TasksScreen(): React.JSX.Element {
 
   // --- Quick capture -------------------------------------------------------
 
-  // The composer's own draft. Reset after every capture, not just the title,
-  // so a captured "Tomorrow, High, Work" Task is not followed by an
-  // identical one by accident.
+  // The composer's own draft. It stays until its Task is on the server (ADR
+  // 0107 item 5), and then all of it goes, not just the title, so a captured
+  // "Tomorrow, High, Work" Task is not followed by an identical one by
+  // accident.
   const [composerOpen, setComposerOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [dueChoice, setDueChoice] = useState<DueChoice>('none');
@@ -223,6 +236,12 @@ export function TasksScreen(): React.JSX.Element {
   const [priority, setPriority] = useState<TaskPriority | undefined>();
   const [context, setContext] = useState<TaskContext | undefined>();
   const [menu, setMenu] = useState<ComposerMenu | null>(null);
+  const draft = useMemo(
+    (): TaskDraft => ({ title, dueChoice, customDate, priority, context }),
+    [title, dueChoice, customDate, priority, context],
+  );
+  // The capture whose push has not landed, with the draft it was made from.
+  const [unsent, setUnsent] = useState<UnsentCapture | null>(null);
   // A picker over the composer takes the keyboard's focus with it; the
   // composer stays open under it rather than collapsing as focus leaves.
   const pickerOpen = useRef(false);
@@ -276,13 +295,22 @@ export function TasksScreen(): React.JSX.Element {
     setComposerOpen(true);
   }, []);
 
-  const resetComposer = useCallback((): void => {
-    setTitle('');
-    setDueChoice('none');
-    setCustomDate(null);
-    setPriority(undefined);
-    setContext(undefined);
+  const setDraft = useCallback((next: TaskDraft): void => {
+    setTitle(next.title);
+    setDueChoice(next.dueChoice);
+    setCustomDate(next.customDate);
+    setPriority(next.priority);
+    setContext(next.context);
   }, []);
+
+  // The draft goes when its Task is on the server, however it got there: the
+  // first push, a retry, or the reload that sent it. What the User has typed
+  // over it since is another Task's draft, and stays.
+  useEffect(() => {
+    if (unsent === null || !captureLanded(unsent, records, writing)) return;
+    setUnsent(null);
+    setDraft(draftAfterLanding(draft, unsent));
+  }, [unsent, records, writing, draft, setDraft]);
 
   const collapseComposer = useCallback((): void => {
     setComposerOpen(false);
@@ -290,54 +318,31 @@ export function TasksScreen(): React.JSX.Element {
   }, []);
 
   const capture = useCallback((): void => {
-    const trimmed = title.trim();
-    if (trimmed.length === 0 || writing) return;
-    const createdAt = new Date().toISOString();
-    const dueDate =
-      dueChoice === 'today'
-        ? localDateOnlyString(new Date())
-        : dueChoice === 'tomorrow'
-          ? localDateOnlyString(
-              new Date(
-                new Date().getFullYear(),
-                new Date().getMonth(),
-                new Date().getDate() + 1,
-              ),
-            )
-          : dueChoice === 'custom' && customDate != null
-            ? customDate
-            : undefined;
-    const task: Task = {
-      id: newRecordId(),
-      title: trimmed,
-      status: 'pending',
-      priority: priority ?? 'medium',
-      archived: false,
-      createdAt,
-      ...(dueDate != null ? { dueDate } : {}),
-      ...(context != null ? { context } : {}),
-    };
-    // The draft goes now, not on confirmation: the row appears Unconfirmed
-    // at once, and a refused push says so and offers the retry that sends
-    // this same Task again.
+    if (writing) return;
+    // The same Task again when this draft was sent before and did not land.
+    const task = taskToCapture(draft, unsent, {
+      id: newRecordId,
+      now: new Date(),
+    });
+    if (task === null) return;
+    // The composer closes now and the row appears Unconfirmed at once, but
+    // the draft is kept: a refused push takes the row away again, and the
+    // title is then still in its field, beside the note that says why.
     const byKey = openedByKey.current || keyboardHoldsFocus();
-    resetComposer();
+    // A capture that follows one that did not land sends that one too: the
+    // Vault lets go of a failed edit when the next write starts.
+    const sending = nextUnsentCapture(task, draft, unsent);
+    setUnsent(sending);
     collapseComposer();
     if (byKey) focusAddTask();
     setCapturedId(task.id);
-    void push(task.id, (envelope) => putVaultRecord(envelope, task));
-  }, [
-    title,
-    writing,
-    dueChoice,
-    customDate,
-    priority,
-    context,
-    push,
-    resetComposer,
-    collapseComposer,
-    focusAddTask,
-  ]);
+    void push(task.id, (envelope) =>
+      tasksToSend(sending).reduce(
+        (current, each) => putVaultRecord(current, each),
+        envelope,
+      ),
+    );
+  }, [writing, draft, unsent, push, collapseComposer, focusAddTask]);
 
   // --- Done, reopen, archive, undo -----------------------------------------
 
