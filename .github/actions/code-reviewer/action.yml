@@ -57,6 +57,13 @@ outputs:
   validated:
     description: true when tmp/code-review/normalized.json was written.
     value: ${{ steps.validate.outputs.validated }}
+  facts-file:
+    description: >-
+      Path of the run facts file read from the reviewer transcript (ADR 0123).
+      It is outside the workspace and always written. Any step that validates
+      the report again must pass it as `--facts`: a validation without it
+      puts the reviewer's own claims back into the normalized report.
+    value: ${{ steps.facts.outputs.facts_file }}
   rejected-file:
     description: Path of the file holding the rejection reason when validation failed.
     value: ${{ steps.validate.outputs.rejected_file }}
@@ -260,13 +267,44 @@ runs:
         path: ${{ steps.reviewer.outputs.execution_file }}
         retention-days: 7
 
+    # What the report says about its own run is read from the transcript, not
+    # taken from the reviewer (ADR 0123): which standards documents the
+    # Standards sub-agent opened, which commands the sub-agents ran, how long
+    # the session took, which model ran it. CI run 37576528356 listed four
+    # standards sources having opened none, and nothing compared the list to
+    # anything.
+    #
+    # The file goes outside the workspace, where the reviewer's session could
+    # not have written it, and it is written whether or not there is a
+    # transcript: a missing one is recorded as an unknown shape, so the
+    # validator never falls back to the reviewer's own claims. The step
+    # reports and fails nothing; nothing reads these facts to gate or to
+    # tighten a tier yet (issue #1031).
+    #
+    # The index is the workspace's own, which is the reviewed head here and
+    # the case head in a golden replay (ADR 0102).
+    - name: Read the run facts from the transcript
+      id: facts
+      shell: bash
+      env:
+        EXECUTION_FILE: ${{ steps.reviewer.outputs.execution_file }}
+        TOOLING: ${{ inputs.tooling-dir }}
+      run: |
+        FACTS="$RUNNER_TEMP/run-facts.json"
+        echo "facts_file=$FACTS" >> "$GITHUB_OUTPUT"
+        node "$TOOLING/tools/scripts/review/read-transcript-facts.mjs" "${EXECUTION_FILE:-}" \
+          --index CODING_STANDARDS.md --out "$FACTS"
+
     # The script, not the model, decides whether the report stands. The
-    # caller's tier overrides whatever the envelope says (ADR 0070 item 3).
+    # caller's tier overrides whatever the envelope says (ADR 0070 item 3),
+    # and the run facts override the four envelope fields that are facts
+    # about the run (ADR 0123).
     - name: Validate the report
       id: validate
       shell: bash
       env:
         VALIDATOR: ${{ inputs.tooling-dir }}/tools/scripts/review/validate-review-report.mjs
+        FACTS: ${{ steps.facts.outputs.facts_file }}
       run: |
         set +e
         REJECTED="$RUNNER_TEMP/rejected.txt"
@@ -286,9 +324,9 @@ runs:
           exit 0
         fi
         if [ '${{ inputs.tier }}' = 'null' ]; then
-          node "$VALIDATOR" tmp/code-review/report.json --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+          node "$VALIDATOR" tmp/code-review/report.json --facts "$FACTS" --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
         else
-          node "$VALIDATOR" tmp/code-review/report.json --tier '${{ inputs.tier }}' --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+          node "$VALIDATOR" tmp/code-review/report.json --tier '${{ inputs.tier }}' --facts "$FACTS" --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
         fi
         if [ -f tmp/code-review/normalized.json ]; then
           echo 'validated=true' >> "$GITHUB_OUTPUT"

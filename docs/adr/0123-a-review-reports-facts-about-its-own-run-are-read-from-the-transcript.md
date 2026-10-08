@@ -39,8 +39,13 @@ reviewer has exited. The reviewer does not write it.**
 
 1. **Four envelope fields are pinned.** A step reads the transcript and writes a facts file. The
    validator takes that file the way it takes `--tier`, and overwrites `standardsSources`,
-   `executed`, `durationMs`, and `model` from it. The CLI version is recorded beside the model. This
-   is report schema version 5.
+   `executed`, `durationMs`, and `model` from it. The CLI version is recorded beside the model. The
+   report schema version stays at 4. This ADR first said 5. The version exists to say whether
+   finding ids are comparable between runs, and this decision does not change a finding's identity,
+   so the new fields are optional additions and a report written before them still lends its ids. This
+   reverses what the ADR said, and it is made here and not in a superseding ADR for one reason:
+   nothing was ever built or run at version 5, so there is no decision in force to supersede, only
+   a sentence that was wrong before anyone acted on it.
 2. **A Standards Source is listed when the Standards sub-agent opened it.** Opened means a tool call
    that returns a file's content by path: the Read tool at any range, `cat`, or
    `git show <sha>:<path>`. A search is not an open. A file qualifies when it is
@@ -100,28 +105,27 @@ version nobody remembers to raise.
 
 ## Consequences
 
-Nothing in the tree does any of this at the commit that adds this ADR. The skill still copies the
-sub-agent's list into the envelope, and the report schema is still version 4. Issue #1031 carries the
-implementation as three pull requests, and holds the parts of the design this ADR leaves out as
-ordinary implementation: where the briefs live, how the command rules are worded, and what the
-briefs say about the always-on agent policy.
+When this ADR was written, nothing in the tree did any of this: the skill copied the sub-agent's
+list into the envelope. Issue #1031 carries the implementation as three pull requests. The first
+moved the briefs into files and fixed the dispatch template. The second reads the run facts from the
+transcript and publishes them, enforcing nothing. Items 4, 5 and 7, which fail a check, tighten a
+tier, and void a replay, arrive with the third. The issue also holds the parts of the design this
+ADR leaves out as ordinary implementation: where the briefs live, how the command rules are worded,
+and what the briefs say about the always-on agent policy.
 
 A required-eligible check now depends on the transcript format of a CLI this repository does not
 version. Item 6 is what keeps a format change from reading as "no sub-agent read its brief" on every
 pull request. The contract tests need fixtures cut from real transcripts. The four fixtures the
 classifier had before this decision hold no sub-agent events.
 
-The first review of every open pull request after the schema bump shows no comparable previous run,
-and finding ids are not carried across it, because ids only mean the same thing within a schema
-version.
-
 A golden replay that misses because the reviewer skipped the index is a miss. Voiding it would hide
 the regression this decision exists to show. The result line records the skip, so the results file
 can say whether a miss came from a thin review without anyone downloading a transcript.
 
-The note in item 2 is a claim about the harness, so it has to be confirmed from a real run: a
-sub-agent must be able to quote root `AGENTS.md` without opening it. If it cannot, the note is false
-and the brief has to tell the sub-agent to open that file.
+The note in item 2 is a claim about the harness. It was confirmed once, in an interactive session
+on 2026-10-08: a `general-purpose` sub-agent told to call no tool quoted two lines of root
+`AGENTS.md` correctly. It has not been confirmed in CI. If a CI sub-agent turns out not to have the
+file, the note is false and the brief has to tell the sub-agent to open it.
 
 A finding's own executed evidence, its command and exit code, is still self-reported and can still
 earn Blocking. Checking it against the transcript needs matching rules of its own and is issue

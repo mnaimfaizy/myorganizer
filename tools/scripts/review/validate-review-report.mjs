@@ -3,6 +3,7 @@
 //
 //   node tools/scripts/review/validate-review-report.mjs <report.json>
 //     [--out <normalized.json>] [--tier <review:label>] [--previous <normalized.json>]
+//     [--facts <run-facts.json>]
 //
 // A report is accepted whole or rejected whole. On rejection every schema
 // issue is printed, one per line, and nothing is written — a partial verdict
@@ -17,10 +18,17 @@
 // previous report and is not handed it reads every finding as new. A report
 // of another schema version lends no ids and is not an error.
 //
+// --facts is the run facts file `read-transcript-facts.mjs` wrote from the
+// reviewer transcript. It overwrites the report's `standardsSources`,
+// `executed`, `durationMs`, and `model`, which are facts about the run and
+// not the reviewer's to state (ADR 0123). Without it the report keeps what
+// the reviewer wrote and is marked `runFactsFrom: reviewer`.
+//
 // Exit 0 = valid, normalized report written or printed.
 // Exit 1 = invalid report (the reviewer's output does not meet the contract).
-// Exit 2 = the script could not run (missing file, unreadable JSON, or a
-//          --previous of this schema version that is not a normalized report).
+// Exit 2 = the script could not run (missing file, unreadable JSON, a
+//          --previous of this schema version that is not a normalized report,
+//          or a --facts that is not a run facts file).
 import { writeFileSync } from 'node:fs';
 import { ZodError } from 'zod';
 
@@ -30,10 +38,11 @@ import {
   isComparableReport,
   NormalizedReportSchema,
   normalizeReport,
+  RunFactsSchema,
 } from './schema.mjs';
 
 const USAGE =
-  'usage: validate-review-report.mjs <report.json> [--out <path>] [--tier <review:label>] [--previous <normalized.json>]';
+  'usage: validate-review-report.mjs <report.json> [--out <path>] [--tier <review:label>] [--previous <normalized.json>] [--facts <run-facts.json>]';
 
 export const main = (argv) => {
   const bail = cannotRun('review-validate');
@@ -67,14 +76,39 @@ export const main = (argv) => {
     }
   }
 
+  // In CI the report's facts about its own run are the transcript's, not
+  // the reviewer's (ADR 0123). A facts file that is missing or malformed
+  // cannot run: falling back to what the reviewer wrote is the silent state
+  // this flag exists to remove.
+  let facts = null;
+  if ('facts' in flags) {
+    if (!flags.facts) bail('--facts needs a path');
+    facts = readJsonOr(flags.facts, bail);
+    const parsed = RunFactsSchema.safeParse(facts);
+    if (!parsed.success)
+      bail(
+        `${flags.facts} is not a run facts file\n  ${formatIssues(parsed.error).join('\n  ')}`,
+      );
+  }
+
   let normalized;
   try {
-    normalized = normalizeReport(raw, { previous });
+    normalized = normalizeReport(raw, { previous, facts });
   } catch (err) {
     if (!(err instanceof ZodError)) throw err;
     console.error('review-validate: report rejected');
     for (const line of formatIssues(err)) console.error(`  ${line}`);
     process.exit(1);
+  }
+
+  // The reader annotates a transcript it could not read. This is the one
+  // case it cannot see: the transcript read cleanly and only the report
+  // shows it cannot be right.
+  if (facts?.shape === 'readable' && normalized.runFacts?.shape === 'unknown') {
+    const message = `the reviewer transcript does not account for this report (Claude Code CLI ${normalized.runFacts.cliVersion ?? 'unknown'}): ${normalized.runFacts.shapeReason}. Its run facts are recorded as unknown. If this appears on every review, the transcript format changed under tools/scripts/review/transcript-facts.mjs.`;
+    console.log(
+      `::error::${message.replaceAll('%', '%25').replaceAll('\r', '%0D').replaceAll('\n', '%0A')}`,
+    );
   }
 
   const text = `${JSON.stringify(normalized, null, 2)}\n`;

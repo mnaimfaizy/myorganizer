@@ -422,8 +422,11 @@ jobs:
       # reviewer step minted (ADR 0071 item 6, issue #940). This is the
       # validator reading the previous report, after the reviewer has exited
       # — the reviewer still never sees it. The report is validated again
-      # rather than patched, with the same pinned tier, so the ids are the
-      # only thing that can differ. A previous report that cannot be used
+      # rather than patched, with the same pinned tier and the same run facts
+      # file, so the ids are the only thing that can differ. Leaving --facts
+      # off here would put the reviewer's own claims about its run back into
+      # the report on every review after the first (ADR 0123);
+      # run-facts-wiring.test.mjs fails a validation that omits it. A previous report that cannot be used
       # leaves the minted ids in place and says so: every finding then reads
       # as new, which is what having no previous run means.
       - name: Carry finding ids forward from the previous report
@@ -432,6 +435,7 @@ jobs:
           if corepack yarn review:validate tmp/code-review/report.json \
             --tier '${{ steps.tier.outputs.label || 'review:human' }}' \
             --previous '${{ steps.previous.outputs.path }}' \
+            --facts '${{ steps.reviewer.outputs.facts-file }}' \
             --out "$RUNNER_TEMP/normalized.carried.json"; then
             mv "$RUNNER_TEMP/normalized.carried.json" tmp/code-review/normalized.json
           else

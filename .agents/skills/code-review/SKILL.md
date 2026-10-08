@@ -267,8 +267,12 @@ Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 004
   hands, which is why the rule is applied here and not asked of either sub-agent (PR #819).
 
 The envelope's `standardsSources` is the list the Standards sub-agent returned, like every other
-field it returned. Issue #1031 replaces it in CI with a list read from the transcript; until that
-lands, the reply is the only source there is.
+field it returned. Four envelope fields are facts about the run and not yours to settle:
+`standardsSources`, `executed`, `durationMs`, and `model`. In CI the workflow overwrites all four
+with what the reviewer transcript shows, after you have exited
+([ADR 0123](../../../docs/adr/0123-a-review-reports-facts-about-its-own-run-are-read-from-the-transcript.md)).
+Run interactively there is no transcript to read, so the report keeps what you wrote and is marked
+as self-reported. Either way, write what happened: do not pad a list or round a duration.
 
 ```json
 {
@@ -343,6 +347,9 @@ rediscover them:
 - **Write `tmp/code-review/report.json`** with the Write tool (that exact name, not
   `<head>.report.json`), run the validator as in step 5, retry a failing sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
   comment, posts inline comments for blocking findings, and relabels (ADR 0071 item 8).
+- **The run's facts are read from your transcript once you have exited.** The published comment
+  lists the standards documents the Standards sub-agent opened, the tool calls each axis made, and
+  whether each dispatch was the template, whatever the envelope says about them (ADR 0123).
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
   Request goes to `review:human`. Nothing is downgraded to make it pass.
 - **Your run ends when you reply without a tool call, and no background notification reaches you.**
