@@ -4,6 +4,13 @@
 
 Nx monorepo for a full-stack organizer app: Next.js frontend, Express/Prisma backend, shared TypeScript libraries, and Playwright e2e tests. Nested AGENTS.md files add local rules for apps and libraries.
 
+## Reference documents
+
+This guide holds the always-needed rules. Open these when the trigger applies:
+
+- [Command reference](docs/agents/command-reference.md) — a task names a gate, or needs a command not under Commands below.
+- [Repository conventions](docs/agents/repository-conventions.md) — before adding a file under `docs/`, committing a design, writing an ADR, or adding a `check-*.mjs`.
+
 <!-- BEGIN:nextjs-agent-rules -->
 
 # Next.js: ALWAYS read docs before coding
