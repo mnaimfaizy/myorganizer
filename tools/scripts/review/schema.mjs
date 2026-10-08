@@ -393,15 +393,16 @@ export const SpecSourceSchema = z
     }
   });
 
-/**
- * The envelope as a reviewer writes it. `strictObject` is what rejects a
- * hand-written `verdict`, `effectiveTier`, or finding `id`.
- */
+/** A run's token figures: the envelope's `cost`, and the run facts' own. */
 const CostSchema = z.strictObject({
   inputTokens: z.int().nonnegative(),
   outputTokens: z.int().nonnegative(),
 });
 
+/**
+ * The envelope as a reviewer writes it. `strictObject` is what rejects a
+ * hand-written `verdict`, `effectiveTier`, or finding `id`.
+ */
 const envelopeFields = {
   schemaVersion: z.literal(REPORT_SCHEMA_VERSION),
   base: sha,
