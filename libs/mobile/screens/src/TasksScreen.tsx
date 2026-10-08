@@ -262,6 +262,15 @@ export function TasksScreen(): React.JSX.Element {
   const focusAddTask = useFocusAfterCommit(addTaskControl);
   const openedByKey = useRef(false);
 
+  // "Show done" is two controls that are never both drawn: the chip in the
+  // count row, and the "All clear" empty state's button while nothing is
+  // open. Pressing either can remove it and draw the other, and a hardware
+  // keyboard follows the action to the control that undoes it (#1076).
+  const showDoneChip = useRef<React.ComponentRef<typeof View>>(null);
+  const showDoneAction = useRef<React.ComponentRef<typeof View>>(null);
+  const focusShowDoneChip = useFocusAfterCommit(showDoneChip);
+  const focusShowDoneAction = useFocusAfterCommit(showDoneAction);
+
   const openComposer = useCallback((): void => {
     openedByKey.current = keyboardHoldsFocus();
     setComposerOpen(true);
@@ -472,6 +481,11 @@ export function TasksScreen(): React.JSX.Element {
   // holds keyboard focus hands the focus to the checkbox that takes its
   // place, or to "Add a task" once none is left (#1068). The boxes are
   // disabled for the length of a save, so a focus owed then waits for it.
+  //
+  // The rows themselves are listed the same way, a second time: a row is what
+  // opens the Task, so it is a row that focus comes back to, and when the
+  // Task was deleted or archived on its own screen, the row that took its
+  // place (#1075). A row is never disabled by a save, so nothing waits.
   const shownTaskIds = (
     showDone
       ? closedSections.flatMap((section) => section.tasks)
@@ -480,6 +494,9 @@ export function TasksScreen(): React.JSX.Element {
   const checkboxRef = useFocusSuccession(shownTaskIds, {
     fallback: addTaskControl,
     ready: !writing,
+  });
+  const rowRef = useFocusSuccession(shownTaskIds, {
+    fallback: addTaskControl,
   });
 
   const renderTaskRow = (
@@ -507,6 +524,7 @@ export function TasksScreen(): React.JSX.Element {
     return (
       <ListRow
         key={task.id}
+        ref={rowRef(task.id)}
         size="tall"
         title={taskTitle}
         titleAccessory={<TaskPriorityMarker priority={task.priority} />}
@@ -665,7 +683,12 @@ export function TasksScreen(): React.JSX.Element {
           }
           actionLabel="Show done"
           actionVariant="secondary"
-          onAction={() => setShowDone(true)}
+          actionRef={showDoneAction}
+          onAction={() => {
+            // The count row, and its chip, are drawn by this press.
+            if (keyboardHoldsFocus()) focusShowDoneChip();
+            setShowDone(true);
+          }}
         />
       );
     }
@@ -777,7 +800,13 @@ export function TasksScreen(): React.JSX.Element {
                         label="Show done"
                         icon="check"
                         selected={showDone}
-                        onPress={() => setShowDone((current) => !current)}
+                        ref={showDoneChip}
+                        onPress={() => {
+                          // With nothing open, hiding the done Tasks takes
+                          // the count row away and leaves the empty state.
+                          if (keyboardHoldsFocus()) focusShowDoneAction();
+                          setShowDone((current) => !current);
+                        }}
                       />
                     </View>
                   )}

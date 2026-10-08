@@ -47,6 +47,27 @@ export function noteBlur(slot: FocusSlot): void {
 }
 
 /**
+ * Who takes a view's place once it has gone, as told by whoever knows the
+ * order it was drawn in — a list, for its rows (`useFocusSuccession`). Keyed
+ * by the view and held weakly, so an entry lasts as long as something still
+ * remembers the view and no longer.
+ */
+const successors = new WeakMap<FocusTarget, () => FocusTarget | null>();
+
+/**
+ * Names who to ask where the focus `view` held belongs once the screen it
+ * opened leaves (`useReturnFocusOnLeave`): `view` itself while it is still
+ * mounted, and the view standing in its place after it has gone. Answered as
+ * things stand when it is asked.
+ */
+export function nameSuccessor(
+  view: FocusTarget,
+  successor: () => FocusTarget | null,
+): void {
+  successors.set(view, successor);
+}
+
+/**
  * The view of the control holding keyboard focus now, or `null`: after a
  * touch, on iOS, and while focus is in a text input, which notes nothing.
  */
@@ -102,15 +123,38 @@ export function useFocusAfterCommit(
  * The opener is read during the first render, before the new screen takes
  * focus from it. Nothing is noted after a touch, so a screen opened by touch
  * returns no focus; and Android refuses the request in touch mode, so a screen
- * opened by key and left by touch draws no ring either. An opener that has
- * unmounted since — its row was deleted on the screen it opened — has emptied
- * its slot, and focus is left where Android put it.
+ * opened by key and left by touch draws no ring either.
+ *
+ * An opener can have unmounted since — its row was deleted on the screen it
+ * opened. Focus then goes to whoever was named to stand in its place
+ * (`nameSuccessor`): on a list, the row that moved up into it (#1075). It is
+ * asked as the screen leaves and not when the opener went, because the two
+ * can be a long time apart and the list can change between them. An opener
+ * nobody named a successor for has emptied its slot, or is about to, and
+ * focus is left where Android put it.
  *
  * `focus()` on a view does nothing unless React Native's
  * `enableImperativeFocus` flag is on, which `MainApplication.kt` does for
  * Android. On iOS it is off, and no control is ever noted there (#1021).
  */
 export function useReturnFocusOnLeave(): void {
-  const [opener] = useState(() => focusedSlot);
-  useEffect(() => () => opener?.current?.focus(), [opener]);
+  const [opener] = useState(() => ({
+    slot: focusedSlot,
+    // The slot is emptied with its control, so the view is kept beside it:
+    // it is what a successor was named for.
+    view: focusedSlot?.current ?? null,
+  }));
+  useEffect(
+    () => () => {
+      const { slot, view } = opener;
+      // A named successor is asked first, whether or not the slot still holds
+      // the view: the control's ref is detached in the commit that removes
+      // it, and its slot only when that commit's effects are cleaned up,
+      // which can be after this.
+      const successor = view === null ? undefined : successors.get(view);
+      const target = successor !== undefined ? successor() : slot?.current;
+      target?.focus();
+    },
+    [opener],
+  );
 }

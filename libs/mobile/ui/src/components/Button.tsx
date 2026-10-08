@@ -131,6 +131,8 @@ export interface ButtonProps extends Omit<PressableProps, 'style'> {
    */
   busy?: boolean;
   style?: ViewStyle;
+  /** The button's view, for a screen that moves focus to it. */
+  ref?: React.Ref<React.ComponentRef<typeof View>>;
 }
 
 export function Button({
@@ -142,6 +144,7 @@ export function Button({
   busy = false,
   disabled = false,
   style,
+  ref,
   onFocus,
   onBlur,
   ...rest
@@ -169,6 +172,7 @@ export function Button({
 
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: inert, busy }}
