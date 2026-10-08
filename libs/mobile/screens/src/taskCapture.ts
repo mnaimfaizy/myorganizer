@@ -38,6 +38,13 @@ export const EMPTY_TASK_DRAFT: TaskDraft = {
 export interface UnsentCapture {
   task: Task;
   draft: TaskDraft;
+  /**
+   * Earlier captures that have not landed either, oldest first. The Vault
+   * holds one failed edit, and the next write lets go of it, so each new
+   * capture's push puts these again along with its own Task (#1007: a second
+   * Task saved while the first add is still held loses neither).
+   */
+  carried: readonly Task[];
 }
 
 /**
@@ -76,8 +83,11 @@ function dueDateOf(draft: TaskDraft, now: Date): string | undefined {
  * same Task again, id and all — not a second one. So pressing Save again
  * after a refused push does what Retry does, and a push the server did store
  * before its answer was lost is written over rather than duplicated. A draft
- * that was changed since is a new Task with a new id; the Task it replaces in
- * the composer is the one the User wrote over.
+ * that was changed since is a new Task with a new id, and the one before it
+ * is carried into the same push (`nextUnsentCapture`) rather than dropped:
+ * whether the User was correcting the first title or writing a second Task
+ * over it cannot be told apart, and two Tasks can be put right where a lost
+ * one cannot.
  */
 export function taskToCapture(
   draft: TaskDraft,
@@ -98,6 +108,28 @@ export function taskToCapture(
     ...(dueDate != null ? { dueDate } : {}),
     ...(draft.context != null ? { context: draft.context } : {}),
   };
+}
+
+/**
+ * What is unsent once `task` has been captured from `draft`. The same Task
+ * again keeps what it carried; a new one carries the capture it follows, and
+ * everything that one carried.
+ */
+export function nextUnsentCapture(
+  task: Task,
+  draft: TaskDraft,
+  unsent: UnsentCapture | null,
+): UnsentCapture {
+  if (unsent === null) return { task, draft, carried: [] };
+  if (task.id === unsent.task.id) {
+    return { task, draft, carried: unsent.carried };
+  }
+  return { task, draft, carried: [...unsent.carried, unsent.task] };
+}
+
+/** Every Task a capture's push puts, oldest first, its own last. */
+export function tasksToSend(capture: UnsentCapture): readonly Task[] {
+  return [...capture.carried, capture.task];
 }
 
 /**

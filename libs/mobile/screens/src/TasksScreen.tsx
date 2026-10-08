@@ -87,6 +87,8 @@ import {
 import {
   captureLanded,
   draftAfterLanding,
+  nextUnsentCapture,
+  tasksToSend,
   taskToCapture,
   type DueChoice,
   type TaskDraft,
@@ -327,11 +329,19 @@ export function TasksScreen(): React.JSX.Element {
     // the draft is kept: a refused push takes the row away again, and the
     // title is then still in its field, beside the note that says why.
     const byKey = openedByKey.current || keyboardHoldsFocus();
-    setUnsent({ task, draft });
+    // A capture that follows one that did not land sends that one too: the
+    // Vault lets go of a failed edit when the next write starts.
+    const sending = nextUnsentCapture(task, draft, unsent);
+    setUnsent(sending);
     collapseComposer();
     if (byKey) focusAddTask();
     setCapturedId(task.id);
-    void push(task.id, (envelope) => putVaultRecord(envelope, task));
+    void push(task.id, (envelope) =>
+      tasksToSend(sending).reduce(
+        (current, each) => putVaultRecord(current, each),
+        envelope,
+      ),
+    );
   }, [writing, draft, unsent, push, collapseComposer, focusAddTask]);
 
   // --- Done, reopen, archive, undo -----------------------------------------

@@ -3,7 +3,9 @@ import {
   captureLanded,
   draftAfterLanding,
   EMPTY_TASK_DRAFT,
+  nextUnsentCapture,
   sameTaskDraft,
+  tasksToSend,
   taskToCapture,
   type TaskDraft,
   type UnsentCapture,
@@ -31,6 +33,7 @@ const capture = (
 const unsentOf = (draft: TaskDraft, id = 'task-1'): UnsentCapture => ({
   task: capture(draft, null, ids(id)) as Task,
   draft,
+  carried: [],
 });
 
 describe('taskCapture', () => {
@@ -162,8 +165,70 @@ describe('taskCapture', () => {
     it('should not make a second Task from the same draft', () => {
       const draft = draftOf();
       const first = capture(draft) as Task;
-      const second = capture(draft, { task: first, draft }, ids('task-2'));
+      const second = capture(
+        draft,
+        { task: first, draft, carried: [] },
+        ids('task-2'),
+      );
       expect(second?.id).toBe(first.id);
+    });
+
+    it('should send the first Task again with a second one written over it', () => {
+      const first = unsentOf(draftOf());
+      const typed = draftOf({ title: 'Call the plumber' });
+      const second = capture(typed, first, ids('task-2')) as Task;
+      const sending = nextUnsentCapture(second, typed, first);
+      expect(second.id).toBe('task-2');
+      expect(tasksToSend(sending).map((task) => task.title)).toEqual([
+        'Buy milk',
+        'Call the plumber',
+      ]);
+    });
+
+    it('should go on carrying every Task that has not landed', () => {
+      const first = unsentOf(draftOf());
+      const secondDraft = draftOf({ title: 'Call the plumber' });
+      const second = nextUnsentCapture(
+        capture(secondDraft, first, ids('task-2')) as Task,
+        secondDraft,
+        first,
+      );
+      const thirdDraft = draftOf({ title: 'Post the letter' });
+      const third = nextUnsentCapture(
+        capture(thirdDraft, second, ids('task-3')) as Task,
+        thirdDraft,
+        second,
+      );
+      expect(tasksToSend(third).map((task) => task.id)).toEqual([
+        'task-1',
+        'task-2',
+        'task-3',
+      ]);
+    });
+
+    it('should carry the same Tasks when the same draft is saved again', () => {
+      const first = unsentOf(draftOf());
+      const typed = draftOf({ title: 'Call the plumber' });
+      const second = nextUnsentCapture(
+        capture(typed, first, ids('task-2')) as Task,
+        typed,
+        first,
+      );
+      const again = nextUnsentCapture(
+        capture(typed, second, ids('task-3')) as Task,
+        typed,
+        second,
+      );
+      expect(tasksToSend(again).map((task) => task.id)).toEqual([
+        'task-1',
+        'task-2',
+      ]);
+    });
+
+    it('should send one Task alone when nothing before it is unsent', () => {
+      const draft = draftOf();
+      const only = nextUnsentCapture(capture(draft) as Task, draft, null);
+      expect(tasksToSend(only).map((task) => task.id)).toEqual(['task-1']);
     });
 
     it('should keep the changed draft once the first Task lands by a retry', () => {
