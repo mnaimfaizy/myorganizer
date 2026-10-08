@@ -8,8 +8,9 @@
 //   node tools/scripts/check-review-tool-allowlist.mjs [--print]
 //
 // Both sides are files. The instruction side is
-// `.agents/skills/code-review/SKILL.md` and `docs/review/REVIEW_CHECKLIST.md`;
-// the permission side is the `--allowedTools` list in
+// `.agents/skills/code-review/SKILL.md`, the two brief files beside it that
+// the sub-agents read (`STANDARDS_BRIEF.md`, `SPEC_BRIEF.md`), and
+// `docs/review/REVIEW_CHECKLIST.md`; the permission side is the `--allowedTools` list in
 // `.github/actions/code-reviewer/action.yml`, which is what the reviewer's
 // harness enforces in CI. Nothing here reads a transcript: a transcript
 // artifact expires after seven days, so a check that depended on one could not
@@ -147,6 +148,8 @@ export const ACTION = '.github/actions/code-reviewer/action.yml';
 export const SETTINGS = '.claude/settings.json';
 export const INSTRUCTION_SOURCES = [
   '.agents/skills/code-review/SKILL.md',
+  '.agents/skills/code-review/STANDARDS_BRIEF.md',
+  '.agents/skills/code-review/SPEC_BRIEF.md',
   'docs/review/REVIEW_CHECKLIST.md',
 ];
 

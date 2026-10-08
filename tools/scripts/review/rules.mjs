@@ -12,7 +12,7 @@
  *
  * Five families, each bounded by something that already exists:
  *
- *   smell          the twelve Fowler smells the Standards brief pastes in full
+ *   smell          the twelve Fowler smells the Standards brief lists in full
  *                  (`Refactoring`, ch. 3). Capped at should-fix, because a
  *                  smell is a judgement call (ADR 0071 item 1).
  *   obligation     one per entry of `tools/config/review-obligations.json`,
@@ -37,8 +37,8 @@
  * report by line order) and is a standing request for a catalogue entry.
  *
  * Everything here is pure except `loadRuleCatalogue`, which reads the file.
- * Cross-file agreement — obligation ids, cited documents, the ids the skill
- * pastes into the reviewer's prompt — is asserted by
+ * Cross-file agreement — obligation ids, cited documents, the ids each
+ * axis's brief file offers its sub-agent — is asserted by
  * `tools/scripts/check-review-rules.mjs`, not here.
  */
 
@@ -105,8 +105,8 @@ export function assertRuleCatalogue(cat, source = RULES_DISPLAY_PATH) {
     ids.add(r.id);
     if (!RULE_FAMILIES.includes(r.family))
       fail(`${where}: family must be one of ${RULE_FAMILIES.join(', ')}`);
-    // The prefix is load-bearing: the skill pastes ids into the reviewer's
-    // prompt and the gate scans that prose for them, which only works if an
+    // The prefix is load-bearing: each brief file lists its axis's ids in
+    // prose and the gate scans that prose for them, which only works if an
     // id announces its family rather than needing the catalogue to tell.
     if (familyOf(r.id) !== r.family)
       fail(`${where}: id must start with "${r.family}-"`);

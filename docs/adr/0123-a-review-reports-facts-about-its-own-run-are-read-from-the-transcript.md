@@ -56,7 +56,11 @@ reviewer has exited. The reviewer does not write it.**
    facts about the pipeline
    ([ADR 0073](0073-a-required-check-is-a-fact-about-the-pipeline-not-a-judgment-about-the-diff.md)):
    the axis did not run as built, or the main agent authored a finding. Dropping a Standards finding
-   under the one-axis-per-defect rule is not a change.
+   under the one-axis-per-defect rule is not a change. One kind of finding has no sub-agent origin
+   and is not a failure: a finding the main agent raised from an obligation answer, carrying that
+   obligation's mirrored rule id at a site the worklist names. The worklist and the report are both
+   files, so this stays a fact the pipeline can read
+   ([ADR 0078](0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)).
 5. **Three transcript facts tighten the effective tier and are published.** The Standards sub-agent
    read its brief but never opened `CODING_STANDARDS.md`. A dispatch carried text beyond the skill's
    fixed template. Or the transcript's shape could not be read. Together they cost at most one tier
