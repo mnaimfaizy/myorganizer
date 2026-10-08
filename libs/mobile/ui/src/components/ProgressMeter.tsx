@@ -22,8 +22,11 @@ export interface ProgressMeterProps {
   /** A muted note at the trailing edge — "checked", "All checked", "3 to go". */
   meta?: string;
   /**
-   * What a screen reader hears as the value — "7 of 12 checked". Defaults to
-   * the percentage, which is right only when no count exists.
+   * What a screen reader hears as the value, after the `label` — "checked"
+   * after "7 of 12". Never the label over again: both are read, one after
+   * the other, so a value that repeats the label is the label said twice
+   * (#1086). Defaults to `meta` when the meter has a `label`, and otherwise
+   * to the percentage, which is right only when no count exists.
    */
   accessibilityValueText?: string;
   style?: ViewStyle;
@@ -53,6 +56,11 @@ export function ProgressMeter({
   const reduceMotion = useReduceMotion();
   const fraction = Math.min(Math.max(value, 0), 1);
   const complete = fraction >= 1;
+  // The label names the meter and the value follows it, so the two halves of
+  // the drawn line — "5 of 8 notified", "3 to go" — are read once each. With
+  // no label the `meta` is the name instead, and the value is the percentage.
+  const valueText =
+    accessibilityValueText ?? (label != null ? meta : undefined);
 
   const width = useSharedValue(fraction);
   useEffect(() => {
@@ -75,8 +83,8 @@ export function ProgressMeter({
       accessibilityLabel={label}
       {...staticElement(label ?? meta)}
       accessibilityValue={
-        accessibilityValueText != null
-          ? { text: accessibilityValueText }
+        valueText != null
+          ? { text: valueText }
           : { min: 0, max: 100, now: Math.round(fraction * 100) }
       }
       style={[{ gap: theme.spacing.sm }, style]}
