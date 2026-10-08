@@ -393,6 +393,12 @@ export const SpecSourceSchema = z
     }
   });
 
+/** A run's token figures: the envelope's `cost`, and the run facts' own. */
+const CostSchema = z.strictObject({
+  inputTokens: z.int().nonnegative(),
+  outputTokens: z.int().nonnegative(),
+});
+
 /**
  * The envelope as a reviewer writes it. `strictObject` is what rejects a
  * hand-written `verdict`, `effectiveTier`, or finding `id`.
@@ -413,12 +419,7 @@ const envelopeFields = {
    * harness exposes usage; the trust ratchet reads it where present and
    * falls back to model plus wall-clock.
    */
-  cost: z
-    .strictObject({
-      inputTokens: z.int().nonnegative(),
-      outputTokens: z.int().nonnegative(),
-    })
-    .optional(),
+  cost: CostSchema.optional(),
 };
 
 export const ReportInputSchema = z.strictObject({
@@ -469,6 +470,12 @@ export const RunFactsSchema = z
     cliVersion: nonEmpty.nullable(),
     models: z.array(nonEmpty).nullable(),
     durationMs: z.int().nonnegative().nullable(),
+    /**
+     * Token figures summed over the result event's `modelUsage`, or `null`
+     * when it does not carry them. Optional, so a facts file written before
+     * the figures were read still parses; absent reads as `null`.
+     */
+    cost: CostSchema.nullable().optional(),
     dispatches: z.int().nonnegative().nullable(),
     axes: AxesFactsSchema,
     standardsSources: z.array(nonEmpty).nullable(),
@@ -520,7 +527,7 @@ export const RunFactsSchema = z
   });
 
 /**
- * What a normalized report keeps of the facts file, beside the four envelope
+ * What a normalized report keeps of the facts file, beside the envelope
  * fields the facts overwrite.
  */
 const RunFactsSummarySchema = z.strictObject({
@@ -553,11 +560,12 @@ const RunFactsSummarySchema = z.strictObject({
  * What the validator writes and the only thing the renderer accepts: the
  * input plus derived ids, the computed verdict, and the effective tier.
  *
- * Four envelope fields are facts about the run, and in CI they are read from
- * the reviewer transcript and overwrite whatever the reviewer wrote (ADR
- * 0123). `runFactsFrom` says which a report carries. Three of the four may be
- * `null` here and never in the input: `null` is "the transcript could not be
- * read", which is neither an empty list nor the reviewer's own claim.
+ * `standardsSources`, `executed`, `durationMs`, `model`, and `cost` are facts
+ * about the run, and in CI they are read from the reviewer transcript and
+ * overwrite whatever the reviewer wrote (ADR 0123). `runFactsFrom` says which
+ * a report carries. Every one but `model` may be `null` here and never in the
+ * input: `null` is "the transcript did not say", which is neither an empty
+ * list, nor zero, nor the reviewer's own claim.
  *
  * `runFactsFrom` and `runFacts` are optional so that a report normalized
  * before they existed still parses as a previous report and still lends its
@@ -568,6 +576,11 @@ export const NormalizedReportSchema = z.strictObject({
   standardsSources: z.array(nonEmpty).nullable(),
   executed: z.array(nonEmpty).nullable(),
   durationMs: z.int().nonnegative().nullable(),
+  /**
+   * `null` is a transcript that did not carry the figures. Absent is a
+   * report with no transcript whose reviewer reported none.
+   */
+  cost: CostSchema.nullable().optional(),
   runFactsFrom: z.enum(RUN_FACTS_SOURCES).optional(),
   runFacts: RunFactsSummarySchema.nullable().optional(),
   findings: z.array(
@@ -802,8 +815,8 @@ export const computeEffectiveTier = (
  * it, and a report of another schema version lends none.
  *
  * `facts` is the run facts file read from the reviewer transcript, when
- * there is one. It overwrites the four envelope fields that are facts about
- * the run, and it is judged against the report (run-ladder.mjs): what fails
+ * there is one. It overwrites the envelope fields that are facts about the
+ * run, and it is judged against the report (run-ladder.mjs): what fails
  * `Agent Review Ran` is recorded under `runFacts.failures`, and what tightens
  * the tier under `runFacts.tightenedBy` and in `effectiveTier`. No finding,
  * severity, or verdict is read from it. Without it the report keeps what the
@@ -877,6 +890,7 @@ const runFactsFor = (input, rawFacts, worklist) => {
     standardsSources: readable ? facts.standardsSources : null,
     executed: readable ? facts.executed : null,
     durationMs: facts.durationMs,
+    cost: facts.cost ?? null,
     model: facts.models?.length ? facts.models.join(', ') : UNKNOWN_MODEL,
     runFactsFrom: 'transcript',
     runFacts: {

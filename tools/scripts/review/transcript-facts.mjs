@@ -191,6 +191,7 @@ const unknownFacts = (reason, known = {}) => ({
   cliVersion: known.cliVersion ?? null,
   models: known.models ?? null,
   durationMs: known.durationMs ?? null,
+  cost: known.cost ?? null,
   dispatches: null,
   axes: null,
   standardsSources: null,
@@ -200,6 +201,48 @@ const unknownFacts = (reason, known = {}) => ({
   repliesParsed: null,
   returned: null,
 });
+
+const isCount = (v) => Number.isInteger(v) && v >= 0;
+
+/**
+ * The session's token figures, summed over every model the `result` event
+ * lists under `modelUsage` (issue #1057).
+ *
+ * `modelUsage` and not the event's top-level `usage`: `usage` counts the main
+ * agent's turns alone, and most of a review is spent in its two sub-agents.
+ * Run 37726720012 reported 1,364 output tokens under `usage` and 2,851 under
+ * `modelUsage`.
+ *
+ * Input is everything the models were sent: fresh input, cache reads, and
+ * cache writes. The fresh figure alone is what is left after caching, which
+ * on that run was 28 tokens of some 644,000.
+ *
+ * `null` when any model's entry lacks a figure. A partial sum would read as
+ * a smaller spend, and a missing figure is not zero.
+ */
+const costFrom = (modelUsage) => {
+  if (!isObject(modelUsage)) return null;
+  const entries = Object.values(modelUsage);
+  if (entries.length === 0) return null;
+  let inputTokens = 0;
+  let outputTokens = 0;
+  for (const usage of entries) {
+    if (
+      !isObject(usage) ||
+      !isCount(usage.inputTokens) ||
+      !isCount(usage.cacheReadInputTokens) ||
+      !isCount(usage.cacheCreationInputTokens) ||
+      !isCount(usage.outputTokens)
+    )
+      return null;
+    inputTokens +=
+      usage.inputTokens +
+      usage.cacheReadInputTokens +
+      usage.cacheCreationInputTokens;
+    outputTokens += usage.outputTokens;
+  }
+  return { inputTokens, outputTokens };
+};
 
 const emptyAxis = () => ({
   dispatched: false,
@@ -321,6 +364,7 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
       Number.isFinite(result.duration_ms)
         ? Math.round(result.duration_ms)
         : null,
+    cost: costFrom(result?.modelUsage),
   };
   if (!init || typeof init.cwd !== 'string')
     return unknownFacts(

@@ -404,3 +404,71 @@ test('an unreadable transcript returns no findings list at all', () => {
   assert.equal(unknown.returned, null);
   assert.equal(unknown.repliesParsed, null);
 });
+
+// --- token figures (issue #1057) --------------------------------------------
+
+test('the token figures are summed from the result events model usage', () => {
+  // Run 37717857861: 44 fresh, 1,102,181 cache-read and 187,728 cache-written
+  // input tokens, and 8,088 output tokens.
+  assert.deepEqual(facts('cli-2.1.293-template-two-findings').cost, {
+    inputTokens: 44 + 1102181 + 187728,
+    outputTokens: 8088,
+  });
+});
+
+const withModelUsage = (modelUsage) => {
+  const events = JSON.parse(fixture('cli-2.1.293-template'));
+  events.findLast((e) => e.type === 'result').modelUsage = modelUsage;
+  return readTranscriptFacts(JSON.stringify(events), { index: INDEX });
+};
+
+const usage = (overrides = {}) => ({
+  inputTokens: 10,
+  outputTokens: 200,
+  cacheReadInputTokens: 3000,
+  cacheCreationInputTokens: 40000,
+  ...overrides,
+});
+
+test('every model that ran is counted, sub-agents on another model included', () => {
+  const read = withModelUsage({
+    'claude-haiku-5-5': usage({ inputTokens: 1460, outputTokens: 30 }),
+    'claude-sonnet-5-5': usage(),
+  });
+  assert.deepEqual(read.cost, {
+    inputTokens: 1460 + 3000 + 40000 + 10 + 3000 + 40000,
+    outputTokens: 230,
+  });
+});
+
+test('a result event without the figures is unknown, never zero', () => {
+  // The fixture cut before the figures were kept carries none.
+  const bare = facts('cli-2.1.292-paraphrased-dispatch');
+  assert.equal(bare.cost, null);
+  assert.equal(bare.shape, 'readable');
+  // One model's entry missing a figure: a partial sum would read as less.
+  assert.equal(
+    withModelUsage({
+      'claude-haiku-5-5': usage({ outputTokens: undefined }),
+      'claude-sonnet-5-5': usage(),
+    }).cost,
+    null,
+  );
+  assert.equal(
+    withModelUsage({ 'claude-sonnet-5-5': usage({ inputTokens: -1 }) }).cost,
+    null,
+  );
+});
+
+test('an unreadable transcript keeps the figures its result event did carry', () => {
+  const events = JSON.parse(fixture('cli-2.1.293-template')).filter(
+    (e) => !(e.type === 'system' && e.subtype === 'init'),
+  );
+  const read = readTranscriptFacts(JSON.stringify(events), { index: INDEX });
+  assert.equal(read.shape, 'unknown');
+  assert.deepEqual(read.cost, {
+    inputTokens: 40 + 916816 + 178513,
+    outputTokens: 5372,
+  });
+  assert.equal(readTranscriptFacts('not json').cost, null);
+});

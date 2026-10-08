@@ -810,6 +810,6 @@ test('cost is optional and rendered when present', () => {
   );
   assert.match(
     renderReport(report, null, { hunks: false }),
-    /1200 in \/ 300 out tokens/,
+    /1\.2k in \/ 300 out tokens/,
   );
 });

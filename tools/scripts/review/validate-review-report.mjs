@@ -20,8 +20,8 @@
 //
 // --facts is the run facts file `read-transcript-facts.mjs` wrote from the
 // reviewer transcript. It overwrites the report's `standardsSources`,
-// `executed`, `durationMs`, and `model`, which are facts about the run and
-// not the reviewer's to state (ADR 0123). Without it the report keeps what
+// `executed`, `durationMs`, `model`, and `cost`, which are facts about the run
+// and not the reviewer's to state (ADR 0123). Without it the report keeps what
 // the reviewer wrote and is marked `runFactsFrom: reviewer`.
 //
 // With --facts the run is also judged (run-ladder.mjs). A fact that fails

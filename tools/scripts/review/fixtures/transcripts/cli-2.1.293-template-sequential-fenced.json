@@ -558,7 +558,12 @@
     "num_turns": 7,
     "total_cost_usd": 0.7491585000000001,
     "modelUsage": {
-      "claude-sonnet-5-5": {}
+      "claude-sonnet-5-5": {
+        "inputTokens": 44,
+        "outputTokens": 6600,
+        "cacheReadInputTokens": 1003745,
+        "cacheCreationInputTokens": 168847
+      }
     },
     "permission_denials": [
       {
