@@ -183,7 +183,7 @@ export function Button({
         onFocus?.(event);
       }}
       onBlur={(event) => {
-        ring.onBlur();
+        ring.onBlur(event);
         onBlur?.(event);
       }}
       style={({ pressed }) => [

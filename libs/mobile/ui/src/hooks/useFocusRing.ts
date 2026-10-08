@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { FocusEvent, ViewStyle } from 'react-native';
+import type { BlurEvent, FocusEvent, ViewStyle } from 'react-native';
 import { useTheme } from '../useTheme';
 import { useInFrontFocusLayer } from './focusLayer';
 import {
@@ -18,11 +18,31 @@ const RING_WIDTH = 2;
 /** The gap between the control and the ring, outside placement only. */
 const RING_GAP = 2;
 
+/**
+ * How far past its control an outside ring reaches. A scroller holding ringed
+ * controls needs at least this much room around them (see `ChipScroller`).
+ */
+export const FOCUS_RING_OUTSET = RING_WIDTH + RING_GAP;
+
 /** An inset ring sits flush inside the edge rather than past it. */
 const OFFSET = {
   outside: RING_GAP,
   inset: -RING_WIDTH,
 } as const satisfies Record<FocusRingPlacement, number>;
+
+/**
+ * Whether a focus or blur event came up from a control inside this one.
+ *
+ * Both events bubble, and `Pressable` hands its handlers every one that
+ * reaches it. A row holding a checkbox therefore heard the checkbox take
+ * focus and drew a second ring around itself (#1047). The event is this
+ * control's own only when the view it came from is the view handling it. A
+ * handler called without an event has nothing to compare and is the
+ * control's own.
+ */
+function fromInside(event: FocusEvent | BlurEvent | undefined): boolean {
+  return event != null && event.target !== event.currentTarget;
+}
 
 /**
  * The focus indicator every control in this library draws — P3 in the
@@ -52,6 +72,10 @@ const OFFSET = {
  * `focused` stays what the control was told, so the ring returns with the
  * sheet's dismissal if the control still has focus.
  *
+ * A control with a ringed control inside it — a task row and its checkbox —
+ * is sent that control's focus and blur as well, because both events bubble.
+ * The ring and the view noted below follow only the control's own.
+ *
  * A control that hands `onFocus` its event also names the view focus can be
  * returned to once a screen it opened leaves (see `focusReturn.ts`). A text
  * input draws its ring without this hook, so it is never that view: it takes
@@ -61,18 +85,20 @@ const OFFSET = {
 export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
   focused: boolean;
   onFocus: (event?: FocusEvent) => void;
-  onBlur: () => void;
+  onBlur: (event?: BlurEvent) => void;
   ringStyle: ViewStyle | null;
 } {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
   const view = useRef<FocusTarget | null>(null);
   const onFocus = useCallback((event?: FocusEvent) => {
+    if (fromInside(event)) return;
     setFocused(true);
     view.current = focusTargetOf(event?.currentTarget);
     if (view.current !== null) noteFocus(view);
   }, []);
-  const onBlur = useCallback(() => {
+  const onBlur = useCallback((event?: BlurEvent) => {
+    if (fromInside(event)) return;
     setFocused(false);
     noteBlur(view);
   }, []);

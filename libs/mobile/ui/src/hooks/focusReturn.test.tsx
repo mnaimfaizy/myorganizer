@@ -11,7 +11,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 /** A focus event from `view`, as far as the hook reads one. */
 const focusEventFrom = (view: unknown) =>
-  ({ currentTarget: view }) as unknown as FocusEvent;
+  ({ target: view, currentTarget: view }) as unknown as FocusEvent;
 
 /** A control with a ring, and the view its focus events name. */
 const renderControl = async () => {
@@ -104,6 +104,24 @@ describe('useReturnFocusOnLeave', () => {
 
     await screen.unmount();
     expect(row.view.focus).not.toHaveBeenCalled();
+  });
+
+  it('returns focus to the control that held it, not to the one around it', async () => {
+    // Focus bubbles, so a row is sent the focus of the checkbox inside it.
+    const checkbox = await renderControl();
+    const row = await renderHook(() => useFocusRing(), { wrapper });
+    await checkbox.focus();
+    await act(() =>
+      row.result.current.onFocus({
+        target: checkbox.view,
+        currentTarget: { focus: jest.fn() },
+      } as unknown as FocusEvent),
+    );
+    const screen = await openScreen();
+    await checkbox.blur();
+
+    await screen.unmount();
+    expect(checkbox.view.focus).toHaveBeenCalledTimes(1);
   });
 
   it.each([

@@ -68,6 +68,10 @@ export {
 } from './components/Checkbox';
 export { Chip, type ChipProps, type ChipRole } from './components/Chip';
 export {
+  ChipScroller,
+  type ChipScrollerProps,
+} from './components/ChipScroller';
+export {
   ConfirmSheet,
   type ConfirmSheetProps,
 } from './components/ConfirmSheet';
