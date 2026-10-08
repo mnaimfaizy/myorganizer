@@ -27,12 +27,43 @@ const renderControl = async () => {
   };
 };
 
-/** Long enough for a commit to have reached the views. */
-const nextFrame = () =>
-  act(
-    () =>
-      new Promise<void>((resolve) => requestAnimationFrame(() => resolve())),
-  );
+/**
+ * Holds every frame asked for until the test runs it. The preset's
+ * `requestAnimationFrame` is a zero-delay timer on the real clock, so a frame
+ * left to it fires whenever a test next awaits anything, and on a slow machine
+ * that is before the assertion that it has not fired yet.
+ */
+const holdFrames = () => {
+  const owed = new Map<number, (time: number) => void>();
+  let last = 0;
+  const request = jest
+    .spyOn(globalThis, 'requestAnimationFrame')
+    .mockImplementation((callback) => {
+      last += 1;
+      owed.set(last, callback);
+      return last;
+    });
+  const cancel = jest
+    .spyOn(globalThis, 'cancelAnimationFrame')
+    .mockImplementation((id) => {
+      if (id != null) owed.delete(id);
+    });
+  return {
+    /** How many frames are asked for and neither run nor cancelled. */
+    owed: () => owed.size,
+    /** The next frame: runs what was asked for before it, and nothing later. */
+    next: () =>
+      act(() => {
+        const due = [...owed.values()];
+        owed.clear();
+        due.forEach((callback) => callback(0));
+      }),
+    release: () => {
+      request.mockRestore();
+      cancel.mockRestore();
+    },
+  };
+};
 
 type Row = Awaited<ReturnType<typeof renderControl>>;
 
@@ -224,6 +255,16 @@ describe('useFocusSuccession', () => {
   });
 
   describe('while the list is not ready', () => {
+    let frames: ReturnType<typeof holdFrames>;
+
+    beforeEach(() => {
+      frames = holdFrames();
+    });
+
+    afterEach(() => {
+      frames.release();
+    });
+
     it('waits, and hands focus on when it is', async () => {
       const list = await renderList(['a', 'b', 'c'], { ready: false });
       await list.row('b').focus();
@@ -234,7 +275,8 @@ describe('useFocusSuccession', () => {
       // The render that makes it ready has not reached the views yet.
       await list.setOptions({ ready: true });
       expect(list.focused()).toEqual([]);
-      await nextFrame();
+      expect(frames.owed()).toBe(1);
+      await frames.next();
       expect(list.focused()).toEqual(['c']);
     });
 
@@ -247,7 +289,7 @@ describe('useFocusSuccession', () => {
       await elsewhere.focus();
 
       await list.setOptions({ ready: true });
-      await nextFrame();
+      await frames.next();
       expect(list.focused()).toEqual([]);
       await elsewhere.blur();
     });
@@ -259,7 +301,7 @@ describe('useFocusSuccession', () => {
       await list.remove('c');
 
       await list.setOptions({ ready: true });
-      await nextFrame();
+      await frames.next();
       expect(list.focused()).toEqual(['a']);
     });
 
@@ -271,7 +313,7 @@ describe('useFocusSuccession', () => {
       await list.setOptions({ ready: true });
       await elsewhere.focus();
 
-      await nextFrame();
+      await frames.next();
       expect(list.focused()).toEqual([]);
       await elsewhere.blur();
     });
@@ -283,7 +325,8 @@ describe('useFocusSuccession', () => {
       await list.setOptions({ ready: true });
 
       await list.unmount();
-      await nextFrame();
+      expect(frames.owed()).toBe(0);
+      await frames.next();
       expect(list.focused()).toEqual([]);
     });
   });
