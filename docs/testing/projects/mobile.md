@@ -7,7 +7,7 @@
 
 ## Current state
 
-Four mobile libraries have a Jest project:
+Five mobile libraries have a Jest project:
 
 | Project             | Config                                  | Environment                 | Covers                                                                                                                             |
 | ------------------- | --------------------------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
@@ -15,9 +15,10 @@ Four mobile libraries have a Jest project:
 | `mobile-core`       | `libs/mobile/core/jest.config.ts`       | `node`                      | the Device Settings read back out of storage, and the Auto-Lock decision                                                           |
 | `mobile-screens`    | `libs/mobile/screens/jest.config.ts`    | `node`                      | the tab vocabulary, the stored last used tab, the projection of the theme onto React Navigation, and the entry screens' error copy |
 | `mobile-feat-vault` | `libs/mobile/feat/vault/jest.config.ts` | `node`                      | the pure halves of Vault Unlock: unwrapping a Master Key, and the Biometric Unlock policy over a fake keystore                     |
+| `mobile-feat-auth`  | `libs/mobile/feat/auth/jest.config.ts`  | `node`                      | refreshing the Session over a fake keychain: which refresh failures end it, and refresh-on-401                                     |
 
 `@nx/jest` infers a `test` target from each config, so `yarn nx test mobile-core` resolves without
-a declared target and CI's `nx affected -t test` runs all four.
+a declared target and CI's `nx affected -t test` runs all five.
 
 `apps/mobile/jest.config.ts` also exists, wired to `yarn nx test mobile`, and still holds no test
 files. Its `passWithNoTests: true` means that target reports success by finding nothing, which is

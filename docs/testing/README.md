@@ -37,6 +37,7 @@ below plus **only the file for the project you are testing**.
 | `libs/mobile/core`                   | Jest unit (pure logic only)  | `babel-jest` + `node` env            | `yarn nx test mobile-core`       | [mobile.md](./projects/mobile.md)             |
 | `libs/mobile/screens`                | Jest unit (pure logic only)  | `babel-jest` + `node` env            | `yarn nx test mobile-screens`    | [mobile.md](./projects/mobile.md)             |
 | `libs/mobile/feat/vault`             | Jest unit (pure logic only)  | `babel-jest` + `node` env            | `yarn nx test mobile-feat-vault` | [mobile.md](./projects/mobile.md)             |
+| `libs/mobile/feat/auth`              | Jest unit (pure logic only)  | `babel-jest` + `node` env            | `yarn nx test mobile-feat-auth`  | [mobile.md](./projects/mobile.md)             |
 | `apps/mobile`, other `libs/mobile/*` | Jest — **no spec files yet** | `babel-jest` + `react-native` preset | `yarn nx test mobile`            | [mobile.md](./projects/mobile.md)             |
 
 Use Jest for `*.spec.ts(x)` and `*.test.ts(x)` **outside** `apps/myorganizer-e2e`.
