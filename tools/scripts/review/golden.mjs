@@ -485,6 +485,57 @@ export const replayObligationCheckFindings = (workflowText) => {
   return findings;
 };
 
+/**
+ * The replay's classification of a review that did not run as built (ADR
+ * 0123 item 7), read off the workflow text like the answer-sheet check above.
+ *
+ * Production fails `Agent Review Ran` when the validator records a run
+ * failure in the normalized report: no sub-agent read an axis's brief, or a
+ * reported finding is not one a sub-agent returned. A replay that scores such
+ * a run records a miss or a catch for a reviewer that was not the one this
+ * set measures. Three things are asserted: a step reads the failures out of
+ * the normalized report; it runs before the score and does not continue on
+ * error, so a failed run stops the score; and the step that records the
+ * result hands the normalized report to the recorder, which is where the
+ * line's CLI version and tightening facts come from.
+ *
+ * @param {string} workflowText
+ * @returns {string[]}
+ */
+const REPLAY_RUN_FAILURES_READ = /\.runFacts\.failures\b/;
+const REPLAY_RECORD_RUN = /\bnode\s+\S*record-golden-result\.mjs\b/;
+
+export const replayRunFactsFindings = (workflowText) => {
+  const steps = workflowSteps(workflowText);
+  const check = steps.findIndex((s) => REPLAY_RUN_FAILURES_READ.test(s.body));
+  const score = steps.findIndex((s) =>
+    runs(s.body, REPLAY_SCORE, REPLAY_SCORE_RUN),
+  );
+  const record = steps.find((s) => REPLAY_RECORD_RUN.test(s.body));
+  const findings = [];
+  if (check === -1)
+    findings.push(
+      'no step reads .runFacts.failures from the normalized report, so a review that did not run as built is scored as a result (ADR 0123 item 7)',
+    );
+  else if (score !== -1) {
+    const c = steps[check];
+    if (check > score)
+      findings.push(
+        `"${c.name}" runs after "${steps[score].name}", so a void is scored before it is recognised (ADR 0101)`,
+      );
+    if (/^\s*continue-on-error:\s*true\b/m.test(c.body))
+      findings.push(
+        `"${c.name}" continues on error, so a review that did not run as built does not stop the score (ADR 0101)`,
+      );
+  }
+  if (!record) findings.push('no step runs record-golden-result.mjs');
+  else if (!/--normalized\b/.test(record.body))
+    findings.push(
+      `"${record.name}" does not pass --normalized, so no result line carries the CLI version or the tightening facts (ADR 0123 item 7)`,
+    );
+  return findings;
+};
+
 /** The label that asks for a replay on a Pull Request (ADR 0109). */
 export const REPLAY_REQUEST_LABEL = 'golden-replay';
 

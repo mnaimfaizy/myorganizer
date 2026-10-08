@@ -10,6 +10,7 @@ import {
   GoldenResultError,
   OUTCOMES,
   VOID_REASONS,
+  runFactFields,
   appendResultLine,
   buildResultRecord,
   formatResultLine,
@@ -52,6 +53,10 @@ test('buildResultRecord accepts a caught record with fixed key order', () => {
     'total_cost_usd',
     'turns',
     'model',
+    'cli_version',
+    'index_opened',
+    'dispatch_on_template',
+    'shape_readable',
   ]);
   assert.equal(record.case, 'export-envelope-drops-tasks');
   assert.equal(record.void_reason, null);
@@ -158,6 +163,8 @@ test('OUTCOMES and VOID_REASONS are the documented vocabularies', () => {
     'turn-ceiling',
     'prevented',
     'answer-sheet-check-failed',
+    'brief-not-read',
+    'finding-not-returned',
     'unknown',
   ]);
 });
@@ -348,4 +355,137 @@ test('renderRunsTable renders one row per run, and a void never counts as caught
 test('GENERATED markers are the ones the checker and the ledger share', () => {
   assert.equal(GENERATED_START, '<!-- GENERATED:golden-runs:START -->');
   assert.equal(GENERATED_END, '<!-- GENERATED:golden-runs:END -->');
+});
+
+// --- run facts on a result line (ADR 0123 item 7) ----------------------------
+
+test('a review that did not run as built is a void under its own reason', () => {
+  for (const voidReason of ['brief-not-read', 'finding-not-returned']) {
+    const record = buildResultRecord({ ...VOID, voidReason });
+    assert.equal(record.outcome, 'void');
+    assert.equal(record.void_reason, voidReason);
+    assert.equal(record.recall, null);
+  }
+});
+
+test('a result line carries the CLI version and the three tightening facts', () => {
+  const record = buildResultRecord({
+    ...CAUGHT,
+    cliVersion: '2.1.293',
+    indexOpened: false,
+    dispatchOnTemplate: true,
+    shapeReadable: true,
+  });
+  assert.equal(record.cli_version, '2.1.293');
+  assert.equal(record.index_opened, false);
+  assert.equal(record.dispatch_on_template, true);
+  assert.equal(record.shape_readable, true);
+  const [parsed] = parseResultsFile(formatResultLine(record));
+  assert.deepEqual(parsed, record);
+  assert.throws(
+    () => buildResultRecord({ ...CAUGHT, indexOpened: 'no' }),
+    /index_opened must be true, false, or null/,
+  );
+  assert.throws(
+    () => buildResultRecord({ ...CAUGHT, cliVersion: '' }),
+    /cli_version/,
+  );
+});
+
+test('a line written before the run facts were recorded reads them as not known', () => {
+  const {
+    cli_version,
+    index_opened,
+    dispatch_on_template,
+    shape_readable,
+    ...old
+  } = buildResultRecord(CAUGHT);
+  const [parsed] = parseResultsFile(JSON.stringify(old));
+  assert.equal(parsed.cli_version, null);
+  assert.equal(parsed.index_opened, null);
+  assert.equal(parsed.dispatch_on_template, null);
+  assert.equal(parsed.shape_readable, null);
+  assert.deepEqual(
+    [cli_version, index_opened, dispatch_on_template, shape_readable],
+    [null, null, null, null],
+  );
+});
+
+const axisFacts = (overrides = {}) => ({
+  dispatched: true,
+  briefRead: true,
+  onTemplate: true,
+  toolCalls: 3,
+  ...overrides,
+});
+
+const normalizedWith = (runFacts) => ({
+  runFactsFrom: 'transcript',
+  runFacts: {
+    shape: 'readable',
+    shapeReason: null,
+    cliVersion: '2.1.293',
+    dispatches: 2,
+    axes: { standards: axisFacts(), spec: axisFacts() },
+    indexOpened: true,
+    repliesParsed: true,
+    unattributedDispatches: 0,
+    ...runFacts,
+  },
+});
+
+test('the run facts of a line are read from the normalized report', () => {
+  assert.deepEqual(runFactFields(normalizedWith({})), {
+    cliVersion: '2.1.293',
+    indexOpened: true,
+    dispatchOnTemplate: true,
+    shapeReadable: true,
+  });
+  const thin = runFactFields(
+    normalizedWith({
+      indexOpened: false,
+      axes: {
+        standards: axisFacts({ onTemplate: false }),
+        spec: axisFacts({ dispatched: false, onTemplate: null }),
+      },
+      repliesParsed: false,
+    }),
+  );
+  assert.equal(thin.indexOpened, false);
+  assert.equal(thin.dispatchOnTemplate, false);
+  assert.equal(thin.shapeReadable, false);
+  // A dispatch that is neither axis's is off the template by itself.
+  assert.equal(
+    runFactFields(normalizedWith({ unattributedDispatches: 1 }))
+      .dispatchOnTemplate,
+    false,
+  );
+});
+
+test('cannot tell is recorded as null, never as false', () => {
+  const unknown = runFactFields(
+    normalizedWith({
+      shape: 'unknown',
+      shapeReason: 'no result event',
+      dispatches: null,
+      axes: null,
+      indexOpened: null,
+      repliesParsed: null,
+      unattributedDispatches: null,
+    }),
+  );
+  assert.deepEqual(unknown, {
+    cliVersion: '2.1.293',
+    indexOpened: null,
+    dispatchOnTemplate: null,
+    shapeReadable: false,
+  });
+  // No validated report, or one whose facts are the reviewer's own.
+  for (const report of [null, { runFactsFrom: 'reviewer', runFacts: null }])
+    assert.deepEqual(runFactFields(report), {
+      cliVersion: null,
+      indexOpened: null,
+      dispatchOnTemplate: null,
+      shapeReadable: null,
+    });
 });

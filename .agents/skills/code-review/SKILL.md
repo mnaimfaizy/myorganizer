@@ -274,6 +274,11 @@ with what the reviewer transcript shows, after you have exited
 Run interactively there is no transcript to read, so the report keeps what you wrote and is marked
 as self-reported. Either way, write what happened: do not pad a list or round a duration.
 
+In CI the same transcript is what the run is held to. Each finding you report is compared, field for
+field, with the findings the sub-agents returned. One you changed, or one you wrote that is not an
+obligation finding for a worklist site, fails `Agent Review Ran`. So does an axis whose brief no
+sub-agent read. Copy a returned finding as it is, or drop it; never correct one.
+
 ```json
 {
   "schemaVersion": 4,
@@ -350,6 +355,11 @@ rediscover them:
 - **The run's facts are read from your transcript once you have exited.** The published comment
   lists the standards documents the Standards sub-agent opened, the tool calls each axis made, and
   whether each dispatch was the template, whatever the envelope says about them (ADR 0123).
+- **Those facts are enforced.** `Agent Review Ran` fails when no sub-agent read an axis's brief, and
+  when the report carries a finding that is not, field for field, one a sub-agent returned (an
+  obligation finding for a worklist site excepted). The Review Tier moves one step toward a human
+  when the Standards sub-agent never opened `CODING_STANDARDS.md`, when a dispatch carried text
+  beyond the template, or when the transcript or a reply could not be read.
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
   Request goes to `review:human`. Nothing is downgraded to make it pass.
 - **Your run ends when you reply without a tool call, and no background notification reaches you.**

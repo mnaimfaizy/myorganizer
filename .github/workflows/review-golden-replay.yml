@@ -445,6 +445,27 @@ jobs:
             exit 1
           fi
 
+      # The run facts the validator judged against the transcript, read from
+      # the normalized report as production reads them (ADR 0123 item 7). What
+      # fails Agent Review Ran there voids the case here: no sub-agent read an
+      # axis's brief, or the report carries a finding no sub-agent returned.
+      # Neither measured the reviewer this set exists to measure, so the score
+      # below does not run. What only tightens a tier in production (the index
+      # never opened, a dispatch off the template, a transcript nobody could
+      # read) is scored as usual and recorded on the result line: a miss from
+      # a reviewer that skipped the index is a real miss, and voiding it would
+      # hide the regression.
+      - name: Check the run against its transcript
+        id: run-facts
+        run: |
+          REASON="$(jq -r '.runFacts.failures // [] | .[0].reason // empty' tmp/code-review/normalized.json)"
+          if [ -n "$REASON" ]; then
+            echo "reason=$REASON" >> "$GITHUB_OUTPUT"
+            jq -r '.runFacts.failures[] | "\(.reason): \(.detail)"' tmp/code-review/normalized.json
+            echo "::error::case ${{ matrix.case }}: the review did not run as built ($REASON). Production fails Agent Review Ran on this (ADR 0123), so the run measured nothing: it is a void, not a miss, and was not scored (ADR 0101)"
+            exit 1
+          fi
+
       # Recall against the case's expected findings for a pattern case, or
       # (issue #933) whether the report carries a Blocking finding for a
       # clean case; either way a failure names why in the summary. Never
@@ -485,6 +506,7 @@ jobs:
           COMMIT: ${{ github.sha }}
           CASE: ${{ matrix.case }}
           OBLIGATIONS_FAILED: ${{ steps.obligations-check.outputs.failed }}
+          RUN_FAILURE: ${{ steps.run-facts.outputs.reason }}
           PREVENTED: ${{ steps.reviewer.outputs.prevented }}
           TURN_EXHAUSTED: ${{ steps.reviewer.outputs.turn-exhausted }}
           RATE_LIMITED: ${{ steps.reviewer.outputs.rate-limited }}
@@ -516,6 +538,10 @@ jobs:
             ARGS+=(--outcome void)
             if [ "$OBLIGATIONS_FAILED" = 'true' ]; then
               ARGS+=(--void-reason answer-sheet-check-failed)
+            elif [ -n "${RUN_FAILURE:-}" ]; then
+              # brief-not-read or finding-not-returned, as the validator
+              # named it; record-golden-result.mjs refuses any other word.
+              ARGS+=(--void-reason "$RUN_FAILURE")
             elif [ "$PREVENTED" = 'true' ]; then
               ARGS+=(--void-reason prevented)
             elif [ "$TURN_EXHAUSTED" = 'true' ]; then
@@ -528,6 +554,10 @@ jobs:
           fi
           if [ -n "${TOTAL_COST_USD:-}" ]; then ARGS+=(--total-cost-usd "$TOTAL_COST_USD"); fi
           if [ -n "${TURNS:-}" ]; then ARGS+=(--turns "$TURNS"); fi
+          # The CLI version and the three tightening facts ride on every
+          # line that has a validated report to read them from, voids
+          # included; a case with no report records them as null.
+          ARGS+=(--normalized "$GITHUB_WORKSPACE/tmp/code-review/normalized.json")
           node tools/scripts/review/record-golden-result.mjs "${ARGS[@]}"
 
       # The obligation files ride along with the report. Run 45 asked whether a
@@ -587,7 +617,7 @@ jobs:
             exit 0
           fi
           if [ '${{ needs.replay.result }}' != 'success' ]; then
-            echo '::error::at least one golden case failed — a pattern case fell below its minimum recall, a clean case (issue #933) drew a Blocking finding, or the run measured nothing (a void: rate limit, turn ceiling, prevented, or an answer sheet that failed its check); see the Replay jobs'
+            echo '::error::at least one golden case failed — a pattern case fell below its minimum recall, a clean case (issue #933) drew a Blocking finding, or the run measured nothing (a void: rate limit, turn ceiling, prevented, an answer sheet that failed its check, or a review that did not run as built); see the Replay jobs'
             exit 1
           fi
 

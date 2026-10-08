@@ -19,6 +19,7 @@ import test from 'node:test';
 import { BRIEFS, RETRY_LINE, axisNamedBy, isOnTemplate } from './briefs.mjs';
 import {
   filesOpenedBy,
+  findingsReturnedBy,
   readTranscriptFacts,
   replyIsBareJson,
   standardsDocumentTest,
@@ -345,4 +346,61 @@ test('a run that dispatched nothing is readable, and says so', () => {
   assert.equal(f.dispatches, 0);
   assert.equal(f.axes.standards.dispatched, false);
   assert.deepEqual(f.standardsSources, []);
+});
+
+// --- what a reply returned ---------------------------------------------------
+
+const handBack = (body) =>
+  [
+    '[Subagent hand-back] The report follows:',
+    ...body.split('\n').map((line) => `  ${line}`),
+    'agentId: abc123',
+    '<usage>subagent_tokens: 1</usage>',
+  ].join('\n');
+
+test('the findings a reply returned are read through the harness wrapping', () => {
+  const finding = { axis: 'spec', ruleId: 'spec-requirement-missing' };
+  assert.deepEqual(
+    findingsReturnedBy(handBack(JSON.stringify({ findings: [finding] }))),
+    [finding],
+  );
+  assert.deepEqual(findingsReturnedBy(handBack('{"findings":[]}')), []);
+});
+
+test('a fenced reply, or one with a sentence after it, still says what it returned', () => {
+  const body = '```json\n{\n  "findings": []\n}\n```\n\nI found nothing.';
+  assert.equal(replyIsBareJson(handBack(body)), false);
+  assert.deepEqual(findingsReturnedBy(handBack(body)), []);
+});
+
+test('a reply with no findings list returned nothing this reader can compare', () => {
+  for (const body of [
+    'I reviewed the diff and found one problem.',
+    '{"executed":[]}',
+    '{"findings":"none"}',
+    '{"findings":["a string"]}',
+    '{"findings":[',
+  ])
+    assert.equal(findingsReturnedBy(handBack(body)), null, body);
+});
+
+test('every reply in a transcript is read, whichever dispatch it answers', () => {
+  const paraphrased = facts('cli-2.1.292-paraphrased-dispatch');
+  // Neither dispatch named a brief, so neither is an axis's; both replied.
+  assert.equal(paraphrased.axes.spec.dispatched, false);
+  assert.equal(paraphrased.repliesParsed, true);
+  assert.equal(paraphrased.returned.length, 1);
+
+  const real = facts('cli-2.1.293-template-two-findings');
+  assert.equal(real.repliesParsed, true);
+  assert.deepEqual(
+    real.returned.map((f) => f.axis),
+    ['standards', 'spec'],
+  );
+});
+
+test('an unreadable transcript returns no findings list at all', () => {
+  const unknown = readTranscriptFacts('not json');
+  assert.equal(unknown.returned, null);
+  assert.equal(unknown.repliesParsed, null);
 });

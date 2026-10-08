@@ -1,6 +1,7 @@
 // Covers how run facts reach a report and what the report says about them
-// (issue #1031, ADR 0123): the validator overwrites, the renderer states, and
-// nothing here fails a check or moves a tier.
+// (issue #1031, ADR 0123): the validator overwrites and the renderer states.
+// What a fact costs — a failed check, a tightened tier — is covered in
+// run-ladder.test.mjs.
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
@@ -73,6 +74,9 @@ const facts = (overrides = {}) => ({
   standardsSources: ['CODING_STANDARDS.md'],
   indexOpened: true,
   executed: ['node tools/scripts/check-review-rules.mjs'],
+  unattributedDispatches: 0,
+  repliesParsed: true,
+  returned: [],
   ...overrides,
 });
 
@@ -87,6 +91,9 @@ const unknownFacts = (overrides = {}) =>
     standardsSources: null,
     indexOpened: null,
     executed: null,
+    unattributedDispatches: null,
+    repliesParsed: null,
+    returned: null,
     ...overrides,
   });
 
@@ -242,10 +249,11 @@ test('findings under a transcript that shows no dispatch make the shape unknown'
   assert.equal(obligation.runFacts.shape, 'readable');
 });
 
-test('facts change no finding, verdict, or tier', () => {
+test('facts change no finding and no verdict, whatever they cost', () => {
   const input = envelope({ findings: [finding()] });
   const plain = normalizeReport(input);
-  // Every thin-review signal at once: nothing is enforced in this step.
+  // Every thin-review signal at once. What they cost is run-ladder.test.mjs's
+  // subject; here, only that the findings and the verdict are not theirs.
   const thin = normalizeReport(input, {
     facts: facts({
       axes: {
@@ -258,7 +266,6 @@ test('facts change no finding, verdict, or tier', () => {
   });
   assert.deepEqual(thin.findings, plain.findings);
   assert.equal(thin.verdict, plain.verdict);
-  assert.equal(thin.effectiveTier, plain.effectiveTier);
 });
 
 test('a report normalized before run facts existed still parses as a previous report', () => {

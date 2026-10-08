@@ -18,6 +18,7 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { RULES_DISPLAY_PATH, ruleById, ruleIds } from './rules.mjs';
+import { RUN_FAILURES, TIGHTENING_FACTS, judgeRun } from './run-ladder.mjs';
 
 /**
  * Bumped to 2 when `rule` left the identity tuple (issue #718), to 3 when the
@@ -473,10 +474,34 @@ export const RunFactsSchema = z
     standardsSources: z.array(nonEmpty).nullable(),
     indexOpened: z.boolean().nullable(),
     executed: z.array(nonEmpty).nullable(),
+    /**
+     * Dispatches that are neither axis's: the sub-agent read no brief and
+     * the message named none. The skill has no template for one.
+     */
+    unattributedDispatches: z.int().nonnegative().nullable(),
+    /**
+     * Every sub-agent reply in the transcript could be read for the findings
+     * it returned; null when the transcript holds no reply.
+     */
+    repliesParsed: z.boolean().nullable(),
+    /**
+     * The findings the sub-agents returned, as they returned them. Not held
+     * to the finding contract: a reported finding is compared with these
+     * field for field, and a returned finding that broke the contract is
+     * still one a sub-agent returned.
+     */
+    returned: z.array(z.record(z.string(), z.unknown())).nullable(),
   })
   .superRefine((f, ctx) => {
     const readable = f.shape === 'readable';
-    for (const key of ['axes', 'standardsSources', 'indexOpened', 'executed']) {
+    for (const key of [
+      'axes',
+      'standardsSources',
+      'indexOpened',
+      'executed',
+      'unattributedDispatches',
+      'returned',
+    ]) {
       if (readable === (f[key] === null))
         ctx.addIssue({
           code: 'custom',
@@ -505,6 +530,23 @@ const RunFactsSummarySchema = z.strictObject({
   dispatches: z.int().nonnegative().nullable(),
   axes: AxesFactsSchema,
   indexOpened: z.boolean().nullable(),
+  /**
+   * What the run facts cost (run-ladder.mjs). Optional, so a report
+   * normalized before the facts were enforced still parses as a previous
+   * report.
+   */
+  repliesParsed: z.boolean().nullable().optional(),
+  unattributedDispatches: z.int().nonnegative().nullable().optional(),
+  failures: z
+    .array(
+      z.strictObject({
+        reason: z.enum(RUN_FAILURES),
+        axis: z.enum(FINDING_AXES).nullable(),
+        detail: nonEmpty,
+      }),
+    )
+    .optional(),
+  tightenedBy: z.array(z.enum(TIGHTENING_FACTS)).optional(),
 });
 
 /**
@@ -721,22 +763,34 @@ export const computeVerdict = (findings) => {
 };
 
 /**
- * A report with no spec source is tightened down one tier level at the
- * envelope level: auto → agent, agent → human, human → human. Interactive
- * runs (tier null) stay null: there is no label to tighten.
+ * The effective tier is the pinned tier moved toward a human by up to two
+ * steps: one when the report has no spec source, and one when any tightening
+ * fact holds about the run (ADR 0123 item 5). However many tightening facts
+ * hold, they cost the one step together. A run that fails
+ * `Agent Review Ran` goes all the way: a review that did not run as built
+ * vouches for nothing, which is what the strictest label means (ADR 0070
+ * item 5). Interactive runs (tier null) stay null: there is no label to
+ * tighten.
+ *
+ * @param {object} report the report input
+ * @param {{ tightened?: boolean, failed?: boolean }} [run] whether a
+ *   tightening fact holds, and whether a run failure does
  */
-export const computeEffectiveTier = (report) => {
+export const computeEffectiveTier = (
+  report,
+  { tightened = false, failed = false } = {},
+) => {
   if (report.tier === null) return null;
-  if (report.spec.kind === 'none') {
-    // Reaches the one declared list rather than re-enumerating the members
-    // (AGENTS.md, ADR 0053). That makes this step depend on REVIEW_TIER_LABELS
-    // being ordered loosest to strictest, which is what "tighten by one" means
-    // — reorder that constant and this tightens in the wrong direction.
-    const current = REVIEW_TIER_LABELS.indexOf(report.tier);
-    const next = Math.min(current + 1, REVIEW_TIER_LABELS.length - 1);
-    return REVIEW_TIER_LABELS[next];
-  }
-  return report.tier;
+  if (failed) return REVIEW_TIER_LABELS[REVIEW_TIER_LABELS.length - 1];
+  const steps = (report.spec.kind === 'none' ? 1 : 0) + (tightened ? 1 : 0);
+  // Reaches the one declared list rather than re-enumerating the members
+  // (AGENTS.md, ADR 0053). That makes this depend on REVIEW_TIER_LABELS
+  // being ordered loosest to strictest, which is what "tighten by one" means
+  // — reorder that constant and this tightens in the wrong direction.
+  const current = REVIEW_TIER_LABELS.indexOf(report.tier);
+  return REVIEW_TIER_LABELS[
+    Math.min(current + steps, REVIEW_TIER_LABELS.length - 1)
+  ];
 };
 
 /**
@@ -749,24 +803,38 @@ export const computeEffectiveTier = (report) => {
  *
  * `facts` is the run facts file read from the reviewer transcript, when
  * there is one. It overwrites the four envelope fields that are facts about
- * the run, and nothing else: no finding, severity, verdict, or tier is read
- * from it. Without it the report keeps what the reviewer wrote and says so.
+ * the run, and it is judged against the report (run-ladder.mjs): what fails
+ * `Agent Review Ran` is recorded under `runFacts.failures`, and what tightens
+ * the tier under `runFacts.tightenedBy` and in `effectiveTier`. No finding,
+ * severity, or verdict is read from it. Without it the report keeps what the
+ * reviewer wrote, says so, and nothing is judged.
+ *
+ * A failure does not reject the report. The report met its contract, and
+ * its findings are still worth publishing; whoever runs the validator reads
+ * `runFacts.failures` and fails the check.
+ *
+ * `worklist` is the obligation worklist, when one was selected. It is read
+ * for one thing: which findings the main agent was meant to write itself.
  *
  * @param {unknown} raw
- * @param {{ previous?: unknown, facts?: unknown }} [options]
+ * @param {{ previous?: unknown, facts?: unknown, worklist?: unknown }} [options]
  */
 export const normalizeReport = (
   raw,
-  { previous = null, facts = null } = {},
+  { previous = null, facts = null, worklist = null } = {},
 ) => {
   const input = ReportInputSchema.parse(raw);
   const findings = assignFindingIds(input.findings, previous);
+  const run = runFactsFor(input, facts, worklist);
   return {
     ...input,
-    ...runFactsFor(input, facts),
+    ...run,
     findings,
     verdict: computeVerdict(findings),
-    effectiveTier: computeEffectiveTier(input),
+    effectiveTier: computeEffectiveTier(input, {
+      tightened: (run.runFacts?.tightenedBy ?? []).length > 0,
+      failed: (run.runFacts?.failures ?? []).length > 0,
+    }),
   };
 };
 
@@ -785,7 +853,7 @@ export const UNKNOWN_MODEL = 'unknown';
  * obligation finding is the main agent's own and proves no dispatch, so it
  * does not count.
  */
-const runFactsFor = (input, rawFacts) => {
+const runFactsFor = (input, rawFacts, worklist) => {
   if (rawFacts === null || rawFacts === undefined)
     return { runFactsFrom: 'reviewer', runFacts: null };
   const facts = RunFactsSchema.parse(rawFacts);
@@ -798,6 +866,13 @@ const runFactsFor = (input, rawFacts) => {
   const unseen =
     facts.shape === 'readable' && facts.dispatches === 0 && claimsARun;
   const readable = facts.shape === 'readable' && !unseen;
+  const { failures, tightenedBy } = judgeRun({
+    facts,
+    readable,
+    findings: input.findings,
+    specKind: input.spec.kind,
+    worklist,
+  });
   return {
     standardsSources: readable ? facts.standardsSources : null,
     executed: readable ? facts.executed : null,
@@ -813,6 +888,10 @@ const runFactsFor = (input, rawFacts) => {
       dispatches: readable ? facts.dispatches : null,
       axes: readable ? facts.axes : null,
       indexOpened: readable ? facts.indexOpened : null,
+      repliesParsed: readable ? facts.repliesParsed : null,
+      unattributedDispatches: readable ? facts.unattributedDispatches : null,
+      failures,
+      tightenedBy,
     },
   };
 };

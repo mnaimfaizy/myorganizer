@@ -55,14 +55,20 @@ outputs:
     description: success or failure of the action step.
     value: ${{ steps.reviewer.outcome }}
   validated:
-    description: true when tmp/code-review/normalized.json was written.
+    description: >-
+      true when tmp/code-review/normalized.json was written. A validated
+      report is not yet a run that passed: `runFacts.failures` in that file
+      lists the run facts that fail "Agent Review Ran" (ADR 0123 item 4),
+      and the caller reads it.
     value: ${{ steps.validate.outputs.validated }}
   facts-file:
     description: >-
       Path of the run facts file read from the reviewer transcript (ADR 0123).
       It is outside the workspace and always written. Any step that validates
-      the report again must pass it as `--facts`: a validation without it
-      puts the reviewer's own claims back into the normalized report.
+      the report again must pass it as `--facts`, with the same `--worklist`:
+      a validation without `--facts` puts the reviewer's own claims back into
+      the normalized report and judges nothing, and one without `--worklist`
+      fails an obligation finding as one the main agent authored.
     value: ${{ steps.facts.outputs.facts_file }}
   rejected-file:
     description: Path of the file holding the rejection reason when validation failed.
@@ -278,8 +284,8 @@ runs:
     # not have written it, and it is written whether or not there is a
     # transcript: a missing one is recorded as an unknown shape, so the
     # validator never falls back to the reviewer's own claims. The step
-    # reports and fails nothing; nothing reads these facts to gate or to
-    # tighten a tier yet (issue #1031).
+    # reports and fails nothing. What a fact costs is the validator's to
+    # decide, from this file (tools/scripts/review/run-ladder.mjs).
     #
     # The index is the workspace's own, which is the reviewed head here and
     # the case head in a golden replay (ADR 0102).
@@ -299,6 +305,15 @@ runs:
     # caller's tier overrides whatever the envelope says (ADR 0070 item 3),
     # and the run facts override the four envelope fields that are facts
     # about the run (ADR 0123).
+    #
+    # The validator also judges the run against those facts. A run fact that
+    # fails "Agent Review Ran" — no sub-agent read an axis's brief, or a
+    # reported finding is not one a sub-agent returned — does not reject the
+    # report: it is written to `runFacts.failures` in the normalized file,
+    # and the caller fails its check from there, so the findings are still
+    # published. `--worklist` is how the validator knows which findings the
+    # main agent was meant to write itself (an obligation finding); a path
+    # that does not exist is a run with no worklist.
     - name: Validate the report
       id: validate
       shell: bash
@@ -324,9 +339,9 @@ runs:
           exit 0
         fi
         if [ '${{ inputs.tier }}' = 'null' ]; then
-          node "$VALIDATOR" tmp/code-review/report.json --facts "$FACTS" --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+          node "$VALIDATOR" tmp/code-review/report.json --facts "$FACTS" --worklist tmp/code-review/obligations.json --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
         else
-          node "$VALIDATOR" tmp/code-review/report.json --tier '${{ inputs.tier }}' --facts "$FACTS" --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
+          node "$VALIDATOR" tmp/code-review/report.json --tier '${{ inputs.tier }}' --facts "$FACTS" --worklist tmp/code-review/obligations.json --out tmp/code-review/normalized.json 2> >(tee "$REJECTED" >&2)
         fi
         if [ -f tmp/code-review/normalized.json ]; then
           echo 'validated=true' >> "$GITHUB_OUTPUT"

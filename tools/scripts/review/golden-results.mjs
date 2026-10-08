@@ -12,6 +12,8 @@
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 
+import { RUN_FAILURES } from './run-ladder.mjs';
+
 export class GoldenResultError extends Error {
   constructor(message) {
     super(message);
@@ -48,7 +50,10 @@ const CLEAN_OUTCOMES = Object.freeze(['clean-pass', 'clean-fail']);
  * refusing a permission the reviewer's own instructions told it to use —
  * at the turn ceiling, or on a write to its own report or answer sheet
  * (`prevented`, classified by `classify-reviewer-run.mjs`), the obligation
- * answer sheet failing `review:obligations:check` (ADR 0101), and a residual
+ * answer sheet failing `review:obligations:check` (ADR 0101), the two run
+ * facts that fail `Agent Review Ran` in production (ADR 0123 item 7:
+ * `RUN_FAILURES` in run-ladder.mjs — no sub-agent read an axis's brief, or a
+ * reported finding was not one a sub-agent returned), and a residual
  * `unknown` for a run that produced no valid report for a reason none of the
  * above names.
  */
@@ -57,7 +62,22 @@ export const VOID_REASONS = Object.freeze([
   'turn-ceiling',
   'prevented',
   'answer-sheet-check-failed',
+  ...RUN_FAILURES,
   'unknown',
+]);
+
+/**
+ * The run facts a result line carries beside its outcome (ADR 0123 item 7):
+ * the three that tighten a tier in production. A replay has no tier to
+ * tighten, so they are recorded here, and a miss can be read as "the
+ * reviewer skipped the index" without anyone downloading a transcript.
+ * `null` is "not known": no report was validated, or the line was written
+ * before these were recorded.
+ */
+const RUN_FACT_FLAGS = Object.freeze([
+  ['index_opened', 'indexOpened'],
+  ['dispatch_on_template', 'dispatchOnTemplate'],
+  ['shape_readable', 'shapeReadable'],
 ]);
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
@@ -83,6 +103,10 @@ export function buildResultRecord({
   totalCostUsd = null,
   turns = null,
   model,
+  cliVersion = null,
+  indexOpened = null,
+  dispatchOnTemplate = null,
+  shapeReadable = null,
 } = {}) {
   const err = (msg) => {
     throw new GoldenResultError(msg);
@@ -139,6 +163,18 @@ export function buildResultRecord({
       );
   }
 
+  if (cliVersion !== null && !isNonEmptyString(cliVersion))
+    err(
+      `cli_version must be a non-empty string or null, got ${JSON.stringify(cliVersion)}`,
+    );
+  const flags = { indexOpened, dispatchOnTemplate, shapeReadable };
+  for (const [key, field] of RUN_FACT_FLAGS) {
+    if (flags[field] !== null && typeof flags[field] !== 'boolean')
+      err(
+        `${key} must be true, false, or null, got ${JSON.stringify(flags[field])}`,
+      );
+  }
+
   return {
     date,
     run_id: runId,
@@ -150,8 +186,50 @@ export function buildResultRecord({
     total_cost_usd: totalCostUsd,
     turns,
     model,
+    cli_version: cliVersion,
+    index_opened: indexOpened,
+    dispatch_on_template: dispatchOnTemplate,
+    shape_readable: shapeReadable,
   };
 }
+
+/**
+ * The run-fact fields of a result line, read from a normalized report.
+ *
+ * Each flag is `true`, `false`, or `null` for "cannot tell" — an unreadable
+ * transcript says nothing about whether the index was opened, and recording
+ * `false` there would be a claim. `dispatchOnTemplate` is false when any
+ * dispatch carried text beyond the template.
+ *
+ * @param {unknown} normalized a normalized report, or null when none was written
+ */
+export const runFactFields = (normalized) => {
+  const facts =
+    normalized?.runFactsFrom === 'transcript' ? normalized.runFacts : null;
+  if (!facts)
+    return {
+      cliVersion: null,
+      indexOpened: null,
+      dispatchOnTemplate: null,
+      shapeReadable: null,
+    };
+  const readable = facts.shape === 'readable';
+  const dispatched = readable
+    ? Object.values(facts.axes).filter((a) => a.dispatched)
+    : [];
+  return {
+    cliVersion: facts.cliVersion ?? null,
+    indexOpened: readable ? facts.indexOpened : null,
+    dispatchOnTemplate: !readable
+      ? null
+      : facts.unattributedDispatches > 0
+        ? false
+        : dispatched.length > 0
+          ? dispatched.every((a) => a.onTemplate)
+          : null,
+    shapeReadable: readable && facts.repliesParsed !== false,
+  };
+};
 
 /** One JSON line, in the record's fixed key order. */
 export const formatResultLine = (record) => JSON.stringify(record);
@@ -191,6 +269,10 @@ export function parseResultsFile(text) {
           totalCostUsd: parsed.total_cost_usd ?? null,
           turns: parsed.turns ?? null,
           model: parsed.model,
+          cliVersion: parsed.cli_version ?? null,
+          indexOpened: parsed.index_opened ?? null,
+          dispatchOnTemplate: parsed.dispatch_on_template ?? null,
+          shapeReadable: parsed.shape_readable ?? null,
         }),
       );
     } catch (err) {

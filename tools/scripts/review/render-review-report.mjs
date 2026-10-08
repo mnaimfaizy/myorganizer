@@ -99,6 +99,7 @@ export const renderRunFacts = (report) => {
     return [
       `- run facts: **unknown** — the reviewer transcript could not be read (Claude Code CLI ${cli}): ${facts.shapeReason}`,
       '- standards sources opened: unknown',
+      ...renderRunCost(report),
     ];
 
   const lines = [
@@ -140,6 +141,38 @@ export const renderRunFacts = (report) => {
   if (standards.briefRead && !facts.indexOpened)
     lines.push(
       '- standards index: **not opened** — the Standards sub-agent read its brief and never opened `CODING_STANDARDS.md`',
+    );
+  if (facts.unattributedDispatches > 0)
+    lines.push(
+      `- extra dispatches: **${facts.unattributedDispatches}** — sub-agent dispatch(es) that read neither brief and named neither, which the skill has no template for`,
+    );
+  if (facts.repliesParsed === false)
+    lines.push(
+      '- sub-agent replies: **not all readable** — a reply held no findings list this pipeline could parse, so the findings reported cannot all be compared with the findings returned',
+    );
+  return [...lines, ...renderRunCost(report)];
+};
+
+/**
+ * What the run facts cost: the failures that fail `Agent Review Ran`, and
+ * whether the tier was tightened (ADR 0123 items 4 and 5).
+ *
+ * The facts themselves are printed above, one line each. These lines say
+ * what they did, so a reader does not have to know the ladder to see why a
+ * check is red or a tier moved.
+ */
+const renderRunCost = (report) => {
+  const { failures = [], tightenedBy = [] } = report.runFacts;
+  const lines = failures.map(
+    (failure) =>
+      `- **\`Agent Review Ran\` fails** (\`${failure.reason}\`): ${failure.detail.replaceAll('`', '')}`,
+  );
+  if (failures.length > 0) return lines;
+  if (tightenedBy.length > 0)
+    lines.push(
+      report.effectiveTier === null
+        ? `- run facts that would tighten a tier: ${tightenedBy.map((t) => `\`${t}\``).join(', ')}`
+        : `- tier tightened one step toward a human by: ${tightenedBy.map((t) => `\`${t}\``).join(', ')}`,
     );
   return lines;
 };

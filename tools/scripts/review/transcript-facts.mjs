@@ -10,7 +10,7 @@
  * leaves behind, after the reviewer has exited.
  *
  * This module reads and reports. It fails nothing and tightens nothing: what
- * a fact costs is decided by whoever consumes the facts file.
+ * a fact costs is decided in `run-ladder.mjs`, from the facts file.
  *
  * The transcript's shape belongs to the Claude Code CLI, which this
  * repository does not version. So "cannot tell" is its own answer: a
@@ -196,6 +196,9 @@ const unknownFacts = (reason, known = {}) => ({
   standardsSources: null,
   indexOpened: null,
   executed: null,
+  unattributedDispatches: null,
+  repliesParsed: null,
+  returned: null,
 });
 
 const emptyAxis = () => ({
@@ -216,35 +219,72 @@ const textOf = (content) =>
       : '';
 
 /**
- * Whether a sub-agent's reply is one JSON object and nothing else.
+ * A sub-agent's own message, with the harness's wrapping taken off.
  *
  * The harness wraps a reply before the main agent sees it: a framing line
  * ahead of it, every line indented, and an `agentId:` trailer with usage
- * figures after it. Those are the harness's and are taken off first. What is
- * left is the sub-agent's own message. A code fence around the object, or a
- * sentence after it, makes it not a bare object — which is what the briefs
- * ask for, and what a later comparison of reported findings to returned ones
- * has to be able to parse.
- *
- * @param {unknown} content a tool_result block's content
+ * figures after it. Those are the harness's, not the sub-agent's.
  */
-export const replyIsBareJson = (content) => {
+const replyText = (content) => {
   let text = textOf(content);
   if (text.startsWith('[Subagent hand-back]'))
     text = text.slice(text.indexOf('\n') + 1);
   const trailer = text.search(/^agentId:/m);
   if (trailer !== -1) text = text.slice(0, trailer);
-  text = text
+  return text
     .split('\n')
     .map((line) => line.replace(/^ {2}/, ''))
     .join('\n')
     .trim();
-  if (!text.startsWith('{')) return false;
+};
+
+const parseObject = (text) => {
   try {
-    return isObject(JSON.parse(text));
+    const value = JSON.parse(text);
+    return isObject(value) && !Array.isArray(value) ? value : null;
   } catch {
-    return false;
+    return null;
   }
+};
+
+/**
+ * Whether a sub-agent's reply is one JSON object and nothing else.
+ *
+ * A code fence around the object, or a sentence after it, makes it not a
+ * bare object — which is what the briefs ask for.
+ *
+ * @param {unknown} content a tool_result block's content
+ */
+export const replyIsBareJson = (content) => {
+  const text = replyText(content);
+  return text.startsWith('{') && parseObject(text) !== null;
+};
+
+/**
+ * The findings a sub-agent's reply returned, or `null` when they cannot be
+ * read out of it.
+ *
+ * Read more generously than `replyIsBareJson` judges: a reply that fenced its
+ * object, or added a sentence after it, broke the brief and still says
+ * plainly what it returned (run 37707518833 did both). What is read is the
+ * text from the first `{` to the last `}`. A reply with no object there, or
+ * with one whose `findings` is not a list of objects, returned nothing this
+ * reader can compare a reported finding with — which is "cannot tell", not
+ * "returned none".
+ *
+ * @param {unknown} content a tool_result block's content
+ * @returns {object[] | null}
+ */
+export const findingsReturnedBy = (content) => {
+  const text = replyText(content);
+  const open = text.indexOf('{');
+  const close = text.lastIndexOf('}');
+  if (open === -1 || close < open) return null;
+  const reply = parseObject(text.slice(open, close + 1));
+  if (!reply || !Array.isArray(reply.findings)) return null;
+  return reply.findings.every((f) => isObject(f) && !Array.isArray(f))
+    ? reply.findings
+    : null;
 };
 
 /**
@@ -347,8 +387,22 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     Object.keys(BRIEFS).map((axis) => [axis, emptyAxis()]),
   );
   const standardsOpened = [];
+  let unattributedDispatches = 0;
   const executed = [];
   const seenCommands = new Set();
+
+  // What the sub-agents returned, from every dispatch whether or not it was
+  // attributed to an axis: a paraphrased dispatch names no brief, and its
+  // sub-agent's findings were returned all the same. A retry is a second
+  // reply, and a finding from either is one a sub-agent returned.
+  const returned = [];
+  let repliesParsed = null;
+  for (const id of dispatches.keys()) {
+    if (!replies.has(id)) continue;
+    const findings = findingsReturnedBy(replies.get(id));
+    repliesParsed = (repliesParsed ?? true) && findings !== null;
+    if (findings) returned.push(...findings);
+  }
 
   for (const [id, dispatch] of dispatches) {
     const calls = childCalls.get(id) ?? [];
@@ -373,7 +427,13 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
       (axis) => BRIEFS[axis] === firstBrief,
     );
     const axis = read ?? axisNamedBy(dispatch.prompt);
-    if (!axis) continue;
+    if (!axis) {
+      // Neither axis's: it read no brief and its message named none. It is
+      // counted, because its reply's findings are still returned findings,
+      // and a dispatch the skill has no template for is not on the template.
+      unattributedDispatches += 1;
+      continue;
+    }
     const entry = axes[axis];
     entry.dispatched = true;
     entry.briefRead = entry.briefRead || Boolean(read);
@@ -405,5 +465,8 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     standardsSources,
     indexOpened: standardsOpened.includes(STANDARDS_INDEX),
     executed,
+    unattributedDispatches,
+    repliesParsed,
+    returned,
   };
 };

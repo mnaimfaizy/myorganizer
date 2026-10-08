@@ -68,15 +68,26 @@ reviewer has exited. The reviewer does not write it.**
    ([ADR 0078](0078-a-citation-that-does-not-match-its-source-is-a-fact-about-the-pipeline.md)). This
    exception was added to the ADR after it merged and before anything implemented it. It corrects
    an oversight in how the rule was first written and reverses nothing, so it is made here and not
-   in a superseding ADR.
+   in a superseding ADR. A run that fails this way is published all the same, with the failure
+   stated in the comment, and its effective tier is `review:human`: a review that did not run as
+   built vouches for nothing
+   ([ADR 0070](0070-a-review-tier-is-a-fact-about-the-diff-and-a-gate-tier-is-a-decision-about-the-work.md)
+   item 5).
 5. **Three transcript facts tighten the effective tier and are published.** The Standards sub-agent
    read its brief but never opened `CODING_STANDARDS.md`. A dispatch carried text beyond the skill's
    fixed template. Or the transcript's shape could not be read. Together they cost at most one tier
-   step, on top of the separate step a missing spec already costs.
+   step, on top of the separate step a missing spec already costs. The implementation names the
+   third in two parts, an unreadable transcript and an unparseable sub-agent reply, so the comment
+   can say which happened. They are one fact here and on a golden replay's result line. A dispatch
+   that reads neither brief and names neither is off the template too: the skill has no template
+   for it. What it returned still counts as returned, so without this the main agent could hand
+   its own finding to a third sub-agent on a run that reads as fully on template.
 6. **"Cannot tell" is its own answer.** The step asserts the transcript's shape before reading facts
    from it. A transcript that fails is recorded as unknown, never as an empty list and never as the
    model's own claim. The step raises an error annotation naming the CLI version. A sub-agent reply
-   the step cannot parse is unknown in the same way.
+   the step cannot parse is unknown in the same way. A reply is unparseable only when no list of
+   findings can be read out of it. One that wrapped its JSON in a code fence, or added a sentence
+   after it, broke its brief and still says plainly what it returned, so it is read.
 7. **The golden replay follows production.** Whatever fails `Agent Review Ran` in production voids a
    replay, with two new reasons, `brief-not-read` and `finding-not-returned`
    ([ADR 0101](0101-a-replay-whose-answer-sheet-fails-its-check-measured-nothing.md)). Whatever only
@@ -108,8 +119,8 @@ version nobody remembers to raise.
 When this ADR was written, nothing in the tree did any of this: the skill copied the sub-agent's
 list into the envelope. Issue #1031 carries the implementation as three pull requests. The first
 moved the briefs into files and fixed the dispatch template. The second reads the run facts from the
-transcript and publishes them, enforcing nothing. Items 4, 5 and 7, which fail a check, tighten a
-tier, and void a replay, arrive with the third. The issue also holds the parts of the design this
+transcript and publishes them, enforcing nothing. The third enforces items 4, 5 and 7: it fails the
+check, tightens the tier, and voids a replay. The issue also holds the parts of the design this
 ADR leaves out as ordinary implementation: where the briefs live, how the command rules are worded,
 and what the briefs say about the always-on agent policy.
 

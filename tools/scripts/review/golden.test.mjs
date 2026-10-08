@@ -9,6 +9,7 @@ import {
   renderScore,
   replayObligationCheckFindings,
   replayRepetitionFindings,
+  replayRunFactsFindings,
   replayTriggerFindings,
   scoreCase,
 } from './golden.mjs';
@@ -867,5 +868,82 @@ test('an artifact not named for its repetition is refused', () => {
   assert.ok(
     findings.some((f) => /transcript artifact is not named/.test(f)),
     findings.join('\n'),
+  );
+});
+
+// --- the replay voids a review that did not run as built (ADR 0123 item 7) ---
+
+const runFactsSteps = ({
+  check = [
+    '      - name: Check the run against its transcript',
+    '        run: |',
+    '          REASON="$(jq -r \'.runFacts.failures // [] | .[0].reason // empty\' n.json)"',
+  ],
+  score = [
+    '      - name: Score the case',
+    '        run: node tools/scripts/review/score-golden-case.mjs --case x',
+  ],
+  record = [
+    '      - name: Record the result',
+    '        if: always()',
+    '        run: |',
+    '          ARGS+=(--normalized n.json)',
+    '          node tools/scripts/review/record-golden-result.mjs "${ARGS[@]}"',
+  ],
+  order = ['check', 'score', 'record'],
+} = {}) => {
+  const blocks = { check, score, record };
+  return ['    steps:', ...order.flatMap((name) => blocks[name])].join('\n');
+};
+
+test('the replay workflow in the tree voids a review that did not run as built', () => {
+  const workflow = readFileSync(
+    '.github/workflows/review-golden-replay.yml',
+    'utf8',
+  );
+  assert.deepEqual(replayRunFactsFindings(workflow), []);
+});
+
+test('a replay that reads the run failures before scoring and records the report is sound', () => {
+  assert.deepEqual(replayRunFactsFindings(runFactsSteps()), []);
+});
+
+test('a replay that never reads the run failures scores a run production would fail', () => {
+  const [finding] = replayRunFactsFindings(runFactsSteps({ check: [] }));
+  assert.match(finding, /no step reads \.runFacts\.failures/);
+});
+
+test('reading the run failures after the score, or continuing past them, is a finding', () => {
+  assert.match(
+    replayRunFactsFindings(
+      runFactsSteps({ order: ['score', 'check', 'record'] }),
+    )[0],
+    /runs after "Score the case"/,
+  );
+  assert.match(
+    replayRunFactsFindings(
+      runFactsSteps({
+        check: [
+          '      - name: Check the run against its transcript',
+          '        continue-on-error: true',
+          "        run: jq '.runFacts.failures' n.json",
+        ],
+      }),
+    )[0],
+    /continues on error/,
+  );
+});
+
+test('a recorder that is not handed the normalized report is a finding', () => {
+  assert.match(
+    replayRunFactsFindings(
+      runFactsSteps({
+        record: [
+          '      - name: Record the result',
+          '        run: node tools/scripts/review/record-golden-result.mjs "${ARGS[@]}"',
+        ],
+      }),
+    )[0],
+    /does not pass --normalized/,
   );
 });

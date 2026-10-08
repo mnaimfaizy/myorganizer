@@ -17,7 +17,10 @@ name: Code Review
 #      report, or wrote a report the contract rejected — a broken gate. A
 #      validated report wins over all of those: dispatching both axes first
 #      (the skill's step 3) means a run the ceiling or the lockout cut short
-#      partway through often still has one. "Agent Verdict" fails on
+#      partway through often still has one. It also fails when the transcript
+#      shows the review did not run as built: no sub-agent read an axis's
+#      brief, or the report carries a finding no sub-agent returned
+#      (ADR 0123 item 4). "Agent Verdict" fails on
 #      `request-changes` — a
 #      judgment about the diff. Only the first is worth requiring in a
 #      ruleset; the reviewer's recall does not earn a merge block. Both are
@@ -423,10 +426,12 @@ jobs:
       # validator reading the previous report, after the reviewer has exited
       # — the reviewer still never sees it. The report is validated again
       # rather than patched, with the same pinned tier and the same run facts
-      # file, so the ids are the only thing that can differ. Leaving --facts
-      # off here would put the reviewer's own claims about its run back into
-      # the report on every review after the first (ADR 0123);
-      # run-facts-wiring.test.mjs fails a validation that omits it. A previous report that cannot be used
+      # file and worklist, so the ids are the only thing that can differ.
+      # Leaving --facts off here would put the reviewer's own claims about its
+      # run back into the report on every review after the first (ADR 0123),
+      # and leaving --worklist off would fail an obligation finding as one the
+      # main agent authored; run-facts-wiring.test.mjs fails a validation that
+      # omits either. A previous report that cannot be used
       # leaves the minted ids in place and says so: every finding then reads
       # as new, which is what having no previous run means.
       - name: Carry finding ids forward from the previous report
@@ -436,6 +441,7 @@ jobs:
             --tier '${{ steps.tier.outputs.label || 'review:human' }}' \
             --previous '${{ steps.previous.outputs.path }}' \
             --facts '${{ steps.reviewer.outputs.facts-file }}' \
+            --worklist tmp/code-review/obligations.json \
             --out "$RUNNER_TEMP/normalized.carried.json"; then
             mv "$RUNNER_TEMP/normalized.carried.json" tmp/code-review/normalized.json
           else
@@ -498,6 +504,20 @@ jobs:
             VERDICT="$(node -e "process.stdout.write(JSON.parse(require('fs').readFileSync('tmp/code-review/normalized.json','utf8')).verdict)")"
             echo "verdict: $VERDICT"
             echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
+            # A validated report is still not a review that ran as built. The
+            # validator judged the run against the transcript (ADR 0123 item
+            # 4) and wrote what it found beside the findings: no sub-agent
+            # read an axis's brief, or a reported finding is not one a
+            # sub-agent returned. Both are facts about the pipeline (ADR
+            # 0073). The report is published all the same, with the failure
+            # stated in it: every step above ran, and the verdict is set.
+            FAILURES="$(jq -r '.runFacts.failures // [] | .[] | "\(.reason): \(.detail)"' tmp/code-review/normalized.json)"
+            if [ -n "$FAILURES" ]; then
+              while IFS= read -r failure; do
+                echo "::error title=The review did not run as built::$failure (ADR 0123). The findings are published, and this pull request is review:human."
+              done <<<"$FAILURES"
+              exit 1
+            fi
             exit 0
           fi
           # No report. Say which kind of no-report this is. All three below
@@ -532,8 +552,9 @@ jobs:
   # unrelated reasons and only one of them is about your code: "Agent Review
   # Ran" fails when the reviewer crashed, was rate-limited, hit the turn
   # ceiling before writing a report (whether or not a refused permission
-  # caused it), wrote a report the contract rejected, or wrote an obligation
-  # answer sheet that does not hold up against the tree at head (ADR 0078) —
+  # caused it), wrote a report the contract rejected, wrote an obligation
+  # answer sheet that does not hold up against the tree at head (ADR 0078), or
+  # did not run as built by its own transcript (ADR 0123 item 4) —
   # every one of them a broken gate; this job fails when the reviewer read the
   # diff and asked for changes, which is a judgment.
   #
