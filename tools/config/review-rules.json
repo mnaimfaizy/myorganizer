@@ -127,14 +127,14 @@
       "family": "reach-through",
       "title": "A member added to a set leaves a hand-enumeration behind",
       "axes": ["standards"],
-      "cites": ".agents/skills/code-review/SKILL.md"
+      "cites": ".agents/skills/code-review/STANDARDS_BRIEF.md"
     },
     {
       "id": "reach-through-shared-value-removed",
       "family": "reach-through",
       "title": "A shared value removed or renamed leaves a consumer resolving to nothing",
       "axes": ["standards"],
-      "cites": ".agents/skills/code-review/SKILL.md"
+      "cites": ".agents/skills/code-review/STANDARDS_BRIEF.md"
     },
 
     {

@@ -1047,14 +1047,14 @@
               <circle class="tipdot" cx="542" cy="74" r="4" />
               <text class="title" x="312" y="92">Fixed point</text>
               <text x="312" y="112">git diff &lt;fp&gt;...HEAD</text>
-              <text class="src" x="312" y="130">SKILL.md:74</text>
+              <text class="src" x="312" y="130">SKILL.md:64</text>
             </g>
             <g class="step" data-tip="local-spec" tabindex="0" aria-label="Spec source: branch name, then commit references, then argument, then ask" aria-describedby="note-local-spec">
               <rect class="box" x="590" y="66" width="290" height="76" rx="6" />
               <circle class="tipdot" cx="872" cy="74" r="4" />
               <text class="title" x="602" y="92">Spec source</text>
               <text x="602" y="112">branch &#8594; commits &#8594; arg &#8594; ask</text>
-              <text class="src" x="602" y="130">AGENTS.md:196, SKILL.md:84</text>
+              <text class="src" x="602" y="130">AGENTS.md:196, SKILL.md:74</text>
             </g>
             <path class="flow local" d="M 880 142 C 940 220, 980 250, 1030 300" />
 
@@ -1160,14 +1160,14 @@
         <dt>local-diff</dt>
         <dd id="note-local-diff">
           The fixed point is pinned with <code>git diff &lt;fixed-point&gt;...HEAD</code>
-          (three-dot, against the merge-base) &mdash; <code>SKILL.md:74</code>.
+          (three-dot, against the merge-base) &mdash; <code>SKILL.md:64</code>.
         </dd>
         <dt>local-spec</dt>
         <dd id="note-local-spec">
           Spec discovery tries, in order: the issue number in the branch name
           (<code>&lt;type&gt;/&lt;issue-number&gt;-&lt;slug&gt;</code> puts the
           issue first, <code>AGENTS.md:196</code>), then commit references
-          (<code>SKILL.md:84</code>), then an argument, then it asks. No spec
+          (<code>SKILL.md:74</code>), then an argument, then it asks. No spec
           source tightens the envelope to <code>human</code> &mdash; only the
           validator's verdict math does that.
         </dd>
@@ -1226,8 +1226,10 @@
         <dd id="note-reviewer">
           Two sub-agents, one per axis, <code>standards</code> and
           <code>spec</code> (<code>SKILL.md:14-15, :17</code>), each emitting a
-          findings array; the main agent assembles the envelope and authors no
-          finding of its own (ADR 0071 item 7). It may execute, in a
+          findings array; the main agent assembles the envelope and changes no
+          finding a sub-agent returned &mdash; the only findings it writes itself
+          are the ones an obligation answer exposes (<code>SKILL.md:22-26</code>).
+          It may execute, in a
           <code>git worktree</code> under <code>tmp/</code> it cannot keep
           (ADR 0071 item 4).
         </dd>
@@ -1448,7 +1450,7 @@
       <div class="families">
         <div class="family smell">
           <h4>smell</h4>
-          <p>One id per Fowler smell the Standards brief pastes in full. Every <code>smell-*</code> id caps at should-fix.</p>
+          <p>One id per Fowler smell the Standards brief lists in full. Every <code>smell-*</code> id caps at should-fix.</p>
         </div>
         <div class="family obligation">
           <h4>obligation</h4>
@@ -1533,7 +1535,7 @@
             <td class="no">no &mdash; caps at should-fix</td>
           </tr>
           <tr class="cap">
-            <td>smell-baseline (SKILL.md, &ldquo;always a judgement call&rdquo;)</td>
+            <td>smell-baseline (<code>schema.mjs:348</code>, the validator&rsquo;s own message: &ldquo;always a judgement call&rdquo;)</td>
             <td>any</td>
             <td class="no">no &mdash; caps at should-fix</td>
           </tr>
@@ -1641,7 +1643,7 @@
   <section class="panel" aria-labelledby="pe-h">
     <div class="phead">
       <h2 id="pe-h">Panel E — The report on the PR</h2>
-      <span class="src">SKILL.md:102, ADR 0071 item 7</span>
+      <span class="src">SKILL.md:95, ADR 0071 item 7</span>
     </div>
     <div class="pbody">
       <p class="small muted">
@@ -1770,7 +1772,7 @@
 
 <script type="application/json" id="citation-anchors">
   {
-    "note": "Expected-content anchors for finding-lifecycle.html, verified against source on 2026-09-16",
+    "note": "Expected-content anchors for finding-lifecycle.html, verified against source on 2026-10-08",
     "anchors": {
       "SKILL.md:14-15": {
         "file": ".agents/skills/code-review/SKILL.md",
@@ -1779,19 +1781,28 @@
       },
       "SKILL.md:17": {
         "file": ".agents/skills/code-review/SKILL.md",
-        "start": "Each axis runs as a **parallel sub-agent** that returns findings as JSON. The main agent assembles"
+        "start": "Each axis runs as a **parallel sub-agent** that returns findings as JSON. Each sub-agent reads its"
       },
-      "SKILL.md:74": {
+      "SKILL.md:64": {
         "file": ".agents/skills/code-review/SKILL.md",
         "start": "The diff command is `git diff <fixed-point>...HEAD` (three-dot); the commit list is"
       },
-      "SKILL.md:84": {
+      "SKILL.md:74": {
         "file": ".agents/skills/code-review/SKILL.md",
         "start": "2. **Issue references in commits** — `#123`, `Closes #45` in the commit list. `foundBy: commits`."
       },
-      "SKILL.md:102": {
+      "SKILL.md:95": {
         "file": ".agents/skills/code-review/SKILL.md",
         "start": "it (`AGENTS.md`, Branch naming). That is why an agent-authored pull request resolves a spec without"
+      },
+      "SKILL.md:22-26": {
+        "file": ".agents/skills/code-review/SKILL.md",
+        "start": "The main agent assembles the report envelope, runs the validator, and prints the rendered Markdown.",
+        "end": "exposes (step 4)."
+      },
+      "schema.mjs:348": {
+        "file": "tools/scripts/review/schema.mjs",
+        "start": "'a smell-baseline finding is always a judgement call and caps at should-fix',"
       },
       "AGENTS.md:196": {
         "file": "AGENTS.md",
