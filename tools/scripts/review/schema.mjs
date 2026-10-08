@@ -450,6 +450,11 @@ const AxisFactsSchema = z.strictObject({
   toolCalls: z.int().nonnegative(),
 });
 
+/** Both axes' facts; null when the transcript could not be read. */
+const AxesFactsSchema = z
+  .strictObject({ standards: AxisFactsSchema, spec: AxisFactsSchema })
+  .nullable();
+
 /**
  * The facts file `read-transcript-facts.mjs` writes from a reviewer
  * transcript (ADR 0123). When `shape` is `unknown`, everything that could not
@@ -464,9 +469,7 @@ export const RunFactsSchema = z
     models: z.array(nonEmpty).nullable(),
     durationMs: z.int().nonnegative().nullable(),
     dispatches: z.int().nonnegative().nullable(),
-    axes: z
-      .strictObject({ standards: AxisFactsSchema, spec: AxisFactsSchema })
-      .nullable(),
+    axes: AxesFactsSchema,
     standardsSources: z.array(nonEmpty).nullable(),
     indexOpened: z.boolean().nullable(),
     executed: z.array(nonEmpty).nullable(),
@@ -500,9 +503,7 @@ const RunFactsSummarySchema = z.strictObject({
   shapeReason: nonEmpty.nullable(),
   cliVersion: nonEmpty.nullable(),
   dispatches: z.int().nonnegative().nullable(),
-  axes: z
-    .strictObject({ standards: AxisFactsSchema, spec: AxisFactsSchema })
-    .nullable(),
+  axes: AxesFactsSchema,
   indexOpened: z.boolean().nullable(),
 });
 
