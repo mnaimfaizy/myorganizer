@@ -59,6 +59,21 @@ export const formatDuration = (ms) => {
 };
 
 /**
+ * A token count the way a person reads one: `650541` is `651k`.
+ *
+ * About three figures, because the count is there to say how big a run was.
+ * The exact count stays in the normalized report.
+ *
+ * @param {number} count a non-negative whole number of tokens
+ */
+export const formatTokens = (count) => {
+  if (count < 1000) return String(count);
+  if (count < 9950) return `${(count / 1000).toFixed(1)}k`;
+  if (count < 999500) return `${Math.round(count / 1000)}k`;
+  return `${(count / 1e6).toFixed(2)}M`;
+};
+
+/**
  * A path as inline code. A path here is one a sub-agent chose to open, so a
  * backtick in it is dropped rather than allowed to end the span.
  */
@@ -325,7 +340,7 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
   // `null` is a transcript that carried no figures; absent is a report that
   // never had any. Only the first is something to say.
   const costText = report.cost
-    ? ` · ${report.cost.inputTokens} in / ${report.cost.outputTokens} out tokens`
+    ? ` · ${formatTokens(report.cost.inputTokens)} in / ${formatTokens(report.cost.outputTokens)} out tokens`
     : report.cost === null
       ? ' · tokens unknown'
       : '';

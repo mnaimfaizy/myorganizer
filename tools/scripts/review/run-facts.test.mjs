@@ -11,6 +11,7 @@ import test from 'node:test';
 
 import {
   formatDuration,
+  formatTokens,
   renderReport,
   renderRunFacts,
 } from './render-review-report.mjs';
@@ -602,6 +603,20 @@ test('the figures read from a real transcript reach the published line', () => {
   assert.deepEqual(report.cost, READ_COST);
   assert.match(
     renderReport(report, null, { hunks: false }),
-    /· 1289953 in \/ 8088 out tokens/,
+    /· 1\.29M in \/ 8\.1k out tokens/,
   );
+});
+
+test('a token count is printed the way a person reads one', () => {
+  assert.equal(formatTokens(0), '0');
+  assert.equal(formatTokens(999), '999');
+  assert.equal(formatTokens(1000), '1.0k');
+  assert.equal(formatTokens(3189), '3.2k');
+  // A count that would round up to a fourth figure moves to the next form.
+  assert.equal(formatTokens(9949), '9.9k');
+  assert.equal(formatTokens(9950), '10k');
+  assert.equal(formatTokens(650541), '651k');
+  assert.equal(formatTokens(999499), '999k');
+  assert.equal(formatTokens(999500), '1.00M');
+  assert.equal(formatTokens(1289953), '1.29M');
 });
