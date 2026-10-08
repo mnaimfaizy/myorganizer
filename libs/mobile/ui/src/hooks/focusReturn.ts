@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, type RefObject } from 'react';
 
 /** A view that can be handed focus again. */
 export interface FocusTarget {
@@ -44,6 +44,48 @@ export function noteFocus(slot: FocusSlot): void {
 /** Called by `useFocusRing` when its control loses focus, or unmounts. */
 export function noteBlur(slot: FocusSlot): void {
   if (focusedSlot === slot) focusedSlot = null;
+}
+
+/**
+ * The view of the control holding keyboard focus now, or `null`: after a
+ * touch, on iOS, and while focus is in a text input, which notes nothing.
+ */
+export function keyboardFocusedView(): FocusTarget | null {
+  return focusedSlot?.current ?? null;
+}
+
+/**
+ * Whether a control holds keyboard focus now — the evidence that what the
+ * User just did, they did with a hardware keyboard (#1068). A press by touch
+ * finds it `false`: touching the screen blurs the control that had focus and
+ * focuses none. So does Return in a text input, by either keyboard; a screen
+ * that needs to tell those apart has to go by how the input was reached.
+ */
+export function keyboardHoldsFocus(): boolean {
+  return keyboardFocusedView() !== null;
+}
+
+/**
+ * Returns a function that asks for focus on `target` once the render the
+ * request causes has been committed — for a control that is only mounted by
+ * that render, as the collapsed Tasks composer is by the save that closes the
+ * open one (#1068).
+ *
+ * A request whose target is not mounted after that render is dropped, not
+ * kept for a later one: a focus that arrives late takes it from wherever the
+ * User has moved since. Android refuses the request in touch mode, and iOS
+ * sends none (see `useReturnFocusOnLeave`), so asking is only wrong when the
+ * User did not act by keyboard — which the caller checks, with
+ * `keyboardHoldsFocus`, before the action removes the evidence.
+ */
+export function useFocusAfterCommit(
+  target: RefObject<FocusTarget | null>,
+): () => void {
+  const [request, setRequest] = useState(0);
+  useEffect(() => {
+    if (request > 0) target.current?.focus();
+  }, [request, target]);
+  return useCallback(() => setRequest((count) => count + 1), []);
 }
 
 /**

@@ -1,5 +1,10 @@
 import React from 'react';
-import { render, screen, userEvent } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  userEvent,
+} from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
@@ -163,5 +168,74 @@ describe('Checkbox Component', () => {
     );
     const control = screen.getByRole('checkbox');
     expect(control.props.focusable).toBe(false);
+  });
+});
+
+/**
+ * Android takes focus from a view as it is disabled, and gives it to the first
+ * focusable view in the window. A box disabled for the length of the save its
+ * own tick started lost the keyboard's place that way (#1068).
+ */
+describe('Checkbox disabled while it holds keyboard focus', () => {
+  const renderBox = (disabled: boolean, onChange = jest.fn()) => (
+    <TestWrapper>
+      <Checkbox
+        checked={false}
+        onChange={onChange}
+        label="Item"
+        disabled={disabled}
+      />
+    </TestWrapper>
+  );
+  const box = () => screen.getByRole('checkbox');
+  /** The control's own focus or blur, as React Native names it. */
+  const own = () => ({ target: box(), currentTarget: box() });
+
+  it('is disabled and off the focus path when it does not hold focus', async () => {
+    await render(renderBox(true));
+    expect(box().props.accessibilityState.disabled).toBe(true);
+    expect(box().props.focusable).toBe(false);
+  });
+
+  it('stays a focusable, enabled view when disabled with focus on it', async () => {
+    const view = await render(renderBox(false));
+    await fireEvent(box(), 'focus', own());
+    await view.rerender(renderBox(true));
+
+    expect(box().props.accessibilityState.disabled).toBe(false);
+    expect(box().props.focusable).toBe(true);
+  });
+
+  it('still refuses a press, with no haptic', async () => {
+    const onChange = jest.fn();
+    const view = await render(renderBox(false, onChange));
+    await fireEvent(box(), 'focus', own());
+    await view.rerender(renderBox(true, onChange));
+    hapticTrigger().mockClear();
+
+    await fireEvent.press(box());
+    expect(onChange).not.toHaveBeenCalled();
+    expect(hapticTrigger()).not.toHaveBeenCalled();
+  });
+
+  it('is disabled for real once focus moves on', async () => {
+    const view = await render(renderBox(false));
+    await fireEvent(box(), 'focus', own());
+    await view.rerender(renderBox(true));
+    await fireEvent(box(), 'blur', own());
+
+    expect(box().props.accessibilityState.disabled).toBe(true);
+    expect(box().props.focusable).toBe(false);
+  });
+
+  it('takes presses again when the save is over', async () => {
+    const onChange = jest.fn();
+    const view = await render(renderBox(false, onChange));
+    await fireEvent(box(), 'focus', own());
+    await view.rerender(renderBox(true, onChange));
+    await view.rerender(renderBox(false, onChange));
+
+    await fireEvent.press(box());
+    expect(onChange).toHaveBeenCalledWith(true);
   });
 });
