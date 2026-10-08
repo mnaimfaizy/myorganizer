@@ -1167,9 +1167,9 @@
           Spec discovery tries, in order: the issue number in the branch name
           (<code>&lt;type&gt;/&lt;issue-number&gt;-&lt;slug&gt;</code> puts the
           issue first, <code>AGENTS.md:197</code>), then commit references
-          (<code>SKILL.md:74</code>), then an argument, then it asks. No spec
-          source tightens the envelope to <code>human</code> &mdash; only the
-          validator's verdict math does that.
+          (<code>SKILL.md:74</code>), then an argument, then it asks. A missing spec
+          source tightens the effective tier by one step, not straight to
+          <code>human</code>; the validator's verdict math computes it.
         </dd>
         <dt>local-exit</dt>
         <dd id="note-local-exit">
@@ -1263,15 +1263,18 @@
           <code>request-changes</code>; only <code>nit</code> means
           <code>approve</code>; otherwise <code>comment</code> (ADR 0071
           item 5).
-          No spec source tightens the envelope to <code>human</code> &mdash;
-          see the reading test above the diagram.
+          A missing spec source tightens the tier one step, a tightening fact
+          about the run costs one more, and a recorded run failure goes
+          straight to <code>review:human</code> (ADR 0123 item 4); a rejected
+          report goes to a human as the reading test above the diagram says.
         </dd>
         <dt>decide</dt>
         <dd id="note-decide">
           The reviewer produces two status checks, not one
           (ADR 0073 item 1): <code>Agent Review Ran</code> fails on a fact
-          about the pipeline &mdash; the reviewer crashed, was cut off by the
-          rate limit, or wrote a report the contract rejected &mdash; and
+          about the pipeline &mdash; the reviewer produced no usable report,
+          its answer sheet did not hold up, or its transcript shows the review
+          did not run as built (ADR 0123 item 4) &mdash; and
           <code>Agent Verdict</code> fails on a judgment about the diff, a
           <code>request-changes</code> verdict. <code>Agent Verdict</code> is
           advisory and appears in no ruleset; ADR 0073 rejects making it

@@ -475,6 +475,11 @@ export const RunFactsSchema = z
     indexOpened: z.boolean().nullable(),
     executed: z.array(nonEmpty).nullable(),
     /**
+     * Dispatches that are neither axis's: the sub-agent read no brief and
+     * the message named none. The skill has no template for one.
+     */
+    unattributedDispatches: z.int().nonnegative().nullable(),
+    /**
      * Every sub-agent reply in the transcript could be read for the findings
      * it returned; null when the transcript holds no reply.
      */
@@ -494,6 +499,7 @@ export const RunFactsSchema = z
       'standardsSources',
       'indexOpened',
       'executed',
+      'unattributedDispatches',
       'returned',
     ]) {
       if (readable === (f[key] === null))
@@ -530,6 +536,7 @@ const RunFactsSummarySchema = z.strictObject({
    * report.
    */
   repliesParsed: z.boolean().nullable().optional(),
+  unattributedDispatches: z.int().nonnegative().nullable().optional(),
   failures: z
     .array(
       z.strictObject({
@@ -882,6 +889,7 @@ const runFactsFor = (input, rawFacts, worklist) => {
       axes: readable ? facts.axes : null,
       indexOpened: readable ? facts.indexOpened : null,
       repliesParsed: readable ? facts.repliesParsed : null,
+      unattributedDispatches: readable ? facts.unattributedDispatches : null,
       failures,
       tightenedBy,
     },

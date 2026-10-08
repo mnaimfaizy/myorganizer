@@ -196,6 +196,7 @@ const unknownFacts = (reason, known = {}) => ({
   standardsSources: null,
   indexOpened: null,
   executed: null,
+  unattributedDispatches: null,
   repliesParsed: null,
   returned: null,
 });
@@ -386,6 +387,7 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     Object.keys(BRIEFS).map((axis) => [axis, emptyAxis()]),
   );
   const standardsOpened = [];
+  let unattributedDispatches = 0;
   const executed = [];
   const seenCommands = new Set();
 
@@ -425,7 +427,13 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
       (axis) => BRIEFS[axis] === firstBrief,
     );
     const axis = read ?? axisNamedBy(dispatch.prompt);
-    if (!axis) continue;
+    if (!axis) {
+      // Neither axis's: it read no brief and its message named none. It is
+      // counted, because its reply's findings are still returned findings,
+      // and a dispatch the skill has no template for is not on the template.
+      unattributedDispatches += 1;
+      continue;
+    }
     const entry = axes[axis];
     entry.dispatched = true;
     entry.briefRead = entry.briefRead || Boolean(read);
@@ -457,6 +465,7 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     standardsSources,
     indexOpened: standardsOpened.includes(STANDARDS_INDEX),
     executed,
+    unattributedDispatches,
     repliesParsed,
     returned,
   };

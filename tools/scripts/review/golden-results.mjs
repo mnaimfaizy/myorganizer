@@ -220,8 +220,13 @@ export const runFactFields = (normalized) => {
   return {
     cliVersion: facts.cliVersion ?? null,
     indexOpened: readable ? facts.indexOpened : null,
-    dispatchOnTemplate:
-      dispatched.length > 0 ? dispatched.every((a) => a.onTemplate) : null,
+    dispatchOnTemplate: !readable
+      ? null
+      : facts.unattributedDispatches > 0
+        ? false
+        : dispatched.length > 0
+          ? dispatched.every((a) => a.onTemplate)
+          : null,
     shapeReadable: readable && facts.repliesParsed !== false,
   };
 };

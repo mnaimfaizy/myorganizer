@@ -78,7 +78,10 @@ reviewer has exited. The reviewer does not write it.**
    fixed template. Or the transcript's shape could not be read. Together they cost at most one tier
    step, on top of the separate step a missing spec already costs. The implementation names the
    third in two parts, an unreadable transcript and an unparseable sub-agent reply, so the comment
-   can say which happened. They are one fact here and on a golden replay's result line.
+   can say which happened. They are one fact here and on a golden replay's result line. A dispatch
+   that reads neither brief and names neither is off the template too: the skill has no template
+   for it. What it returned still counts as returned, so without this the main agent could hand
+   its own finding to a third sub-agent on a run that reads as fully on template.
 6. **"Cannot tell" is its own answer.** The step asserts the transcript's shape before reading facts
    from it. A transcript that fails is recorded as unknown, never as an empty list and never as the
    model's own claim. The step raises an error annotation naming the CLI version. A sub-agent reply

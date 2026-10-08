@@ -429,6 +429,7 @@ const normalizedWith = (runFacts) => ({
     axes: { standards: axisFacts(), spec: axisFacts() },
     indexOpened: true,
     repliesParsed: true,
+    unattributedDispatches: 0,
     ...runFacts,
   },
 });
@@ -453,6 +454,12 @@ test('the run facts of a line are read from the normalized report', () => {
   assert.equal(thin.indexOpened, false);
   assert.equal(thin.dispatchOnTemplate, false);
   assert.equal(thin.shapeReadable, false);
+  // A dispatch that is neither axis's is off the template by itself.
+  assert.equal(
+    runFactFields(normalizedWith({ unattributedDispatches: 1 }))
+      .dispatchOnTemplate,
+    false,
+  );
 });
 
 test('cannot tell is recorded as null, never as false', () => {
@@ -464,6 +471,7 @@ test('cannot tell is recorded as null, never as false', () => {
       axes: null,
       indexOpened: null,
       repliesParsed: null,
+      unattributedDispatches: null,
     }),
   );
   assert.deepEqual(unknown, {

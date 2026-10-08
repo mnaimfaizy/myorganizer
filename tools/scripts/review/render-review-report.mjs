@@ -142,6 +142,10 @@ export const renderRunFacts = (report) => {
     lines.push(
       '- standards index: **not opened** — the Standards sub-agent read its brief and never opened `CODING_STANDARDS.md`',
     );
+  if (facts.unattributedDispatches > 0)
+    lines.push(
+      `- extra dispatches: **${facts.unattributedDispatches}** — sub-agent dispatch(es) that read neither brief and named neither, which the skill has no template for`,
+    );
   if (facts.repliesParsed === false)
     lines.push(
       '- sub-agent replies: **not all readable** — a reply held no findings list this pipeline could parse, so the findings reported cannot all be compared with the findings returned',

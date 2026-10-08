@@ -137,6 +137,12 @@ export const judgeRun = ({
     if (a.dispatched && a.onTemplate === false)
       tightenedBy.add('dispatch-off-template');
   }
+  // A dispatch that is neither axis's is one the skill has no template for.
+  // Its findings still count as returned, so without this a main agent could
+  // hand its own finding to a third sub-agent and report it on a run that
+  // reads as fully on template.
+  if (facts.unattributedDispatches > 0)
+    tightenedBy.add('dispatch-off-template');
   if (facts.axes.standards.briefRead && !facts.indexOpened)
     tightenedBy.add('index-not-opened');
   if (facts.repliesParsed === false) tightenedBy.add('reply-unparseable');

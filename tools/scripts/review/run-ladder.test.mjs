@@ -311,6 +311,82 @@ test('a dispatch carrying text beyond the template tightens the tier', () => {
   assert.equal(out.effectiveTier, HUMAN);
 });
 
+test('a dispatch that names no brief is off the template, and what it returned is still returned', () => {
+  const { report } = real();
+  // Derived: the same run with a third, free-form dispatch added beside the
+  // two template ones, replying with a finding the report then carries.
+  const transcript = events(TWO_FINDINGS);
+  const extra = {
+    ...clone(report.findings[0]),
+    ruleId: 'smell-feature-envy',
+    summary: 'A finding from a free-form third dispatch',
+  };
+  transcript.splice(
+    transcript.findIndex((e) => e.type === 'result'),
+    0,
+    {
+      type: 'assistant',
+      parent_tool_use_id: null,
+      message: {
+        id: 'msg_extra',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'toolu_extra',
+            name: 'Agent',
+            input: {
+              prompt: 'Look at the diff again and report anything else.',
+            },
+          },
+        ],
+      },
+    },
+    {
+      type: 'assistant',
+      parent_tool_use_id: 'toolu_extra',
+      message: {
+        id: 'msg_extra_child',
+        content: [
+          {
+            type: 'tool_use',
+            id: 'toolu_extra_child',
+            name: 'Bash',
+            input: { command: 'git diff --stat' },
+          },
+        ],
+      },
+    },
+    {
+      type: 'user',
+      parent_tool_use_id: null,
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: 'toolu_extra',
+            content: [
+              { type: 'text', text: JSON.stringify({ findings: [extra] }) },
+            ],
+          },
+        ],
+      },
+    },
+  );
+  const facts = factsOf(transcript);
+  assert.equal(facts.unattributedDispatches, 1);
+  assert.equal(facts.axes.standards.onTemplate, true);
+  const out = normalized(
+    { ...report, tier: 'review:auto', findings: [...report.findings, extra] },
+    facts,
+  );
+  // A sub-agent did return it, so it is not a finding the main agent wrote.
+  assert.deepEqual(out.runFacts.failures, []);
+  // The run is not on the template all the same, and says so.
+  assert.deepEqual(out.runFacts.tightenedBy, ['dispatch-off-template']);
+  assert.equal(out.effectiveTier, 'review:agent');
+  assert.match(renderRunFacts(out).join('\n'), /extra dispatches: \*\*1\*\*/);
+});
+
 // --- row 6: cannot tell -----------------------------------------------------
 
 test('a transcript that cannot be read tightens the tier and fails nothing', () => {
