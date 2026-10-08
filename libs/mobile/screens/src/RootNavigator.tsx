@@ -1,4 +1,10 @@
-import React, { useMemo } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -10,9 +16,11 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import {
+  EmptyState,
   FocusLanding,
   MOTION,
   Screen,
+  useAppState,
   useReduceMotion,
   useTheme,
 } from '@myorganizer/mobile/ui';
@@ -56,8 +64,68 @@ function LoadingScreen(): React.JSX.Element {
 }
 
 /**
+ * Shown when the app holds a Restorable Session it could not restore: the
+ * server gave no answer, or failed, when asked for an Access Token on launch.
+ *
+ * It is not Login. The User has not been signed out — the Refresh Token is
+ * still in the keychain — so asking for a password here would be asking for
+ * something the app does not need, and would read as a lost Session. All the
+ * screen can honestly offer is to ask again, which it also does by itself
+ * whenever the app comes back to the foreground.
+ */
+function SessionUnreachableScreen(): React.JSX.Element {
+  const { restore } = useAuth();
+  const theme = useTheme();
+  const appState = useAppState();
+  const [retrying, setRetrying] = useState(false);
+  const inFlight = useRef(false);
+
+  const retry = useCallback(async (): Promise<void> => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setRetrying(true);
+    try {
+      await restore();
+    } finally {
+      inFlight.current = false;
+      setRetrying(false);
+    }
+  }, [restore]);
+
+  // Only a return to the foreground asks again, not the first render: the
+  // launch attempt has just failed, and repeating it at once proves nothing.
+  const previousAppState = useRef(appState);
+  useEffect(() => {
+    const cameForward =
+      previousAppState.current !== 'active' && appState === 'active';
+    previousAppState.current = appState;
+    if (cameForward) {
+      void retry();
+    }
+  }, [appState, retry]);
+
+  return (
+    <Screen noPadding style={styles.center}>
+      {retrying ? (
+        <ActivityIndicator color={theme.colors.primary} />
+      ) : (
+        <EmptyState
+          icon="offline"
+          title="Can’t reach MyOrganizer"
+          description="You’re still signed in. Check your connection and try again."
+          actionLabel="Try again"
+          actionIcon="retry"
+          onAction={() => void retry()}
+        />
+      )}
+    </Screen>
+  );
+}
+
+/**
  * Root navigation. The visible stack is driven by the auth session: while the
- * session restores we show a spinner, an unauthenticated User sees Login, a
+ * session restores we show a spinner, a Restorable Session that could not be
+ * restored offers to try again, an unauthenticated User sees Login, a
  * locked Vault sees Unlock, and an unlocked one lands in the tab shell.
  * Switching `status` swaps the stack, so login and logout navigate
  * implicitly.
@@ -95,6 +163,8 @@ export function RootNavigator(): React.JSX.Element {
       <FocusLanding />
       {status === 'loading' ? (
         <LoadingScreen />
+      ) : status === 'restorable' ? (
+        <SessionUnreachableScreen />
       ) : (
         <NavigationContainer theme={navTheme}>
           <Stack.Navigator

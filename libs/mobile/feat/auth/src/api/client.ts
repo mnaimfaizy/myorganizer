@@ -1,19 +1,16 @@
 import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
-import {
-  buildRefreshTokenRequest,
-  resolveRefreshTokenAfterRefresh,
-} from '@myorganizer/auth/portable';
-import axios, {
-  AxiosError,
-  AxiosInstance,
-  InternalAxiosRequestConfig,
-} from 'axios';
+import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import {
   clearRefreshToken,
   getRefreshToken,
   saveRefreshToken,
 } from '../storage/keychain';
+import {
+  createSessionRefresher,
+  installRefreshOn401,
+  type RefreshOutcome,
+} from './sessionRefresh';
 import type { AuthTokens } from './types';
 
 // On Android emulators, 10.0.2.2 routes to the host machine's localhost.
@@ -24,20 +21,7 @@ const BASE_PATH = `http://${DEV_HOST}:3000/api/v1`;
 type TokenRefreshCallback = (tokens: AuthTokens | null) => void;
 
 let accessToken: string | null = null;
-let isRefreshing = false;
-let refreshSubscribers: Array<(token: string | null) => void> = [];
 let tokenRefreshCallback: TokenRefreshCallback | null = null;
-
-function subscribeToTokenRefresh(
-  callback: (token: string | null) => void,
-): void {
-  refreshSubscribers.push(callback);
-}
-
-function notifyRefreshSubscribers(token: string | null): void {
-  refreshSubscribers.forEach((callback) => callback(token));
-  refreshSubscribers = [];
-}
 
 export function setTokenRefreshCallback(callback: TokenRefreshCallback): void {
   tokenRefreshCallback = callback;
@@ -68,102 +52,43 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-apiClient.interceptors.response.use(
-  (response) => response,
-  async (error: AxiosError) => {
-    const originalRequest = error.config as InternalAxiosRequestConfig & {
-      _retry?: boolean;
-    };
-
-    if (error.response?.status !== 401 || originalRequest._retry) {
-      return Promise.reject(error);
-    }
-
-    if (isRefreshing) {
-      return new Promise((resolve, reject) => {
-        subscribeToTokenRefresh((newToken) => {
-          if (newToken && originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${newToken}`;
-            resolve(apiClient(originalRequest));
-          } else {
-            reject(error);
-          }
-        });
-      });
-    }
-
-    originalRequest._retry = true;
-    isRefreshing = true;
-
-    try {
-      const storedRefreshToken = await getRefreshToken();
-      if (!storedRefreshToken) {
-        throw new Error('No refresh token available');
-      }
-
-      const refreshApi = new AuthenticationApi(
-        new Configuration({ basePath: BASE_PATH }),
-        BASE_PATH,
-        axios,
-      );
-
-      const response = await refreshApi.refreshToken({
-        refreshTokenBody: buildRefreshTokenRequest(
-          'mobile',
-          storedRefreshToken,
-        ),
-      });
-
-      const data = response.data;
-      const newAccessToken = data.token;
-      const newRefreshToken = resolveRefreshTokenAfterRefresh(
-        'mobile',
-        data,
-        storedRefreshToken,
-      );
-
-      if (!newAccessToken) {
-        throw new Error('No access token in refresh response');
-      }
-
-      accessToken = newAccessToken;
-
-      if (newRefreshToken) {
-        await saveRefreshToken(newRefreshToken);
-      }
-
-      const tokens: AuthTokens = {
-        accessToken: newAccessToken,
-        refreshToken: newRefreshToken ?? storedRefreshToken,
-        expiresIn: data.expires_in,
-      };
-
-      if (tokenRefreshCallback) {
-        tokenRefreshCallback(tokens);
-      }
-
-      notifyRefreshSubscribers(newAccessToken);
-
-      if (originalRequest.headers) {
-        originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
-      }
-
-      return apiClient(originalRequest);
-    } catch (refreshError) {
-      await clearRefreshToken();
-      accessToken = null;
-
-      if (tokenRefreshCallback) {
-        tokenRefreshCallback(null);
-      }
-
-      notifyRefreshSubscribers(null);
-      return Promise.reject(refreshError);
-    } finally {
-      isRefreshing = false;
-    }
-  },
+// The refresh goes out on bare `axios`, not `apiClient`: it carries no Access
+// Token, and a 401 answering it must reach the classifier as a rejection
+// rather than re-enter the refresh-on-401 interceptor below.
+const refreshApi = new AuthenticationApi(
+  new Configuration({ basePath: BASE_PATH }),
+  BASE_PATH,
+  axios,
 );
+
+/**
+ * Refreshes the Session from the stored Refresh Token.
+ *
+ * The one refresh path: restoring the Session on launch and answering a 401
+ * both come through here, so they agree on what a failure means. Only a
+ * refresh the server rejected ends the Session — the stored Refresh Token is
+ * cleared and the callback is told `null`. One that could not be completed
+ * leaves the Refresh Token and the Session as they were (see
+ * `REFRESH_FAILURE_ENDS_SESSION`).
+ */
+export const refreshSession: () => Promise<RefreshOutcome> =
+  createSessionRefresher({
+    readRefreshToken: getRefreshToken,
+    saveRefreshToken,
+    clearRefreshToken,
+    requestRefresh: async (refreshTokenBody) =>
+      (await refreshApi.refreshToken({ refreshTokenBody })).data,
+    onRefreshed: (tokens) => {
+      accessToken = tokens.accessToken;
+      tokenRefreshCallback?.(tokens);
+    },
+    onSessionEnded: () => {
+      accessToken = null;
+      tokenRefreshCallback?.(null);
+    },
+  });
+
+installRefreshOn401(apiClient, refreshSession);
 
 export function createAuthApi(): AuthenticationApi {
   const config = new Configuration({

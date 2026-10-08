@@ -12,26 +12,40 @@ import {
   buildLoginUserBody,
   buildRefreshTokenRequest,
   extractRefreshTokenFromLoginResponse,
-  resolveRefreshTokenAfterRefresh,
 } from '@myorganizer/auth/portable';
-import {
-  saveRefreshToken,
-  getRefreshToken,
-  clearRefreshToken,
-} from '../storage/keychain';
+import { saveRefreshToken, clearRefreshToken } from '../storage/keychain';
 import {
   apiClient,
   createAuthApi,
+  refreshSession,
   setAccessToken,
   setTokenRefreshCallback,
 } from '../api/client';
+import { REFRESH_FAILURE_ENDS_SESSION } from '../api/sessionRefresh';
 import type { AuthSession, AuthTokens } from '../api/types';
 
-export type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated';
+/**
+ * `restorable` is a Restorable Session the app could not restore yet: the
+ * device holds a Refresh Token, and the refresh that would turn it into an
+ * Access Token could not be completed — no answer, or a server failure. The
+ * User has not been signed out and is not shown a sign-in prompt; `restore`
+ * asks again. It is reached on launch only, because that is the one moment
+ * the app has a Refresh Token and no User to show anything for.
+ */
+export type AuthStatus =
+  | 'loading'
+  | 'authenticated'
+  | 'restorable'
+  | 'unauthenticated';
 
 interface AuthContextValue {
   status: AuthStatus;
   user: FilteredUserInterface | null;
+  /**
+   * Asks the server again for a Session the app could not restore. Resolves
+   * once `status` has settled; it never rejects.
+   */
+  restore: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
 }
@@ -89,58 +103,31 @@ export function AuthProvider({
     setTokenRefreshCallback(handleTokenRefresh);
   }, [handleTokenRefresh]);
 
-  useEffect(() => {
-    async function restoreSession(): Promise<void> {
-      try {
-        const storedRefreshToken = await getRefreshToken();
-        if (!storedRefreshToken) {
-          setStatus('unauthenticated');
-          return;
-        }
+  const restore = useCallback(async (): Promise<void> => {
+    const outcome = await refreshSession();
 
-        const authApi = createAuthApi();
-        const response = await authApi.refreshToken({
-          refreshTokenBody: buildRefreshTokenRequest(
-            'mobile',
-            storedRefreshToken,
-          ),
-        });
-
-        const data = response.data;
-        const newAccessToken = data.token;
-        const newRefreshToken = resolveRefreshTokenAfterRefresh(
-          'mobile',
-          data,
-          storedRefreshToken,
-        );
-
-        if (!newAccessToken) {
-          await clearSession();
-          return;
-        }
-
-        setAccessToken(newAccessToken);
-
-        if (newRefreshToken) {
-          await saveRefreshToken(newRefreshToken);
-        }
-
-        setSession({
-          user: data.user,
-          tokens: {
-            accessToken: newAccessToken,
-            refreshToken: newRefreshToken ?? storedRefreshToken,
-            expiresIn: data.expires_in,
-          },
-        });
-        setStatus('authenticated');
-      } catch {
-        await clearSession();
-      }
+    if (outcome.kind === 'refreshed') {
+      setSession({ user: outcome.user, tokens: outcome.tokens });
+      setStatus('authenticated');
+      return;
     }
 
-    restoreSession();
+    if (REFRESH_FAILURE_ENDS_SESSION[outcome.failure]) {
+      await clearSession();
+      return;
+    }
+
+    // The refresh could not be completed, which says nothing about the
+    // Session: the Refresh Token stays in the keychain. A Session that is
+    // already up is left alone — its requests fail and retry on their own.
+    setStatus((current) =>
+      current === 'authenticated' ? current : 'restorable',
+    );
   }, [clearSession]);
+
+  useEffect(() => {
+    void restore();
+  }, [restore]);
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
@@ -206,10 +193,11 @@ export function AuthProvider({
     () => ({
       status,
       user: session?.user ?? null,
+      restore,
       login,
       logout,
     }),
-    [status, session, login, logout],
+    [status, session, restore, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
