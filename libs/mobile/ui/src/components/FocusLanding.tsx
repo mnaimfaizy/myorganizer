@@ -5,6 +5,12 @@ import { Platform, StyleSheet, View } from 'react-native';
 export const FOCUS_LANDING_TEST_ID = 'focus-landing';
 
 /**
+ * How Android's native code finds the view. `MainActivity.kt` holds the
+ * same string; change both or neither.
+ */
+export const FOCUS_LANDING_NATIVE_ID = 'focus-landing';
+
+/**
  * The view Android gives keyboard focus to when it has to pick one itself
  * (#1042). Mounted once, first in the app's root, ahead of every screen.
  *
@@ -27,10 +33,18 @@ export const FOCUS_LANDING_TEST_ID = 'focus-landing';
  * can land on it. Nothing in React Native keeps a view focusable and out of
  * the Tab order.
  *
- * Touch never reaches it: Android focuses nothing in touch mode, and it takes
- * no pointer events. A screen reader does not stop on it either — keyboard
- * focus and accessibility focus are separate, and it is marked unimportant to
- * the second.
+ * A touch never focuses it: it takes no pointer events. A screen reader does
+ * not stop on it either — keyboard focus and accessibility focus are separate,
+ * and it is marked unimportant to the second.
+ *
+ * It does take focus in touch mode when a text input gives focus up to
+ * nothing — blurred by a tap on a button, or removed with its screen (#1051).
+ * Android replaces no cleared focus in touch mode, and with no view focused
+ * the input method goes on serving the input that is gone: it takes the next
+ * hardware Tab for itself and raises the soft keyboard. React Native has no
+ * prop that lets a view be focused in touch mode, so the app's native code
+ * finds this one by `FOCUS_LANDING_NATIVE_ID` and focuses it
+ * (`MainActivity.kt`).
  *
  * A sheet is a `Modal`, a window of its own with its own first focusable
  * view, and is not covered by this one. Nor is iOS, which is given nothing:
@@ -43,6 +57,7 @@ export function FocusLanding(): React.JSX.Element | null {
   return (
     <View
       testID={FOCUS_LANDING_TEST_ID}
+      nativeID={FOCUS_LANDING_NATIVE_ID}
       focusable
       // React Native drops a view with no content from the native tree.
       collapsable={false}
