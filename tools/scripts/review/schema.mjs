@@ -425,12 +425,102 @@ export const ReportInputSchema = z.strictObject({
   findings: z.array(FindingInputSchema),
 });
 
+/** Where a normalized report's facts about its own run came from. */
+export const RUN_FACTS_SOURCES = /** @type {const} */ ([
+  'transcript',
+  'reviewer',
+]);
+
+/** Whether a transcript could be read for facts at all. */
+export const RUN_FACTS_SHAPES = /** @type {const} */ (['readable', 'unknown']);
+
+const AxisFactsSchema = z.strictObject({
+  /** A dispatch was sent for this axis. */
+  dispatched: z.boolean(),
+  /** A sub-agent of this axis read the axis's brief file. */
+  briefRead: z.boolean(),
+  /** Every dispatch of this axis was the fixed template; null if none was sent. */
+  onTemplate: z.boolean().nullable(),
+  toolCalls: z.int().nonnegative(),
+});
+
+/**
+ * The facts file `read-transcript-facts.mjs` writes from a reviewer
+ * transcript (ADR 0123). When `shape` is `unknown`, everything that could not
+ * be read is `null` — never an empty list, which would be a claim.
+ */
+export const RunFactsSchema = z
+  .strictObject({
+    schemaVersion: z.literal(1),
+    shape: z.enum(RUN_FACTS_SHAPES),
+    shapeReason: nonEmpty.nullable(),
+    cliVersion: nonEmpty.nullable(),
+    models: z.array(nonEmpty).nullable(),
+    durationMs: z.int().nonnegative().nullable(),
+    dispatches: z.int().nonnegative().nullable(),
+    axes: z
+      .strictObject({ standards: AxisFactsSchema, spec: AxisFactsSchema })
+      .nullable(),
+    standardsSources: z.array(nonEmpty).nullable(),
+    indexOpened: z.boolean().nullable(),
+    executed: z.array(nonEmpty).nullable(),
+  })
+  .superRefine((f, ctx) => {
+    const readable = f.shape === 'readable';
+    for (const key of ['axes', 'standardsSources', 'indexOpened', 'executed']) {
+      if (readable === (f[key] === null))
+        ctx.addIssue({
+          code: 'custom',
+          message: readable
+            ? 'a readable transcript states every fact'
+            : 'an unreadable transcript states no fact it could not read',
+          path: [key],
+        });
+    }
+    if (readable === (f.shapeReason !== null))
+      ctx.addIssue({
+        code: 'custom',
+        message: 'shapeReason is given exactly when the shape is unknown',
+        path: ['shapeReason'],
+      });
+  });
+
+/**
+ * What a normalized report keeps of the facts file, beside the four envelope
+ * fields the facts overwrite.
+ */
+const RunFactsSummarySchema = z.strictObject({
+  shape: z.enum(RUN_FACTS_SHAPES),
+  shapeReason: nonEmpty.nullable(),
+  cliVersion: nonEmpty.nullable(),
+  dispatches: z.int().nonnegative().nullable(),
+  axes: z
+    .strictObject({ standards: AxisFactsSchema, spec: AxisFactsSchema })
+    .nullable(),
+  indexOpened: z.boolean().nullable(),
+});
+
 /**
  * What the validator writes and the only thing the renderer accepts: the
  * input plus derived ids, the computed verdict, and the effective tier.
+ *
+ * Four envelope fields are facts about the run, and in CI they are read from
+ * the reviewer transcript and overwrite whatever the reviewer wrote (ADR
+ * 0123). `runFactsFrom` says which a report carries. Three of the four may be
+ * `null` here and never in the input: `null` is "the transcript could not be
+ * read", which is neither an empty list nor the reviewer's own claim.
+ *
+ * `runFactsFrom` and `runFacts` are optional so that a report normalized
+ * before they existed still parses as a previous report and still lends its
+ * ids. Finding identity did not change, so the schema version did not.
  */
 export const NormalizedReportSchema = z.strictObject({
   ...envelopeFields,
+  standardsSources: z.array(nonEmpty).nullable(),
+  executed: z.array(nonEmpty).nullable(),
+  durationMs: z.int().nonnegative().nullable(),
+  runFactsFrom: z.enum(RUN_FACTS_SOURCES).optional(),
+  runFacts: RunFactsSummarySchema.nullable().optional(),
   findings: z.array(
     z
       .object({ id: z.string().regex(/^[0-9a-f]{12}$/) })
@@ -650,17 +740,68 @@ export const computeEffectiveTier = (report) => {
  * lends ids and nothing else: no finding, severity, or verdict is read from
  * it, and a report of another schema version lends none.
  *
+ * `facts` is the run facts file read from the reviewer transcript, when
+ * there is one. It overwrites the four envelope fields that are facts about
+ * the run, and nothing else: no finding, severity, verdict, or tier is read
+ * from it. Without it the report keeps what the reviewer wrote and says so.
+ *
  * @param {unknown} raw
- * @param {{ previous?: unknown }} [options]
+ * @param {{ previous?: unknown, facts?: unknown }} [options]
  */
-export const normalizeReport = (raw, { previous = null } = {}) => {
+export const normalizeReport = (
+  raw,
+  { previous = null, facts = null } = {},
+) => {
   const input = ReportInputSchema.parse(raw);
   const findings = assignFindingIds(input.findings, previous);
   return {
     ...input,
+    ...runFactsFor(input, facts),
     findings,
     verdict: computeVerdict(findings),
     effectiveTier: computeEffectiveTier(input),
+  };
+};
+
+/** The model a report names when the transcript did not say which ran. */
+export const UNKNOWN_MODEL = 'unknown';
+
+/**
+ * The run-fact fields of a normalized report.
+ *
+ * A transcript that reads cleanly and shows no dispatch at all, under a
+ * report that has findings, is treated as unreadable: findings have to have
+ * come from somewhere, and the likelier explanation is a dispatch this
+ * reader no longer recognises than a reviewer that dispatched nothing. An
+ * obligation finding is the main agent's own and proves no dispatch, so it
+ * does not count.
+ */
+const runFactsFor = (input, rawFacts) => {
+  if (rawFacts === null || rawFacts === undefined)
+    return { runFactsFrom: 'reviewer', runFacts: null };
+  const facts = RunFactsSchema.parse(rawFacts);
+  const returned = input.findings.filter(
+    (f) => !f.ruleId.startsWith('obligation-'),
+  );
+  const unseen =
+    facts.shape === 'readable' && facts.dispatches === 0 && returned.length > 0;
+  const readable = facts.shape === 'readable' && !unseen;
+  return {
+    standardsSources: readable ? facts.standardsSources : null,
+    executed: readable ? facts.executed : null,
+    durationMs: facts.durationMs,
+    model: facts.models?.length ? facts.models.join(', ') : UNKNOWN_MODEL,
+    runFactsFrom: 'transcript',
+    runFacts: {
+      shape: readable ? 'readable' : 'unknown',
+      shapeReason: unseen
+        ? `the report has ${returned.length} finding(s) and the transcript shows no sub-agent dispatch`
+        : facts.shapeReason,
+      cliVersion: facts.cliVersion,
+      dispatches: readable ? facts.dispatches : null,
+      axes: readable ? facts.axes : null,
+      indexOpened: readable ? facts.indexOpened : null,
+    },
   };
 };
 

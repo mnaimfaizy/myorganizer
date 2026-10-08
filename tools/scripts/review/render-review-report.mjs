@@ -35,6 +35,88 @@ import {
   verdictHeading,
 } from './schema.mjs';
 
+/**
+ * A path as inline code. A path here is one a sub-agent chose to open, so a
+ * backtick in it is dropped rather than allowed to end the span.
+ */
+const codePath = (path) => `\`${path.replaceAll('`', '')}\``;
+
+const AXIS_NAMES = { standards: 'Standards', spec: 'Spec' };
+
+/**
+ * The lines that say what the report knows about its own run, and where it
+ * knows it from (ADR 0123).
+ *
+ * Every outcome is stated and none is acted on here: what a fact costs is not
+ * the renderer's to decide. `unknown` is printed as that word. It is never
+ * printed as an empty list or as "none", which are claims.
+ *
+ * The note about root `AGENTS.md` and `CLAUDE.md` is fixed text. A list of
+ * what was opened would otherwise read as the list of what the review was
+ * held to, and the harness loads those two into the session without anyone
+ * opening them.
+ *
+ * @param {object} report a normalized report
+ * @returns {string[]} Markdown list lines
+ */
+export const renderRunFacts = (report) => {
+  if (report.runFactsFrom !== 'transcript' || !report.runFacts)
+    return [
+      '- run facts: self-reported by the reviewer, not read from a transcript',
+      `- standards sources (as the reviewer listed them): ${
+        report.standardsSources?.length
+          ? report.standardsSources.map(codePath).join(', ')
+          : 'none'
+      }`,
+    ];
+
+  const facts = report.runFacts;
+  const cli = facts.cliVersion ?? 'unknown';
+  if (facts.shape === 'unknown')
+    return [
+      `- run facts: **unknown** — the reviewer transcript could not be read (Claude Code CLI ${cli}): ${facts.shapeReason}`,
+      '- standards sources opened: unknown',
+    ];
+
+  const lines = [
+    `- run facts: read from the reviewer transcript (Claude Code CLI ${cli})`,
+  ];
+  const { standards, spec } = facts.axes;
+  lines.push(
+    `- standards sources opened by the Standards sub-agent: ${
+      report.standardsSources.length
+        ? report.standardsSources.map(codePath).join(', ')
+        : '**none**'
+    } (root \`AGENTS.md\` and \`CLAUDE.md\` are loaded by the harness and are not listed)`,
+  );
+  lines.push(
+    `- sub-agent tool calls: Standards ${standards.toolCalls} · Spec ${
+      report.spec.kind === 'none' && !spec.dispatched
+        ? 'not run'
+        : spec.toolCalls
+    }`,
+  );
+  // An axis that was meant to run: Standards always, Spec when there is one.
+  const expected = { standards: true, spec: report.spec.kind !== 'none' };
+  for (const axis of Object.keys(AXIS_NAMES)) {
+    if (!expected[axis]) continue;
+    const a = facts.axes[axis];
+    if (!a.briefRead)
+      lines.push(
+        `- ${AXIS_NAMES[axis]} brief: **not read** — no sub-agent opened it${a.dispatched ? '' : ', and no dispatch named it'}`,
+      );
+    if (a.dispatched && a.onTemplate === false)
+      lines.push(
+        `- ${AXIS_NAMES[axis]} dispatch: **carried text beyond the skill's template**`,
+      );
+  }
+  if (standards.briefRead && !facts.indexOpened)
+    lines.push(
+      '- standards index: **not opened** — the Standards sub-agent read its brief and never opened `CODING_STANDARDS.md`',
+    );
+  return lines;
+};
+
 /** Most lines of a hunk shown inline; a finding is a pointer, not a file. */
 export const HUNK_MAX_LINES = 30;
 
@@ -189,7 +271,8 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
     `- range: \`${report.base.slice(0, 7)}...${report.head.slice(0, 7)}\``,
     `- tier: ${tierText}`,
     `- spec: ${specText}`,
-    `- model: ${report.model} · ${report.durationMs} ms${costText}`,
+    `- model: ${report.model} · ${report.durationMs === null ? 'duration unknown' : `${report.durationMs} ms`}${costText}`,
+    ...renderRunFacts(report),
     `- suppressed as redundant with deterministic checks: ${report.suppressed.redundant}`,
     '',
   ];

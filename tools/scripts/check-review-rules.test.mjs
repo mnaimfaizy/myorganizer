@@ -16,6 +16,7 @@ import {
   compareRuleCatalogue,
   idsOfferedBy,
 } from './check-review-rules.mjs';
+import { DISPATCH_TEMPLATES, RETRY_LINE } from './review/briefs.mjs';
 import { RULE_CATALOGUE_SCHEMA_VERSION } from './review/rules.mjs';
 
 const rule = (over = {}) => ({
@@ -40,7 +41,10 @@ const idsListed = (ids) =>
 const briefListing = (ids, shared = SHARED) => `${idsListed(ids)}\n${shared}\n`;
 
 /** The skill is the main agent's process; by default it names no rule id. */
-const SKILL_NAMING_NO_IDS = 'the process, naming no ids';
+const TEMPLATE = [...Object.values(DISPATCH_TEMPLATES).flat(), RETRY_LINE].join(
+  '\n',
+);
+const SKILL_NAMING_NO_IDS = `the process, naming no ids\n${TEMPLATE}\n`;
 
 /**
  * Runs the comparison. Every rule goes to the Standards brief unless a case
@@ -184,7 +188,7 @@ test('briefs that each offer their own axis and share one block report nothing',
 test('an id missing from its axis brief is unreachable, whatever the skill says', () => {
   const findings = compareBriefs({
     standards: briefListing([]),
-    skill: idsListed(['standard-example']),
+    skill: `${SKILL_NAMING_NO_IDS}${idsListed(['standard-example'])}`,
   });
   assert.equal(findings.length, 1);
   assert.match(
@@ -249,7 +253,29 @@ test('with briefs, the skill is no longer where an id has to be offered', () => 
   // The skill may still mention an id in prose, and an invented one is still
   // a finding: a main agent reading it could write it into a report.
   assert.match(
-    compareBriefs({ skill: idsListed(['standard-invented']) })[0],
+    compareBriefs({
+      skill: `${SKILL_NAMING_NO_IDS}${idsListed(['standard-invented'])}`,
+    })[0],
     /SKILL\.md offers "standard-invented", which is not in tools\/config\/review-rules\.json/,
+  );
+});
+
+test('the skill must print every line of the dispatch template', () => {
+  // The transcript reader compares a dispatch to these lines. A skill that
+  // rewords one sends dispatches the reader then reports as steered.
+  const reworded = SKILL_NAMING_NO_IDS.replaceAll(
+    '- head: <head>',
+    '- head sha: <head>',
+  );
+  const findings = compareBriefs({ skill: reworded });
+  assert.equal(findings.length, 1);
+  assert.match(
+    findings[0],
+    /does not print the dispatch template line "- head: <head>"/,
+  );
+  // The retry line is part of the template too.
+  assert.match(
+    compareBriefs({ skill: SKILL_NAMING_NO_IDS.replace(RETRY_LINE, '') })[0],
+    /does not print the dispatch template line "- retry:/,
   );
 });

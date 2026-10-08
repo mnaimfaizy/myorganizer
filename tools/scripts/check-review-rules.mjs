@@ -29,12 +29,21 @@
 //      A brief with no shared block is a finding too: two briefs that both
 //      lost their markers would otherwise compare equal.
 //
+//   5. The skill stops printing the dispatch template the transcript reader
+//      expects. `review/briefs.mjs` holds the template, and
+//      `review/transcript-facts.mjs` reports a dispatch that differs from it
+//      as steered. A template reworded in the skill alone would make every
+//      correct dispatch read as steered, so each line of it, and the retry
+//      line, must appear in SKILL.md verbatim.
+//
 // Direction, per source. Catalogue ↔ finding contract: catalogue words are
 // checked against the contract, not the reverse — the contract's enums are
 // the validator's own and need no second witness. Catalogue ↔ obligations and
 // catalogue ↔ each brief: both ways. SKILL.md ← catalogue: one way. The skill
 // no longer has to offer any id, so only an id it names that the catalogue
-// lacks is a finding. The shared block: compared for identity, and for
+// lacks is a finding. briefs.mjs → SKILL.md for the template: one way, since
+// the skill may say more around the template than the lines themselves. The
+// shared block: compared for identity, and for
 // carrying no rule id, which would offer one axis the other's vocabulary.
 //
 // Exit 0 = in sync. Exit 1 = drift. Exit 2 = the check could not run.
@@ -45,6 +54,7 @@ import {
   loadRuleCatalogue,
   RULES_DISPLAY_PATH,
 } from './review/rules.mjs';
+import { BRIEFS, DISPATCH_TEMPLATES, RETRY_LINE } from './review/briefs.mjs';
 import { isMain } from './review/cli.mjs';
 import {
   FINDING_AXES,
@@ -55,15 +65,9 @@ import {
 export const OBLIGATIONS = 'tools/config/review-obligations.json';
 export const SKILL = '.agents/skills/code-review/SKILL.md';
 
-/**
- * The brief each axis's sub-agent reads, keyed by finding axis. `satisfies`
- * is not available in a .mjs file, so `main` asserts the keys against
- * `FINDING_AXES` instead: a third axis with no brief fails the check.
- */
-export const BRIEFS = Object.freeze({
-  standards: '.agents/skills/code-review/STANDARDS_BRIEF.md',
-  spec: '.agents/skills/code-review/SPEC_BRIEF.md',
-});
+// Re-exported: the brief paths live with the dispatch template in
+// review/briefs.mjs, which the transcript reader shares.
+export { BRIEFS };
 
 export const SHARED_BLOCK_START = '<!-- shared-block:start -->';
 export const SHARED_BLOCK_END = '<!-- shared-block:end -->';
@@ -207,6 +211,18 @@ export const compareRuleCatalogue = ({
           `the shared block offers "${word}"; a rule id belongs in one axis's catalogue, not in text both axes read`,
         );
     }
+  }
+
+  // 5. The dispatch template, as the transcript reader will compare it.
+  const templateLines = new Set([
+    ...Object.values(DISPATCH_TEMPLATES).flat(),
+    RETRY_LINE,
+  ]);
+  for (const line of templateLines) {
+    if (!skill.includes(line))
+      findings.push(
+        `${SKILL} does not print the dispatch template line "${line}"; the transcript reader would report a dispatch that follows the skill as steered`,
+      );
   }
 
   // The skill is the main agent's process. It offers no vocabulary any more,
