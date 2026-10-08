@@ -45,6 +45,11 @@ export interface CheckboxProps {
   size?: CheckboxSize;
   disabled?: boolean;
   style?: ViewStyle;
+  /**
+   * The control's view, for a list that hands focus on when a focused row
+   * leaves (`useFocusSuccession`).
+   */
+  ref?: React.Ref<React.ComponentRef<typeof View>>;
 }
 
 /**
@@ -68,6 +73,7 @@ export function Checkbox({
   size = 'standard',
   disabled = false,
   style,
+  ref,
 }: CheckboxProps): React.JSX.Element {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
@@ -95,6 +101,16 @@ export function Checkbox({
     strokeDashoffset: TICK_LENGTH * (1 - progress.value),
   }));
 
+  // Disabled while it is where keyboard focus is. Android takes focus from a
+  // view as it is disabled and gives it to the first focusable view in the
+  // window, so a box disabled for the length of the save its own tick started
+  // lost the keyboard's place (#1068). The view is told nothing for as long
+  // as it holds focus: it stays dimmed and refuses the press here instead,
+  // and is disabled for real once focus moves on. Never so after a touch or
+  // on iOS, where no control is told it has focus.
+  const heldByFocus = disabled && focus.focused;
+  const nativelyDisabled = disabled && !heldByFocus;
+
   const pressTo = (value: number): void => {
     if (reduceMotion) return;
     scale.value = withTiming(value, {
@@ -105,16 +121,20 @@ export function Checkbox({
 
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="checkbox"
       accessibilityLabel={accessibilityLabel ?? label}
-      accessibilityState={{ checked, disabled }}
-      disabled={disabled}
-      focusable={!disabled}
-      onPressIn={() => pressTo(PRESS_SCALE)}
+      accessibilityState={{ checked, disabled: nativelyDisabled }}
+      disabled={nativelyDisabled}
+      focusable={!nativelyDisabled}
+      onPressIn={() => {
+        if (!disabled) pressTo(PRESS_SCALE);
+      }}
       onPressOut={() => pressTo(1)}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
       onPress={() => {
+        if (disabled) return;
         // Ticking and unticking feel different on purpose; see `haptics`.
         if (checked) haptics.untick();
         else haptics.tick();
@@ -142,7 +162,8 @@ export function Checkbox({
                 width: MIN_TOUCH_TARGET,
                 height: MIN_TOUCH_TARGET,
                 borderRadius: theme.radii.full,
-                backgroundColor: pressed ? theme.colors.accent : 'transparent',
+                backgroundColor:
+                  pressed && !disabled ? theme.colors.accent : 'transparent',
               },
             ]}
           >

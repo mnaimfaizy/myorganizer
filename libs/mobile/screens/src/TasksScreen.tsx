@@ -32,10 +32,12 @@ import {
   Button,
   Checkbox,
   Chip,
+  ChipScroller,
   EmptyState,
   Icon,
   IconButton,
   InlineNotice,
+  keyboardHoldsFocus,
   ListRow,
   ListSection,
   MenuSheet,
@@ -46,7 +48,9 @@ import {
   StatusPill,
   Text,
   TextField,
+  useFocusAfterCommit,
   useFocusRing,
+  useFocusSuccession,
   useFocusWithin,
   useLargeTitleCollapse,
   usePressFeedback,
@@ -248,6 +252,21 @@ export function TasksScreen(): React.JSX.Element {
     if (!pickerOpen.current) setComposerOpen(false);
   });
 
+  // Where a hardware keyboard is put after a save closes the composer: on the
+  // control that opens it again, so the next Task is Return and its title
+  // away (#1068). Only for a save made by keyboard — the composer was opened
+  // by a key, or a control (Save) holds keyboard focus as it is pressed.
+  // Return in the title says nothing itself: a hardware Return and the soft
+  // keyboard's action key arrive as the same event.
+  const addTaskControl = useRef<React.ComponentRef<typeof View>>(null);
+  const focusAddTask = useFocusAfterCommit(addTaskControl);
+  const openedByKey = useRef(false);
+
+  const openComposer = useCallback((): void => {
+    openedByKey.current = keyboardHoldsFocus();
+    setComposerOpen(true);
+  }, []);
+
   const resetComposer = useCallback((): void => {
     setTitle('');
     setDueChoice('none');
@@ -292,8 +311,10 @@ export function TasksScreen(): React.JSX.Element {
     // The draft goes now, not on confirmation: the row appears Unconfirmed
     // at once, and a refused push says so and offers the retry that sends
     // this same Task again.
+    const byKey = openedByKey.current || keyboardHoldsFocus();
     resetComposer();
     collapseComposer();
+    if (byKey) focusAddTask();
     setCapturedId(task.id);
     void push(task.id, (envelope) => putVaultRecord(envelope, task));
   }, [
@@ -306,6 +327,7 @@ export function TasksScreen(): React.JSX.Element {
     push,
     resetComposer,
     collapseComposer,
+    focusAddTask,
   ]);
 
   // --- Done, reopen, archive, undo -----------------------------------------
@@ -446,6 +468,20 @@ export function TasksScreen(): React.JSX.Element {
   // its gap, as the sheet indents it.
   const metaInset = MARKER_WIDTH + theme.spacing.sm;
 
+  // The rows as drawn, top to bottom. A row that leaves while its checkbox
+  // holds keyboard focus hands the focus to the checkbox that takes its
+  // place, or to "Add a task" once none is left (#1068). The boxes are
+  // disabled for the length of a save, so a focus owed then waits for it.
+  const shownTaskIds = (
+    showDone
+      ? closedSections.flatMap((section) => section.tasks)
+      : openGroups.flatMap((group) => group.tasks)
+  ).map((task) => task.id);
+  const checkboxRef = useFocusSuccession(shownTaskIds, {
+    fallback: addTaskControl,
+    ready: !writing,
+  });
+
   const renderTaskRow = (
     task: DecryptedTask,
     closed: boolean,
@@ -507,6 +543,7 @@ export function TasksScreen(): React.JSX.Element {
         onPress={() => openDetail(task.id)}
         leading={
           <Checkbox
+            ref={checkboxRef(task.id)}
             checked={closed || ticked}
             disabled={writing}
             accessibilityLabel={`Done: ${taskTitle}`}
@@ -564,12 +601,7 @@ export function TasksScreen(): React.JSX.Element {
 
   // A refused capture leaves no row to carry its note — the Task was never
   // saved — so the note stands above the list instead.
-  const shownIds = new Set(
-    (showDone
-      ? closedSections.flatMap((section) => section.tasks)
-      : openGroups.flatMap((group) => group.tasks)
-    ).map((task) => task.id),
-  );
+  const shownIds = new Set(shownTaskIds);
   const orphanedRevert =
     notice != null && revertedTaskId != null && !shownIds.has(revertedTaskId);
 
@@ -827,18 +859,7 @@ export function TasksScreen(): React.JSX.Element {
                   disabled={writing || title.trim().length === 0}
                 />
               </View>
-              <ScrollView
-                horizontal
-                keyboardShouldPersistTaps="handled"
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={[
-                  styles.chipRow,
-                  {
-                    gap: theme.spacing.sm,
-                    paddingHorizontal: theme.spacing.md,
-                  },
-                ]}
-              >
+              <ChipScroller>
                 <Chip
                   label="Today"
                   icon="calendar"
@@ -898,7 +919,7 @@ export function TasksScreen(): React.JSX.Element {
                   selected={context != null}
                   onPress={() => openPicker(() => setMenu('context'))}
                 />
-              </ScrollView>
+              </ChipScroller>
               <Text
                 variant="caption"
                 style={{ paddingHorizontal: theme.spacing.md }}
@@ -919,8 +940,9 @@ export function TasksScreen(): React.JSX.Element {
               ]}
             >
               <CollapsedComposer
+                ref={addTaskControl}
                 draft={title}
-                onPress={() => setComposerOpen(true)}
+                onPress={openComposer}
               />
             </View>
           )}
@@ -983,9 +1005,12 @@ const MARKER_WIDTH = 14;
 function CollapsedComposer({
   draft,
   onPress,
+  ref,
 }: {
   draft: string;
   onPress: () => void;
+  /** The control's view, so a save by keyboard can put focus back on it. */
+  ref?: React.Ref<React.ComponentRef<typeof View>>;
 }): React.JSX.Element {
   const theme = useTheme();
   const feedback = usePressFeedback('bounded');
@@ -994,6 +1019,7 @@ function CollapsedComposer({
 
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityLabel={hasDraft ? `Add a task: ${draft}` : 'Add a task'}
       onPress={onPress}
@@ -1062,10 +1088,6 @@ const styles = StyleSheet.create({
   },
   captureInput: {
     flex: 1,
-  },
-  chipRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   collapsed: {
     flexDirection: 'row',

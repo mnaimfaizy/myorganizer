@@ -267,9 +267,9 @@ Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 004
   hands, which is why the rule is applied here and not asked of either sub-agent (PR #819).
 
 The envelope's `standardsSources` is the list the Standards sub-agent returned, like every other
-field it returned. Four envelope fields are facts about the run and not yours to settle:
-`standardsSources`, `executed`, `durationMs`, and `model`. In CI the workflow overwrites all four
-with what the reviewer transcript shows, after you have exited
+field it returned. Five envelope fields are facts about the run and not yours to settle:
+`standardsSources`, `executed`, `durationMs`, `model`, and `cost`. In CI the workflow overwrites all
+five with what the reviewer transcript shows, after you have exited
 ([ADR 0123](../../../docs/adr/0123-a-review-reports-facts-about-its-own-run-are-read-from-the-transcript.md)).
 Run interactively there is no transcript to read, so the report keeps what you wrote and is marked
 as self-reported. Either way, write what happened: do not pad a list or round a duration.

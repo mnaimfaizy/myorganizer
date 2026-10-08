@@ -5,6 +5,7 @@ import { ThemeProvider } from '../useTheme';
 import { lightTheme } from '../theme';
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
+import { Checkbox } from './Checkbox';
 import { InlineNotice } from './InlineNotice';
 import { ListRow } from './ListRow';
 import { LockAction } from './LockAction';
@@ -125,6 +126,70 @@ describe('P3 focus ring on a focused control', () => {
       expect(outline(label)).toEqual(NO_RING);
     },
   );
+});
+
+/**
+ * Focus and blur bubble, and `Pressable` hands its handlers every one that
+ * reaches it. So a row holding a checkbox is sent the checkbox's focus, named
+ * here the way React Native names it: `target` is the view focus went to and
+ * `currentTarget` the view whose handler is running.
+ */
+describe('P3 focus ring on a row with a checkbox inside it', () => {
+  const Row = () => (
+    <TestWrapper>
+      <ListRow
+        title="Milk"
+        onPress={jest.fn()}
+        checked={false}
+        tickTarget="leading"
+        leading={
+          <Checkbox
+            checked={false}
+            onChange={jest.fn()}
+            accessibilityLabel="Done: Milk"
+          />
+        }
+      />
+    </TestWrapper>
+  );
+  const row = () => screen.getByLabelText('Milk');
+  const checkbox = () => screen.getByLabelText('Done: Milk');
+  const at = (target: unknown, currentTarget: unknown) => ({
+    target,
+    currentTarget,
+  });
+
+  it('rings the row alone when the row has focus', async () => {
+    await render(<Row />);
+    await fireEvent(row(), 'focus', at(row(), row()));
+
+    expect(outline('Milk')).toEqual(INSET);
+    expect(outline('Done: Milk')).toEqual(NO_RING);
+  });
+
+  it('rings the checkbox alone when focus moves on to it (#1047)', async () => {
+    await render(<Row />);
+    await fireEvent(row(), 'focus', at(row(), row()));
+    await fireEvent(row(), 'blur', at(row(), row()));
+    // The checkbox's focus, then the same event reaching the row.
+    await fireEvent(checkbox(), 'focus', at(checkbox(), checkbox()));
+    await fireEvent(row(), 'focus', at(checkbox(), row()));
+
+    expect(outline('Done: Milk')).toEqual(OUTSIDE);
+    expect(outline('Milk')).toEqual(NO_RING);
+  });
+
+  it('rings the row alone when focus moves back to it', async () => {
+    await render(<Row />);
+    await fireEvent(checkbox(), 'focus', at(checkbox(), checkbox()));
+    await fireEvent(row(), 'focus', at(checkbox(), row()));
+    await fireEvent(checkbox(), 'blur', at(checkbox(), checkbox()));
+    await fireEvent(row(), 'blur', at(checkbox(), row()));
+    await fireEvent(row(), 'focus', at(row(), row()));
+
+    expect(outline('Milk')).toEqual(INSET);
+    expect(outline('Done: Milk')).toEqual(NO_RING);
+  });
 });
 
 /**

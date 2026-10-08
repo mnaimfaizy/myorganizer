@@ -39,7 +39,8 @@ reviewer has exited. The reviewer does not write it.**
 
 1. **Four envelope fields are pinned.** A step reads the transcript and writes a facts file. The
    validator takes that file the way it takes `--tier`, and overwrites `standardsSources`,
-   `executed`, `durationMs`, and `model` from it. The CLI version is recorded beside the model. The
+   `executed`, `durationMs`, and `model` from it. A fifth, `cost`, joined them in issue #1057; see
+   Consequences. The CLI version is recorded beside the model. The
    report schema version stays at 4. This ADR first said 5. The version exists to say whether
    finding ids are comparable between runs, and this decision does not change a finding's identity,
    so the new fields are optional additions and a report written before them still lends its ids. This
@@ -143,6 +144,13 @@ sub-agent made no tool call and quoted the sentence under `## Scope` and the fir
 for word. The dispatch message carried none of that text. That is one run on one CLI version: a
 release that stops loading the files into sub-agents makes the note false, and the brief then has
 to tell the sub-agent to open them.
+
+The envelope's optional `cost`, its input and output token counts, was left self-reported by item 1
+and is read from the transcript since issue #1057. The figures are summed over every model the
+`result` event lists under `modelUsage`, because the event's top-level `usage` counts the main
+agent's turns alone and most of a review is spent in its sub-agents. Input counts fresh, cache-read,
+and cache-written tokens together. A `result` event that lacks a figure for any model records the
+cost as unknown, never as zero and never as what the reviewer wrote.
 
 A finding's own executed evidence, its command and exit code, is still self-reported and can still
 earn Blocking. Checking it against the transcript needs matching rules of its own and is issue

@@ -32,7 +32,13 @@ export { useIsOffline } from './hooks/useIsOffline';
 export { useKeyboardVisible } from './hooks/useKeyboardVisible';
 export { useAppState } from './hooks/useAppState';
 export { useFocusRing, type FocusRingPlacement } from './hooks/useFocusRing';
-export { useReturnFocusOnLeave } from './hooks/focusReturn';
+export {
+  keyboardHoldsFocus,
+  useFocusAfterCommit,
+  useReturnFocusOnLeave,
+  type FocusTarget,
+} from './hooks/focusReturn';
+export { useFocusSuccession } from './hooks/useFocusSuccession';
 export { useFocusWithin } from './hooks/useFocusWithin';
 export { staticElement } from './staticElement';
 export {
@@ -67,6 +73,10 @@ export {
   type CheckboxSize,
 } from './components/Checkbox';
 export { Chip, type ChipProps, type ChipRole } from './components/Chip';
+export {
+  ChipScroller,
+  type ChipScrollerProps,
+} from './components/ChipScroller';
 export {
   ConfirmSheet,
   type ConfirmSheetProps,

@@ -11,6 +11,7 @@ import test from 'node:test';
 
 import {
   formatDuration,
+  formatTokens,
   renderReport,
   renderRunFacts,
 } from './render-review-report.mjs';
@@ -132,7 +133,7 @@ test('an unknown shape may not state a fact, and a readable one may not withhold
 
 // --- the overwrite ----------------------------------------------------------
 
-test('with facts, the four run fields are the transcripts and not the reviewers', () => {
+test('with facts, the run fields are the transcripts and not the reviewers', () => {
   const report = normalizeReport(envelope(), { facts: facts() });
   assert.deepEqual(report.standardsSources, ['CODING_STANDARDS.md']);
   assert.deepEqual(report.executed, [
@@ -543,4 +544,79 @@ test('the validator refuses a facts file that is not one, rather than fall back'
     ]).status,
     2,
   );
+});
+
+// --- token figures (issue #1057) --------------------------------------------
+
+const CLAIMED_COST = { inputTokens: 1, outputTokens: 1 };
+const READ_COST = { inputTokens: 1289953, outputTokens: 8088 };
+
+test('with facts, the token figures are the transcripts and not the reviewers', () => {
+  const report = normalizeReport(envelope({ cost: CLAIMED_COST }), {
+    facts: facts({ cost: READ_COST }),
+  });
+  assert.deepEqual(report.cost, READ_COST);
+  // A reviewer that reported none still gets the transcript's.
+  assert.deepEqual(
+    normalizeReport(envelope(), { facts: facts({ cost: READ_COST }) }).cost,
+    READ_COST,
+  );
+});
+
+test('a transcript without the figures records them as unknown, not the claim and not zero', () => {
+  for (const given of [
+    facts({ cost: null }),
+    // A facts file written before the figures were read has no such key.
+    facts(),
+    unknownFacts(),
+  ]) {
+    const report = normalizeReport(envelope({ cost: CLAIMED_COST }), {
+      facts: given,
+    });
+    assert.equal(report.cost, null);
+    assert.ok(NormalizedReportSchema.safeParse(report).success);
+    assert.match(
+      renderReport(report, null, { hunks: false }),
+      /· tokens unknown/,
+    );
+  }
+});
+
+test('without facts, the report keeps the reviewers token figures and says so', () => {
+  const claimed = normalizeReport(envelope({ cost: CLAIMED_COST }));
+  assert.deepEqual(claimed.cost, CLAIMED_COST);
+  assert.equal(claimed.runFactsFrom, 'reviewer');
+  assert.match(
+    renderReport(claimed, null, { hunks: false }),
+    /· 1 in \/ 1 out tokens/,
+  );
+  // None reported and no transcript: there is nothing to call unknown.
+  const silent = normalizeReport(envelope());
+  assert.equal('cost' in silent, false);
+  assert.doesNotMatch(renderReport(silent, null, { hunks: false }), /tokens/);
+});
+
+test('the figures read from a real transcript reach the published line', () => {
+  const report = normalizeReport(envelope({ cost: CLAIMED_COST }), {
+    facts: fixtureFacts('cli-2.1.293-template-two-findings'),
+  });
+  assert.deepEqual(report.cost, READ_COST);
+  assert.match(
+    renderReport(report, null, { hunks: false }),
+    /· 1\.29M in \/ 8\.1k out tokens/,
+  );
+});
+
+test('a token count is printed the way a person reads one', () => {
+  assert.equal(formatTokens(0), '0');
+  assert.equal(formatTokens(999), '999');
+  assert.equal(formatTokens(1000), '1.0k');
+  assert.equal(formatTokens(3189), '3.2k');
+  // A count that would round up to a fourth figure moves to the next form.
+  assert.equal(formatTokens(9949), '9.9k');
+  assert.equal(formatTokens(9950), '10k');
+  assert.equal(formatTokens(650541), '651k');
+  assert.equal(formatTokens(999499), '999k');
+  assert.equal(formatTokens(999500), '1.00M');
+  assert.equal(formatTokens(1289953), '1.29M');
 });

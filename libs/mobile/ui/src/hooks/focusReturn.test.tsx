@@ -2,7 +2,12 @@ import React from 'react';
 import { act, renderHook } from '@testing-library/react-native';
 import type { FocusEvent } from 'react-native';
 import { ThemeProvider } from '../useTheme';
-import { useReturnFocusOnLeave } from './focusReturn';
+import {
+  keyboardHoldsFocus,
+  useFocusAfterCommit,
+  useReturnFocusOnLeave,
+  type FocusTarget,
+} from './focusReturn';
 import { useFocusRing } from './useFocusRing';
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -11,7 +16,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 
 /** A focus event from `view`, as far as the hook reads one. */
 const focusEventFrom = (view: unknown) =>
-  ({ currentTarget: view }) as unknown as FocusEvent;
+  ({ target: view, currentTarget: view }) as unknown as FocusEvent;
 
 /** A control with a ring, and the view its focus events name. */
 const renderControl = async () => {
@@ -106,6 +111,24 @@ describe('useReturnFocusOnLeave', () => {
     expect(row.view.focus).not.toHaveBeenCalled();
   });
 
+  it('returns focus to the control that held it, not to the one around it', async () => {
+    // Focus bubbles, so a row is sent the focus of the checkbox inside it.
+    const checkbox = await renderControl();
+    const row = await renderHook(() => useFocusRing(), { wrapper });
+    await checkbox.focus();
+    await act(() =>
+      row.result.current.onFocus({
+        target: checkbox.view,
+        currentTarget: { focus: jest.fn() },
+      } as unknown as FocusEvent),
+    );
+    const screen = await openScreen();
+    await checkbox.blur();
+
+    await screen.unmount();
+    expect(checkbox.view.focus).toHaveBeenCalledTimes(1);
+  });
+
   it.each([
     ['no event', undefined],
     ["the legacy renderer's tag", focusEventFrom(7)],
@@ -118,5 +141,70 @@ describe('useReturnFocusOnLeave', () => {
 
     await expect(screen.unmount()).resolves.not.toThrow();
     await act(() => control.result.current.onBlur());
+  });
+});
+
+describe('keyboardHoldsFocus', () => {
+  it('is true only while a control is noted as holding focus', async () => {
+    expect(keyboardHoldsFocus()).toBe(false);
+    const save = await renderControl();
+    await save.focus();
+    expect(keyboardHoldsFocus()).toBe(true);
+
+    // A touch blurs the control and focuses none.
+    await save.blur();
+    expect(keyboardHoldsFocus()).toBe(false);
+  });
+
+  it('is false once the control holding focus has unmounted', async () => {
+    const save = await renderControl();
+    await save.focus();
+    await save.unmount();
+    expect(keyboardHoldsFocus()).toBe(false);
+  });
+});
+
+describe('useFocusAfterCommit', () => {
+  it('asks for nothing until it is called', async () => {
+    const target = { current: { focus: jest.fn() } };
+    const hook = await renderHook(() => useFocusAfterCommit(target));
+    await hook.rerender({});
+    expect(target.current.focus).not.toHaveBeenCalled();
+  });
+
+  it('focuses a target that the requesting render mounted', async () => {
+    const target: { current: FocusTarget | null } = { current: null };
+    const view = { focus: jest.fn() };
+    const hook = await renderHook(() => useFocusAfterCommit(target));
+
+    await act(() => {
+      hook.result.current();
+      // Mounted by the same render: the ref is set before effects run.
+      target.current = view;
+    });
+    expect(view.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('focuses once for each request, and not again on a later render', async () => {
+    const target = { current: { focus: jest.fn() } };
+    const hook = await renderHook(() => useFocusAfterCommit(target));
+
+    await act(() => hook.result.current());
+    await hook.rerender({});
+    expect(target.current.focus).toHaveBeenCalledTimes(1);
+
+    await act(() => hook.result.current());
+    expect(target.current.focus).toHaveBeenCalledTimes(2);
+  });
+
+  it('drops a request whose target is not mounted', async () => {
+    const target: { current: FocusTarget | null } = { current: null };
+    const view = { focus: jest.fn() };
+    const hook = await renderHook(() => useFocusAfterCommit(target));
+
+    await act(() => hook.result.current());
+    target.current = view;
+    await hook.rerender({});
+    expect(view.focus).not.toHaveBeenCalled();
   });
 });
