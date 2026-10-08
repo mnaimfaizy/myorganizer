@@ -65,6 +65,40 @@ describe('ListRow Component', () => {
       );
       expect(screen.queryByText('Saving…')).not.toBeOnTheScreen();
     });
+
+    // Android rebuilds a row's content description only when the state it is
+    // handed still carries a `busy` key, so `busy` left out once the save
+    // lands is "…, busy" read for as long as the row stays mounted (#1077).
+    it('says it is no longer busy once the save lands, rather than leaving busy out', async () => {
+      const row = (state: 'unconfirmed' | 'normal' | 'reverted') => (
+        <TestWrapper>
+          <ListRow title="Oat milk" state={state} onPress={jest.fn()} />
+        </TestWrapper>
+      );
+      const { rerender } = await render(row('unconfirmed'));
+      expect(screen.getByRole('button').props.accessibilityState.busy).toBe(
+        true,
+      );
+      await rerender(row('normal'));
+      expect(screen.getByRole('button').props.accessibilityState.busy).toBe(
+        false,
+      );
+      await rerender(row('reverted'));
+      expect(screen.getByRole('button').props.accessibilityState.busy).toBe(
+        false,
+      );
+    });
+
+    it('carries busy as a boolean on a row that was never saving', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow title="Task" onPress={jest.fn()} />
+        </TestWrapper>,
+      );
+      expect(screen.getByRole('button').props.accessibilityState.busy).toBe(
+        false,
+      );
+    });
   });
 
   describe('Reverted state', () => {

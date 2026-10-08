@@ -783,7 +783,13 @@ export function ListRow({
               accessibilityState={{
                 checked: toggle?.value ?? checked ?? undefined,
                 disabled: pressDisabled,
-                busy: state === 'unconfirmed' || undefined,
+                // Always a boolean, never left out. Android writes "busy"
+                // into the row's content description, and React Native
+                // rebuilds that only when the state it is handed still has
+                // a `busy` key (`BaseViewManager.setViewState`): a key that
+                // went from `true` to absent left every saved row reading
+                // "…, busy" until it unmounted (#1077).
+                busy: state === 'unconfirmed',
               }}
               accessibilityLabel={
                 accessibilityLabel ??

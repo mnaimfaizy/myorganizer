@@ -55,19 +55,62 @@ describe('ProgressMeter Component', () => {
     expect(await screen.findByText('End')).toBeOnTheScreen();
   });
 
-  it('announces the count as the value text when one is given', async () => {
+  it('announces the value text it is given', async () => {
     await render(
       <TestWrapper>
         <ProgressMeter
           value={7 / 12}
           label="7 of 12"
           meta="checked"
-          accessibilityValueText="7 of 12 checked"
+          accessibilityValueText="checked off"
         />
       </TestWrapper>,
     );
     expect(screen.getByRole('progressbar').props.accessibilityValue).toEqual({
-      text: '7 of 12 checked',
+      text: 'checked off',
+    });
+  });
+
+  // Android reads the label and the value text one after the other, as one
+  // content description, so a value that repeats the label says it twice:
+  // "5 of 8 notified, 5 of 8 notified, 3 to go" (#1086).
+  it('names itself by its label and gives its meta as the value, each once', async () => {
+    await render(
+      <TestWrapper>
+        <ProgressMeter value={5 / 8} label="5 of 8 notified" meta="3 to go" />
+      </TestWrapper>,
+    );
+    const meter = screen.getByRole('progressbar');
+    expect(meter.props.accessibilityLabel).toBe('5 of 8 notified');
+    expect(meter.props.accessibilityValue).toEqual({ text: '3 to go' });
+    expect(meter.props.accessibilityValue.text).not.toContain(
+      meter.props.accessibilityLabel,
+    );
+  });
+
+  it('gives the percentage as the value when it has a label and no meta', async () => {
+    await render(
+      <TestWrapper>
+        <ProgressMeter value={0.5} label="Half" />
+      </TestWrapper>,
+    );
+    expect(screen.getByRole('progressbar').props.accessibilityValue).toEqual({
+      min: 0,
+      max: 100,
+      now: 50,
+    });
+  });
+
+  it('gives the percentage as the value when its meta is its only name', async () => {
+    await render(
+      <TestWrapper>
+        <ProgressMeter value={0.5} meta="3 to go" />
+      </TestWrapper>,
+    );
+    expect(screen.getByRole('progressbar').props.accessibilityValue).toEqual({
+      min: 0,
+      max: 100,
+      now: 50,
     });
   });
 

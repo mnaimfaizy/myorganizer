@@ -229,7 +229,6 @@ export function UsageLocationProgress({
         value={progress.fraction}
         label={progress.label}
         meta={progress.meta}
-        accessibilityValueText={`${progress.label}, ${progress.meta}`}
       />
       {progress.complete && (
         <View style={[styles.inline, { gap: theme.spacing.sm }]}>
