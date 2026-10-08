@@ -143,6 +143,13 @@ jobs:
     runs-on: ubuntu-latest
     needs: authoritative-lockfile-policy
 
+    # Read by the two Report Audit jobs below. A failed job still publishes its
+    # outputs, and audit_outcome is what tells a failed audit apart from a
+    # failed install or a moved lockfile.
+    outputs:
+      audit_outcome: ${{ steps.npm-audit.outcome }}
+      advisories: ${{ steps.audit-advisories.outputs.advisories }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -189,15 +196,216 @@ jobs:
             echo 'run_audit=false' >> "$GITHUB_OUTPUT"
           fi
 
+      # Pull requests audit only when they change dependencies; a push audits
+      # unconditionally, so a new advisory surfaces on main and not on an
+      # unrelated pull request. See ADR 0124.
       - name: Run Yarn npm audit
+        id: npm-audit
         if: github.event_name != 'pull_request' || steps.dependency-files.outputs.run_audit == 'true'
         run: corepack yarn npm audit --all --recursive --severity high
+
+      # The audit above stays the human-readable log and the step that fails
+      # the job. This second pass only reshapes what it found for the tracked
+      # issue, and only where that issue is reported: a push to main.
+      - name: Collect advisories for the tracked issue
+        id: audit-advisories
+        if: ${{ failure() && steps.npm-audit.outcome == 'failure' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          corepack yarn npm audit --all --recursive --severity high --json > "$RUNNER_TEMP/npm-audit.ndjson" || true
+          echo "advisories=$(node tools/scripts/ci/npm-audit-advisories.mjs < "$RUNNER_TEMP/npm-audit.ndjson")" >> "$GITHUB_OUTPUT"
 
       - name: Explain skipped npm audit
         if: github.event_name == 'pull_request' && steps.dependency-files.outputs.run_audit != 'true'
         shell: bash
         run: |
           echo 'Skipped npm audit because this pull request changes no dependencies: yarn.lock and .yarnrc.yml are untouched, and any package.json edits were confined to non-dependency fields such as `scripts`.' >> "$GITHUB_STEP_SUMMARY"
+
+  # Push to main only (ADR 0124). A pull request that fails the audit already
+  # shows its author the red check, and a workflow_dispatch failure is a person
+  # poking the pipeline; neither should open an issue the next green push to
+  # main would then have to interpret. A cancelled run is neither outcome, so
+  # neither report job runs.
+  report-audit-failure:
+    name: Report Audit Failure
+    runs-on: ubuntu-latest
+    needs: secure-install-review
+    if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.secure-install-review.outputs.audit_outcome == 'failure' }}
+
+    # Job permissions replace the workflow set, so contents: read is restated.
+    # Checkout uses it to load the audit-issue module; issues: write is the
+    # only extra scope, and it lives here rather than on the job that installs
+    # dependencies.
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # Same shape as nightly-e2e.yml: one open issue that gets commented on,
+      # rather than a new issue for every failing push. The title and label
+      # list live in tools/scripts/lib/npm-audit-issue.mjs — not a second copy
+      # here. Advisory text is third-party input, so it arrives through the
+      # environment and is never interpolated into the script.
+      - name: Open or update the audit issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          ADVISORIES: ${{ needs.secure-install-review.outputs.advisories }}
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const {
+              AUDIT_ISSUE_TITLE,
+              AUDIT_ISSUE_CREATE_LABELS,
+              failureReport,
+              findOpenAuditIssue,
+            } = await import(
+              pathToFileURL(
+                `${process.env.GITHUB_WORKSPACE}/tools/scripts/lib/npm-audit-issue.mjs`,
+              ).href
+            );
+
+            let advisories = [];
+            try {
+              const parsed = JSON.parse(process.env.ADVISORIES || '[]');
+              if (Array.isArray(parsed)) advisories = parsed;
+            } catch {
+              core.warning('The advisories output was not JSON; reporting without them.');
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = failureReport({
+              runUrl,
+              date: new Date().toISOString().slice(0, 10),
+              sha: context.sha.slice(0, 8),
+              advisories,
+            });
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+
+            const match = findOpenAuditIssue(existing);
+
+            if (match) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                body,
+              });
+              core.info(`Commented on existing issue #${match.number}`);
+              return;
+            }
+
+            const created = await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: AUDIT_ISSUE_TITLE,
+              body,
+              labels: [...AUDIT_ISSUE_CREATE_LABELS],
+            });
+            core.info(`Created issue #${created.data.number}`);
+
+  # The first green push to main after a failure is the recovery. Every later
+  # green push finds the newest report already says "recovered" and does
+  # nothing, so an issue kept open for triaged work is not commented on by
+  # each merge. What recovery does with the issue is recoveryAction(), the
+  # nightly E2E rot issue's rule: closed when it carries no triage state
+  # label, commented on and left open when it carries one.
+  report-audit-success:
+    name: Report Audit Success
+    runs-on: ubuntu-latest
+    needs: secure-install-review
+    if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.secure-install-review.outputs.audit_outcome == 'success' }}
+
+    # Least privilege. Job permissions replace the workflow set, so
+    # contents: read is restated for the checkout. issues: write covers the
+    # comment and, when the issue was never triaged, the close. Nothing else.
+    permissions:
+      contents: read
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Close or comment on the audit issue
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        with:
+          script: |
+            const { pathToFileURL } = require('node:url');
+            const {
+              AUDIT_ISSUE_TITLE,
+              findOpenAuditIssue,
+              lastReportedState,
+              recoveryAction,
+              recoveryComment,
+            } = await import(
+              pathToFileURL(
+                `${process.env.GITHUB_WORKSPACE}/tools/scripts/lib/npm-audit-issue.mjs`,
+              ).href
+            );
+
+            const existing = await github.paginate(github.rest.issues.listForRepo, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              per_page: 100,
+            });
+            const match = findOpenAuditIssue(existing);
+
+            if (!match) {
+              core.info(`No open issue titled ${AUDIT_ISSUE_TITLE}`);
+              return;
+            }
+
+            const comments = await github.paginate(github.rest.issues.listComments, {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              per_page: 100,
+            });
+
+            if (lastReportedState({ body: match.body, comments }) === 'recovered') {
+              core.info(`Recovery already recorded on issue #${match.number}`);
+              return;
+            }
+
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const action = recoveryAction(match.labels);
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: match.number,
+              body: recoveryComment({
+                action,
+                runUrl,
+                date: new Date().toISOString().slice(0, 10),
+                sha: context.sha.slice(0, 8),
+              }),
+            });
+
+            if (action === 'close') {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: match.number,
+                state: 'closed',
+                state_reason: 'completed',
+              });
+              core.info(`Closed audit issue #${match.number}`);
+              return;
+            }
+
+            core.info(`Audit recovered; left triaged issue #${match.number} open`);
 
   prepare-dependencies:
     name: Prepare Dependency Cache
@@ -625,6 +833,9 @@ jobs:
 
       - name: Nightly E2E rot-issue contracts
         run: corepack yarn nightly-e2e:rot:test
+
+      - name: npm audit issue contracts
+        run: corepack yarn npm-audit:issue:test
 
       - name: Lint coverage checker contracts
         run: corepack yarn lint:coverage:test
