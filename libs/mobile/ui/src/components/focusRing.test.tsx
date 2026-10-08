@@ -6,6 +6,8 @@ import { lightTheme } from '../theme';
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
 import { Checkbox } from './Checkbox';
+import { Chip } from './Chip';
+import { EmptyState } from './EmptyState';
 import { InlineNotice } from './InlineNotice';
 import { ListRow } from './ListRow';
 import { LockAction } from './LockAction';
@@ -259,5 +261,62 @@ describe('P3 focus ring behind an open sheet', () => {
 
     expect(outline('Save')).toEqual(NO_RING);
     expect(outline('Rename')).toEqual(INSET);
+  });
+});
+
+/**
+ * A screen moves focus to a control through the `ref` it offers. Each of
+ * these attaches the ref it is given to a view and detaches it on unmount;
+ * that the view is the one that takes focus is seen on a device.
+ */
+describe('the view a control hands a screen to focus', () => {
+  it.each([
+    [
+      'Button',
+      (ref: React.Ref<unknown>) => (
+        <Button ref={ref as never} label="Log out" onPress={jest.fn()} />
+      ),
+    ],
+    [
+      'Chip',
+      (ref: React.Ref<unknown>) => (
+        <Chip ref={ref as never} label="Show done" onPress={jest.fn()} />
+      ),
+    ],
+    [
+      'EmptyState action',
+      (ref: React.Ref<unknown>) => (
+        <EmptyState
+          title="All clear"
+          actionLabel="Show done"
+          onAction={jest.fn()}
+          actionRef={ref as never}
+        />
+      ),
+    ],
+    [
+      'ListRow',
+      (ref: React.Ref<unknown>) => (
+        <ListRow ref={ref as never} title="Milk" onPress={jest.fn()} />
+      ),
+    ],
+  ])('is attached by %s, and detached with it', async (_name, control) => {
+    const ref = jest.fn();
+    const rendered = await render(<TestWrapper>{control(ref)}</TestWrapper>);
+    expect(ref).toHaveBeenCalledTimes(1);
+    expect(ref.mock.calls[0][0]).not.toBeNull();
+
+    await rendered.unmount();
+    expect(ref).toHaveBeenLastCalledWith(null);
+  });
+
+  it('is not attached by a Chip that cannot be pressed', async () => {
+    const ref = jest.fn();
+    await render(
+      <TestWrapper>
+        <Chip ref={ref} label="Dairy" />
+      </TestWrapper>,
+    );
+    expect(ref).not.toHaveBeenCalled();
   });
 });

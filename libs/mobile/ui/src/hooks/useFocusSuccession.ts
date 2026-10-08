@@ -5,7 +5,11 @@ import {
   useRef,
   type RefObject,
 } from 'react';
-import { keyboardFocusedView, type FocusTarget } from './focusReturn';
+import {
+  keyboardFocusedView,
+  nameSuccessor,
+  type FocusTarget,
+} from './focusReturn';
 
 /**
  * Who takes focus when the item at `departed` leaves `order`, nearest first:
@@ -65,6 +69,14 @@ interface Debt<K> {
  * to, and keeps focus. A focus that waited for `ready` is requested a frame
  * after the render that brought it.
  *
+ * A screen opened from an item returns focus to it on leaving
+ * (`useReturnFocusOnLeave`). When the item is gone by then — deleted on the
+ * screen it opened — the same order answers: each control is named a
+ * successor (`nameSuccessor`), which is the item's own control if it has been
+ * mounted again somewhere else in the list, else the heir as above (#1075).
+ * It is worked out when it is asked for, against the items mounted then, so
+ * an heir that has left since is passed over too.
+ *
  * The row must still have a size when it is removed. Android takes focus from
  * a view that shrinks to nothing before React is told, and then no control
  * is noted as the row leaves (see `LEAVE_FLOOR` in `ListRow.tsx`).
@@ -80,6 +92,12 @@ export function useFocusSuccession<K>(
   // effect of the same commit has read it.
   const departed = useRef<{ key: K; view: FocusTarget } | null>(null);
   const owed = useRef<Debt<K> | null>(null);
+  // Every control unmounted in the commit under way, focused or not.
+  const detached = useRef<{ key: K; view: FocusTarget }[]>([]);
+  // The heirs of each control whose item has left, for as long as something
+  // else still holds the control's view.
+  const heirsOfGone = useRef(new WeakMap<FocusTarget, readonly K[]>());
+  const fallbackNow = useRef(fallback);
   const readyBefore = useRef(ready);
   const frame = useRef(0);
 
@@ -92,11 +110,24 @@ export function useFocusSuccession<K>(
     const ref = (view: FocusTarget | null): void => {
       if (view !== null) {
         views.current.set(key, view);
+        nameSuccessor(view, () => {
+          const again = views.current.get(key);
+          if (again !== undefined) return again;
+          const heirs = heirsOfGone.current.get(view);
+          // Still listed and not mounted: there is no place to take.
+          if (heirs === undefined) return null;
+          const heir = heirs.find((other) => views.current.has(other));
+          return heir !== undefined
+            ? (views.current.get(heir) ?? null)
+            : (fallbackNow.current?.current ?? null);
+        });
         return;
       }
       const was = views.current.get(key);
       views.current.delete(key);
-      if (was !== undefined && keyboardFocusedView() === was) {
+      if (was === undefined) return;
+      detached.current.push({ key, view: was });
+      if (keyboardFocusedView() === was) {
         departed.current = { key, view: was };
       }
     };
@@ -115,6 +146,13 @@ export function useFocusSuccession<K>(
         from: left.view,
       };
     }
+    for (const gone of detached.current) {
+      if (!listed.has(gone.key)) {
+        heirsOfGone.current.set(gone.view, focusHeirs(order.current, gone.key));
+      }
+    }
+    detached.current = [];
+    fallbackNow.current = fallback;
     order.current = keys;
     for (const key of refs.current.keys()) {
       if (!listed.has(key)) refs.current.delete(key);

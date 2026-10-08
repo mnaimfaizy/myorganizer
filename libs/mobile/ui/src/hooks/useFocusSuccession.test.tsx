@@ -2,7 +2,7 @@ import React from 'react';
 import { act, renderHook } from '@testing-library/react-native';
 import type { FocusEvent } from 'react-native';
 import { ThemeProvider } from '../useTheme';
-import type { FocusTarget } from './focusReturn';
+import { useReturnFocusOnLeave, type FocusTarget } from './focusReturn';
 import { useFocusRing } from './useFocusRing';
 import {
   focusHeirs,
@@ -64,16 +64,33 @@ const renderList = async (
     return found;
   };
 
+  /** The commit that drops rows, before their own cleanup has run. */
+  const drop = async (...gone: string[]): Promise<void> => {
+    const refs = gone.map((name) => list.result.current(name));
+    keys = keys.filter((name) => !gone.includes(name));
+    await act(async () => {
+      refs.forEach((ref) => ref(null));
+      await list.rerender({ keys, options: current });
+    });
+  };
+
   return {
     row,
+    drop,
     remove: async (...gone: string[]) => {
-      const refs = gone.map((name) => list.result.current(name));
-      keys = keys.filter((name) => !gone.includes(name));
+      await drop(...gone);
+      for (const name of gone) await row(name).unmount();
+    },
+    /** Mounts a row's control again, as a new view under the same key. */
+    remount: async (name: string) => {
+      const again = await renderControl();
       await act(async () => {
-        refs.forEach((ref) => ref(null));
+        list.result.current(name)(null);
+        list.result.current(name)(again.view);
         await list.rerender({ keys, options: current });
       });
-      for (const name of gone) await row(name).unmount();
+      await row(name).unmount();
+      rows.set(name, again);
     },
     /** Unmounts a row's control and leaves its key listed. */
     detach: async (name: string) => {
@@ -269,5 +286,127 @@ describe('useFocusSuccession', () => {
       await nextFrame();
       expect(list.focused()).toEqual([]);
     });
+  });
+});
+
+/** A pushed screen: opened on render, left on unmount. */
+const openScreen = () => renderHook(() => useReturnFocusOnLeave());
+
+/** A screen opened with Enter on `name`, which the screen then covers. */
+const openFrom = async (
+  list: Awaited<ReturnType<typeof renderList>>,
+  name: string,
+) => {
+  await list.row(name).focus();
+  const screen = await openScreen();
+  await list.row(name).blur();
+  return screen;
+};
+
+describe('a screen leaving for a list whose row opened it', () => {
+  it('returns focus to the row while it is still there', async () => {
+    const list = await renderList(['a', 'b', 'c']);
+    const screen = await openFrom(list, 'b');
+
+    await screen.unmount();
+    expect(list.focused()).toEqual(['b']);
+    expect(list.row('b').view.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives focus to the next row when the row was removed under it', async () => {
+    const list = await renderList(['a', 'b', 'c']);
+    const screen = await openFrom(list, 'b');
+    await list.remove('b');
+    // Removed while the screen is still up: nothing is focused for it yet.
+    expect(list.focused()).toEqual([]);
+
+    await screen.unmount();
+    expect(list.focused()).toEqual(['c']);
+    expect(list.row('c').view.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('gives focus to the row before when the last row was removed', async () => {
+    const list = await renderList(['a', 'b', 'c']);
+    const screen = await openFrom(list, 'c');
+    await list.remove('c');
+
+    await screen.unmount();
+    expect(list.focused()).toEqual(['b']);
+  });
+
+  it('gives focus to the fallback when the only row was removed', async () => {
+    const fallback = { current: { focus: jest.fn() } };
+    const list = await renderList(['a'], { fallback });
+    const screen = await openFrom(list, 'a');
+    await list.remove('a');
+
+    await screen.unmount();
+    expect(fallback.current.focus).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes over an heir that has left by the time the screen leaves', async () => {
+    const list = await renderList(['a', 'b', 'c', 'd']);
+    const screen = await openFrom(list, 'b');
+    await list.remove('b');
+    await list.remove('c');
+
+    await screen.unmount();
+    expect(list.focused()).toEqual(['d']);
+  });
+
+  it('does not go by the slot of a row removed in the commit before', async () => {
+    // The row's ref is detached with the commit; its ring's cleanup, which
+    // empties the slot, has not run when the screen's own cleanup does.
+    const list = await renderList(['a', 'b', 'c']);
+    const screen = await openFrom(list, 'b');
+    await list.drop('b');
+
+    await screen.unmount();
+    expect(list.focused()).toEqual(['c']);
+    await list.row('b').unmount();
+  });
+
+  it('follows a row that was mounted again elsewhere in the list', async () => {
+    const list = await renderList(['a', 'b', 'c']);
+    const screen = await openFrom(list, 'b');
+    const before = list.row('b').view;
+    await list.remount('b');
+
+    await screen.unmount();
+    expect(before.focus).not.toHaveBeenCalled();
+    expect(list.focused()).toEqual(['b']);
+  });
+
+  it('gives no focus when the row is listed and not mounted', async () => {
+    const list = await renderList(['a', 'b', 'c']);
+    const screen = await openFrom(list, 'b');
+    await list.detach('b');
+    await list.row('b').unmount();
+
+    await screen.unmount();
+    expect(list.focused()).toEqual([]);
+  });
+
+  it('gives no focus when nothing held it, as after a touch', async () => {
+    const list = await renderList(['a', 'b', 'c']);
+    await list.row('b').focus();
+    // Touching the screen takes the window into touch mode, which blurs.
+    await list.row('b').blur();
+    const screen = await openScreen();
+    await list.remove('b');
+
+    await screen.unmount();
+    expect(list.focused()).toEqual([]);
+  });
+
+  it('gives no focus once the list itself has unmounted', async () => {
+    const fallback = { current: null };
+    const list = await renderList(['a', 'b'], { fallback });
+    const screen = await openFrom(list, 'a');
+    await list.remove('a', 'b');
+    await list.unmount();
+
+    await expect(screen.unmount()).resolves.not.toThrow();
+    expect(list.focused()).toEqual([]);
   });
 });

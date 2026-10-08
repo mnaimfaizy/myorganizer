@@ -278,6 +278,11 @@ export interface ListRowProps {
    * pattern the mobile Agent Guide asks for and a bare `ViewStyle` refuses.
    */
   style?: StyleProp<ViewStyle>;
+  /**
+   * The view that takes the row's focus and its ring, for a list that hands
+   * focus on when a row leaves (`useFocusSuccession`).
+   */
+  ref?: React.Ref<React.ComponentRef<typeof View>>;
 }
 
 /**
@@ -548,6 +553,7 @@ export function ListRow({
   onRetry,
   retryLabel = 'Retry',
   style,
+  ref,
 }: ListRowProps): React.JSX.Element {
   const theme = useTheme();
   const reduceMotion = useReduceMotion();
@@ -764,6 +770,7 @@ export function ListRow({
         <GestureDetector gesture={pan}>
           <Animated.View style={sheet}>
             <Pressable
+              ref={ref}
               accessibilityRole={
                 toggle != null
                   ? 'switch'

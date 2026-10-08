@@ -17,6 +17,8 @@ export interface EmptyStateProps {
   /** A glyph before the action's label — `plus` for "Add task". */
   actionIcon?: IconName;
   onAction?: () => void;
+  /** The action's view, for a screen that moves focus to it. */
+  actionRef?: React.Ref<React.ComponentRef<typeof View>>;
   /**
    * The action's weight. `primary` by default; the Tasks "All clear" state
    * offers "Show done" as `secondary`, because nothing there is to be done.
@@ -62,6 +64,7 @@ export function EmptyState({
   actionLabel,
   actionIcon,
   onAction,
+  actionRef,
   actionVariant = 'primary',
   actionIconPosition = 'leading',
   tone = 'neutral',
@@ -120,6 +123,7 @@ export function EmptyState({
       )}
       {actionLabel != null && onAction != null && (
         <Button
+          ref={actionRef}
           label={actionLabel}
           icon={actionIcon}
           variant={actionVariant}

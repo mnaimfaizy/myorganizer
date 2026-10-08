@@ -61,6 +61,11 @@ export interface ChipProps {
   accessibilityLabel?: string;
   disabled?: boolean;
   style?: ViewStyle;
+  /**
+   * The pressable chip's view, for a screen that moves focus to it. A chip
+   * with no `onPress` takes no focus and attaches nothing.
+   */
+  ref?: React.Ref<React.ComponentRef<typeof View>>;
 }
 
 /**
@@ -82,6 +87,7 @@ export function Chip({
   accessibilityLabel,
   disabled = false,
   style,
+  ref,
 }: ChipProps): React.JSX.Element {
   const theme = useTheme();
   const ring = useFocusRing();
@@ -135,6 +141,7 @@ export function Chip({
 
   return (
     <Pressable
+      ref={ref}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={
