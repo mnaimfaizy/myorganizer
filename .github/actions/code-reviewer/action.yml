@@ -303,8 +303,8 @@ runs:
 
     # The script, not the model, decides whether the report stands. The
     # caller's tier overrides whatever the envelope says (ADR 0070 item 3),
-    # and the run facts override the four envelope fields that are facts
-    # about the run (ADR 0123).
+    # and the run facts override the envelope fields that are facts about
+    # the run (ADR 0123).
     #
     # The validator also judges the run against those facts. A run fact that
     # fails "Agent Review Ran" — no sub-agent read an axis's brief, or a

@@ -527,7 +527,7 @@ export const RunFactsSchema = z
   });
 
 /**
- * What a normalized report keeps of the facts file, beside the four envelope
+ * What a normalized report keeps of the facts file, beside the envelope
  * fields the facts overwrite.
  */
 const RunFactsSummarySchema = z.strictObject({
@@ -560,11 +560,12 @@ const RunFactsSummarySchema = z.strictObject({
  * What the validator writes and the only thing the renderer accepts: the
  * input plus derived ids, the computed verdict, and the effective tier.
  *
- * Four envelope fields are facts about the run, and in CI they are read from
- * the reviewer transcript and overwrite whatever the reviewer wrote (ADR
- * 0123). `runFactsFrom` says which a report carries. Three of the four may be
- * `null` here and never in the input: `null` is "the transcript could not be
- * read", which is neither an empty list nor the reviewer's own claim.
+ * `standardsSources`, `executed`, `durationMs`, `model`, and `cost` are facts
+ * about the run, and in CI they are read from the reviewer transcript and
+ * overwrite whatever the reviewer wrote (ADR 0123). `runFactsFrom` says which
+ * a report carries. Every one but `model` may be `null` here and never in the
+ * input: `null` is "the transcript did not say", which is neither an empty
+ * list, nor zero, nor the reviewer's own claim.
  *
  * `runFactsFrom` and `runFacts` are optional so that a report normalized
  * before they existed still parses as a previous report and still lends its
@@ -814,8 +815,8 @@ export const computeEffectiveTier = (
  * it, and a report of another schema version lends none.
  *
  * `facts` is the run facts file read from the reviewer transcript, when
- * there is one. It overwrites the four envelope fields that are facts about
- * the run, and it is judged against the report (run-ladder.mjs): what fails
+ * there is one. It overwrites the envelope fields that are facts about the
+ * run, and it is judged against the report (run-ladder.mjs): what fails
  * `Agent Review Ran` is recorded under `runFacts.failures`, and what tightens
  * the tier under `runFacts.tightenedBy` and in `effectiveTier`. No finding,
  * severity, or verdict is read from it. Without it the report keeps what the

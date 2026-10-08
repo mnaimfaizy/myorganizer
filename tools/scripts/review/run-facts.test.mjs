@@ -133,7 +133,7 @@ test('an unknown shape may not state a fact, and a readable one may not withhold
 
 // --- the overwrite ----------------------------------------------------------
 
-test('with facts, the four run fields are the transcripts and not the reviewers', () => {
+test('with facts, the run fields are the transcripts and not the reviewers', () => {
   const report = normalizeReport(envelope(), { facts: facts() });
   assert.deepEqual(report.standardsSources, ['CODING_STANDARDS.md']);
   assert.deepEqual(report.executed, [

@@ -39,7 +39,8 @@ reviewer has exited. The reviewer does not write it.**
 
 1. **Four envelope fields are pinned.** A step reads the transcript and writes a facts file. The
    validator takes that file the way it takes `--tier`, and overwrites `standardsSources`,
-   `executed`, `durationMs`, and `model` from it. The CLI version is recorded beside the model. The
+   `executed`, `durationMs`, and `model` from it. A fifth, `cost`, joined them in issue #1057; see
+   Consequences. The CLI version is recorded beside the model. The
    report schema version stays at 4. This ADR first said 5. The version exists to say whether
    finding ids are comparable between runs, and this decision does not change a finding's identity,
    so the new fields are optional additions and a report written before them still lends its ids. This
