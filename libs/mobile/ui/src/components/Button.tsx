@@ -11,6 +11,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ThemeColors } from '../theme';
 import type { TypeScaleStep } from '../typeScale';
+import { disabledNatively } from '../hooks/focusHeld';
 import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { labelRipple, PressedLayer } from './feedback';
@@ -163,16 +164,9 @@ export function Button({
       : VARIANTS[variant];
   const { height, step, icon: iconSize } = SIZES[size];
   const inert = disabled || busy;
-  // Inert while it is where keyboard focus is. Android takes focus from a
-  // view as it is disabled, and a sheet whose buttons all go inert at once
-  // has nowhere to keep it: when they came back, focus was on the first of
-  // them, so Enter on "Archive instead" that could not be saved left the
-  // keyboard on "Delete task" (#1085). As `Checkbox` does (#1068), the view
-  // is told nothing for as long as it holds focus and the press is refused
-  // here instead; it is disabled for real once focus moves on. Never so after
-  // a touch or on iOS, where no control is told it has focus.
-  const heldByFocus = inert && ring.focused;
-  const nativelyDisabled = inert && !heldByFocus;
+  // Not told to the view while the button is where keyboard focus is; the
+  // press is refused here instead (see `disabledNatively`).
+  const nativelyDisabled = disabledNatively(inert, ring.focused);
   const radius = theme.radii.md;
   const isLink = variant === 'link';
 
