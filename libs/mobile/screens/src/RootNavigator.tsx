@@ -10,6 +10,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '@myorganizer/mobile/feat-auth';
 import { useVaultSession } from '@myorganizer/mobile/feat-vault';
 import {
+  FocusLanding,
   MOTION,
   Screen,
   useReduceMotion,
@@ -89,6 +90,9 @@ export function RootNavigator(): React.JSX.Element {
       <StatusBar
         barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'}
       />
+      {/* First, ahead of every screen: mount order is what makes it the view
+          Android focuses when it has to pick one itself (#1042). */}
+      <FocusLanding />
       {status === 'loading' ? (
         <LoadingScreen />
       ) : (

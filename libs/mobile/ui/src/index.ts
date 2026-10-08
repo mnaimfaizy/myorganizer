@@ -71,6 +71,7 @@ export {
   type ConfirmSheetProps,
 } from './components/ConfirmSheet';
 export { EmptyState, type EmptyStateProps } from './components/EmptyState';
+export { FocusLanding } from './components/FocusLanding';
 export { Icon, type IconName, type IconProps } from './components/Icon';
 export { IconButton, type IconButtonProps } from './components/IconButton';
 export {
