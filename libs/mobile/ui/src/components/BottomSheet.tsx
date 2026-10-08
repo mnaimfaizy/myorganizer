@@ -15,6 +15,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '../useTheme';
 import { useReduceMotion } from '../hooks/useReduceMotion';
+import { useKeyboardBackGuard } from '../hooks/useKeyboardBackGuard';
 import { useKeyboardVisible } from '../hooks/useKeyboardVisible';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ColorMode, ThemeColors } from '../theme';
@@ -47,7 +48,8 @@ export interface BottomSheetProps {
   visible: boolean;
   /**
    * Called for a tap on the scrim, the close button, the nav bar's Cancel,
-   * and the Android hardware back button.
+   * and Android's Back or Escape — except the one pressed with the soft
+   * keyboard up, which hides the keyboard and leaves the sheet (#949).
    */
   onDismiss: () => void;
   /** The sheet's own title. Also what the sheet is announced as. */
@@ -119,6 +121,7 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
   // The sheet is its own window, so it is its own focus layer: while it is
   // up, no control behind it draws a focus ring.
   const focusLayer = useFocusLayer(props.visible);
+  const requestClose = useKeyboardBackGuard(props.onDismiss);
 
   return (
     <Modal
@@ -127,7 +130,7 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
       // Reduce Motion takes the travel, not the sheet: it still appears and
       // still covers what it covered, without sliding up to do it.
       animationType={reduceMotion ? 'none' : 'slide'}
-      onRequestClose={props.onDismiss}
+      onRequestClose={requestClose}
       // Edge-to-edge like the screen under it (Android enforces it there):
       // with the status bar alone translucent, the dialog window still fits
       // inside the system bars and the sheet's safe-area padding lands twice.
@@ -173,7 +176,7 @@ const SCRIM_ACTIONS = [{ name: 'activate' }] as const;
  * hardware keyboard's first Tab landed there, ahead of the sheet's own
  * controls, and the ring it drew went round the whole display (#1028). A
  * keyboard does not need the stop: Back and Escape reach the sheet's
- * `onRequestClose`.
+ * `onRequestClose` (`useKeyboardBackGuard`).
  *
  * `accessible` is the Tab stop on Android (see `staticElement.ts`), and a
  * `Pressable` asks for a second one through `focusable`, which is also what
