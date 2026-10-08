@@ -46,6 +46,13 @@ export type { VaultBlobEdit, VaultBlobReloadOutcome, VaultBlobWriteErrorKind };
  * already moved past. `reload` shows `loading` only when there is nothing on
  * screen yet; re-reading over a list shows `refreshing` instead.
  *
+ * Each call of this hook holds its own copy, so two screens on one Vault
+ * Blob Type — a list and the detail pushed over it — are two copies. A write
+ * the server confirmed for one is handed to the other in memory, so the list
+ * shows it on return with no request of its own. The other takes it only
+ * while it has no request in flight and holds no edit whose push failed;
+ * `writing`, `writeError`, and a held edit are never shared.
+ *
  * All of that is decided in `createVaultBlobController`, which has no React
  * in it and is tested on its own. This hook hands it the session and renders
  * the state it reports.
@@ -62,7 +69,7 @@ export function useVaultBlob(type: VaultBlobType): {
   apply: (edit: VaultBlobEdit) => Promise<boolean>;
   retry: () => Promise<boolean>;
 } {
-  const { masterKey, vaultApi } = useVaultSession();
+  const { masterKey, vaultApi, blobPeers } = useVaultSession();
   const [state, setState] = useState<VaultBlobState>(INITIAL_VAULT_BLOB_STATE);
 
   // Read by the controller at the start of each call, so one controller —
@@ -77,9 +84,14 @@ export function useVaultBlob(type: VaultBlobType): {
     controllerRef.current = createVaultBlobController({
       getSession: () => sessionRef.current,
       onState: setState,
+      peers: blobPeers,
     });
   }
   const controller = controllerRef.current;
+
+  // Before the first reload, and gone with the screen: an unmounted hook has
+  // no state to put a peer's write into.
+  useEffect(() => controller.join(), [controller]);
 
   useEffect(() => {
     void controller.reload();

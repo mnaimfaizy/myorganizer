@@ -26,6 +26,7 @@ import {
   unlockVaultWithRecoveryKey,
   type VaultUnlockSecret,
 } from '../unlock';
+import { createVaultBlobPeers, type VaultBlobPeers } from '../vaultBlobPeers';
 
 export type VaultStatus = 'locked' | 'unlocked';
 export type { VaultUnlockSecret };
@@ -111,6 +112,13 @@ interface VaultSessionValue {
    */
   lock: (reason: LockReason) => void;
   biometric: BiometricUnlockController;
+  /**
+   * Where the `useVaultBlob` controllers under this provider tell each other
+   * of a write the server confirmed. One for the provider's life: a write is
+   * taken only under the Master Key object it was written under, which is
+   * what keeps one Vault Unlock's writes out of the next.
+   */
+  blobPeers: VaultBlobPeers;
 }
 
 const VaultSessionContext = createContext<VaultSessionValue | null>(null);
@@ -149,6 +157,7 @@ export function VaultProvider({
     useState<BiometricUnlockState | null>(null);
   const [biometricMethod, setBiometricMethod] =
     useState<BiometricMethod | null>(null);
+  const [blobPeers] = useState(createVaultBlobPeers);
 
   const applyUnlockOutcome = useCallback(
     (outcome: { masterKey: Uint8Array; secret: VaultUnlockSecret }): void => {
@@ -345,6 +354,7 @@ export function VaultProvider({
       unlockWithRecoveryKey,
       lock,
       biometric,
+      blobPeers,
     }),
     [
       status,
@@ -357,6 +367,7 @@ export function VaultProvider({
       unlockWithRecoveryKey,
       lock,
       biometric,
+      blobPeers,
     ],
   );
 
