@@ -1,0 +1,62 @@
+# TEMPORARY — removed before this Pull Request merges (issue #1056).
+#
+# Answers one question with a transcript: does a `general-purpose` sub-agent
+# started by `anthropics/claude-code-action@v1` have root `AGENTS.md` and
+# `CLAUDE.md` in its context without opening them? ADR 0123 item 2, the
+# Standards brief, and a fixed note on every review comment all say it does,
+# on the strength of one interactive session.
+#
+# The session is granted the Agent tool and nothing else, so neither it nor
+# its sub-agent can read a file: whatever the sub-agent quotes, the harness
+# put there. The launch mirrors `.github/actions/code-reviewer/action.yml`
+# (same action, same model variable, same credential, same job token).
+name: Harness Probe
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/harness-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Sub-agent policy probe
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Ask a sub-agent what it was given
+        id: probe
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          github_token: ${{ github.token }}
+          prompt: |
+            Call the Agent tool exactly once, with `subagent_type: general-purpose` and `run_in_background: false`, and with exactly the text between the two marker lines as its prompt. Add nothing to it and remove nothing from it.
+
+            ---- begin ----
+            Call no tool. Answer only from what is already in your context.
+
+            1. Is the repository's root AGENTS.md in your context? If it is, quote word for word the one sentence under its "## Scope" heading, and the first bullet under its "## Do Not" heading.
+            2. Is the repository's root CLAUDE.md in your context? If it is, quote word for word the paragraph directly under its "# Claude Code" heading.
+
+            For a file you do not have, write exactly NOT IN CONTEXT for that item. Do not guess and do not reconstruct.
+            ---- end ----
+
+            When the sub-agent replies, reply with its answer word for word and nothing else. Call no other tool.
+          claude_args: >-
+            --model ${{ vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+            --max-turns 6
+            --allowedTools "Agent"
+
+      - name: Keep the transcript
+        if: always() && steps.probe.outputs.execution_file != ''
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: harness-probe-transcript
+          path: ${{ steps.probe.outputs.execution_file }}
+          retention-days: 90
