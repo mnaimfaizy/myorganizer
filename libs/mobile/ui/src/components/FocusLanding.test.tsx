@@ -1,7 +1,11 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react-native';
 import { Platform, StyleSheet } from 'react-native';
-import { FOCUS_LANDING_TEST_ID, FocusLanding } from './FocusLanding';
+import {
+  FOCUS_LANDING_NATIVE_ID,
+  FOCUS_LANDING_TEST_ID,
+  FocusLanding,
+} from './FocusLanding';
 
 function landing() {
   return screen.queryByTestId(FOCUS_LANDING_TEST_ID, {
@@ -20,6 +24,13 @@ describe('FocusLanding Component', () => {
       expect(landing()?.props.focusable).toBe(true);
       // A view with no content is otherwise dropped from the native tree.
       expect(landing()?.props.collapsable).toBe(false);
+    });
+
+    it('should carry the id native code gives touch-mode focus to', async () => {
+      await render(<FocusLanding />);
+      // `MainActivity.kt` looks for this exact string.
+      expect(FOCUS_LANDING_NATIVE_ID).toBe('focus-landing');
+      expect(landing()?.props.nativeID).toBe(FOCUS_LANDING_NATIVE_ID);
     });
 
     it('should do nothing when activated', async () => {
