@@ -25,20 +25,9 @@ description: 'Use when generating new Nx libraries, applications, components, or
 
 ## Generator Reference
 
-`package.json` is the list of installed plugins; the table below is a hand-maintained index of the
-generators this repo reaches for, and nothing asserts it. Confirm a row with `yarn nx list <plugin>`
-rather than editing it from memory, and drop any plugin that leaves `package.json`.
-
-| Plugin           | Common Generators                  |
-| ---------------- | ---------------------------------- |
-| `@nx/react`      | `library`, `component`, `hook`     |
-| `@nx/next`       | `application`, `page`, `component` |
-| `@nx/js`         | `library`                          |
-| `@nx/node`       | `application`, `library`           |
-| `@nx/express`    | `application`                      |
-| `@nx/playwright` | `configuration`                    |
-| `@nx/storybook`  | `configuration`                    |
-| `@nx/workspace`  | `move`, `remove`                   |
+`package.json` is the list of installed plugins. List a plugin's generators with
+`yarn nx list <plugin>` rather than from memory; this Skill keeps no table of them, because nothing
+would assert it.
 
 `nx.json` generator defaults already set for this repo:
 

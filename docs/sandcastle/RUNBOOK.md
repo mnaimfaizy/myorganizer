@@ -311,9 +311,10 @@ For a standalone run, substitute the `issue/<n>-<slug>` branch the summary print
 #### What the gate verifies, and at what scope
 
 The default targets mirror what CI enforces on the eventual PR, so a gate-green slice is not one
-that fails the moment it is pushed. There is no `typecheck` target in this repo — `build` is what
-typechecks it, and it is the step that catches a slice whose types do not compile against its
-consumers.
+that fails the moment it is pushed. Only `mobile` has a `typecheck` target, so the gate does not
+run one — `build` is what typechecks a slice here, and it is the step that catches a slice whose
+types do not compile against its consumers. The workspace-wide compile is `yarn typecheck:check`,
+which CI runs.
 
 The gate container is given a `DATABASE_URL`. Nothing connects to it: several backend modules
 construct a `PrismaClient` at module scope, so a suite importing one throws on import when the

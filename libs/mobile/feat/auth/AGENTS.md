@@ -6,7 +6,6 @@ React Native auth: access-token memory, refresh-token keychain, and the auth API
 
 ## Commands
 
-- Test: `yarn nx test mobile-feat-auth`.
 - Lint: `yarn nx lint mobile-feat-auth`.
 
 ## Do

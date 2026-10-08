@@ -600,14 +600,15 @@ do the generators. Aliases added by hand stay wherever they were typed unless yo
 
 #### Type Checking
 
-TypeScript is checked automatically during build, but you can run it manually:
+`yarn typecheck:check` compiles each project's lib, app, web, and spec tsconfig, wherever one
+exists, and is the command CI runs. Only `mobile` has a per-project `typecheck` target.
 
 ```bash
-# Check types for backend
-yarn nx run backend:type-check
+# apps/backend/src/prisma is generated and gitignored, so a fresh checkout needs it first
+yarn nx run backend:generate-types
 
-# Check types for frontend
-yarn nx run myorganizer:type-check
+# Check types across the workspace
+yarn typecheck:check
 ```
 
 ## Creating Issues and Pull Requests

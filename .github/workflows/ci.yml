@@ -693,6 +693,15 @@ jobs:
       - name: Check documented file-refs resolve
         run: corepack yarn docs:file-refs:check
 
+      - name: Documented Nx target checker contracts
+        run: corepack yarn docs:nx-targets:test
+
+      # Asserts every `nx run <project>:<target>` and `nx <target> <project>` in
+      # tracked Markdown resolves in the project graph. DEVELOPMENT.md taught two
+      # targets that never existed until #980. Needs the graph, so CI only.
+      - name: Check documented Nx targets resolve
+        run: corepack yarn docs:nx-targets:check
+
       - name: Enum fan-out checker contracts
         run: corepack yarn enum:fanout:test
 

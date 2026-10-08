@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "comment": "Nx references `yarn docs:nx-targets:check` may find dead without failing. Every entry names the Markdown file that makes the reference, the reference as the checker prints it (`nx run <project>:<target>`, `nx <target> <project>`, `nx run-many -t <target>`), and a written reason. An entry without a reason is rejected. An entry is stale — and fails — when the reference is no longer made or resolves again. This is for a merged ADR recording what a command used to be (ADR 0104); a live instruction naming a dead target is corrected, not exempted. Frozen Research Briefs under docs/research/ and CHANGELOG.md are skipped as a class and do not belong here.",
+  "exemptions": [
+    {
+      "file": "docs/adr/0050-e2e-runs-as-a-blocking-chromium-lane-and-a-nightly-rot-detector.md",
+      "claim": "nx run myorganizer:serve:production",
+      "reason": "Records the `webServer.command` the decision set at the time. The same paragraph says the target has since become the inferred `myorganizer:start` (ADR 0083), so the sentence is history, not an instruction."
+    }
+  ]
+}
