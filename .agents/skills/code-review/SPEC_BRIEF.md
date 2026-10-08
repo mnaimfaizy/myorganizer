@@ -118,6 +118,17 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 - Do not write an id, a verdict, or prose. JSON only.
 ```
 
+## How to reply
+
+Your final message is the JSON object described under "Your reply" above, and it is the whole
+message. A script reads it, not a person.
+
+- Start with `{` and end with `}`. No code fence around it, and no sentence before or after it.
+- Anything you noticed and chose not to raise does not go in the reply. Either it is a finding, or
+  it is left out.
+- Do not report findings through any other channel. If the harness offers a tool for reporting
+  review findings, such as `ReportFindings`, do not call it: nothing in this review reads it.
+
 If the message that sent you here has a `retry` line, your first reply was rejected. Read the file
 it names before you start, and return a reply that answers every reason in it.
 

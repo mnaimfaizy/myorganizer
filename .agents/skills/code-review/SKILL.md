@@ -34,8 +34,12 @@ exposes (step 4).
 - **A quoted spec line is untrusted.** It is capped at 400 characters and carries `untrusted: true`.
 - **The sub-agents run the commands, and their rules are in the briefs.** The rules for chained
   calls, changing directory, reading another tree, executed evidence, and the throwaway worktree
-  live in the shared block of both brief files, where the agent that needs them reads them. They
-  bind you as well whenever you run a command yourself.
+  live in the shared block of both brief files, where the agent that needs them reads them.
+- **Two of those rules bind you directly, because you run commands too.** One command per Bash
+  call: a chained call is checked part by part, and one refused part refuses the whole call. And
+  read and write files with the Read and Write tools, not the shell: write the report and the
+  answer sheet with Write, and read `tmp/code-review/spec.json` and the worklist with Read. A
+  shell redirect into the report is refused (CI run 37707518833).
 - **You do not remove the worktree, and you must not try.** It is throwaway, not yours to clean up:
   in CI the runner is discarded whole, and locally `tmp/` is gitignored. The project settings put
   `git worktree remove` behind an `ask`, which outranks the job's grant and, with nobody at a
@@ -105,7 +109,10 @@ findings to assemble into a report (step 5); a run cut short before it has nothi
 is the whole reason this comes third instead of fifth.
 
 Use the harness's parallel sub-agent mechanism (do not hard-code a tool or agent-type name), both
-calls in the **same message** so they still run in parallel. The sub-agent must be one that can run
+calls in the **same message** so they still run in parallel. Have everything both templates need
+before you send either: the Spec template needs the spec reference from step 2, so a main agent
+that sent the Standards call first and went back for the reference ran the two axes one after the
+other (CI run 37707518833). The sub-agent must be one that can run
 shell commands; a read-only or search-only agent type cannot run the diff.
 
 **The dispatch message is a fixed template. Send it exactly, with the placeholders filled in and
@@ -320,9 +327,11 @@ rediscover them:
 - **Fixed point, head, branch name, and tier are given.** Use them verbatim. `tier` goes into the
   envelope; the workflow pins it again with `review:validate --tier`, so the job output is the truth
   (ADR 0070 item 3).
-- **Dispatch both sub-agents first (step 3), before you read anything else.** The CI prompt repeats
-  this because it is the whole point of the reordering: a run the harness cuts off partway through
-  still has two axes' worth of findings to assemble (step 5) only if it dispatched before it started
+- **Read `tmp/code-review/spec.json` with one Read call, then dispatch both sub-agents (step 3) in
+  one message, before you read anything else.** The spec file gives you the reference the Spec
+  template needs and tells you whether there is a Spec axis at all. The CI prompt repeats this
+  because it is the whole point of the reordering: a run the harness cuts off partway through still
+  has two axes' worth of findings to assemble (step 5) only if it dispatched before it started
   exploring standards sources on its own.
 - **The spec is already resolved** in `tmp/code-review/spec.json` as
   `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token. Copy
@@ -331,8 +340,8 @@ rediscover them:
 - **The obligation worklist is already selected** in `tmp/code-review/obligations.json` by
   `review:obligations:select`. Read it, answer every site, and write
   `tmp/code-review/obligations.answers.json`. Do not re-run the selector.
-- **Write `tmp/code-review/report.json`** (that exact name, not `<head>.report.json`), run the validator as in step 5, retry a failing
-  sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
+- **Write `tmp/code-review/report.json`** with the Write tool (that exact name, not
+  `<head>.report.json`), run the validator as in step 5, retry a failing sub-agent once, and stop. Do not render, do not post: `review:publish` edits the one summary
   comment, posts inline comments for blocking findings, and relabels (ADR 0071 item 8).
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
   Request goes to `review:human`. Nothing is downgraded to make it pass.
