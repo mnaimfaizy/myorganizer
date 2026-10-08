@@ -135,8 +135,14 @@ can say whether a miss came from a thin review without anyone downloading a tran
 
 The note in item 2 is a claim about the harness. It was confirmed once, in an interactive session
 on 2026-10-08: a `general-purpose` sub-agent told to call no tool quoted two lines of root
-`AGENTS.md` correctly. It has not been confirmed in CI. If a CI sub-agent turns out not to have the
-file, the note is false and the brief has to tell the sub-agent to open it.
+`AGENTS.md` correctly. It was confirmed in CI the same day, in run 37727869175 on pull request
+#1065 (issue #1056), with Claude Code CLI 2.1.293 and `claude-sonnet-5-5`. The session was started
+by `anthropics/claude-code-action@v1` and granted the Agent tool alone. Its one `general-purpose`
+sub-agent made no tool call and quoted the sentence under `## Scope` and the first bullet under
+`## Do Not` of root `AGENTS.md`, and the paragraph under `# Claude Code` of root `CLAUDE.md`, word
+for word. The dispatch message carried none of that text. That is one run on one CLI version: a
+release that stops loading the files into sub-agents makes the note false, and the brief then has
+to tell the sub-agent to open them.
 
 A finding's own executed evidence, its command and exit code, is still self-reported and can still
 earn Blocking. Checking it against the transcript needs matching rules of its own and is issue
