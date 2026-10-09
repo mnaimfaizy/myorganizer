@@ -362,9 +362,11 @@ These transitive dependencies are explicitly resolved to patched versions via Ya
 
 > **Note**: `nanoid` reaches the tree through `postcss@8.5.18` (`^3.3.11`) and `@react-navigation/native@7.2.5` (`^3.3.12`). Both are resolved to `3.3.17`, the first release patching both advisories. It is also listed in `npmPreapprovedPackages` because it was published inside the 7-day `npmMinimalAgeGate` window.
 
-> **Note**: `js-yaml` 3.x reaches the tree through `cosmiconfig@5.2.1` and 4.x through `@eslint/eslintrc`. `sharp` comes from `next`, `svgo` 3.x from `@svgr/plugin-svgo@8.1.0` and 4.x from `postcss-svgo@7.1.3`. `smol-toml` is pinned exactly at `1.6.1` by `nx@22.7.12`, so the `1.8.0` resolution overrides a declared exact version — drop it when Nx takes a patched release. Patched versions chosen here are all older than the 7-day `npmMinimalAgeGate`.
+> **Note**: `js-yaml` 3.x reaches the tree through `cosmiconfig@5.2.1` and 4.x through `@eslint/eslintrc`. `sharp` comes from `next`, `svgo` 3.x from `@svgr/plugin-svgo@8.1.0` and 4.x from `postcss-svgo@7.1.3`. `smol-toml` is pinned exactly at `1.6.1` by `nx@22.7.12`, so the `1.8.0` resolution overrides a declared exact version — drop it when Nx takes a patched release. The patched versions named in this note are all older than the 7-day `npmMinimalAgeGate`.
 
-> **Note**: `browserslist` reaches the tree through `@babel/helper-compilation-targets` and `@nx/webpack@22.7.12`. `fast-uri` is pulled by `ajv@8.17.1`. `mysql2` is pinned at `3.15.3` by `prisma@7.2.0` (this app uses the Postgres adapter; the resolution still has to lift the CLI's unused MySQL driver so `yarn npm audit --severity high` can pass). Patched versions chosen here are all older than the 7-day `npmMinimalAgeGate`.
+> **Note**: `browserslist` reaches the tree through `@babel/helper-compilation-targets` and `@nx/webpack@22.7.12`. `fast-uri` is pulled by `ajv@8.17.1`. `mysql2` is pinned at `3.15.3` by `prisma@7.2.0` (this app uses the Postgres adapter; the resolution still has to lift the CLI's unused MySQL driver so `yarn npm audit --severity high` can pass). The patched versions named in this note are all older than the 7-day `npmMinimalAgeGate`.
+
+> **Note**: `handlebars` 4.7.10 and `http-cache-semantics` 4.3.0 were published inside the 7-day `npmMinimalAgeGate` window, so both are listed in `npmPreapprovedPackages`. `handlebars` is pinned at 4.7.9 by `@tsoa/cli@6.6.0` and `ts-jest@29.4.9`; `http-cache-semantics` reaches the tree through `make-fetch-happen@15.0.5` under `node-gyp`.
 
 ### Accepted audit exceptions
 
