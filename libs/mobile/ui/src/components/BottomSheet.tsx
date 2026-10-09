@@ -49,7 +49,8 @@ export interface BottomSheetProps {
   /**
    * Called for a tap on the scrim, the close button, the nav bar's Cancel,
    * and Android's Back or Escape — except the one pressed with the soft
-   * keyboard up, which hides the keyboard and leaves the sheet (#949).
+   * keyboard up for a field of the sheet's own, which hides the keyboard and
+   * leaves the sheet (#949).
    */
   onDismiss: () => void;
   /** The sheet's own title. Also what the sheet is announced as. */
@@ -121,7 +122,7 @@ export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
   // The sheet is its own window, so it is its own focus layer: while it is
   // up, no control behind it draws a focus ring.
   const focusLayer = useFocusLayer(props.visible);
-  const requestClose = useKeyboardBackGuard(props.onDismiss);
+  const requestClose = useKeyboardBackGuard(props.onDismiss, props.visible);
 
   return (
     <Modal

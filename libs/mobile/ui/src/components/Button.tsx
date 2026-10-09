@@ -226,6 +226,13 @@ export function Button({
             />
           )}
           <View
+            // Always a view of its own. With layout styles alone React
+            // Native draws no view for this row and gives its children to the
+            // button; `opacity` while busy makes it one, and Android then
+            // moves the glyph's view between the two parents each time busy
+            // flips — which failed with "The specified child already has a
+            // parent" as "Archive instead" finished (#1088).
+            collapsable={false}
             style={[
               styles.content,
               { gap: theme.spacing.sm },

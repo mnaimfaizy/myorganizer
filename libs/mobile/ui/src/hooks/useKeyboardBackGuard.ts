@@ -48,9 +48,23 @@ export function closeRequestHidesKeyboardOnly(
  *   takes only the press's first half, the release still reaches the Modal
  *   after the keyboard has gone — which is what the grace period is for.
  *
+ * The keyboard guarded is one that came up while the sheet was: only a field
+ * of the sheet's own can have raised it. One already up when the sheet opens
+ * belongs to the screen behind — a picker opened from the Tasks composer —
+ * and Android hides it as the sheet takes the window focus. That is not a
+ * press, and such a sheet has nothing typed in it to keep, so a Back just
+ * after it closes the sheet (#1091).
+ *
+ * Which text input holds focus is no help in telling the two apart: on
+ * Escape the sheet's field has lost focus before the Modal asks to close, so
+ * React Native counts no input as focused by then.
+ *
  * iOS has no such request, and a sheet there is unchanged.
  */
-export function useKeyboardBackGuard(onDismiss: () => void): () => void {
+export function useKeyboardBackGuard(
+  onDismiss: () => void,
+  visible: boolean,
+): () => void {
   const keyboard = useRef<SoftKeyboardState>({
     visible: false,
     hiddenAt: null,
@@ -60,14 +74,17 @@ export function useKeyboardBackGuard(onDismiss: () => void): () => void {
   const dismissing = useRef(false);
 
   useEffect(() => {
-    if (Platform.OS !== 'android') return undefined;
-    // A sheet can be mounted over a keyboard that is already up.
-    keyboard.current = { visible: Keyboard.isVisible(), hiddenAt: null };
+    if (Platform.OS !== 'android' || !visible) return undefined;
+    // Whatever keyboard is up as the sheet opens is not the sheet's.
+    keyboard.current = { visible: false, hiddenAt: null };
+    dismissing.current = false;
     const shown = Keyboard.addListener('keyboardDidShow', () => {
       dismissing.current = false;
       keyboard.current = { visible: true, hiddenAt: null };
     });
     const hidden = Keyboard.addListener('keyboardDidHide', () => {
+      // Only a keyboard seen coming up here can be the press's to hide.
+      if (!keyboard.current.visible) return;
       keyboard.current = {
         visible: false,
         hiddenAt: dismissing.current ? null : Date.now(),
@@ -78,7 +95,7 @@ export function useKeyboardBackGuard(onDismiss: () => void): () => void {
       shown.remove();
       hidden.remove();
     };
-  }, []);
+  }, [visible]);
 
   return useCallback(() => {
     if (

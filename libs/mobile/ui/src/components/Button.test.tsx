@@ -84,6 +84,21 @@ describe('Button Component', () => {
     expect(hidden).toBe(true);
   });
 
+  it.each([false, true])(
+    'should keep the row holding the glyph and label a view of its own (busy: %s)',
+    async (busy) => {
+      await render(
+        <TestWrapper>
+          <Button label="Archive" icon="archive" busy={busy} />
+        </TestWrapper>,
+      );
+      // Android re-parents the glyph's native view when this row starts or
+      // stops being one, and that is what going busy would otherwise do.
+      const row = screen.getByText('Archive').parent;
+      expect(row?.props.collapsable).toBe(false);
+    },
+  );
+
   it('should set the label at 600 on the body-sm step', async () => {
     await render(
       <TestWrapper>

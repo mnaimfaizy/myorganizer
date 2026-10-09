@@ -56,8 +56,12 @@ import {
   TASK_PRIORITY_LABEL,
   TASK_STATUS_LABEL,
   taskOnDetail,
+  taskRemovalNoticePlace,
+  taskRemovalPhase,
   taskStatus as readTaskStatus,
   type DecryptedTask,
+  type TaskRemoval,
+  type TaskRemovalKind,
 } from './taskModel';
 import { describeVaultLoadError } from './vaultLoadError';
 
@@ -141,7 +145,9 @@ function FieldLabel({
  *
  * Delete lives only here, behind a ConfirmSheet that offers "Archive
  * instead" — Archive keeps the Task's Ciphertext and lets the web bring it
- * back; Delete does not.
+ * back; Delete does not. Either one that is refused says so where the User
+ * pressed it — in the sheet, or beside the buttons — with the way to send it
+ * again, and the screen leaves whenever it does reach the server.
  */
 export function TaskDetailScreen(): React.JSX.Element {
   const theme = useTheme();
@@ -157,9 +163,11 @@ export function TaskDetailScreen(): React.JSX.Element {
     snapshot,
     loading,
     loadError,
+    refreshing,
     writing,
     writeError,
     reload,
+    discard,
     apply,
     retry,
   } = useVaultBlob(VaultBlobType.Tasks);
@@ -169,15 +177,24 @@ export function TaskDetailScreen(): React.JSX.Element {
     [snapshot, taskId],
   );
 
-  // The Task as it stood when the User deleted or archived it here, held
-  // until that push settles. `apply` takes it out of this screen's copy
-  // before the push, and the screen is on show until the push has landed and
-  // the pop has run; without this it would say "Task not found — deleted on
-  // another device" about a delete the User just made (#1085). Only what is
-  // drawn reads `shown`. Every save still goes by `task`, so nothing can be
-  // written to a Task that is on its way out.
-  const [leaving, setLeaving] = useState<DecryptedTask | null>(null);
-  const shown = taskOnDetail(task, leaving);
+  // The delete or archive the User asked for here and has not given up, with
+  // the edit that makes it. It holds the Task as it stood then: `apply` takes
+  // the Task out of this screen's copy before the push, and the screen is on
+  // show until the push has landed and the pop has run; without it the screen
+  // would say "Task not found — deleted on another device" about a delete the
+  // User just made (#1085). Only what is drawn reads `shown`. Every save
+  // still goes by `task`, so nothing can be written to a Task that is on its
+  // way out.
+  const [removal, setRemoval] = useState<
+    (TaskRemoval & { edit: VaultBlobEdit }) | null
+  >(null);
+  const shown = taskOnDetail(task, removal?.task ?? null);
+  // Read from the copy, not from one push's answer: a retry and a reload that
+  // sent a held removal land it just as the first push would have (#1088).
+  const removalPhase = taskRemovalPhase(removal, task, {
+    busy: writing || refreshing,
+    refused: writeError != null,
+  });
 
   const { pendingId, revertedId, push, reloadAfterConflict, retryFailedEdit } =
     useUnconfirmedEdit(apply, retry, reload);
@@ -209,7 +226,8 @@ export function TaskDetailScreen(): React.JSX.Element {
 
   // One push runs at a time, and `apply` refuses a second one outright. A
   // change made while the last one is still in flight waits here and goes
-  // next, rather than being dropped without a word.
+  // next, rather than being dropped without a word. A delete or archive
+  // waits the same way, in `removal`, and goes after every field's change.
   const queued = useRef<{ field: TaskField; edit: VaultBlobEdit }[]>([]);
 
   const send = useCallback(
@@ -221,10 +239,18 @@ export function TaskDetailScreen(): React.JSX.Element {
   );
 
   useEffect(() => {
-    if (writing) return;
+    // A reload is a request too, and `apply` refuses during one.
+    if (writing || refreshing) return;
     const next = queued.current.shift();
-    if (next !== undefined) send(next.field, next.edit);
-  }, [writing, send]);
+    if (next !== undefined) {
+      send(next.field, next.edit);
+      return;
+    }
+    if (removal !== null && !removal.sent) {
+      setRemoval({ ...removal, sent: true });
+      void push(taskId, removal.edit);
+    }
+  }, [writing, refreshing, send, removal, push, taskId]);
 
   /**
    * Saves one change to the Task. The change is applied to the Task as it
@@ -234,6 +260,10 @@ export function TaskDetailScreen(): React.JSX.Element {
   const commit = useCallback(
     (field: TaskField, change: (current: Task) => Task): void => {
       if (task === null) return;
+      // The Vault holds one failed edit and the next write lets go of it, so
+      // a field changed after a refused delete or archive gives that up. Its
+      // notice goes with it: nothing is left that could send it later.
+      if (removalPhase === 'refused') setRemoval(null);
       const fallback = task as Task;
       const edit: VaultBlobEdit = (envelope) => {
         const current =
@@ -244,7 +274,7 @@ export function TaskDetailScreen(): React.JSX.Element {
       if (writing) queued.current.push({ field, edit });
       else send(field, edit);
     },
-    [task, taskId, writing, send],
+    [task, taskId, writing, send, removalPhase],
   );
 
   const stamp = (): string => new Date().toISOString();
@@ -348,34 +378,29 @@ export function TaskDetailScreen(): React.JSX.Element {
     [task, commit],
   );
 
-  const leaveAfter = useCallback(
-    (edit: VaultBlobEdit): void => {
-      if (task === null) return;
-      setLeaving(task);
-      void push(task.id, edit).then((confirmed) => {
-        if (confirmed) {
-          // `leaving` stays set: the screen is drawn until the pop finishes.
-          setDeleteVisible(false);
-          navigation.goBack();
-          return;
-        }
-        // Refused, so the last saved copy is back and the Task with it. Let
-        // go of the one remembered, or a later delete on another device
-        // would not show as "not found".
-        setLeaving(null);
-      });
+  const remove = useCallback(
+    (kind: TaskRemovalKind, edit: VaultBlobEdit): void => {
+      // Not over one already on its way. Over a refused one it is the User
+      // answering again, and the new push lets go of the edit held for it.
+      if (task === null || removalPhase === 'sending') return;
+      // The failure, if there is one, is this removal's and no field's.
+      setEditedField(null);
+      // Sent by the effect above, once nothing else is in flight.
+      setRemoval({ task, kind, edit, sent: false });
     },
-    [task, push, navigation],
+    [task, removalPhase],
   );
 
   const confirmDelete = useCallback((): void => {
     if (task === null) return;
-    leaveAfter((envelope) => deleteVaultRecord(envelope, task.id, stamp()));
-  }, [task, leaveAfter]);
+    remove('delete', (envelope) =>
+      deleteVaultRecord(envelope, task.id, stamp()),
+    );
+  }, [task, remove]);
 
   const archive = useCallback((): void => {
     if (task === null) return;
-    leaveAfter((envelope) =>
+    remove('archive', (envelope) =>
       putVaultRecord(envelope, {
         ...((findVisibleTask(envelope.records, task.id) as Task | null) ??
           (task as Task)),
@@ -383,12 +408,53 @@ export function TaskDetailScreen(): React.JSX.Element {
         updatedAt: stamp(),
       }),
     );
-  }, [task, leaveAfter]);
+  }, [task, remove]);
+
+  // The removal reached the server — by its first push, a retry, or a reload
+  // that sent the held edit — so the screen leaves, once. `removal` stays
+  // set: the Task is drawn until the pop finishes.
+  const left = useRef(false);
+  useEffect(() => {
+    if (removalPhase !== 'landed' || left.current) return;
+    left.current = true;
+    setDeleteVisible(false);
+    navigation.goBack();
+  }, [removalPhase, navigation]);
+
+  // The Task is back and the Vault holds no edit for the removal. Let go of
+  // the Task remembered, or a later delete on another device would make this
+  // screen leave instead of showing "not found".
+  useEffect(() => {
+    if (removalPhase === 'dropped') setRemoval(null);
+  }, [removalPhase]);
+
+  /**
+   * The User gives a refused removal up: the edit the Vault holds for it is
+   * dropped, so no later reload can delete or archive a Task they decided to
+   * keep ([ADR 0121](../../../../docs/adr/0121-a-mobile-vault-pull-converges-the-unsent-edit-it-is-handed.md)
+   * item 5). Nothing to do in any other phase.
+   */
+  const giveUpRemoval = useCallback((): void => {
+    if (removalPhase !== 'refused') return;
+    discard();
+    setRemoval(null);
+  }, [removalPhase, discard]);
+
+  const openDelete = useCallback((): void => {
+    // Not over an Archive already on its way. One that was refused is given
+    // up: the User has moved on to deleting, and the sheet's notice is only
+    // ever about an answer given in the sheet.
+    if (removalPhase === 'sending') return;
+    giveUpRemoval();
+    setDeleteVisible(true);
+  }, [removalPhase, giveUpRemoval]);
 
   const cancelDelete = useCallback((): void => {
-    if (pendingId !== null) return;
+    // `discard` cannot drop an edit that is already being sent.
+    if (removalPhase === 'sending') return;
+    giveUpRemoval();
     setDeleteVisible(false);
-  }, [pendingId]);
+  }, [removalPhase, giveUpRemoval]);
 
   const notice = writeError == null ? null : VAULT_WRITE_ERROR_COPY[writeError];
   const reverted =
@@ -409,8 +475,10 @@ export function TaskDetailScreen(): React.JSX.Element {
     setDraft(draftFrom(task));
   }, [reverted, task]);
 
-  const revertNote = (field: TaskField): React.ReactNode =>
-    revertedField === field && notice != null ? (
+  // Why the last push was refused, and the way to send the edit again. One
+  // wording for a field and for a delete or archive, as on every screen.
+  const writeNotice =
+    notice != null ? (
       <InlineNotice
         tone="warning"
         variant="compact"
@@ -424,6 +492,15 @@ export function TaskDetailScreen(): React.JSX.Element {
         }
       />
     ) : null;
+
+  const revertNote = (field: TaskField): React.ReactNode =>
+    revertedField === field ? writeNotice : null;
+
+  const removalNoticePlace = taskRemovalNoticePlace(
+    removalPhase,
+    deleteVisible,
+  );
+  const removing = removalPhase === 'sending' ? (removal?.kind ?? null) : null;
 
   const created =
     shown === null ? null : describeCreated(shown.createdAt, new Date());
@@ -598,20 +675,20 @@ export function TaskDetailScreen(): React.JSX.Element {
             </Text>
 
             <View style={{ gap: theme.spacing.sm }}>
+              {removalNoticePlace === 'screen' && writeNotice}
               <Button
                 label="Archive"
                 icon="archive"
                 variant="secondary"
+                // Its own spinner only when pressed here, not in the sheet.
+                busy={removing === 'archive' && !deleteVisible}
                 onPress={archive}
               />
               <Button
                 label="Delete task"
                 icon="trash"
                 variant="destructive"
-                onPress={() => {
-                  // Not over an Archive already on its way.
-                  if (leaving === null) setDeleteVisible(true);
-                }}
+                onPress={openDelete}
               />
             </View>
           </ScrollView>
@@ -627,9 +704,11 @@ export function TaskDetailScreen(): React.JSX.Element {
         secondaryLabel="Archive instead"
         secondaryIcon="archive"
         onSecondary={archive}
-        // By the route's id, not the Task in the copy: a delete in flight
-        // has already taken the Task out of it, and the sheet is busy then.
-        busy={pendingId === taskId}
+        // By the removal, not the Task in the copy: a delete in flight has
+        // already taken the Task out of it, and the sheet is busy then.
+        busy={removing === 'delete'}
+        secondaryBusy={removing === 'archive'}
+        notice={removalNoticePlace === 'sheet' ? writeNotice : undefined}
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />

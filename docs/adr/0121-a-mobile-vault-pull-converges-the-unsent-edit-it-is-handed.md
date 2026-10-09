@@ -2,7 +2,7 @@
 
 ## Status
 
-accepted
+accepted. Amended 2026-10-09 (issue #1088): the Task Detail screen now leaves when a reload sends its delete or archive — see the Consequence on Task delete or archive.
 
 ## Context
 
@@ -38,5 +38,5 @@ The issue was written as if mobile held a Local Vault. It does not ([ADR 0107](0
 - After a `conflict`, Reload shows the latest copy with the edit merged into it, rather than without it. The notice copy is unchanged.
 - A record the edit changed is removed by the pull when another device deleted it at or after that change, and kept when the change is newer.
 - After a `conflict` Reload whose send fails, the note returns to the same row. After one that sends or finds nothing held, the reverted id is cleared.
-- A Task delete or archive that a reload sends leaves the Task Detail screen open on a Task that is gone, as a confirmed Retry already did. That screen does not leave on `sent`.
+- A Task delete or archive that a reload sends closes the Task Detail screen, as the first push does and as a confirmed Retry does. The screen reads that its own removal has landed from its copy, not from one push's answer, so it leaves once whichever way the edit reached the server. Cancelling the confirm sheet after a refused removal calls `discard`, so a later reload cannot remove a Task the User gave up removing. _(Amended 2026-10-09, issue #1088. As first accepted, this Consequence recorded that the screen stayed open on a Task that was gone and did not leave on `sent`; that left the User on "Task not found" for their own removal.)_
 - `pullVaultBlob`, `pullAndSendVaultBlob`, and `settleVaultBlobPull` are tested in `sync.test.ts`. What `useVaultBlob` decides — one request at a time, the held edit, the revert, reload, retry, and discard — lives in `createVaultBlobController`, which has no React in it and is tested in `vaultBlobController.test.ts`. What a screen does after a conflict Reload, and when a draft sheet is busy, are `settleConflictReload` and `draftSheetBusy` in `unconfirmedEdit.ts`, tested beside it. What is left untested is wiring only — the hooks calling these and setting state, and the New Subscription sheet closing — because neither library renders a hook.

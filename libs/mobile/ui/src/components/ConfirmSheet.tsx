@@ -37,6 +37,18 @@ export interface ConfirmSheetProps {
   onSecondary?: () => void;
   /** Shows a spinner on the confirm button and stops accepting either answer. */
   busy?: boolean;
+  /**
+   * The same for the third way out: its own button carries the spinner, so
+   * "Archive instead" in flight does not read as a delete in flight.
+   */
+  secondaryBusy?: boolean;
+  /**
+   * What the User has to read before answering again — that the answer they
+   * gave did not take, and the way to send it again. Drawn between the
+   * message and the buttons, because behind the sheet it is under the scrim.
+   * An `InlineNotice`, which announces itself.
+   */
+  notice?: React.ReactNode;
   onConfirm: () => void;
   onCancel: () => void;
 }
@@ -58,17 +70,20 @@ export function ConfirmSheet({
   secondaryIcon,
   onSecondary,
   busy = false,
+  secondaryBusy = false,
+  notice,
   onConfirm,
   onCancel,
 }: ConfirmSheetProps): React.JSX.Element {
   const theme = useTheme();
   const paragraphs = typeof message === 'string' ? [message] : message;
   const hasAlternative = secondaryLabel != null && onSecondary != null;
+  const inert = busy || secondaryBusy;
 
   return (
     <BottomSheet
       visible={visible}
-      onDismiss={busy ? () => undefined : onCancel}
+      onDismiss={inert ? () => undefined : onCancel}
       title={title}
     >
       <View style={{ gap: theme.spacing.lg }}>
@@ -82,11 +97,13 @@ export function ConfirmSheet({
             </Text>
           ))}
         </View>
+        {notice}
         <View style={[styles.actions, { gap: theme.spacing.sm }]}>
           <Button
             label={confirmLabel}
             variant={destructive ? 'destructive' : 'primary'}
             busy={busy}
+            disabled={secondaryBusy}
             onPress={onConfirm}
           />
           {hasAlternative && (
@@ -94,6 +111,7 @@ export function ConfirmSheet({
               label={secondaryLabel}
               variant="secondary"
               icon={secondaryIcon}
+              busy={secondaryBusy}
               disabled={busy}
               onPress={onSecondary}
             />
@@ -101,7 +119,7 @@ export function ConfirmSheet({
           <Button
             label={cancelLabel}
             variant={hasAlternative ? 'ghost' : 'secondary'}
-            disabled={busy}
+            disabled={inert}
             onPress={onCancel}
           />
         </View>
