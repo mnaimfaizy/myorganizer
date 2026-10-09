@@ -3,7 +3,7 @@
 > **Single source of truth** for installed package versions and canonical technology choices.
 > All agent instruction files and documentation must reference this file rather than declaring versions inline.
 > Owned and kept current by the **DepSync** agent/skill — do not edit versions manually.
-> Last synced from `package.json` on 2026-10-02.
+> Last synced from `package.json` on 2026-10-09.
 
 > **Reading this file as an agent:** it is a lookup table, not a briefing. Read
 > the one section you need. Component work needs
@@ -30,7 +30,7 @@
 
 | Package     | Version | Purpose                                                |
 | ----------- | ------- | ------------------------------------------------------ |
-| `next`      | 16.3.6  | App framework — App Router, server components, routing |
+| `next`      | 16.3.8  | App framework — App Router, server components, routing |
 | `react`     | 19.2.3  | UI rendering                                           |
 | `react-dom` | 19.2.3  | DOM renderer for React                                 |
 
@@ -104,7 +104,7 @@
 | Package                                  | Version  | Purpose                                                               |
 | ---------------------------------------- | -------- | --------------------------------------------------------------------- |
 | `react-native`                           | ~0.87.1  | Mobile app runtime                                                    |
-| `@nx/react-native`                       | 22.7.7   | Nx plugin for React Native apps/libs                                  |
+| `@nx/react-native`                       | 22.7.12  | Nx plugin for React Native apps/libs                                  |
 | `@react-navigation/native`               | 7.2.5    | Navigation core                                                       |
 | `@react-navigation/native-stack`         | 7.16.0   | Native stack navigator                                                |
 | `@react-navigation/bottom-tabs`          | 7.16.2   | Bottom tab navigator (the app's five-tab shell)                       |
@@ -156,7 +156,7 @@
 | -------------------- | ------- | ------------------------------------- |
 | `express`            | 5.2.1   | HTTP server framework                 |
 | `body-parser`        | 2.2.2   | Request body parsing                  |
-| `compression`        | 1.8.1   | Response compression                  |
+| `compression`        | 1.8.2   | Response compression                  |
 | `cookie-parser`      | 1.4.7   | Cookie parsing middleware             |
 | `cors`               | 2.8.5   | Cross-origin resource sharing headers |
 | `express-rate-limit` | 8.3.2   | Request rate limiting                 |
@@ -222,22 +222,22 @@
 
 | Package                      | Version | Purpose                                                             |
 | ---------------------------- | ------- | ------------------------------------------------------------------- |
-| `nx`                         | 22.7.7  | Monorepo build system and task orchestration                        |
-| `@nx/next`                   | 22.7.7  | Nx plugin for Next.js                                               |
-| `@nx/react`                  | 22.7.7  | Nx plugin for React libraries                                       |
-| `@nx/react-native`           | 22.7.7  | Nx plugin for React Native apps and libraries                       |
-| `@nx/express`                | 22.7.7  | Nx plugin for Express                                               |
-| `@nx/node`                   | 22.7.7  | Nx plugin for Node.js                                               |
-| `@nx/js`                     | 22.7.7  | Nx plugin for plain TypeScript libraries                            |
-| `@nx/webpack`                | 22.7.7  | Nx plugin for Webpack builds                                        |
-| `@nx/web`                    | 22.7.7  | Nx plugin for web applications                                      |
-| `@nx/eslint`                 | 22.7.7  | Nx plugin for ESLint integration                                    |
-| `@nx/playwright`             | 22.7.7  | Nx plugin for Playwright                                            |
-| `@nx/storybook`              | 22.7.7  | Nx plugin for Storybook                                             |
-| `@nx/vite`                   | 22.7.7  | Nx plugin for Vite (used by Storybook)                              |
-| `@nx/vitest`                 | 22.7.7  | Nx plugin for Vitest (available but Jest is the active test runner) |
-| `@nx/eslint-plugin`          | 22.7.7  | Nx ESLint rules, including module boundary enforcement              |
-| `@nx/workspace`              | 22.7.7  | Nx workspace generators and migrations                              |
+| `nx`                         | 22.7.12 | Monorepo build system and task orchestration                        |
+| `@nx/next`                   | 22.7.12 | Nx plugin for Next.js                                               |
+| `@nx/react`                  | 22.7.12 | Nx plugin for React libraries                                       |
+| `@nx/react-native`           | 22.7.12 | Nx plugin for React Native apps and libraries                       |
+| `@nx/express`                | 22.7.12 | Nx plugin for Express                                               |
+| `@nx/node`                   | 22.7.12 | Nx plugin for Node.js                                               |
+| `@nx/js`                     | 22.7.12 | Nx plugin for plain TypeScript libraries                            |
+| `@nx/webpack`                | 22.7.12 | Nx plugin for Webpack builds                                        |
+| `@nx/web`                    | 22.7.12 | Nx plugin for web applications                                      |
+| `@nx/eslint`                 | 22.7.12 | Nx plugin for ESLint integration                                    |
+| `@nx/playwright`             | 22.7.12 | Nx plugin for Playwright                                            |
+| `@nx/storybook`              | 22.7.12 | Nx plugin for Storybook                                             |
+| `@nx/vite`                   | 22.7.12 | Nx plugin for Vite (used by Storybook)                              |
+| `@nx/vitest`                 | 22.7.12 | Nx plugin for Vitest (available but Jest is the active test runner) |
+| `@nx/eslint-plugin`          | 22.7.12 | Nx ESLint rules, including module boundary enforcement              |
+| `@nx/workspace`              | 22.7.12 | Nx workspace generators and migrations                              |
 | `@driimus/nx-plugin-openapi` | 3.1.2   | Nx plugin for OpenAPI code generation tasks                         |
 
 ---
@@ -247,7 +247,7 @@
 | Package                         | Version | Purpose                                                                           |
 | ------------------------------- | ------- | --------------------------------------------------------------------------------- |
 | `jest`                          | 30.2.0  | Unit and integration test runner — canonical choice                               |
-| `@nx/jest`                      | 22.7.7  | Nx/Jest integration                                                               |
+| `@nx/jest`                      | 22.7.12 | Nx/Jest integration                                                               |
 | `jest-environment-jsdom`        | 30.2.0  | DOM environment for React component tests                                         |
 | `jest-environment-node`         | 30.2.0  | Node environment for backend tests                                                |
 | `ts-jest`                       | 29.4.9  | TypeScript preprocessor for Jest                                                  |
@@ -331,40 +331,48 @@
 
 These transitive dependencies are explicitly resolved to patched versions via Yarn resolutions, npm overrides, and pnpm overrides.
 
-| Package                     | Resolved Version      | Reason                                                                                                                                                                                                                                                 | Vulnerability ID                                     |
-| --------------------------- | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------- |
-| `adm-zip`                   | 0.6.1                 | Patches DoS via uncontrolled memory allocation from declared uncompressed size (GHSA-7q85-xj36-vmfc); pulled by `@module-federation/dts-plugin`                                                                                                        | 1239030                                              |
-| `basic-ftp`                 | 6.2.1                 | Patches quadratic-time DoS in the `Client.list()` directory-listing parser (GHSA-c475-qrg2-pj4r); pulled by `get-uri@6.0.4`, which declares `^5.0.2`. The only breaking change in 6.0.0 is that separate transfer hosts are off by default             | 1240853                                              |
-| `shell-quote`               | 1.8.4                 | Patches critical shell injection vulnerability (GHSA-w7jw-789q-3m8p)                                                                                                                                                                                   | CVE-2024-XXXXX                                       |
-| `browserslist`              | 4.28.8                | Patches unbounded cache growth and untrusted custom-stats crash (GHSA-c83g-rgw3-j3cx, GHSA-73wf-gq98-2v4g)                                                                                                                                             | 1153171, 1153172                                     |
-| `fast-uri`                  | 3.1.8                 | Patches authority injection via unvalidated port (GHSA-qw65-cvwx-89v3), host confusion via unclosed bracket (GHSA-58mr-gqgx-xq4g), and SSRF via URI normalization (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp) | 1239943, 1239946, 1158521, 1158524, 1158527, 1158530 |
-| `mysql2`                    | 3.23.1                | Patches auth downgrade credential leakage and compressed-protocol decompression DoS (GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3); Prisma 7.2.0 still pins 3.15.3                                                                                         | 1153173                                              |
-| `fast-xml-parser`           | 5.7.3                 | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                                                                                                                                                                                       | CVE-2026-41650                                       |
-| `deepmerge-ts`              | 8.0.1                 | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                                                                                                                            | GHSA-ggr8-5vv4-36mx                                  |
-| `react-native-quick-base64` | 3.0.1                 | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                                                                                                                      | —                                                    |
-| `nanoid`                    | 3.3.17                | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                                                                                                                                          | 1138811, 1138813                                     |
-| `js-yaml`                   | 3.15.2, 4.3.2         | Patches unbounded CPU use from empty merge sources despite `maxTotalMergeKeys` (GHSA-2883-xcg3-v3hh)                                                                                                                                                   | 1193726, 1193727                                     |
-| `sharp`                     | 0.35.4                | Patches bundled libheif vulnerabilities (GHSA-rgj7-g3m4-5g8c); pulled by `next`                                                                                                                                                                        | 1193725                                              |
-| `smol-toml`                 | 1.8.0                 | Patches DoS via malformed TOML documents (GHSA-7w5x-hrqm-74c2); `nx@22.7.7` pins 1.6.1 exactly                                                                                                                                                         | 1193945                                              |
-| `svgo`                      | 3.3.5, 4.1.0          | Patches `removeScripts` bypass via namespace and control characters (GHSA-w27v-7q3p-w38r)                                                                                                                                                              | 1193735, 1193736                                     |
-| `brace-expansion`           | 1.1.21, 2.1.7, 5.0.12 | Patches stack exhaustion from uncontrolled recursion on nested brace groups and in `parseCommaParts` (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p); pulled by `minimatch` 3.x/9.x and `nx@22.7.7`                                                         | 1240104, 1240105, 1240107, 1240108, 1240109, 1240111 |
-| `nodemailer`                | 10.0.10 (direct)      | Patches quadratic backtracking in the addressparser free-text fallback (GHSA-v53p-9fqp-m79j); the only breaking change in 10.0.0 is Node ≥ 20, and the repo runs Node 22                                                                               | 1240114                                              |
-| `joi`                       | 17.13.8               | Patches quadratic ReDoS in `Joi.string().isoDate()` (GHSA-6h2x-m376-mqjq); pulled by `@react-native-community/cli-config@20.2.0`                                                                                                                       | 1240057                                              |
-| `undici`                    | 7.29.1                | Patches WebSocket subprotocol DoS and BalancedPool TLS validation bypass (GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3); pulled by `@module-federation/dts-plugin@2.8.1`                                                                                   | 1240041, 1240050                                     |
-| `webpack-dev-middleware`    | 7.4.6                 | Patches path traversal via non-slash-terminated `publicPath` (GHSA-g84c-rxfj-3j2c); pulled by `webpack-dev-server@5.2.3`                                                                                                                               | 1240027                                              |
+| Package                     | Resolved Version      | Reason                                                                                                                                                                                                                                                                                                                | Vulnerability ID                                     |
+| --------------------------- | --------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
+| `adm-zip`                   | 0.6.1                 | Patches DoS via uncontrolled memory allocation from declared uncompressed size (GHSA-7q85-xj36-vmfc); pulled by `@module-federation/dts-plugin`                                                                                                                                                                       | 1239030                                              |
+| `basic-ftp`                 | 6.2.1                 | Patches quadratic-time DoS in the `Client.list()` directory-listing parser (GHSA-c475-qrg2-pj4r); pulled by `get-uri@6.0.4`, which declares `^5.0.2`. The only breaking change in 6.0.0 is that separate transfer hosts are off by default                                                                            | 1240853                                              |
+| `shell-quote`               | 1.11.0                | Patches `quote()` command injection via a line terminator in a token after a `{ comment }` token (GHSA-pqg4-j6r4-53mv)                                                                                                                                                                                                | 1241332                                              |
+| `browserslist`              | 4.28.8                | Patches unbounded cache growth and untrusted custom-stats crash (GHSA-c83g-rgw3-j3cx, GHSA-73wf-gq98-2v4g)                                                                                                                                                                                                            | 1153171, 1153172                                     |
+| `fast-uri`                  | 3.1.8                 | Patches authority injection via unvalidated port (GHSA-qw65-cvwx-89v3), host confusion via unclosed bracket (GHSA-58mr-gqgx-xq4g), and SSRF via URI normalization (GHSA-5jgf-p345-68v8, GHSA-f65p-4m7j-42xc, GHSA-fph4-wmhf-6fwf, GHSA-jqff-g426-hqxp)                                                                | 1239943, 1239946, 1158521, 1158524, 1158527, 1158530 |
+| `mysql2`                    | 3.23.1                | Patches auth downgrade credential leakage and compressed-protocol decompression DoS (GHSA-3f6p-5ww8-9rcr, GHSA-rgwj-5xj2-c3m3); Prisma 7.2.0 still pins 3.15.3                                                                                                                                                        | 1153173                                              |
+| `fast-xml-parser`           | 5.7.3                 | Patches XMLBuilder comment/CDATA injection (GHSA-gh4j-gqv2-49f6)                                                                                                                                                                                                                                                      | CVE-2026-41650                                       |
+| `deepmerge-ts`              | 8.0.1                 | Patches stack exhaustion in schema merging (pulled by @prisma/config@7.2.0)                                                                                                                                                                                                                                           | GHSA-ggr8-5vv4-36mx                                  |
+| `react-native-quick-base64` | 3.0.1                 | Resolution keeps transitive copies aligned with direct dep (peer of quick-crypto)                                                                                                                                                                                                                                     | —                                                    |
+| `nanoid`                    | 3.3.17                | Patches infinite loops on negative and zero `size` (GHSA-28wg-ghj8-5hjv, GHSA-2v37-7h3g-55p8)                                                                                                                                                                                                                         | 1138811, 1138813                                     |
+| `js-yaml`                   | 3.15.2, 4.3.2         | Patches unbounded CPU use from empty merge sources despite `maxTotalMergeKeys` (GHSA-2883-xcg3-v3hh)                                                                                                                                                                                                                  | 1193726, 1193727                                     |
+| `sharp`                     | 0.35.5                | Patches bundled librsvg vulnerability CVE-2026-96889 (GHSA-wq5f-xc86-pv6w); pulled by `next`                                                                                                                                                                                                                          | 1241331                                              |
+| `smol-toml`                 | 1.8.0                 | Patches DoS via malformed TOML documents (GHSA-7w5x-hrqm-74c2); `nx@22.7.12` pins 1.6.1 exactly                                                                                                                                                                                                                       | 1193945                                              |
+| `svgo`                      | 3.3.5, 4.1.0          | Patches `removeScripts` bypass via namespace and control characters (GHSA-w27v-7q3p-w38r)                                                                                                                                                                                                                             | 1193735, 1193736                                     |
+| `brace-expansion`           | 1.1.21, 2.1.7, 5.0.12 | Patches stack exhaustion from uncontrolled recursion on nested brace groups and in `parseCommaParts` (GHSA-qhr7-859c-m2p7, GHSA-6j4f-fj2g-mc7p); pulled by `minimatch` 3.x/9.x and `nx@22.7.12`, which pins 5.0.8 exactly                                                                                             | 1240104, 1240105, 1240107, 1240108, 1240109, 1240111 |
+| `nodemailer`                | 10.0.10 (direct)      | Patches quadratic backtracking in the addressparser free-text fallback (GHSA-v53p-9fqp-m79j); the only breaking change in 10.0.0 is Node ≥ 20, and the repo runs Node 22                                                                                                                                              | 1240114                                              |
+| `joi`                       | 17.13.8               | Patches quadratic ReDoS in `Joi.string().isoDate()` (GHSA-6h2x-m376-mqjq); pulled by `@react-native-community/cli-config@20.2.0`                                                                                                                                                                                      | 1240057                                              |
+| `undici`                    | 7.29.1                | Patches WebSocket subprotocol DoS and BalancedPool TLS validation bypass (GHSA-rfgv-xxqx-mfg5, GHSA-w293-vg96-wgc3); pulled by `@module-federation/dts-plugin@2.8.1`                                                                                                                                                  | 1240041, 1240050                                     |
+| `webpack-dev-middleware`    | 7.4.6                 | Patches path traversal via non-slash-terminated `publicPath` (GHSA-g84c-rxfj-3j2c); pulled by `webpack-dev-server@5.2.3`                                                                                                                                                                                              | 1240027                                              |
+| `proxy-addr`                | 2.0.8                 | Patches IP spoofing via IPv4-mapped IPv6 trust subnet (GHSA-jqcg-44mw-7w3h); pulled by `express` 4.22.1 and 5.2.1                                                                                                                                                                                                     | 1241210                                              |
+| `source-map-js`             | 1.2.2                 | Patches event-loop DoS through indexed source-map section offsets (GHSA-68fv-2mgg-jv7q); pulled by `postcss`, `css-tree` and `@tailwindcss/node`                                                                                                                                                                      | 1241209                                              |
+| `compression`               | 1.8.2 (direct)        | Patches DoS via memory leak on premature response close (GHSA-vc2v-76pw-4v95); the resolution lifts the transitive copies under `webpack-dev-server@5.2.3` and `@react-native-community/cli-server-api@20.2.0`                                                                                                        | 1241221                                              |
+| `handlebars`                | 4.7.10                | Patches JavaScript injection via AST type confusion in `compile` and via the own-property check bypass (GHSA-8r5x-fm3f-whwj, GHSA-p8wg-vrv2-v86f); pinned at 4.7.9 by `@tsoa/cli@6.6.0` and `ts-jest@29.4.9`. Listed in `npmPreapprovedPackages` because it was published inside the 7-day `npmMinimalAgeGate` window | 1241677, 1241678                                     |
+| `http-cache-semantics`      | 4.3.0                 | Patches cross-user cached response disclosure through `max-stale` handling (GHSA-ch52-4w7c-c8xp); pulled by `make-fetch-happen@15.0.5` under `node-gyp`. Listed in `npmPreapprovedPackages` because it was published inside the 7-day `npmMinimalAgeGate` window                                                      | 1240991                                              |
 
 > **Note**: `shell-quote` is a transitive dependency of `concurrently@9.2.1` (pulled in by `@openapitools/openapi-generator-cli@2.27.0`) and `launch-editor@2.9.1` (pulled in by `webpack-dev-server@5.2.3`). Upstream packages are pinned to versions that contain vulnerable `shell-quote`, so we use resolutions to force the patched version globally.
 
 > **Note**: `nanoid` reaches the tree through `postcss@8.5.18` (`^3.3.11`) and `@react-navigation/native@7.2.5` (`^3.3.12`). Both are resolved to `3.3.17`, the first release patching both advisories. It is also listed in `npmPreapprovedPackages` because it was published inside the 7-day `npmMinimalAgeGate` window.
 
-> **Note**: `js-yaml` 3.x reaches the tree through `cosmiconfig@5.2.1` and 4.x through `@eslint/eslintrc`. `sharp` comes from `next`, `svgo` 3.x from `@svgr/plugin-svgo@8.1.0` and 4.x from `postcss-svgo@7.1.3`. `smol-toml` is pinned exactly at `1.6.1` by `nx@22.7.7`, so the `1.8.0` resolution overrides a declared exact version — drop it when Nx takes a patched release. Patched versions chosen here are all older than the 7-day `npmMinimalAgeGate`.
+> **Note**: `js-yaml` 3.x reaches the tree through `cosmiconfig@5.2.1` and 4.x through `@eslint/eslintrc`. `sharp` comes from `next`, `svgo` 3.x from `@svgr/plugin-svgo@8.1.0` and 4.x from `postcss-svgo@7.1.3`. `smol-toml` is pinned exactly at `1.6.1` by `nx@22.7.12`, so the `1.8.0` resolution overrides a declared exact version — drop it when Nx takes a patched release. The patched versions named in this note are all older than the 7-day `npmMinimalAgeGate`.
 
-> **Note**: `browserslist` reaches the tree through `@babel/helper-compilation-targets` and `@nx/webpack@22.7.7`. `fast-uri` is pulled by `ajv@8.17.1`. `mysql2` is pinned at `3.15.3` by `prisma@7.2.0` (this app uses the Postgres adapter; the resolution still has to lift the CLI's unused MySQL driver so `yarn npm audit --severity high` can pass). Patched versions chosen here are all older than the 7-day `npmMinimalAgeGate`.
+> **Note**: `browserslist` reaches the tree through `@babel/helper-compilation-targets` and `@nx/webpack@22.7.12`. `fast-uri` is pulled by `ajv@8.17.1`. `mysql2` is pinned at `3.15.3` by `prisma@7.2.0` (this app uses the Postgres adapter; the resolution still has to lift the CLI's unused MySQL driver so `yarn npm audit --severity high` can pass). The patched versions named in this note are all older than the 7-day `npmMinimalAgeGate`.
+
+> **Note**: `handlebars` 4.7.10 and `http-cache-semantics` 4.3.0 were published inside the 7-day `npmMinimalAgeGate` window, so both are listed in `npmPreapprovedPackages`. `handlebars` is pinned at 4.7.9 by `@tsoa/cli@6.6.0` and `ts-jest@29.4.9`; `http-cache-semantics` reaches the tree through `make-fetch-happen@15.0.5` under `node-gyp`.
 
 ### Accepted audit exceptions
 
 Advisories deliberately ignored via `npmAuditIgnoreAdvisories` in `.yarnrc.yml`. Each needs a reachability argument, a revisit condition, and an open tracking issue — an exception with no issue behind it has no way of being reconsidered.
 
-| Advisory IDs | Package           | Why it is not fixable now                   | Revisit when | Tracking |
-| ------------ | ----------------- | ------------------------------------------- | ------------ | -------- |
-| 1124334      | `brace-expansion` | Superseded ReDoS variant; kept for history. | —            | —        |
+| Advisory IDs | Package           | Why it is not fixable now                                                                                                                                                                                                  | Revisit when                              | Tracking                                                       |
+| ------------ | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------- | -------------------------------------------------------------- |
+| 1124334      | `brace-expansion` | Superseded ReDoS variant; kept for history.                                                                                                                                                                                | —                                         | —                                                              |
+| 1240992      | `braces`          | No patched release: 3.0.3 is the latest and GHSA-vfj7-8cjw-p6xm lists no fix. Reaches the tree only through `micromatch` and `chokidar` in dev and build tooling, whose patterns come from repo config, not request input. | A `braces` release above 3.0.3 patches it | [#1099](https://github.com/mnaimfaizy/myorganizer/issues/1099) |
