@@ -3,6 +3,7 @@ import { render, screen, userEvent } from '@testing-library/react-native';
 import { StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { ConfirmSheet } from './ConfirmSheet';
+import { InlineNotice } from './InlineNotice';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
   <ThemeProvider appearance="light">{children}</ThemeProvider>
@@ -176,5 +177,82 @@ describe('ConfirmSheet Component', () => {
     expect(StyleSheet.flatten(ghost.props.style).backgroundColor).toBe(
       'transparent',
     );
+  });
+  it('should put the spinner on the third way out while it is the one in flight', async () => {
+    const onConfirm = jest.fn();
+    const onCancel = jest.fn();
+    const user = userEvent.setup();
+    await render(
+      <TestWrapper>
+        <ConfirmSheet
+          visible
+          title="Delete this task?"
+          message="This can’t be undone. Archive keeps it instead."
+          confirmLabel="Delete task"
+          destructive
+          secondaryLabel="Archive instead"
+          onSecondary={jest.fn()}
+          secondaryBusy
+          onConfirm={onConfirm}
+          onCancel={onCancel}
+        />
+      </TestWrapper>,
+    );
+    const state = (name: string) =>
+      screen.getByRole('button', { name }).props.accessibilityState;
+
+    expect(state('Archive instead')?.busy).toBe(true);
+    expect(state('Delete task')?.busy).toBe(false);
+    expect(state('Delete task')?.disabled).toBe(true);
+    expect(state('Cancel')?.disabled).toBe(true);
+
+    await user.press(screen.getByRole('button', { name: 'Delete task' }));
+    await user.press(screen.getByRole('button', { name: 'Cancel' }));
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+  });
+
+  it('should draw a notice in the sheet, with its action, and none when omitted', async () => {
+    const onRetry = jest.fn();
+    const user = userEvent.setup();
+    const sheet = (notice?: React.ReactNode) => (
+      <TestWrapper>
+        <ConfirmSheet
+          visible
+          title="Delete this task?"
+          message="This can’t be undone."
+          confirmLabel="Delete task"
+          notice={notice}
+          onConfirm={jest.fn()}
+          onCancel={jest.fn()}
+        />
+      </TestWrapper>
+    );
+    const { rerender } = await render(sheet());
+    expect(screen.queryByRole('alert')).toBeNull();
+
+    await rerender(
+      sheet(
+        <InlineNotice
+          tone="warning"
+          variant="compact"
+          message="Not saved — you’re offline. Showing the last saved copy."
+          actionLabel="Retry"
+          onAction={onRetry}
+        />,
+      ),
+    );
+    expect(
+      screen.getByRole('alert', {
+        name: 'Not saved — you’re offline. Showing the last saved copy.',
+      }),
+    ).toBeTruthy();
+    await user.press(screen.getByRole('button', { name: 'Retry' }));
+    expect(onRetry).toHaveBeenCalledTimes(1);
+    // The sheet still takes an answer.
+    expect(
+      screen.getByRole('button', { name: 'Delete task' }).props
+        .accessibilityState?.disabled,
+    ).toBe(false);
   });
 });

@@ -44,6 +44,10 @@ describe('closeRequestHidesKeyboardOnly', () => {
 /**
  * Through BottomSheet, whose Modal is what Android's Back and Escape reach
  * (#949). The keyboard's events are the ones React Native would emit.
+ *
+ * Nothing here says which text input holds focus, because on a device the
+ * guard cannot use it: by the time Escape's close request arrives, the
+ * sheet's field has already lost focus and React Native reports none.
  */
 describe('useKeyboardBackGuard, through BottomSheet', () => {
   type Listener = () => void;
@@ -58,14 +62,19 @@ describe('useKeyboardBackGuard, through BottomSheet', () => {
     });
   };
 
+  const sheet = (
+    onDismiss: () => void,
+    visible: boolean,
+  ): React.JSX.Element => (
+    <ThemeProvider appearance="light">
+      <BottomSheet visible={visible} onDismiss={onDismiss} title="New list">
+        <Text>Name</Text>
+      </BottomSheet>
+    </ThemeProvider>
+  );
+
   const renderSheet = async (onDismiss: () => void): Promise<void> => {
-    await render(
-      <ThemeProvider appearance="light">
-        <BottomSheet visible onDismiss={onDismiss} title="New list">
-          <Text>Name</Text>
-        </BottomSheet>
-      </ThemeProvider>,
-    );
+    await render(sheet(onDismiss, true));
   };
 
   // The Modal's host view: the nearest view above the sheet's content that
@@ -168,14 +177,72 @@ describe('useKeyboardBackGuard, through BottomSheet', () => {
     expect(onDismiss).toHaveBeenCalledTimes(1);
   });
 
-  it('should guard a sheet that is mounted over a keyboard already up', async () => {
+  it('should close a picker opened from a field on a Back just after that field’s keyboard went (#1091)', async () => {
+    useAndroid();
+    // The composer's keyboard is up as the picker opens.
+    jest.mocked(Keyboard.isVisible).mockReturnValue(true);
+    const onDismiss = jest.fn();
+    await renderSheet(onDismiss);
+    // The sheet took the window focus, and Android hid the keyboard.
+    await emit('keyboardDidHide');
+    now += 80;
+
+    await pressBack();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(Keyboard.dismiss).not.toHaveBeenCalled();
+  });
+
+  it('should close a picker on Back while the keyboard behind it is still reported up', async () => {
     useAndroid();
     jest.mocked(Keyboard.isVisible).mockReturnValue(true);
     const onDismiss = jest.fn();
     await renderSheet(onDismiss);
+
+    await pressBack();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(Keyboard.dismiss).not.toHaveBeenCalled();
+  });
+
+  it('should guard a sheet opened from a field once its own field has brought the keyboard back', async () => {
+    useAndroid();
+    jest.mocked(Keyboard.isVisible).mockReturnValue(true);
+    const onDismiss = jest.fn();
+    await renderSheet(onDismiss);
+    await emit('keyboardDidHide');
+    await emit('keyboardDidShow');
+
     await pressBack();
     expect(onDismiss).not.toHaveBeenCalled();
     expect(Keyboard.dismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not count a keyboard that came up before the sheet opened, however long the sheet has been mounted', async () => {
+    useAndroid();
+    const onDismiss = jest.fn();
+    // Mounted hidden, as a screen mounts its sheets.
+    await render(sheet(onDismiss, false));
+    await emit('keyboardDidShow');
+    await screen.rerender(sheet(onDismiss, true));
+    await emit('keyboardDidHide');
+    now += 80;
+
+    await pressBack();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+  });
+
+  it('should forget the keyboard of the last time the sheet was open', async () => {
+    useAndroid();
+    const onDismiss = jest.fn();
+    await render(sheet(onDismiss, true));
+    await emit('keyboardDidShow');
+    // Closed with its keyboard still up, by its own button.
+    await screen.rerender(sheet(onDismiss, false));
+    await emit('keyboardDidHide');
+    await screen.rerender(sheet(onDismiss, true));
+
+    await pressBack();
+    expect(onDismiss).toHaveBeenCalledTimes(1);
+    expect(Keyboard.dismiss).not.toHaveBeenCalled();
   });
 
   it('should leave iOS as it was', async () => {

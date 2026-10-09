@@ -6,7 +6,10 @@ import {
   localDateOnlyString,
   findVisibleTask,
   taskOnDetail,
+  taskRemovalNoticePlace,
+  taskRemovalPhase,
   taskStatus,
+  type TaskRemoval,
 } from './taskModel';
 
 describe('taskModel', () => {
@@ -226,6 +229,92 @@ describe('taskModel', () => {
 
     it('draws nothing for a Task this screen did not remove', () => {
       expect(taskOnDetail(findVisibleTask([], 'task1'), null)).toBeNull();
+    });
+  });
+
+  describe('taskRemovalPhase', () => {
+    const saved = { id: 'task1', title: 'Renew passport' };
+    const idle = { busy: false, refused: false };
+    const sent: TaskRemoval = { task: saved, kind: 'delete', sent: true };
+
+    it('is "none" when the User removed nothing, whatever the copy holds', () => {
+      expect(taskRemovalPhase(null, saved, idle)).toBe('none');
+      // Gone from the copy without a removal here: another device did it.
+      expect(taskRemovalPhase(null, null, idle)).toBe('none');
+      expect(taskRemovalPhase(null, null, { busy: false, refused: true })).toBe(
+        'none',
+      );
+    });
+
+    it('is "sending" while the removal waits behind another write', () => {
+      const waiting: TaskRemoval = { ...sent, sent: false };
+
+      expect(taskRemovalPhase(waiting, saved, idle)).toBe('sending');
+      expect(
+        taskRemovalPhase(waiting, saved, { busy: true, refused: false }),
+      ).toBe('sending');
+    });
+
+    it('is "sending", not "landed", while the push is in flight and the copy already lacks the Task', () => {
+      expect(taskRemovalPhase(sent, null, { busy: true, refused: false })).toBe(
+        'sending',
+      );
+    });
+
+    it('is "landed" once the request has settled and the Task is gone', () => {
+      expect(taskRemovalPhase(sent, null, idle)).toBe('landed');
+    });
+
+    it('is "refused" when the push failed and the Task is back', () => {
+      expect(
+        taskRemovalPhase(sent, saved, { busy: false, refused: true }),
+      ).toBe('refused');
+    });
+
+    it('is "sending" again while a retry or a reload sends the held edit', () => {
+      // A retry takes the Task out of the copy again; a reload may not yet.
+      const sending = { busy: true, refused: true };
+
+      expect(taskRemovalPhase(sent, null, sending)).toBe('sending');
+      expect(taskRemovalPhase(sent, saved, sending)).toBe('sending');
+    });
+
+    it('is "landed" when a held removal reaches the server by a retry or a reload', () => {
+      // Whatever the Vault last reported, the Task is gone and nothing runs.
+      expect(taskRemovalPhase(sent, null, idle)).toBe('landed');
+      expect(taskRemovalPhase(sent, null, { busy: false, refused: true })).toBe(
+        'landed',
+      );
+    });
+
+    it('is "dropped" when the Task is back and the Vault holds nothing', () => {
+      expect(taskRemovalPhase(sent, saved, idle)).toBe('dropped');
+    });
+
+    it('reads an archive the same way as a delete', () => {
+      const archive: TaskRemoval = { ...sent, kind: 'archive' };
+
+      expect(taskRemovalPhase(archive, null, idle)).toBe('landed');
+      expect(
+        taskRemovalPhase(archive, saved, { busy: false, refused: true }),
+      ).toBe('refused');
+    });
+  });
+
+  describe('taskRemovalNoticePlace', () => {
+    it('puts a refused removal’s notice in the confirm sheet while it is up', () => {
+      expect(taskRemovalNoticePlace('refused', true)).toBe('sheet');
+    });
+
+    it('puts it on the screen when no sheet covers it', () => {
+      expect(taskRemovalNoticePlace('refused', false)).toBe('screen');
+    });
+
+    it('draws no notice in any other phase', () => {
+      for (const phase of ['none', 'sending', 'landed', 'dropped'] as const) {
+        expect(taskRemovalNoticePlace(phase, true)).toBeNull();
+        expect(taskRemovalNoticePlace(phase, false)).toBeNull();
+      }
     });
   });
 

@@ -108,10 +108,11 @@ export function findVisibleTask(
  *
  * `found` is the Task in the screen's copy of the Vault Blob. `leaving` is
  * the Task as it stood when the User deleted or archived it on that screen,
- * held until the Vault Push settles. The edit takes the Task out of the copy
- * before the push, and the screen stays on show until the push has landed and
- * it has been popped — so for that long it draws the Task the User removed,
- * not "not found", which says another device did it (#1085).
+ * held for as long as that removal is (`TaskRemoval`). The edit takes the
+ * Task out of the copy before the push, and the screen stays on show until
+ * the push has landed and it has been popped — so for that long it draws the
+ * Task the User removed, not "not found", which says another device did it
+ * (#1085).
  *
  * A push that is refused puts the Task back in the copy, and the copy is what
  * is drawn. With neither there is nothing to draw: the Task was deleted or
@@ -122,6 +123,79 @@ export function taskOnDetail(
   leaving: DecryptedTask | null,
 ): DecryptedTask | null {
   return found ?? leaving;
+}
+
+/** How the User took a Task off its detail screen. */
+export type TaskRemovalKind = 'delete' | 'archive';
+
+/**
+ * A delete or archive the User asked for on a Task's detail screen and has
+ * not given up: the Task as it stood then, and whether the edit has been
+ * handed to the Vault yet. It waits unsent while another write or a reload is
+ * running, because the Vault runs one request at a time and refuses a second.
+ */
+export interface TaskRemoval {
+  task: DecryptedTask;
+  kind: TaskRemovalKind;
+  sent: boolean;
+}
+
+/**
+ * Where a removal stands.
+ *
+ * - `none` — the User removed nothing here.
+ * - `sending` — waiting its turn, or on its way: a Vault Push, a retry, or a
+ *   reload that is sending the edit.
+ * - `landed` — the server has it. The screen leaves.
+ * - `refused` — the push failed, the Task is back, and the Vault holds the
+ *   edit. The screen says so and offers the way to send it again.
+ * - `dropped` — the Task is back and the Vault holds nothing to say why: the
+ *   edit was never taken, or a reload found nothing to send. The screen lets
+ *   go of the removal.
+ */
+export type TaskRemovalPhase =
+  | 'none'
+  | 'sending'
+  | 'landed'
+  | 'refused'
+  | 'dropped';
+
+/**
+ * Reads a removal's phase from the screen's copy of the Vault Blob rather
+ * than from one push's answer, so a retry and a reload that sent the held
+ * edit both count as the removal landing — as `captureLanded` does for a
+ * capture. Whichever way the edit reaches the server, the screen leaves, and
+ * never rests on "Task not found" for a removal the User made (#1088).
+ *
+ * `found` is the Task in the copy. While a request runs the copy already
+ * lacks it, Unconfirmed, and a refused push puts it back — so `busy` is what
+ * tells an edit on its way from one that has landed. `refused` is whether
+ * the Vault reports a write error, which it does for exactly as long as it
+ * holds the edit or has just declined it.
+ */
+export function taskRemovalPhase(
+  removal: TaskRemoval | null,
+  found: DecryptedTask | null,
+  vault: { busy: boolean; refused: boolean },
+): TaskRemovalPhase {
+  if (removal === null) return 'none';
+  if (!removal.sent || vault.busy) return 'sending';
+  if (found === null) return 'landed';
+  return vault.refused ? 'refused' : 'dropped';
+}
+
+/**
+ * Where a refused removal's notice is drawn: in the confirm sheet while it is
+ * up — a notice on the screen would sit behind the scrim, unread — and on the
+ * screen otherwise, beside the actions the User pressed. `null` when there is
+ * nothing to say.
+ */
+export function taskRemovalNoticePlace(
+  phase: TaskRemovalPhase,
+  sheetVisible: boolean,
+): 'sheet' | 'screen' | null {
+  if (phase !== 'refused') return null;
+  return sheetVisible ? 'sheet' : 'screen';
 }
 
 /** A Task's status, defaulting to `pending` when the payload carries none. */
