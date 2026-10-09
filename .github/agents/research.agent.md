@@ -2,7 +2,7 @@
 description: 'Use when the user asks to research, look up, investigate, or summarize external documentation, libraries, standards, RFCs, security advisories, or web content. Produces a structured brief with citations.'
 name: 'Research'
 tools: [web, read, search]
-model: ['Gemini 3.6 Flash (copilot)']
+model: ['Gemini 3.8 Flash (copilot)']
 user-invocable: true
 argument-hint: 'Question or topic to research'
 ---

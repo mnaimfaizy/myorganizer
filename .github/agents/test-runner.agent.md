@@ -2,7 +2,7 @@
 description: 'Executes Jest unit and integration tests after TestReviewer approval. Detects hangs via ps aux check after 1-minute silence, retries one-at-a-time if needed, and returns a structured verdict. Never executes E2E tests — applies needs-e2e-review label instead.'
 name: 'TestRunner'
 tools: [read, search, execute]
-model: ['Kimi K2.7 Code (copilot)']
+model: ['Gemini 3.8 Flash (copilot)']
 user-invocable: false
 argument-hint: 'TestReviewer-approved output including verdict, file path, project name, and annotated checklist'
 ---

@@ -2,7 +2,7 @@
 description: 'Use when creating or updating Storybook stories for MyOrganizer UI components. This agent must analyze requirement quality before editing, challenge incomplete or weak requests, and deliver UX/a11y-aware stories.'
 name: 'StorybookCurator'
 tools: [read, search, edit]
-model: ['Gemini 3.6 Flash (copilot)']
+model: ['Gemini 3.8 Flash (copilot)']
 user-invocable: true
 argument-hint: 'Requirement summary + component/story paths + expected states'
 ---

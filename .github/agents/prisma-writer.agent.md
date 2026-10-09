@@ -2,7 +2,7 @@
 description: 'Use when changing MyOrganizer persistence: Prisma schema, generated client types, and the migration produced from that schema. One-shot: edit schema, generate, migrate, report, stop. Do not write controllers, sync OpenAPI, or hand-edit migration files.'
 name: 'PrismaWriter'
 tools: [read, edit, search, execute]
-model: ['Gemini 3.6 Flash (copilot)', 'GPT-5.6 Luna (copilot)']
+model: ['Gemini 3.8 Flash (copilot)', 'GPT-5.6 Luna (copilot)']
 user-invocable: false
 argument-hint: 'Persistence Brief (action, schema files, change, migration name, vault)'
 ---
