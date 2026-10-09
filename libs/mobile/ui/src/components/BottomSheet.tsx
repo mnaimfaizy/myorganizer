@@ -53,7 +53,10 @@ export interface BottomSheetProps {
    * leaves the sheet (#949).
    */
   onDismiss: () => void;
-  /** The sheet's own title. Also what the sheet is announced as. */
+  /**
+   * The sheet's own title. Also what the sheet is announced as: it is where
+   * a screen reader starts when the sheet opens.
+   */
   title?: string;
   /**
    * Adds a close (×) button beside the title — the tall sheet on the
@@ -116,6 +119,9 @@ const NAV_BAR_HEIGHT = 56;
  * `accessibilityViewIsModal` is what keeps a screen reader inside the panel;
  * without it the list behind the scrim is still swipeable, and the User can
  * act on a row they cannot see.
+ *
+ * A screen reader starts on the sheet's content, not on its scrim
+ * (`SCRIM_OVERHANG`).
  */
 export function BottomSheet(props: BottomSheetProps): React.JSX.Element {
   const reduceMotion = useReduceMotion();
@@ -215,6 +221,25 @@ function scrimKeyboardSkip(
     : null;
 }
 
+/**
+ * How far the panel reaches past each side of the scrim, off the screen.
+ *
+ * It is what makes a screen reader start on the sheet and not on "Dismiss"
+ * (#1090). Android orders the views of one parent for accessibility by where
+ * they are, not by the order they were added in: of two that share a row,
+ * the one starting further toward the leading edge comes first, and at a tie
+ * the one starting higher — which was the scrim, since it covers the display.
+ * TalkBack opens a new window on the first of them. A panel that starts one
+ * pixel before the scrim wins the first comparison, on either side so it
+ * holds in a right-to-left layout, and the scrim follows the sheet's content
+ * as its last stop.
+ *
+ * The padding grows by the same amount, so nothing inside the panel moves.
+ * iOS has no such order to win: `accessibilityViewIsModal` keeps VoiceOver
+ * inside the panel.
+ */
+const SCRIM_OVERHANG = StyleSheet.hairlineWidth;
+
 function FitSheet({
   onDismiss,
   title,
@@ -243,17 +268,20 @@ function FitSheet({
         onPress={onDismiss}
         {...scrimKeyboardSkip(onDismiss)}
       />
+      {/* Not labelled with the title: on Android the label made the panel a
+          second node saying what the header inside already says (#1090). */}
       <View
         accessibilityViewIsModal
-        accessibilityLabel={title}
+        testID="sheet-panel"
         style={[
           styles.sheet,
+          styles.aheadOfScrim,
           {
             // A tall sheet stops 40pt below the top of the screen.
             maxHeight:
               windowHeight - insets.top - (theme.spacing.xl + theme.spacing.sm),
             paddingTop: theme.spacing.xs,
-            paddingHorizontal: theme.spacing.md,
+            paddingHorizontal: theme.spacing.md + SCRIM_OVERHANG,
             paddingBottom: insets.bottom + theme.spacing.sm,
             borderTopLeftRadius: theme.radii.xl,
             borderTopRightRadius: theme.radii.xl,
@@ -507,6 +535,9 @@ const styles = StyleSheet.create({
   },
   sheet: {
     marginTop: 'auto',
+  },
+  aheadOfScrim: {
+    marginHorizontal: -SCRIM_OVERHANG,
   },
   handleArea: {
     alignItems: 'center',

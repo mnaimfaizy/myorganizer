@@ -104,6 +104,43 @@ describe('BottomSheet Component', () => {
     expect(scrim.props.accessibilityActions).toBeUndefined();
   });
 
+  it('should say the title once, as the header and not as the panel too (#1090)', async () => {
+    await render(
+      <ThemeProvider appearance="light">
+        <BottomSheet visible onDismiss={jest.fn()} title="Sort items by">
+          <Text>Aisle</Text>
+        </BottomSheet>
+      </ThemeProvider>,
+    );
+    expect(screen.getByRole('header', { name: 'Sort items by' })).toBeTruthy();
+    expect(
+      screen.getByTestId('sheet-panel').props.accessibilityLabel,
+    ).toBeUndefined();
+    expect(screen.queryByLabelText('Sort items by')).toBeNull();
+  });
+
+  it('should start the panel before the scrim on both sides, so a screen reader starts on it (#1090)', async () => {
+    await render(
+      <ThemeProvider appearance="light">
+        <BottomSheet visible onDismiss={jest.fn()} title="Sort items by">
+          <Text>Aisle</Text>
+        </BottomSheet>
+      </ThemeProvider>,
+    );
+    const panel = StyleSheet.flatten(
+      screen.getByTestId('sheet-panel').props.style,
+    );
+    const scrim = StyleSheet.flatten(
+      screen.getByLabelText('Dismiss', { includeHiddenElements: true }).props
+        .style,
+    );
+    expect(scrim.left).toBe(0);
+    expect(scrim.right).toBe(0);
+    expect(panel.marginHorizontal).toBe(-StyleSheet.hairlineWidth);
+    // The content stays where it was: the padding takes the overhang back.
+    expect(panel.paddingHorizontal + panel.marginHorizontal).toBe(16);
+  });
+
   it('should raise the sheet on the muted surface with a border top edge in dark (P6)', async () => {
     await render(
       <ThemeProvider appearance="dark">
@@ -112,7 +149,7 @@ describe('BottomSheet Component', () => {
         </BottomSheet>
       </ThemeProvider>,
     );
-    const sheet = screen.getByLabelText('Sort items by');
+    const sheet = screen.getByTestId('sheet-panel');
     const style = StyleSheet.flatten(sheet.props.style);
     expect(style.backgroundColor).toBe('#0f172a');
     expect(style.borderTopWidth).toBe(1);
