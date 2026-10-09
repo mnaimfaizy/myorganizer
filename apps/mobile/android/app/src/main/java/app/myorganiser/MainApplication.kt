@@ -4,7 +4,9 @@ import android.app.Application
 import com.facebook.react.PackageList
 import com.facebook.react.ReactApplication
 import com.facebook.react.ReactHost
+import com.facebook.react.ReactInstanceEventListener
 import com.facebook.react.ReactNativeApplicationEntryPoint.loadReactNative
+import com.facebook.react.bridge.ReactContext
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.internal.featureflags.ReactNativeFeatureFlags
 import com.facebook.react.internal.featureflags.ReactNativeNewArchitectureFeatureFlagsDefaults
@@ -36,6 +38,14 @@ class MainApplication : Application(), ReactApplication {
     super.onCreate()
     loadReactNative(this)
     ReactNativeFeatureFlags.dangerouslyForceOverride(KeyboardFocusFeatureFlags())
+    // Per React context: a reload makes a new one, and the listener is held by the context.
+    reactHost.addReactInstanceEventListener(
+      object : ReactInstanceEventListener {
+        override fun onReactContextInitialized(context: ReactContext) {
+          context.addExtraWindowEventListener(ModalEscapeGuard)
+        }
+      }
+    )
   }
 }
 
