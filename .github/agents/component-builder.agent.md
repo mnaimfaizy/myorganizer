@@ -2,7 +2,7 @@
 description: 'Use when creating or editing a React component in the MyOrganizer web app. Accepts a Structured Spec from the main agent and writes the component against docs/ui/GUIDELINES.md. Always prefers the compound/composition pattern. Hands off to ComponentReviewer.'
 name: 'ComponentBuilder'
 tools: [read, edit, search, execute, todo]
-model: ['Gemini 3.6 Flash (copilot)', 'GPT-5.6 Luna (copilot)']
+model: ['Gemini 3.8 Flash (copilot)', 'GPT-5.6 Luna (copilot)']
 user-invocable: false
 argument-hint: 'Structured Spec block (Component Name, Target Path, Action, Props Interface, State, Zod Schema, Composition)'
 ---

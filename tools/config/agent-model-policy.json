@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-09-03",
+  "reviewedAt": "2026-10-10",
   "decision": {
     "defaultRule": "Pin models by agent role and harness; after repeated failures, escalate the decision to the main agent or a human instead of allowing an automatic model change.",
     "tiers": {
@@ -22,7 +22,7 @@
     "api-writer": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)", "GPT-5.6 Luna (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)", "GPT-5.6 Luna (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -31,7 +31,7 @@
     "audit": {
       "tier": "T1",
       "models": {
-        "copilot": ["Kimi K2.7 Code (copilot)", "Gemini 3.6 Flash (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -49,7 +49,7 @@
     "component-builder": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)", "GPT-5.6 Luna (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)", "GPT-5.6 Luna (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -67,7 +67,7 @@
     "dep-audit": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)", "Claude Haiku 4.5 (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)", "Claude Haiku 4.5 (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -95,7 +95,7 @@
     "docs": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)"],
         "claude": "sonnet",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -144,7 +144,7 @@
     "prisma-writer": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)", "GPT-5.6 Luna (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)", "GPT-5.6 Luna (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -171,7 +171,7 @@
     "research": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)"],
         "claude": "sonnet",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -180,7 +180,7 @@
     "storybook-curator": {
       "tier": "T1",
       "models": {
-        "copilot": ["Gemini 3.6 Flash (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)"],
         "claude": "haiku",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -199,7 +199,7 @@
     "test-runner": {
       "tier": "T1",
       "models": {
-        "copilot": ["Kimi K2.7 Code (copilot)"],
+        "copilot": ["Gemini 3.8 Flash (copilot)"],
         "claude": "inherit",
         "cursor": "composer-2.5",
         "gemini": "gemini-3.6-flash"
@@ -241,35 +241,34 @@
       "url": "https://docs.github.com/en/copilot/reference/ai-models/supported-models",
       "requiredTerms": [
         "GPT-5.6 Luna",
-        "Gemini 3.6 Flash",
+        "Gemini 3.8 Flash",
         "Claude Sonnet 5",
         "Grok 4.6",
-        "Kimi K2.7 Code",
         "MAI-Code-1.1-Flash"
       ],
       "linePrefixes": ["GPT-", "Claude ", "Gemini ", "Grok ", "Kimi ", "MAI-"],
-      "snapshotSha256": "70c00b17de329502a4cb70e4d4626dce3182551e90e7a218c5755f84f9ce2e3a"
+      "snapshotSha256": "ec9093cf6ce8a610a0f91092a4e5d60b6e8cb2209bccd1eae136ffad31540b44"
     },
     {
       "harness": "claude",
       "url": "https://docs.anthropic.com/en/docs/claude-code/sub-agents",
       "requiredTerms": ["haiku", "sonnet", "inherit"],
       "linePrefixes": ["haiku", "sonnet", "opus", "fable", "inherit"],
-      "snapshotSha256": "1ac093eb5507bbfe74dff70f0cf1ba278303055b13f53580ead678b32d2566c6"
+      "snapshotSha256": "3b702f91c1da0ea1845bcbef704478a06038fec7c269200c89c15b3916129e60"
     },
     {
       "harness": "cursor",
       "url": "https://cursor.com/docs/models-and-pricing",
       "requiredTerms": ["Composer 2.5", "Grok 4.6"],
       "linePrefixes": ["Composer ", "Grok "],
-      "snapshotSha256": "e35d74500603956e394580d80d1ce417269f69b90c3c6c95dd000abf603cd96f"
+      "snapshotSha256": "a058ed9f276a41eb792f923bfbe5f40e361aaf274e5fe1329288f4a7017dee3f"
     },
     {
       "harness": "gemini",
       "url": "https://ai.google.dev/gemini-api/docs/pricing?hl=en",
       "requiredTerms": ["gemini-3.6-flash", "gemini-3.5-flash-lite"],
       "linePrefixes": ["Gemini "],
-      "snapshotSha256": "815a451b2a50b3b0ee911a045120493c2c82ca0aa49880f6204084a4e95786f3"
+      "snapshotSha256": "d768f9ba6c0873f94851b5f28a97b4aa8278e2b1ff36805df09e512aff13cae4"
     }
   ],
   "costSources": {
@@ -279,9 +278,9 @@
         "AI Credits",
         "GPT-5.6",
         "Claude Sonnet 5",
-        "Gemini 3.6"
+        "Gemini 3.8"
       ],
-      "snapshotSha256": "1985c2aaa3aebacc9ea436818eec122c5affbc5ed2d4fef878d8ab34615bc813"
+      "snapshotSha256": "39ffdfe0f29d16158ea7a7d78f2a008d273922f979d8ca6c881a27b927184365"
     },
     "claude": {
       "url": "https://docs.anthropic.com/en/docs/about-claude/pricing",
@@ -291,7 +290,7 @@
         "Claude Opus 5",
         "cache"
       ],
-      "snapshotSha256": "9b408d16a72972f45273cb11871f11cf084e8a9f661c683032eb0732ab47e0a7"
+      "snapshotSha256": "d0fec4c4f115cf0c9179bab562cb453a8816fcb7f69aaa9e4a331adfbaff3167"
     },
     "cursor": {
       "url": "https://cursor.com/docs/models-and-pricing",
@@ -301,7 +300,7 @@
         "Cursor Models",
         "Other Models"
       ],
-      "snapshotSha256": "9bffff1860aff31af82630f873de341cb9c8625b404f0d615c5508f732399d1d"
+      "snapshotSha256": "12b620f27b5c893825726fd2e4664d7e3daa6689fbeaab263ff41addd5805ff5"
     },
     "gemini": {
       "url": "https://ai.google.dev/gemini-api/docs/pricing?hl=en",
