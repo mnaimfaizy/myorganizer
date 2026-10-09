@@ -11,6 +11,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import type { ThemeColors } from '../theme';
 import type { TypeScaleStep } from '../typeScale';
+import { disabledNatively } from '../hooks/focusHeld';
 import { useFocusRing } from '../hooks/useFocusRing';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { labelRipple, PressedLayer } from './feedback';
@@ -147,6 +148,7 @@ export function Button({
   ref,
   onFocus,
   onBlur,
+  onPress,
   ...rest
 }: ButtonProps): React.JSX.Element {
   const theme = useTheme();
@@ -162,6 +164,9 @@ export function Button({
       : VARIANTS[variant];
   const { height, step, icon: iconSize } = SIZES[size];
   const inert = disabled || busy;
+  // Not told to the view while the button is where keyboard focus is; the
+  // press is refused here instead (see `disabledNatively`).
+  const nativelyDisabled = disabledNatively(inert, ring.focused);
   const radius = theme.radii.md;
   const isLink = variant === 'link';
 
@@ -175,12 +180,15 @@ export function Button({
       ref={ref}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled: inert, busy }}
-      disabled={inert}
+      accessibilityState={{ disabled: nativelyDisabled, busy }}
+      disabled={nativelyDisabled}
+      onPress={inert ? undefined : onPress}
       android_ripple={
-        roles.fill === null
-          ? unfilledFeedback.android_ripple
-          : labelRipple(theme, roles.label)
+        inert
+          ? undefined
+          : roles.fill === null
+            ? unfilledFeedback.android_ripple
+            : labelRipple(theme, roles.label)
       }
       onFocus={(event) => {
         ring.onFocus(event);
@@ -201,7 +209,7 @@ export function Button({
           backgroundColor:
             roles.fill === null ? 'transparent' : theme.colors[roles.fill],
         },
-        roles.fill === null && unfilledFeedback.pressedStyle(pressed),
+        roles.fill === null && unfilledFeedback.pressedStyle(pressed && !inert),
         ring.ringStyle,
         disabled && styles.disabled,
         style,
@@ -212,7 +220,7 @@ export function Button({
         <>
           {roles.fill !== null && (
             <PressedLayer
-              pressed={pressed}
+              pressed={pressed && !inert}
               color={theme.colors[roles.label]}
               radius={radius}
             />

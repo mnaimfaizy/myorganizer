@@ -103,6 +103,27 @@ export function findVisibleTask(
   return readVisibleTasks(records).find((task) => task.id === id) ?? null;
 }
 
+/**
+ * The Task a detail screen draws.
+ *
+ * `found` is the Task in the screen's copy of the Vault Blob. `leaving` is
+ * the Task as it stood when the User deleted or archived it on that screen,
+ * held until the Vault Push settles. The edit takes the Task out of the copy
+ * before the push, and the screen stays on show until the push has landed and
+ * it has been popped — so for that long it draws the Task the User removed,
+ * not "not found", which says another device did it (#1085).
+ *
+ * A push that is refused puts the Task back in the copy, and the copy is what
+ * is drawn. With neither there is nothing to draw: the Task was deleted or
+ * archived elsewhere, or the id never named one.
+ */
+export function taskOnDetail(
+  found: DecryptedTask | null,
+  leaving: DecryptedTask | null,
+): DecryptedTask | null {
+  return found ?? leaving;
+}
+
 /** A Task's status, defaulting to `pending` when the payload carries none. */
 export function taskStatus(task: DecryptedTask): TaskStatus {
   return task.status ?? 'pending';

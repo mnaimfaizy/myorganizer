@@ -11,6 +11,7 @@ import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
 import { haptics } from '../haptics';
 import { EASING, MOTION, PRESS_SCALE } from '../motion';
+import { disabledNatively } from '../hooks/focusHeld';
 import { useFocusRing } from '../hooks/useFocusRing';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import { Text } from './Text';
@@ -101,15 +102,9 @@ export function Checkbox({
     strokeDashoffset: TICK_LENGTH * (1 - progress.value),
   }));
 
-  // Disabled while it is where keyboard focus is. Android takes focus from a
-  // view as it is disabled and gives it to the first focusable view in the
-  // window, so a box disabled for the length of the save its own tick started
-  // lost the keyboard's place (#1068). The view is told nothing for as long
-  // as it holds focus: it stays dimmed and refuses the press here instead,
-  // and is disabled for real once focus moves on. Never so after a touch or
-  // on iOS, where no control is told it has focus.
-  const heldByFocus = disabled && focus.focused;
-  const nativelyDisabled = disabled && !heldByFocus;
+  // Not told to the view while the box is where keyboard focus is; it stays
+  // dimmed and refuses the press here instead (see `disabledNatively`).
+  const nativelyDisabled = disabledNatively(disabled, focus.focused);
 
   const pressTo = (value: number): void => {
     if (reduceMotion) return;

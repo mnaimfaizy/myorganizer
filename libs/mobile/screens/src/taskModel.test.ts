@@ -5,6 +5,7 @@ import {
   priorityBarCount,
   localDateOnlyString,
   findVisibleTask,
+  taskOnDetail,
   taskStatus,
 } from './taskModel';
 
@@ -194,6 +195,37 @@ describe('taskModel', () => {
       ];
 
       expect(findVisibleTask(records, 'task1')).toBeNull();
+    });
+  });
+
+  describe('taskOnDetail', () => {
+    const saved = { id: 'task1', title: 'Renew passport' };
+
+    it('draws the Task in the copy when nothing is being removed', () => {
+      expect(taskOnDetail(saved, null)).toBe(saved);
+    });
+
+    it('draws the Task the User removed while its push is in flight', () => {
+      // The edit has already taken it out of the copy.
+      expect(taskOnDetail(findVisibleTask([], 'task1'), saved)).toBe(saved);
+    });
+
+    it('draws the Task an archive took out of the copy', () => {
+      const archived = [{ ...saved, archived: true }];
+
+      expect(taskOnDetail(findVisibleTask(archived, 'task1'), saved)).toBe(
+        saved,
+      );
+    });
+
+    it('draws the copy, not the one remembered, once a refused push put it back', () => {
+      const reverted = { id: 'task1', title: 'Renew passport (edited)' };
+
+      expect(taskOnDetail(reverted, saved)).toBe(reverted);
+    });
+
+    it('draws nothing for a Task this screen did not remove', () => {
+      expect(taskOnDetail(findVisibleTask([], 'task1'), null)).toBeNull();
     });
   });
 

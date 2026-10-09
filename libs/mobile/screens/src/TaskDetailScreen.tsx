@@ -55,6 +55,7 @@ import {
   TASK_CONTEXT_LABEL,
   TASK_PRIORITY_LABEL,
   TASK_STATUS_LABEL,
+  taskOnDetail,
   taskStatus as readTaskStatus,
   type DecryptedTask,
 } from './taskModel';
@@ -167,6 +168,16 @@ export function TaskDetailScreen(): React.JSX.Element {
     () => findVisibleTask(snapshot?.envelope.records, taskId),
     [snapshot, taskId],
   );
+
+  // The Task as it stood when the User deleted or archived it here, held
+  // until that push settles. `apply` takes it out of this screen's copy
+  // before the push, and the screen is on show until the push has landed and
+  // the pop has run; without this it would say "Task not found — deleted on
+  // another device" about a delete the User just made (#1085). Only what is
+  // drawn reads `shown`. Every save still goes by `task`, so nothing can be
+  // written to a Task that is on its way out.
+  const [leaving, setLeaving] = useState<DecryptedTask | null>(null);
+  const shown = taskOnDetail(task, leaving);
 
   const { pendingId, revertedId, push, reloadAfterConflict, retryFailedEdit } =
     useUnconfirmedEdit(apply, retry, reload);
@@ -340,11 +351,18 @@ export function TaskDetailScreen(): React.JSX.Element {
   const leaveAfter = useCallback(
     (edit: VaultBlobEdit): void => {
       if (task === null) return;
+      setLeaving(task);
       void push(task.id, edit).then((confirmed) => {
         if (confirmed) {
+          // `leaving` stays set: the screen is drawn until the pop finishes.
           setDeleteVisible(false);
           navigation.goBack();
+          return;
         }
+        // Refused, so the last saved copy is back and the Task with it. Let
+        // go of the one remembered, or a later delete on another device
+        // would not show as "not found".
+        setLeaving(null);
       });
     },
     [task, push, navigation],
@@ -408,7 +426,7 @@ export function TaskDetailScreen(): React.JSX.Element {
     ) : null;
 
   const created =
-    task === null ? null : describeCreated(task.createdAt, new Date());
+    shown === null ? null : describeCreated(shown.createdAt, new Date());
 
   return (
     <Screen edges={STACK_SCREEN_EDGES} noPadding>
@@ -434,7 +452,7 @@ export function TaskDetailScreen(): React.JSX.Element {
             onPress={() => void reload()}
           />
         </View>
-      ) : task === null ? (
+      ) : shown === null ? (
         <View style={styles.centered}>
           <EmptyState
             icon="tasks"
@@ -505,7 +523,7 @@ export function TaskDetailScreen(): React.JSX.Element {
                     key={value}
                     label={TASK_STATUS_LABEL[value]}
                     accessibilityRole="radio"
-                    selected={readTaskStatus(task) === value}
+                    selected={readTaskStatus(shown) === value}
                     onPress={() => setStatus(value)}
                   />
                 ))}
@@ -520,7 +538,7 @@ export function TaskDetailScreen(): React.JSX.Element {
               />
               <SegmentedControl
                 segments={PRIORITY_SEGMENTS}
-                value={task.priority ?? 'medium'}
+                value={shown.priority ?? 'medium'}
                 onChange={setPriority}
                 accessibilityLabel="Priority"
               />
@@ -531,7 +549,7 @@ export function TaskDetailScreen(): React.JSX.Element {
               <FieldLabel label="Context" saving={savingField === 'context'} />
               <SegmentedControl
                 segments={CONTEXT_SEGMENTS}
-                value={task.context ?? 'none'}
+                value={shown.context ?? 'none'}
                 onChange={setContext}
                 accessibilityLabel="Context"
               />
@@ -544,7 +562,7 @@ export function TaskDetailScreen(): React.JSX.Element {
                 labelAccessory={
                   savingField === 'dueDate' ? <SavingNote /> : undefined
                 }
-                value={task.dueDate ?? null}
+                value={shown.dueDate ?? null}
                 onChange={setDueDate}
                 clearable
                 clearLabel="Clear due date"
@@ -590,7 +608,10 @@ export function TaskDetailScreen(): React.JSX.Element {
                 label="Delete task"
                 icon="trash"
                 variant="destructive"
-                onPress={() => setDeleteVisible(true)}
+                onPress={() => {
+                  // Not over an Archive already on its way.
+                  if (leaving === null) setDeleteVisible(true);
+                }}
               />
             </View>
           </ScrollView>
@@ -606,7 +627,9 @@ export function TaskDetailScreen(): React.JSX.Element {
         secondaryLabel="Archive instead"
         secondaryIcon="archive"
         onSecondary={archive}
-        busy={task !== null && pendingId === task.id}
+        // By the route's id, not the Task in the copy: a delete in flight
+        // has already taken the Task out of it, and the sheet is busy then.
+        busy={pendingId === taskId}
         onConfirm={confirmDelete}
         onCancel={cancelDelete}
       />
