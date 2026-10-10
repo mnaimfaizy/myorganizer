@@ -79,6 +79,7 @@ cannot be expressed there, so it stays writable in Cursor.
 | `yarn agents:sync:test`    | Test the harness-section and tool-grant renderers                     |
 | `yarn agents:map:check`    | Assert the orchestration map still matches the policy                 |
 | `yarn agents:models:audit` | Check assignments and first-party catalog snapshots                   |
+| `yarn agents:models:test`  | Test the audit's retirement-table reader                              |
 | `yarn agents:usage:report` | Summarize Sandcastle token telemetry                                  |
 
 ### Audit options
@@ -89,7 +90,7 @@ yarn agents:models:audit --report ./agent-model-audit.md
 yarn agents:models:audit --print-snapshots
 ```
 
-The online audit checks frontmatter drift, verifies assigned model terms still appear in first-party sources, and compares filtered catalog and pricing snapshots. It exits `1` for governance findings and `2` when source availability prevents a complete audit. It never modifies policy or agent files.
+The online audit checks frontmatter drift, verifies assigned model terms still appear in first-party sources, reads any retirement table a source publishes, and compares filtered catalog and pricing snapshots. It exits `1` for governance findings and `2` when source availability prevents a complete audit. It never modifies policy or agent files.
 
 ### Usage report options
 
@@ -108,7 +109,7 @@ The [monthly audit workflow](../../.github/workflows/monthly-agent-model-audit.y
 
 1. Validate all four harness assignments against policy.
 2. Fetch first-party catalog sources.
-3. Check required model terms plus catalog and pricing snapshots.
+3. Check required model terms, retirement tables, and catalog and pricing snapshots.
 4. Publish the report in the workflow summary.
 5. On findings, create or update `[automation] Agent model governance drift`.
 
@@ -116,14 +117,18 @@ The workflow does not open a PR or rewrite model pins. Catalog presence does not
 
 ## Interpreting audit results
 
-| Finding                  | Meaning                                             | Action                                                                |
-| ------------------------ | --------------------------------------------------- | --------------------------------------------------------------------- |
-| Assignment sync fails    | Harness frontmatter differs from policy             | Run `yarn agents:sync` or correct the policy                          |
-| Assigned model not found | Possible removal, rename, or documentation change   | Verify the first-party catalog before changing pins                   |
-| Catalog snapshot changed | Possible launch, removal, or status change          | Compare quality and cost before migration                             |
-| Pricing snapshot changed | Rates, credits, included pools, or overages changed | Review the first-party billing page and update expectations           |
-| No baseline              | Policy source is incomplete                         | Capture and review a new snapshot                                     |
-| Source warning           | Network failure or source structure changed         | Workflow fails without filing a drift issue; retry and verify the URL |
+| Finding                  | Meaning                                                                                   | Action                                                                                         |
+| ------------------------ | ----------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Assignment sync fails    | Harness frontmatter differs from policy                                                   | Run `yarn agents:sync` or correct the policy                                                   |
+| Assigned model not found | Possible removal, rename, or documentation change                                         | Verify the first-party catalog before changing pins                                            |
+| Pinned model retired     | A pinned or tracked model is in the source's retirement table, dated on or before the run | Repin through the safe update procedure; the table's suggested alternative is a starting point |
+| Retirement scheduled     | Same table, dated after the run                                                           | Plan the repin before that date                                                                |
+| Catalog snapshot changed | Possible launch, removal, or status change                                                | Compare quality and cost before migration                                                      |
+| Pricing snapshot changed | Rates, credits, included pools, or overages changed                                       | Review the first-party billing page and update expectations                                    |
+| No baseline              | Policy source is incomplete                                                               | Capture and review a new snapshot                                                              |
+| Source warning           | Network failure or source structure changed                                               | Workflow fails without filing a drift issue; retry and verify the URL                          |
+
+A model term can still be "found" after its retirement: Copilot moves a retired model out of the supported-models table and into "Model retirement history" on the same page. The audit therefore reads that table (model, date, suggested alternative) and compares each date with the run date. A name matches only when it equals the term, so `GPT-5.1-Codex` retiring says nothing about `GPT-5.1`. Only Copilot publishes such a table today; a source without one is not checked for retirements, and a table the audit can find but not read is a source warning.
 
 Catalog snapshots are change detectors, not benchmarks. Gemini’s `latest-model` page is a launch splash (currently Gemini 3.8 Flash) and omits still-GA IDs from visible HTML, so the Gemini catalog check uses the [pricing page](https://ai.google.dev/gemini-api/docs/pricing?hl=en), which still lists `gemini-3.6-flash` and `gemini-3.5-flash-lite`.
 

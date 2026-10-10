@@ -6,6 +6,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
+import {
+  parseRetirementTable,
+  retirementFindings,
+} from './lib/model-retirements.mjs';
+
 const repoRoot = process.cwd();
 const policyPath = path.join(
   repoRoot,
@@ -171,6 +176,7 @@ async function main() {
   const findings = [];
   const warnings = [];
   const sourceResults = [];
+  const runAt = new Date();
 
   const sync = spawnSync(process.execPath, [syncScript, '--check'], {
     cwd: repoRoot,
@@ -186,11 +192,9 @@ async function main() {
     for (const source of policy.catalogSources) {
       try {
         const result = await fetchSource(source);
+        const pinnedTerms = assignedTerms(policy, source.harness);
         const trackedTerms = [
-          ...new Set([
-            ...source.requiredTerms,
-            ...assignedTerms(policy, source.harness),
-          ]),
+          ...new Set([...source.requiredTerms, ...pinnedTerms]),
         ];
         const missingTerms = trackedTerms.filter(
           (term) => !result.text.toLowerCase().includes(term.toLowerCase()),
@@ -198,6 +202,21 @@ async function main() {
         for (const term of missingTerms) {
           findings.push(
             `${source.harness}: tracked model or alias "${term}" was not found in the official source.`,
+          );
+        }
+        const retirements = parseRetirementTable(result.lines);
+        findings.push(
+          ...retirementFindings({
+            harness: source.harness,
+            assignedTerms: pinnedTerms,
+            requiredTerms: source.requiredTerms,
+            rows: retirements.rows,
+            today: runAt.toISOString().slice(0, 10),
+          }),
+        );
+        if (retirements.tableFound && !retirements.rows.length) {
+          warnings.push(
+            `${source.harness}: the official source has a retirement table but no row could be read from it; retirements were not checked.`,
           );
         }
         if (
@@ -262,7 +281,7 @@ async function main() {
   const report = [
     '# Agent model governance audit',
     '',
-    `- Run: ${new Date().toISOString()}`,
+    `- Run: ${runAt.toISOString()}`,
     `- Policy reviewed: ${policy.reviewedAt}`,
     `- Assignment sync: ${sync.status === 0 ? 'PASS' : 'FAIL'}`,
     `- Official catalog checks: ${options.online ? 'enabled' : 'disabled'}`,
@@ -274,7 +293,7 @@ async function main() {
     ...(findings.length
       ? findings.map((finding) => `- ${finding}`)
       : [
-          '- No assignment drift, removals, deprecation signals, catalog changes, or pricing changes detected.',
+          '- No assignment drift, removals, retirements, catalog changes, or pricing changes detected.',
         ]),
     '',
     '## Warnings',

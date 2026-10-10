@@ -928,6 +928,9 @@ jobs:
       - name: Agent orchestration map checker contracts
         run: corepack yarn agents:map:test
 
+      - name: Agent model audit contracts (retirement table)
+        run: corepack yarn agents:models:test
+
       - name: Gate manifest checker contracts
         run: corepack yarn gates:run:test
 
