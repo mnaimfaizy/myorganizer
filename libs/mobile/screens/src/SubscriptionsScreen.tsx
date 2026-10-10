@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -38,6 +38,7 @@ import {
   StatusPill,
   Text,
   useFocusRing,
+  useFocusSuccession,
   useLargeTitleCollapse,
   staticElement,
   usePressFeedback,
@@ -256,18 +257,33 @@ export function SubscriptionsScreen(): React.JSX.Element {
   const rowState = (id: string): ListRowState =>
     pendingSubscriptionId === id ? 'unconfirmed' : 'normal';
 
+  // The rows as drawn, top to bottom. A row is what opens the Subscription,
+  // so it is a row that focus comes back to — and an edit made on that screen
+  // can have moved it since: into or out of Renewing soon, where it is
+  // mounted again as another view, or off this filter altogether, where the
+  // row that took its place answers, or "Add subscription" once none is left
+  // (#1079).
+  const shownSubscriptionIds = [...view.renewingSoon, ...view.items].map(
+    (subscription) => subscription.id,
+  );
+  const addControl = useRef<React.ComponentRef<typeof View>>(null);
+  const rowRef = useFocusSuccession(shownSubscriptionIds, {
+    fallback: addControl,
+  });
+
   const renderRow = (
     subscription: DecryptedSubscription,
   ): React.JSX.Element => (
     <SubscriptionRow
       key={subscription.id}
+      ref={rowRef(subscription.id)}
       subscription={subscription}
       state={rowState(subscription.id)}
       onPress={() => openDetail(subscription.id)}
     />
   );
 
-  const listed = view.renewingSoon.length + view.items.length;
+  const listed = shownSubscriptionIds.length;
 
   return (
     <Screen edges={TAB_SCREEN_EDGES} noPadding>
@@ -407,7 +423,12 @@ export function SubscriptionsScreen(): React.JSX.Element {
               },
             ]}
           >
-            <Button label="Add subscription" icon="plus" onPress={openNew} />
+            <Button
+              ref={addControl}
+              label="Add subscription"
+              icon="plus"
+              onPress={openNew}
+            />
           </View>
         </>
       )}
@@ -442,10 +463,13 @@ function SubscriptionRow({
   subscription,
   state,
   onPress,
+  ref,
 }: {
   subscription: DecryptedSubscription;
   state: ListRowState;
   onPress: () => void;
+  /** The row's view, for the list to hand focus to (`useFocusSuccession`). */
+  ref?: React.Ref<React.ComponentRef<typeof View>>;
 }): React.JSX.Element {
   const now = new Date();
   const status = subscriptionStatus(subscription);
@@ -472,6 +496,7 @@ function SubscriptionRow({
 
   return (
     <ListRow
+      ref={ref}
       title={title}
       titleWeight="semibold"
       muted={muted}
