@@ -1,6 +1,7 @@
 package app.myorganiser
 
 import android.os.Bundle
+import android.view.KeyEvent
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
 import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.fabricEnabled
@@ -14,6 +15,8 @@ import com.facebook.react.uimanager.util.ReactFindViewUtil
 private const val FOCUS_LANDING_NATIVE_ID = "focus-landing"
 
 class MainActivity : ReactActivity() {
+
+  private val typeAhead = TypeAhead()
 
   /**
    * Returns the name of the main component registered from JavaScript. This is used to schedule
@@ -40,6 +43,9 @@ class MainActivity : ReactActivity() {
    *
    * Outside touch mode Android has already focused the landing view by the time this is told, and
    * the new focus is not null.
+   *
+   * A text input gaining focus is also owed the keys typed while it was on its way: see
+   * [TypeAhead].
    */
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
@@ -50,7 +56,16 @@ class MainActivity : ReactActivity() {
         // it focuses the second, and that must not pass through here and restart the keyboard.
         decor.post(::focusLanding)
       }
+      if (newFocus?.onCheckIsTextEditor() == true) typeAhead.deliverTo(newFocus)
     }
+  }
+
+  /** Keeps a key that writes text and that no view took, for the input about to take focus. */
+  override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+    if (typeAhead.queueBehindOwed(event)) return true
+    val handled = super.dispatchKeyEvent(event)
+    if (!handled) typeAhead.hold(event)
+    return handled
   }
 
   private fun focusLanding() {

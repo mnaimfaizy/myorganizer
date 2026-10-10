@@ -92,8 +92,10 @@ export interface TextFieldProps extends TextInputProps {
    * `ANDROID_AUTOFOCUS_DELAY_MS`. For a field that appears in a window
    * already on screen and taking keys — the Tasks composer, opened by Enter
    * on a hardware keyboard, where everything typed during the wait went to
-   * no field at all (#1046). Not for a field that mounts with its screen or
-   * its sheet: that is the case the wait is for.
+   * no field at all (#1046), and a grocery trip's amount (#1053). Not for a
+   * field that mounts with its screen or its sheet: that is the case the wait
+   * is for. What is typed before even a prompt field has focus, Android's
+   * `TypeAhead` keeps for it.
    */
   autoFocusPromptly?: boolean;
 }
