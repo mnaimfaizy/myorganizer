@@ -601,6 +601,7 @@ export function GroceryTripScreen(): React.JSX.Element {
               onSubmitEditing={() => commitAmount(line)}
               returnKeyType="done"
               autoFocus
+              autoFocusPromptly
               selectTextOnFocus
               containerStyle={styles.amountField}
             />
