@@ -808,8 +808,14 @@ export function TasksScreen(): React.JSX.Element {
                         ref={showDoneChip}
                         onPress={() => {
                           // With nothing open, hiding the done Tasks takes
-                          // the count row away and leaves the empty state.
-                          if (keyboardHoldsFocus()) focusShowDoneAction();
+                          // the count row away and leaves an empty state.
+                          // "All clear" has the button that shows them
+                          // again; "No tasks yet" has no control at all, and
+                          // focus goes to the one way on from it (#1078).
+                          if (keyboardHoldsFocus()) {
+                            if (visibleCount === 0) focusAddTask();
+                            else focusShowDoneAction();
+                          }
                           setShowDone((current) => !current);
                         }}
                       />
