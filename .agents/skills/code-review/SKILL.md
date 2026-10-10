@@ -83,6 +83,15 @@ what you fetched to `tmp/code-review/spec.json` as `{ "spec": { kind, ref, found
 The Spec sub-agent reads the spec from that file, so the dispatch never carries its text. In CI the
 file is already there.
 
+**A change answers to every issue its commits close**
+([ADR 0125](../../../docs/adr/0125-a-change-answers-to-every-issue-its-commits-close.md)). The order
+above finds one issue. Every _other_ issue a commit in the range closes — `Closes #46`, `Fixes #47`,
+`Resolves #48`, never `Refs` or `see` — is spec too: name them in `spec.also` (`["#46", "#47"]`,
+commit order, once each) and write each one's text to the file's own `also` array as
+`{ "ref", "title", "body" }`. A reference that turns out to be a pull request is left out of both: its
+body is not a spec source, for the reason below. The dispatch line still carries `ref` alone; the
+Spec sub-agent finds the rest in the file. Leave `also` out entirely when there is none.
+
 **A pull request body is not on this list, and must not be added to it**
 ([ADR 0076](../../../docs/adr/0076-an-agent-branch-carries-its-issue-in-its-first-commit.md)). On an
 agent-authored pull request the body is written by the same agent that wrote the code, after it
@@ -285,7 +294,7 @@ sub-agent read. Copy a returned finding as it is, or drop it; never correct one.
   "base": "<base sha>",
   "head": "<head sha>",
   "tier": null,
-  "spec": { "kind": "issue" | "path" | "none", "ref": "<#123 | path>", "foundBy": "branch" | "commits" | "argument" | "user" | "none" },
+  "spec": { "kind": "issue" | "path" | "none", "ref": "<#123 | path>", "foundBy": "branch" | "commits" | "argument" | "user" | "none", "also": ["<#124>"]   (optional: only when the change closes further issues) },
   "standardsSources": ["<the Standards sub-agent's reported standardsSources, step 3>"],
   "executed": ["<union of both sub-agents' executed lists>"],
   "suppressed": { "redundant": <sum of both suppressedRedundant> },
@@ -343,8 +352,9 @@ rediscover them:
   has two axes' worth of findings to assemble (step 5) only if it dispatched before it started
   exploring standards sources on its own.
 - **The spec is already resolved** in `tmp/code-review/spec.json` as
-  `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token. Copy
-  `spec` into the envelope. The Spec sub-agent reads `body` from that file itself. Fetch nothing;
+  `{ "spec": { kind, ref, foundBy }, "title", "body" }` by `review:spec`, using the job token, with
+  `spec.also` and an `also` array beside it when the change closes further issues. Copy `spec` into
+  the envelope whole, `also` included. The Spec sub-agent reads `body` from that file itself. Fetch nothing;
   there is no token in your environment and nobody to ask. `kind: none` skips the Spec axis.
 - **The obligation worklist is already selected** in `tmp/code-review/obligations.json` by
   `review:obligations:select`. Read it, answer every site, and write

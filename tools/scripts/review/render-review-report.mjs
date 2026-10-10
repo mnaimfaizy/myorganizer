@@ -335,7 +335,11 @@ export const renderReport = (raw, previous = null, { hunks = true } = {}) => {
   const specText =
     report.spec.kind === 'none'
       ? 'none (tightened to review:human)'
-      : `${report.spec.kind} ${report.spec.ref} (found by ${report.spec.foundBy})`;
+      : `${report.spec.kind} ${report.spec.ref} (found by ${report.spec.foundBy})${
+          report.spec.also
+            ? `, also ${report.spec.also.join(', ')} (closed by commits)`
+            : ''
+        }`;
   const tierText = report.effectiveTier ?? 'interactive';
   // `null` is a transcript that carried no figures; absent is a report that
   // never had any. Only the first is something to say.

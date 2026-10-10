@@ -1,13 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { discoverSpec } from './resolve-spec.mjs';
+import { discoverSpec, isPullRequest } from './resolve-spec.mjs';
 
 test('the branch name wins when it carries an issue number', () => {
   assert.deepEqual(
     discoverSpec({
       headRef: 'fix/292-graphify-extraction-gaps',
-      commits: ['fix: closes #999'],
+      commits: ['fix: refs #999'],
     }),
     { kind: 'issue', ref: '#292', foundBy: 'branch' },
   );
@@ -17,10 +17,69 @@ test('a branch without a number falls back to the first commit reference', () =>
   assert.deepEqual(
     discoverSpec({
       headRef: 'feat/review-tier-classifier',
-      commits: ['feat(review): classifier', 'Refs #123 and closes #456'],
+      commits: ['feat(review): classifier', 'Refs #123 and see #456'],
     }),
     { kind: 'issue', ref: '#123', foundBy: 'commits' },
   );
+});
+
+// ADR 0125. The case that asked for it: `fix/1078-…` whose one commit closed
+// #1078 and #1079 was reviewed against #1078 alone, and the half of the diff
+// #1079 asked for came back as behaviour nobody asked for.
+test('every other issue a commit closes is named beside the one found', () => {
+  assert.deepEqual(
+    discoverSpec({
+      headRef: 'fix/1078-tasks-subscriptions-keyboard-focus',
+      commits: ['fix(mobile): restore focus', 'Closes #1078', 'Closes #1079'],
+    }),
+    { kind: 'issue', ref: '#1078', foundBy: 'branch', also: ['#1079'] },
+  );
+});
+
+test('further issues come from closing keywords only, once each, in commit order', () => {
+  assert.deepEqual(
+    discoverSpec({
+      headRef: 'feat/review-tier-classifier',
+      commits: [
+        'Closes #10',
+        'Refs #20, see #30, issue #40',
+        'fixes #50 and Resolved #60',
+        'closes #50',
+        'Introduced in #70',
+        'feat: squash merge (#80)',
+      ],
+    }),
+    { kind: 'issue', ref: '#10', foundBy: 'commits', also: ['#50', '#60'] },
+  );
+});
+
+test('one keyword closes one issue, as on GitHub', () => {
+  assert.deepEqual(
+    discoverSpec({ headRef: 'fix/12-a', commits: ['Closes #12, #13'] }),
+    { kind: 'issue', ref: '#12', foundBy: 'branch' },
+  );
+});
+
+test('a reference found first is not closed again as a further issue', () => {
+  assert.deepEqual(
+    discoverSpec({
+      headRef: 'chore/tidy',
+      commits: ['Refs #12', 'Closes #12', 'Closes #13'],
+    }),
+    { kind: 'issue', ref: '#12', foundBy: 'commits', also: ['#13'] },
+  );
+});
+
+test('a pull request is told from an issue by where it lives', () => {
+  assert.equal(
+    isPullRequest({ url: 'https://github.com/o/r/pull/1104' }),
+    true,
+  );
+  assert.equal(
+    isPullRequest({ url: 'https://github.com/o/r/issues/1079' }),
+    false,
+  );
+  assert.equal(isPullRequest({}), false);
 });
 
 test('a bare number is a PR number or a citation, not an issue reference', () => {

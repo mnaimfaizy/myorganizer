@@ -370,13 +370,39 @@ export const FindingInputSchema = z
     }
   });
 
+/**
+ * `also` names the further issues the change's commits close, each of which
+ * the Spec axis was handed beside `ref` (ADR 0125). It is display and
+ * provenance: it decides no tier, no verdict, and no finding's identity,
+ * which is why adding it did not move {@link REPORT_SCHEMA_VERSION}.
+ */
 export const SpecSourceSchema = z
   .strictObject({
     kind: z.enum(SPEC_KINDS),
     ref: nonEmpty.optional(),
     foundBy: z.enum(SPEC_FOUND_BY),
+    also: z
+      .array(z.string().regex(/^#\d+$/, 'an issue reference like #123'))
+      .min(1)
+      .optional(),
   })
   .superRefine((s, ctx) => {
+    if (s.also) {
+      if (s.kind !== 'issue') {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'only an issue spec names further issues',
+          path: ['also'],
+        });
+      }
+      if (new Set([s.ref, ...s.also]).size !== s.also.length + 1) {
+        ctx.addIssue({
+          code: 'custom',
+          message: 'also names each further issue once, and never the ref',
+          path: ['also'],
+        });
+      }
+    }
     if (s.kind === 'none' && (s.ref || s.foundBy !== 'none')) {
       ctx.addIssue({
         code: 'custom',

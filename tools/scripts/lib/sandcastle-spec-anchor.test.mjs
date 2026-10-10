@@ -22,11 +22,13 @@ test('the anchor message resolves to its issue through the commit step', () => {
   );
 });
 
+// Which issue is found first is unchanged by ADR 0125. What it adds is that
+// the other issue the commits close is spec as well, named in `also`.
 test('the anchor loses to a branch name that already carries an issue', () => {
   const message = specAnchorMessage({ branch: 'slice/720-x', issue: 713 });
   assert.deepEqual(
     discoverSpec({ headRef: 'slice/720-x', commits: [message] }),
-    { kind: 'issue', ref: '#720', foundBy: 'branch' },
+    { kind: 'issue', ref: '#720', foundBy: 'branch', also: ['#713'] },
   );
 });
 
@@ -37,7 +39,7 @@ test('the anchor is the oldest commit, so it wins over later slice references', 
       headRef: 'feat/trust',
       commits: [anchor, 'feat(review): a slice\n\nCloses #720'],
     }),
-    { kind: 'issue', ref: '#713', foundBy: 'commits' },
+    { kind: 'issue', ref: '#713', foundBy: 'commits', also: ['#720'] },
   );
 });
 

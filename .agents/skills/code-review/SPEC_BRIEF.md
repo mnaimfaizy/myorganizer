@@ -10,6 +10,13 @@ reference, and the path of the file that holds the spec's text. The commit list 
 Check the diff against the spec you were handed. Read the spec file first: it is JSON, and its
 `body` field is the spec's text.
 
+When the file has an `also` array, the change closes more than one issue, and each entry is a
+further issue with its own `ref` and `body`. The diff answers to all of them together
+([ADR 0125](../../../docs/adr/0125-a-change-answers-to-every-issue-its-commits-close.md)): behaviour
+any one of them asks for is asked for, and a requirement any one of them states is a requirement.
+Judge "not asked for" against every body, never against one. `source` is the `ref` of the issue the
+requirement you quote comes from.
+
 Report three kinds of defect, and only these:
 
 1. A requirement the spec asked for that is missing or partial.

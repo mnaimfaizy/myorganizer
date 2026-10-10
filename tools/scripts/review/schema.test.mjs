@@ -309,6 +309,50 @@ test('a spec of kind none cannot carry a ref', () => {
   );
 });
 
+// A change that closes two issues answers to both (ADR 0125): the envelope
+// names the further ones, and the report line says so.
+test('a spec names the further issues the change closes, and the report shows them', () => {
+  const report = normalizeReport(
+    envelope({
+      spec: { kind: 'issue', ref: '#123', foundBy: 'branch', also: ['#124'] },
+    }),
+  );
+  assert.deepEqual(report.spec.also, ['#124']);
+  assert.match(
+    renderReport(report, null, { hunks: false }),
+    /- spec: issue #123 \(found by branch\), also #124 \(closed by commits\)/,
+  );
+  assert.doesNotMatch(
+    renderReport(normalizeReport(envelope()), null, { hunks: false }),
+    /also/,
+  );
+});
+
+test('further issues are issue references, once each, beside an issue spec only', () => {
+  const spec = (over) => ({
+    kind: 'issue',
+    ref: '#123',
+    foundBy: 'branch',
+    ...over,
+  });
+  rejects(envelope({ spec: spec({ also: [] }) }), /spec\.also/);
+  rejects(envelope({ spec: spec({ also: ['124'] }) }), /spec\.also/);
+  rejects(
+    envelope({ spec: spec({ also: ['#123'] }) }),
+    /spec\.also: also names each further issue once/,
+  );
+  rejects(
+    envelope({ spec: spec({ also: ['#124', '#124'] }) }),
+    /spec\.also: also names each further issue once/,
+  );
+  rejects(
+    envelope({
+      spec: { kind: 'path', ref: 'x', foundBy: 'argument', also: ['#124'] },
+    }),
+    /spec\.also: only an issue spec names further issues/,
+  );
+});
+
 // The same rule applied twice in one file is two findings, and since issue #940
 // each is minted from its own start line rather than numbered against the
 // other — so fixing one no longer moves the survivor onto the vacated id.
