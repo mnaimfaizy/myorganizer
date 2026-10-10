@@ -95,7 +95,7 @@ export interface TextFieldProps extends TextInputProps {
    * no field at all (#1046), and a grocery trip's amount (#1053). Not for a
    * field that mounts with its screen or its sheet: that is the case the wait
    * is for. What is typed before even a prompt field has focus, Android's
-   * `TypeAhead` keeps for it.
+   * `TypeAhead` keeps for it, outside a Modal.
    */
   autoFocusPromptly?: boolean;
 }

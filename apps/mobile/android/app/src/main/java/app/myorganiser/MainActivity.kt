@@ -60,11 +60,14 @@ class MainActivity : ReactActivity() {
     }
   }
 
-  /** Keeps a key that writes text and that no view took, for the input about to take focus. */
+  /**
+   * Keeps a key that writes text and that no view took, for the input about to take focus. Not a
+   * key the focused input itself refused: that one was typed at a field, and is not for the next.
+   */
   override fun dispatchKeyEvent(event: KeyEvent): Boolean {
     if (typeAhead.queueBehindOwed(event)) return true
     val handled = super.dispatchKeyEvent(event)
-    if (!handled) typeAhead.hold(event)
+    if (!handled && currentFocus?.onCheckIsTextEditor() != true) typeAhead.hold(event)
     return handled
   }
 

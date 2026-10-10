@@ -19,9 +19,10 @@ private const val MOST_HELD = 64
  * writes text is taken by no view and dropped: the start of a Task's title typed straight after
  * "Add a task" (#1070), or of an amount on a grocery trip (#1053).
  *
- * Only keys no view handled are kept, so a key that did something is never typed as well, and
- * only for [HELD_FOR_MS]: a key pressed at a screen with no field is not waiting for the next
- * field opened.
+ * Only keys no view handled are kept, so a key that did something is never typed as well; only
+ * while no text input has focus, so a letter a number field refused is not typed into the next
+ * field; and only for [HELD_FOR_MS], so a key pressed at a screen with no field is not waiting
+ * for the next field opened.
  *
  * The keys are typed a turn of the main thread after the input takes focus, not as it does. The
  * window reports the new focus before the input has run its own focus handling, and an input
@@ -34,16 +35,18 @@ private const val MOST_HELD = 64
 class TypeAhead {
 
   private val held = ArrayDeque<KeyEvent>()
-  private var owed = false
+
+  /** The input the held keys are about to be typed into, from its taking focus until they are. */
+  private var owedTo: View? = null
 
   /** Keeps [event] behind the keys already owed to an input. True when it was kept. */
   fun queueBehindOwed(event: KeyEvent): Boolean {
-    if (!owed || !writesText(event)) return false
+    if (owedTo == null || !writesText(event)) return false
     held.addLast(event)
     return true
   }
 
-  /** Keeps [event], a key no view handled, if it is one that writes text. */
+  /** Keeps [event], a key no view handled while no text input had focus, if it writes text. */
   fun hold(event: KeyEvent) {
     dropStale()
     if (!writesText(event)) return
@@ -53,21 +56,27 @@ class TypeAhead {
 
   /** Types the keys still held into [input], which has just taken focus. */
   fun deliverTo(input: View) {
-    dropStale()
-    if (held.isEmpty() || owed) return
-    owed = true
+    // Focus moved on within the turn: the keys follow it.
+    val posted = owedTo != null
+    if (!posted) dropStale()
+    if (held.isEmpty()) return
+    owedTo = input
+    if (posted) return
     input.post {
-      owed = false
+      val target = owedTo
+      owedTo = null
       val keys = held.toList()
       held.clear()
-      if (input.isFocused) keys.forEach(input::dispatchKeyEvent)
+      if (target?.isFocused == true) keys.forEach(target::dispatchKeyEvent)
     }
   }
 
   private fun dropStale() {
-    if (owed) return
+    if (owedTo != null) return
     val oldest = SystemClock.uptimeMillis() - HELD_FOR_MS
     while (held.isNotEmpty() && held.first().eventTime < oldest) held.removeFirst()
+    // A Backspace is held to take back a key held before it, and never the input's own text.
+    while (held.firstOrNull()?.keyCode == KeyEvent.KEYCODE_DEL) held.removeFirst()
   }
 
   /**
