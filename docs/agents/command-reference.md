@@ -13,6 +13,7 @@ The on-demand command catalogue for the root [Agent Guide](../../AGENTS.md#comma
 - Sub-agent sync check: `yarn agents:sync:check`.
 - Sub-agent sync apply: `yarn agents:sync`.
 - Sub-agent model/catalog audit: `yarn agents:models:audit`.
+- Sub-agent model audit contracts (retirement-table reader): `yarn agents:models:test`.
 - Sandcastle loop usage summary: `yarn agents:usage:report`.
 - Committed Upstream Brief reports: `yarn upstream:briefs:check` (re-validates every structured `*.json` report committed under the brief directory, checking each local citation against the commit the report itself records; `yarn upstream:briefs:test` covers the contract, renderer, CLIs, ledger, and checker). See [ADR 0084](../adr/0084-an-upstream-brief-is-anchored-to-what-is-installed-and-accepted-on-checked-evidence.md) and [ADR 0018](../adr/0018-upstream-brief-portable-instruction-audit.md); shape and memory in [REPORT.md](../../.agents/skills/upstream-brief/REPORT.md), [LEDGER.md](../../.agents/skills/upstream-brief/LEDGER.md), and [SKILL.md](../../.agents/skills/upstream-brief/SKILL.md).
 
