@@ -76,6 +76,10 @@ The on-demand command catalogue for the root [Agent Guide](../../AGENTS.md#comma
 - QA Accounts: `yarn qa:accounts:seed` creates the local database's QA Accounts as verified users with unlockable vaults, or puts their password and vault meta back (`--restore` also empties the vault; `--account <id>` picks one); `yarn qa:accounts` prints their sign-in values, Recovery Key included. It refuses any database that is not local, and `yarn qa:accounts:test` covers that. See [ADR 0122](../adr/0122-a-qa-accounts-credentials-are-public-fixtures-in-tracked-source.md).
 - Prisma migration history check: `yarn prisma:migrations:check` (asserts migration directory naming, no duplicate timestamps, a non-empty `migration.sql`, no stray `.sql` file, and lock-file/schema provider agreement; `yarn prisma:migrations:test` covers it). See [ADR 0094](../adr/0094-a-prisma-migration-is-gated-on-the-tree-and-against-a-database.md) (the same-timestamp hazard is [ADR 0042](../adr/0042-adr-numbers-are-claims-until-merged.md)'s, one layer down).
 
+## Web app manifest and icons
+
+- Web app icon generation: `yarn web:app-icons:generate` (rebuilds the installable icons in `apps/myorganizer/public/icons/` from the AppLogo shield in `libs/web/ui/src/lib/components/AppLogo/AppLogo.tsx` and the design-token build; fails if it cannot find a shield path, check path, or colour it reads). Re-run and commit the output after the shield or a token it reads changes. See [ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md).
+
 ## Mobile
 
 - Mobile typecheck: `mobile:typecheck` runs a native program with no `dom` and a web program (`tsconfig.web.json`) that resolves `.web` Platform Variants, and `apps/mobile/src/runtime-globals.assert.ts` fails it if Node types return. See [ADR 0103](../adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md) and [ADR 0120](../adr/0120-a-mobile-program-gets-node-types-only-if-it-runs-on-node.md).
