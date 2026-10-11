@@ -27,6 +27,7 @@ import { GroceriesScreen } from './GroceriesScreen';
 import { GroceryTripScreen } from './GroceryTripScreen';
 import { GROCERIES_ROUTES } from './groceriesStack';
 import { MobileNumberDetailScreen } from './MobileNumberDetailScreen';
+import { pushedBarProps } from './pushedBar';
 import { SubscriptionDetailScreen } from './SubscriptionDetailScreen';
 import { SubscriptionsScreen } from './SubscriptionsScreen';
 import { SUBSCRIPTIONS_ROUTES } from './subscriptionsStack';
@@ -70,7 +71,9 @@ const PUSHED_SCREEN_OPTIONS: NativeStackNavigationOptions = {
  *
  * The bar is drawn from the same options the native bar reads — `headerTitle`
  * over `title`, and `headerRight` — so a screen sets its header the one way on
- * both platforms.
+ * both platforms. `headerShadowVisible` is the one it reads its own way: a
+ * screen sets it while content is scrolled under the bar
+ * (`useBarRuleOnScroll`), and the bar draws its rule from it.
  *
  * Two things about Android decide where it is drawn (#1029):
  *
@@ -98,15 +101,13 @@ function PushedScreenLayout({
   options: NativeStackNavigationOptions;
 }): React.JSX.Element {
   useReturnFocusOnLeave();
-  const title =
-    typeof options.headerTitle === 'string'
-      ? options.headerTitle
-      : (options.title ?? '');
+  const { title, scrolledUnder } = pushedBarProps(options);
 
   return (
     <View style={styles.pushedScreen}>
       <StackHeader
         title={title}
+        scrolledUnder={scrolledUnder}
         onBack={navigation.goBack}
         trailing={options.headerRight?.({
           tintColor: options.headerTintColor,
@@ -151,12 +152,11 @@ function headerChrome(theme: Theme): NativeStackNavigationOptions {
   return {
     // Android has no platform bar to defer to: without a colour its native
     // header takes React Navigation's `card`, a white bar over a `background`
-    // page, where the Platform sheet draws it on `background` with a rule.
+    // page, where the Platform sheet draws it on `background`. No
+    // `headerShadowVisible` here: on Android that option is a pushed screen's
+    // to set, per scroll position (`PushedScreenLayout`).
     ...(Platform.OS === 'android'
-      ? {
-          headerStyle: { backgroundColor: theme.colors.background },
-          headerShadowVisible: true,
-        }
+      ? { headerStyle: { backgroundColor: theme.colors.background } }
       : {}),
     headerTintColor: theme.colors.foreground,
     headerTitleStyle: { ...inline, color: theme.colors.foreground },

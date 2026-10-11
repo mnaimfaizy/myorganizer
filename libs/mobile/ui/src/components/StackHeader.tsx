@@ -8,6 +8,11 @@ import { Text } from './Text';
 export interface StackHeaderProps {
   /** The inline title. Empty while the screen draws its own title below. */
   title?: string;
+  /**
+   * Whether content has scrolled under the bar. A bar with no title has
+   * nothing else to say so, and takes its rule from this.
+   */
+  scrolledUnder?: boolean;
   /** Leaves the screen. Omitted where there is nothing to go back to. */
   onBack?: () => void;
   /** What the back control is announced as. */
@@ -18,12 +23,12 @@ export interface StackHeaderProps {
 }
 
 /**
- * The bar's height: the 56 dp the native stack's toolbar drew here, so a
- * pushed screen's content starts where it did. A component dimension, like the
- * touch target — no step of the spacing scale is it. The rule under the bar is
- * inside the 56, not added to it.
+ * The bar's height: the 64 dp of a Material top app bar, as the Platform sheet
+ * draws it and as the collapsed `LargeTitleHeader` is on Android. A component
+ * dimension, like the touch target — no step of the spacing scale is it. The
+ * rule under the bar is inside the 64, not added to it.
  */
-const BAR_HEIGHT = 56;
+const BAR_HEIGHT = 64;
 
 /**
  * The top bar of a screen pushed inside a tab, on Android: the way back, an
@@ -44,6 +49,7 @@ const BAR_HEIGHT = 56;
  */
 export function StackHeader({
   title = '',
+  scrolledUnder = false,
   onBack,
   backLabel = 'Navigate up',
   trailing,
@@ -64,9 +70,12 @@ export function StackHeader({
           paddingRight: insets.right + theme.spacing.md,
           backgroundColor: theme.colors.background,
           // The rule under the bar belongs to a bar carrying the title — the
-          // same rule as the collapsed `LargeTitleHeader`. While the screen's
-          // own large title sits directly below, the two read as one block.
-          borderBottomColor: titled ? theme.colors.border : 'transparent',
+          // same rule as the collapsed `LargeTitleHeader` — and to a bar with
+          // content scrolled under it, which is how a screen that never
+          // titles its bar gets one (#948). While the screen's own large
+          // title sits directly below, the two read as one block.
+          borderBottomColor:
+            titled || scrolledUnder ? theme.colors.border : 'transparent',
         },
       ]}
     >
