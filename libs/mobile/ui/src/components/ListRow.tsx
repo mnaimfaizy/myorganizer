@@ -1,9 +1,17 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import {
   Pressable,
   StyleSheet,
   View,
   type AccessibilityActionEvent,
+  type BlurEvent,
+  type FocusEvent,
   type LayoutChangeEvent,
   type StyleProp,
   type ViewStyle,
@@ -23,7 +31,9 @@ import { useTheme } from '../useTheme';
 import { COMFORTABLE_ROW_HEIGHT, MIN_TOUCH_TARGET } from '../metrics';
 import { haptics } from '../haptics';
 import { EASING, ENTER_OFFSET_Y, MOTION } from '../motion';
+import { noteBlur, noteFocus, type FocusSlot } from '../hooks/focusReturn';
 import { useFocusRing } from '../hooks/useFocusRing';
+import { useFocusWithin } from '../hooks/useFocusWithin';
 import { usePressFeedback } from '../hooks/usePressFeedback';
 import { useReduceMotion } from '../hooks/useReduceMotion';
 import type { ThemeColors } from '../theme';
@@ -288,17 +298,28 @@ export interface ListRowProps {
 /**
  * One swipe action. Its own component so that each tile owns its ring.
  *
- * A button only while a swipe has it `revealed`. Behind a closed row it is
- * drawn but covered, and a control nobody can see must not take a Tab press:
- * it did, after every row, with its ring hidden behind the row (#1022). Both
- * props go, because on Android `accessible` alone keeps a view focusable.
+ * Read out only while its panel is revealed. Behind a closed row it is drawn
+ * but covered, so `ActionPanel` hides it from a screen reader and the row
+ * offers it as an accessibility action instead. It stays `accessible` itself,
+ * which on Android is the prop that makes a view focusable.
+ *
+ * Always a keyboard stop, because a hardware keyboard cannot swipe and has no
+ * other route to it (#1027). A stop nobody can see is what #1022 removed —
+ * its ring drew behind the row — so taking focus tells the row, which slides
+ * open to show it, and losing focus lets the row shut again.
+ *
+ * Its ring is drawn in the tile's own text colour, not the `focus` role: the
+ * ring sits inside the fill, and `focus` on the `primary` fill of Done is
+ * dark on dark.
  */
 function PanelAction({
   action,
-  revealed,
+  onKeyboardFocus,
+  onKeyboardBlur,
 }: {
   action: SwipeAction;
-  revealed: boolean;
+  onKeyboardFocus: () => void;
+  onKeyboardBlur: () => void;
 }): React.JSX.Element {
   const theme = useTheme();
   const focus = useFocusRing('inset');
@@ -308,11 +329,16 @@ function PanelAction({
     <Pressable
       accessibilityRole="button"
       accessibilityLabel={action.label}
-      accessible={revealed}
-      focusable={revealed}
+      focusable
       onPress={action.onPress}
-      onFocus={focus.onFocus}
-      onBlur={focus.onBlur}
+      onFocus={(event: FocusEvent) => {
+        focus.onFocus(event);
+        onKeyboardFocus();
+      }}
+      onBlur={(event: BlurEvent) => {
+        focus.onBlur(event);
+        onKeyboardBlur();
+      }}
       style={[
         styles.action,
         {
@@ -321,6 +347,7 @@ function PanelAction({
           backgroundColor: theme.colors[tone.fill],
         },
         focus.ringStyle,
+        focus.ringStyle != null && { outlineColor: theme.colors[tone.text] },
       ]}
     >
       <Icon
@@ -348,11 +375,16 @@ function ActionPanel({
   actions,
   side,
   revealed,
+  onKeyboardFocus,
+  onKeyboardBlur,
 }: {
   actions: readonly SwipeAction[];
   side: 'left' | 'right';
-  /** Whether a swipe has the panel out from behind the row. */
+  /** Whether the panel is out from behind the row. */
   revealed: boolean;
+  /** Keyboard focus has reached one of this side's actions. */
+  onKeyboardFocus: (side: 'left' | 'right') => void;
+  onKeyboardBlur: () => void;
 }): React.JSX.Element {
   const theme = useTheme();
 
@@ -362,10 +394,20 @@ function ActionPanel({
       // row itself offers every one of these as an accessibility action.
       accessibilityElementsHidden={!revealed}
       importantForAccessibility={revealed ? 'auto' : 'no-hide-descendants'}
+      // Kept as a native view in both states. Left to React Native it is
+      // flattened away once `revealed` drops the prop above, and its actions
+      // are moved to another parent: the one holding keyboard focus lost it
+      // in the move, the moment it opened the row (#1027).
+      collapsable={false}
       style={[styles.panel, side === 'left' ? styles.left : styles.right]}
     >
       {actions.map((action) => (
-        <PanelAction key={action.id} action={action} revealed={revealed} />
+        <PanelAction
+          key={action.id}
+          action={action}
+          onKeyboardFocus={() => onKeyboardFocus(side)}
+          onKeyboardBlur={onKeyboardBlur}
+        />
       ))}
     </View>
   );
@@ -506,9 +548,11 @@ function checkboxBleed(leading: React.ReactNode): number {
  *
  * **Swiping is never the only way to reach an action.** Every action is also
  * an accessibility action on the row, which is what puts it in reach of a
- * screen reader, a switch control, and an external keyboard — none of which
- * can perform a drag. The two lists are built from one source here, so an
- * action cannot be added to the gesture and forgotten in the other.
+ * screen reader and a switch control, neither of which can perform a drag.
+ * The two lists are built from one source here, so an action cannot be added
+ * to the gesture and forgotten in the other. A hardware keyboard reaches a
+ * swipe action by Tab: the action is a stop beside its row, and the row opens
+ * for as long as focus is on it (#1027).
  *
  * **Reduce Motion takes the travel, not the behaviour.** The row still opens
  * and closes and the actions are still there; it arrives without the spring.
@@ -574,10 +618,55 @@ export function ListRow({
 
   const offsetX = useSharedValue(0);
   const startX = useSharedValue(0);
-  // Whether a swipe has the action panels out from behind the sheet. Set as
-  // the drag starts and cleared once the row has settled shut, so the panels
-  // are controls for exactly as long as they can be seen.
+  // Whether the action panels are out from behind the sheet. Set as a drag
+  // starts, or as keyboard focus reaches an action, and cleared once the row
+  // has settled shut, so the panels are read out for exactly as long as they
+  // can be seen.
   const [revealed, setRevealed] = useState(false);
+
+  // The keyboard's swipe: the row opens to the side whose action took focus,
+  // and shuts once focus is on none of its actions.
+  const settleTo = (open: number): void => {
+    const shut = open === 0;
+    if (reduceMotion) {
+      offsetX.value = open;
+      if (shut) setRevealed(false);
+      return;
+    }
+    offsetX.value = withSpring(open, SPRING, (finished) => {
+      if (finished && shut) runOnJS(setRevealed)(false);
+    });
+  };
+  const actionFocus = useFocusWithin(() => settleTo(0));
+
+  // Focus on one of the row's actions is noted as the row's own, because the
+  // row is what a list knows: an action that removes its row — Done on a
+  // Task — then hands focus to the next row like the tick does, instead of
+  // leaving it to Android (`useFocusSuccession`).
+  const rowView = useRef<React.ComponentRef<typeof View> | null>(null);
+  const actionSlot = useRef<FocusSlot['current']>(null);
+  const setRowView = useCallback(
+    (view: React.ComponentRef<typeof View> | null) => {
+      rowView.current = view;
+      if (typeof ref === 'function') return ref(view);
+      if (ref != null) ref.current = view;
+      return undefined;
+    },
+    [ref],
+  );
+  useEffect(() => () => noteBlur(actionSlot), []);
+
+  const onActionFocus = (side: 'left' | 'right'): void => {
+    actionFocus.onFocus();
+    actionSlot.current = rowView.current;
+    if (actionSlot.current !== null) noteFocus(actionSlot);
+    setRevealed(true);
+    settleTo(side === 'left' ? leftWidth : -rightWidth);
+  };
+  const onActionBlur = (): void => {
+    noteBlur(actionSlot);
+    actionFocus.onBlur();
+  };
 
   const pan = useMemo(
     () =>
@@ -758,19 +847,27 @@ export function ListRow({
     >
       <View style={[styles.track, { backgroundColor: theme.colors.card }]}>
         {leftActions.length > 0 && !disabled && (
-          <ActionPanel actions={leftActions} side="left" revealed={revealed} />
+          <ActionPanel
+            actions={leftActions}
+            side="left"
+            revealed={revealed}
+            onKeyboardFocus={onActionFocus}
+            onKeyboardBlur={onActionBlur}
+          />
         )}
         {rightActions.length > 0 && !disabled && (
           <ActionPanel
             actions={rightActions}
             side="right"
             revealed={revealed}
+            onKeyboardFocus={onActionFocus}
+            onKeyboardBlur={onActionBlur}
           />
         )}
         <GestureDetector gesture={pan}>
           <Animated.View style={sheet}>
             <Pressable
-              ref={ref}
+              ref={setRowView}
               accessibilityRole={
                 toggle != null
                   ? 'switch'
