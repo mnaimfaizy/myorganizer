@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { useTheme } from '../useTheme';
 import { MIN_TOUCH_TARGET } from '../metrics';
+import { useFocusRing } from '../hooks/useFocusRing';
 import { Text } from './Text';
 
 export interface SwitchProps {
@@ -29,13 +30,11 @@ export interface SwitchProps {
  * every other app on the device uses for this, and its gesture, its animation,
  * and its screen-reader behaviour are the ones the User already knows.
  *
- * It draws no P3 focus ring, and that is the platform's limit rather than an
- * omission. React Native 0.87's Android switch never reports its focus —
+ * It draws the P3 focus ring like any other control, round the switch. On
+ * Android the focus it is told about comes from the app's native code: React
+ * Native 0.87's switch never reports its own, because
  * `ReactSwitchManager.addEventEmitters` replaces the step that attaches the
- * focus listener — and it ignores `focusable`, which only plain views
- * implement, so a wrapper can neither hear the switch's focus nor take it
- * over. A keyboard User sees Android's own halo on the thumb instead. A ring
- * here needs a native change, not more JavaScript (#1017).
+ * focus listener (#1017, `SwitchFocusEvents.kt`).
  */
 export function Switch({
   value,
@@ -47,6 +46,7 @@ export function Switch({
   style,
 }: SwitchProps): React.JSX.Element {
   const theme = useTheme();
+  const focus = useFocusRing();
 
   return (
     <View
@@ -62,18 +62,29 @@ export function Switch({
           {hint != null && <Text variant="caption">{hint}</Text>}
         </View>
       )}
-      <RNSwitch
-        accessibilityLabel={accessibilityLabel ?? label}
-        value={value}
-        onValueChange={onValueChange}
-        disabled={disabled}
-        trackColor={{
-          false: theme.colors.muted,
-          true: theme.colors.primary,
-        }}
-        thumbColor={theme.colors.raisedSurface}
-        ios_backgroundColor={theme.colors.muted}
-      />
+      {/* The ring is drawn round the switch rather than on it: on Android an
+          outline colour set on anything but a plain view stops the app. Not
+          collapsable, because a view that exists only once it has a ring came
+          up without its radius and drew the ring square. */}
+      <View
+        collapsable={false}
+        style={[{ borderRadius: theme.radii.full }, focus.ringStyle]}
+      >
+        <RNSwitch
+          accessibilityLabel={accessibilityLabel ?? label}
+          value={value}
+          onValueChange={onValueChange}
+          disabled={disabled}
+          trackColor={{
+            false: theme.colors.muted,
+            true: theme.colors.primary,
+          }}
+          thumbColor={theme.colors.raisedSurface}
+          ios_backgroundColor={theme.colors.muted}
+          onFocus={focus.onFocus}
+          onBlur={focus.onBlur}
+        />
+      </View>
     </View>
   );
 }

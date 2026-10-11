@@ -24,6 +24,20 @@
 
 @implementation RCTViewComponentView (KeyboardFocusEvents)
 
+// Whether focus on `focused` is focus on this view. It is when the two are the
+// same view, and when `focused` is the switch this view exists to show: React
+// Native's switch is a view holding a `UISwitch`, and it is the `UISwitch`
+// that Full Keyboard Access stops on, so the app's `Switch` heard nothing and
+// drew no ring (#1017). Only a switch: a text input holds a UIKit control the
+// same way and reports its focus itself.
+- (BOOL)keyboardFocusEvents_holds:(UIView *)focused
+{
+  if (focused == nil) {
+    return NO;
+  }
+  return focused == self || (focused == self.contentView && [focused isKindOfClass:[UISwitch class]]);
+}
+
 - (void)keyboardFocusEvents_emitFocus
 {
   if (_eventEmitter) {
@@ -57,16 +71,16 @@
   DidUpdateFocus inheritedDidUpdateFocus = (DidUpdateFocus)method_getImplementation(inherited);
 
   // UIKit calls this on every view above the one losing focus and the one
-  // gaining it, so the view asks whether it is either before saying anything.
+  // gaining it, so the view asks whether it holds either before saying
+  // anything.
   IMP didUpdateFocus = imp_implementationWithBlock(
       ^(RCTViewComponentView *view, UIFocusUpdateContext *context, UIFocusAnimationCoordinator *coordinator) {
         inheritedDidUpdateFocus(view, selector, context, coordinator);
-        if (context.previouslyFocusedView == context.nextFocusedView) {
-          return;
-        }
-        if (context.nextFocusedView == view) {
+        BOOL held = [view keyboardFocusEvents_holds:context.previouslyFocusedView];
+        BOOL holds = [view keyboardFocusEvents_holds:context.nextFocusedView];
+        if (holds && !held) {
           [view keyboardFocusEvents_emitFocus];
-        } else if (context.previouslyFocusedView == view) {
+        } else if (held && !holds) {
           [view keyboardFocusEvents_emitBlur];
         }
       });

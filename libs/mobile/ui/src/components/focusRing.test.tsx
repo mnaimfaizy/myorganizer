@@ -13,6 +13,7 @@ import { InlineNotice } from './InlineNotice';
 import { ListRow } from './ListRow';
 import { LockAction } from './LockAction';
 import { MenuSheet } from './MenuSheet';
+import { Switch } from './Switch';
 import { TextField } from './TextField';
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
@@ -129,6 +130,65 @@ describe('P3 focus ring on a focused control', () => {
       expect(outline(label)).toEqual(NO_RING);
     },
   );
+});
+
+/**
+ * The switch is the platform's control, not a `Pressable`, and its ring is
+ * drawn on the view round it: an outline colour set on the native switch
+ * itself stops the app on Android. The focus is still the switch's own — the
+ * event is fired at it, as the app's native code sends it (#1017).
+ */
+describe('P3 focus ring on a focused Switch', () => {
+  const ringRound = (label: string) => {
+    const style = StyleSheet.flatten(
+      screen.getByLabelText(label).parent?.props.style,
+    );
+    return {
+      width: style.outlineWidth,
+      color: style.outlineColor,
+      offset: style.outlineOffset,
+    };
+  };
+
+  it('draws it round the switch on focus and clears it on blur', async () => {
+    await render(
+      <TestWrapper>
+        <Switch
+          value={false}
+          onValueChange={jest.fn()}
+          accessibilityLabel="Keep screen awake"
+        />
+      </TestWrapper>,
+    );
+    expect(ringRound('Keep screen awake')).toEqual(NO_RING);
+    expect(outline('Keep screen awake')).toEqual(NO_RING);
+
+    await fireEvent(screen.getByLabelText('Keep screen awake'), 'focus');
+    expect(ringRound('Keep screen awake')).toEqual(OUTSIDE);
+    // Never on the switch itself.
+    expect(outline('Keep screen awake')).toEqual(NO_RING);
+
+    await fireEvent(screen.getByLabelText('Keep screen awake'), 'blur');
+    expect(ringRound('Keep screen awake')).toEqual(NO_RING);
+  });
+
+  it('follows the round shape of the switch', async () => {
+    await render(
+      <TestWrapper>
+        <Switch
+          value={false}
+          onValueChange={jest.fn()}
+          accessibilityLabel="Keep screen awake"
+        />
+      </TestWrapper>,
+    );
+
+    expect(
+      StyleSheet.flatten(
+        screen.getByLabelText('Keep screen awake').parent?.props.style,
+      ).borderRadius,
+    ).toBe(lightTheme.radii.full);
+  });
 });
 
 /**

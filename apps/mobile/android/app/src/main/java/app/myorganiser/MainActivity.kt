@@ -46,9 +46,12 @@ class MainActivity : ReactActivity() {
    *
    * A text input gaining focus is also owed the keys typed while it was on its way: see
    * [TypeAhead].
+   *
+   * A switch's focus is reported to JavaScript from the same window: see [SwitchFocusEvents].
    */
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    SwitchFocusEvents.watch(window)
     val decor = window.decorView
     decor.viewTreeObserver.addOnGlobalFocusChangeListener { oldFocus, newFocus ->
       if (newFocus == null && oldFocus?.onCheckIsTextEditor() == true) {
