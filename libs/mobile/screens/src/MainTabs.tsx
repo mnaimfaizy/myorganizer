@@ -27,6 +27,7 @@ import { GroceriesScreen } from './GroceriesScreen';
 import { GroceryTripScreen } from './GroceryTripScreen';
 import { GROCERIES_ROUTES } from './groceriesStack';
 import { MobileNumberDetailScreen } from './MobileNumberDetailScreen';
+import { pushedBarProps } from './pushedBar';
 import { SubscriptionDetailScreen } from './SubscriptionDetailScreen';
 import { SubscriptionsScreen } from './SubscriptionsScreen';
 import { SUBSCRIPTIONS_ROUTES } from './subscriptionsStack';
@@ -100,16 +101,13 @@ function PushedScreenLayout({
   options: NativeStackNavigationOptions;
 }): React.JSX.Element {
   useReturnFocusOnLeave();
-  const title =
-    typeof options.headerTitle === 'string'
-      ? options.headerTitle
-      : (options.title ?? '');
+  const { title, scrolledUnder } = pushedBarProps(options);
 
   return (
     <View style={styles.pushedScreen}>
       <StackHeader
         title={title}
-        scrolledUnder={options.headerShadowVisible === true}
+        scrolledUnder={scrolledUnder}
         onBack={navigation.goBack}
         trailing={options.headerRight?.({
           tintColor: options.headerTintColor,
