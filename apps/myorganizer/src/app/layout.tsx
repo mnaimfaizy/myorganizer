@@ -1,5 +1,7 @@
 import type { Metadata } from 'next';
 
+import { ServiceWorkerRegistration } from '@myorganizer/web-pages/offline';
+
 import './global.css';
 
 export const dynamic = 'force-dynamic';
@@ -120,7 +122,15 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/*
+         * Registers the service worker in production builds only (ADR 0127).
+         * In the root layout, not the dashboard's, so the offline page also
+         * covers a signed-out User opening the Installed Web App.
+         */}
+        <ServiceWorkerRegistration />
+      </body>
     </html>
   );
 }

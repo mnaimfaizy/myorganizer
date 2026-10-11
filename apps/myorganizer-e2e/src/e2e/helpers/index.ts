@@ -11,6 +11,7 @@ export { GroceriesPage } from './GroceriesPage';
 export { readDownloadText } from './download';
 export { LIVE_AUTH_EMAIL, LIVE_AUTH_PASSWORD } from './liveAuth';
 export { gotoStable } from './navigation';
+export { setNetworkDown } from './networkOutage';
 export {
   createOwnedVault,
   createOwnedVaultWithRecoveryKey,
