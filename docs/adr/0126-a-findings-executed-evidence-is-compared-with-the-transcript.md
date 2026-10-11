@@ -45,7 +45,7 @@ and evidence the transcript does not bear out fails `Agent Review Ran`.**
    allowances: whitespace between words, quoting that leaves the same words, being one part or
    several adjacent parts of a call chained with `&&`, `||`, `;`, `|`, or a newline, and unquoted
    redirections with a trailing `&`. A call holding a here-document matches whole or not at all,
-   because its body reads as commands and is text. Nothing else is allowed: `yarn nx test x` is not `corepack yarn nx test x`, and an
+   because its body reads as commands and is text. Nothing else is allowed: `yarn nx test backend` is not `corepack yarn nx test backend`, and an
    added flag is a different command. The rule is written out in full where the check lives,
    `tools/scripts/review/executed-evidence.mjs`, and that file is the authority on it.
 3. **The exit code is compared only where the transcript carries one for what was quoted.** The
@@ -85,8 +85,8 @@ are still worth reading. ADR 0123 publishes a failed run for the same reason.
 **Match the command byte for byte.** Rejected. The check would fail on a stray space or a `2>&1`,
 on pull requests whose diff is fine, and a red check that means nothing gets re-run, not read.
 
-**Match on the program and its first arguments.** Rejected. `yarn nx test a` would stand as
-evidence for `yarn nx test b`. Every word is compared.
+**Match on the program and its first arguments.** Rejected. `yarn nx test backend` would stand as
+evidence for `yarn nx test web-vault`. Every word is compared.
 
 ## Consequences
 
