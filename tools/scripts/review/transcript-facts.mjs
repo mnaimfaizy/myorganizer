@@ -18,7 +18,7 @@
  * never an empty list. Read naively, a CLI release that renamed one field
  * would report "no sub-agent read its brief" on every pull request.
  */
-import { tokenize } from '../lib/shell-command.mjs';
+import { simpleCommands, tokenize } from '../lib/shell-command.mjs';
 import { BRIEFS, axisNamedBy, isOnTemplate } from './briefs.mjs';
 
 export const RUN_FACTS_SCHEMA_VERSION = 1;
@@ -62,44 +62,6 @@ export const toRepoPath = (path, cwd) => {
     parts.push(part);
   }
   return parts.length ? parts.join('/') : null;
-};
-
-/**
- * Split a Bash call into its simple commands. Quoted text is kept whole, so
- * a `;` inside a quoted pattern does not start a command.
- */
-const simpleCommands = (command) => {
-  const commands = [];
-  let current = '';
-  let quote = null;
-  for (let i = 0; i < command.length; i += 1) {
-    const ch = command[i];
-    if (quote) {
-      current += ch;
-      if (ch === quote) quote = null;
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      quote = ch;
-      current += ch;
-      continue;
-    }
-    const two = command.slice(i, i + 2);
-    if (two === '&&' || two === '||') {
-      commands.push(current);
-      current = '';
-      i += 1;
-      continue;
-    }
-    if (ch === ';' || ch === '|' || ch === '\n') {
-      commands.push(current);
-      current = '';
-      continue;
-    }
-    current += ch;
-  }
-  commands.push(current);
-  return commands.map((c) => c.trim()).filter(Boolean);
 };
 
 /**
@@ -197,6 +159,7 @@ const unknownFacts = (reason, known = {}) => ({
   standardsSources: null,
   indexOpened: null,
   executed: null,
+  executions: null,
   unattributedDispatches: null,
   repliesParsed: null,
   returned: null,
@@ -260,6 +223,26 @@ const textOf = (content) =>
           .map((part) => (isObject(part) ? (part.text ?? '') : ''))
           .join('')
       : '';
+
+/**
+ * The exit code a Bash call's result carries, or `null` when it carries none
+ * (issue #1039).
+ *
+ * The CLI marks a failed call's result `is_error` and opens its text with
+ * `Exit code <n>`. A result that is not an error exited 0. An error that
+ * does not open that way is a call that never exited, such as a timeout, and
+ * has no code. Only the opening line is read: a test run
+ * prints what it likes further down.
+ *
+ * @param {object | undefined} result a tool_result block
+ * @returns {number | null}
+ */
+const exitCodeOf = (result) => {
+  if (!isObject(result)) return null;
+  if (result.is_error !== true) return 0;
+  const opening = /^Exit code (\d+)\b/.exec(textOf(result.content));
+  return opening ? Number(opening[1]) : null;
+};
 
 /**
  * A sub-agent's own message, with the harness's wrapping taken off.
@@ -382,6 +365,7 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
   // main agent's own).
   const dispatches = new Map();
   const childCalls = new Map();
+  const mainCalls = [];
   for (const event of objects) {
     if (event.type !== 'assistant') continue;
     const parent = event.parent_tool_use_id ?? null;
@@ -395,6 +379,7 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
           dispatches.set(block.id, {
             prompt: isObject(block.input) ? block.input.prompt : undefined,
           });
+        else mainCalls.push(block);
         continue;
       }
       if (!childCalls.has(parent)) childCalls.set(parent, []);
@@ -402,18 +387,20 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     }
   }
 
-  // What each dispatch returned to the main agent.
+  // What each dispatch returned to the main agent, and what every tool call
+  // returned to whichever agent made it.
   const replies = new Map();
+  const results = new Map();
   for (const event of objects) {
-    if (event.type !== 'user' || (event.parent_tool_use_id ?? null) !== null)
-      continue;
+    if (event.type !== 'user') continue;
     const blocks = Array.isArray(event.message?.content)
       ? event.message.content
       : [];
     for (const block of blocks) {
+      if (!isObject(block) || block.type !== 'tool_result') continue;
+      results.set(block.tool_use_id, block);
       if (
-        isObject(block) &&
-        block.type === 'tool_result' &&
+        (event.parent_tool_use_id ?? null) === null &&
         dispatches.has(block.tool_use_id)
       )
         replies.set(block.tool_use_id, block.content);
@@ -434,6 +421,30 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
   let unattributedDispatches = 0;
   const executed = [];
   const seenCommands = new Set();
+  // Every Bash call and not each distinct command: the same command run
+  // twice may have exited differently.
+  const executions = [];
+  // A call the harness refused is in the transcript and did not run.
+  const refused = new Set(
+    (Array.isArray(result.permission_denials) ? result.permission_denials : [])
+      .map((denial) => denial?.tool_use_id)
+      .filter((id) => typeof id === 'string'),
+  );
+  const record = (call, by) => {
+    if (call.name !== 'Bash' || typeof call.input?.command !== 'string') return;
+    if (refused.has(call.id)) return;
+    executions.push({
+      command: call.input.command,
+      // A backgrounded call's result is that it started, not how it ended.
+      exitCode:
+        call.input.run_in_background === true ||
+        /(?:^|[^&])&\s*$/.test(call.input.command)
+          ? null
+          : exitCodeOf(results.get(call.id)),
+      by,
+    });
+  };
+  for (const call of mainCalls) record(call, 'main');
 
   // What the sub-agents returned, from every dispatch whether or not it was
   // attributed to an axis: a paraphrased dispatch names no brief, and its
@@ -451,6 +462,7 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
   for (const [id, dispatch] of dispatches) {
     const calls = childCalls.get(id) ?? [];
     for (const call of calls) {
+      record(call, 'sub-agent');
       const command = call.name === 'Bash' ? call.input?.command : undefined;
       if (typeof command === 'string' && !seenCommands.has(command)) {
         seenCommands.add(command);
@@ -509,6 +521,7 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
     standardsSources,
     indexOpened: standardsOpened.includes(STANDARDS_INDEX),
     executed,
+    executions,
     unattributedDispatches,
     repliesParsed,
     returned,

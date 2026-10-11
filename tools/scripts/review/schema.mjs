@@ -508,6 +508,23 @@ export const RunFactsSchema = z
     indexOpened: z.boolean().nullable(),
     executed: z.array(nonEmpty).nullable(),
     /**
+     * Every Bash call in the transcript, with the exit code its result
+     * carries and whose call it was (issue #1039). `exitCode` is `null`
+     * where the transcript carries none. Optional, so a facts file written
+     * before the calls were kept still parses; absent reads as `null`, and a
+     * finding's executed evidence is then not checked.
+     */
+    executions: z
+      .array(
+        z.strictObject({
+          command: z.string(),
+          exitCode: z.int().nullable(),
+          by: z.enum(['main', 'sub-agent']),
+        }),
+      )
+      .nullable()
+      .optional(),
+    /**
      * Dispatches that are neither axis's: the sub-agent read no brief and
      * the message named none. The skill has no template for one.
      */

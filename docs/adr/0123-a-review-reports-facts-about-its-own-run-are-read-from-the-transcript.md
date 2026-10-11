@@ -152,6 +152,6 @@ agent's turns alone and most of a review is spent in its sub-agents. Input count
 and cache-written tokens together. A `result` event that lacks a figure for any model records the
 cost as unknown, never as zero and never as what the reviewer wrote.
 
-A finding's own executed evidence, its command and exit code, is still self-reported and can still
-earn Blocking. Checking it against the transcript needs matching rules of its own and is issue
-#1039.
+A finding's own executed evidence, its command and exit code, was left self-reported by this
+decision. Since issue #1039 it is compared with the transcript, under
+[ADR 0126](0126-a-findings-executed-evidence-is-compared-with-the-transcript.md).

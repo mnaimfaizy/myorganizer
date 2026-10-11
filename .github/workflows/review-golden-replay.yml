@@ -539,8 +539,9 @@ jobs:
             if [ "$OBLIGATIONS_FAILED" = 'true' ]; then
               ARGS+=(--void-reason answer-sheet-check-failed)
             elif [ -n "${RUN_FAILURE:-}" ]; then
-              # brief-not-read or finding-not-returned, as the validator
-              # named it; record-golden-result.mjs refuses any other word.
+              # brief-not-read, finding-not-returned, or
+              # evidence-not-executed, as the validator named it;
+              # record-golden-result.mjs refuses any other word.
               ARGS+=(--void-reason "$RUN_FAILURE")
             elif [ "$PREVENTED" = 'true' ]; then
               ARGS+=(--void-reason prevented)

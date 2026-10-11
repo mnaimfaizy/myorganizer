@@ -815,9 +815,11 @@ reviewer transcript: `index_opened`, `dispatch_on_template`, and
 here the run is scored as usual and the fact is recorded, so a miss can be
 read as a thin review without opening a transcript. `null` means not known:
 the case wrote no report, or the line predates these fields. A review that
-did not run as built is a void, with the reason `brief-not-read` or
+did not run as built is a void, with the reason `brief-not-read`,
 `finding-not-returned`
-([ADR 0123](../adr/0123-a-review-reports-facts-about-its-own-run-are-read-from-the-transcript.md)).
+([ADR 0123](../adr/0123-a-review-reports-facts-about-its-own-run-are-read-from-the-transcript.md)),
+or `evidence-not-executed`
+([ADR 0126](../adr/0126-a-findings-executed-evidence-is-compared-with-the-transcript.md)).
 Every run uploads its lines as an artifact; a scheduled run on `main` also
 commits them here, so they outlive the artifact's 30-day retention. The table
 below is generated from that record by

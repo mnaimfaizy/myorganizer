@@ -545,10 +545,244 @@ test('an unparseable reply and an unreadable transcript each get a line', () => 
   );
 });
 
+// --- executed evidence nobody executed (issue #1039, ADR 0126) -------------
+//
+// No real run shows a finding with executed evidence, so each of these is
+// the two-findings run with the Standards finding's evidence replaced, in
+// the sub-agent's reply and in the report alike: the finding is still one a
+// sub-agent returned, and its evidence is the one thing under test. The
+// fixture was cut without what a sub-agent's tool calls returned, so a test
+// that needs an exit code adds that one result, in the CLI's shape.
+
+const RULES_CHECK = 'node tools/scripts/check-review-rules.mjs';
+
+const executedEvidence = (command, exitCode = 1) => ({
+  kind: 'executed',
+  command,
+  exitCode,
+  outputExcerpt: 'rule smell-x has no brief entry',
+  cwd: '.',
+});
+
+/** The two-findings run with the Standards finding resting on `evidence`. */
+const withStandardsEvidence = (evidence, { result = null } = {}) => {
+  const transcript = events(TWO_FINDINGS);
+  const report = reportWrittenIn(transcript);
+  const change = (finding) => Object.assign(finding, { evidence });
+  change(report.findings.find((f) => f.axis === 'standards'));
+
+  const { id } = dispatchOf(transcript, 'standards');
+  for (const e of transcript) {
+    if (e.type !== 'user') continue;
+    for (const block of e.message.content) {
+      if (block.tool_use_id !== id) continue;
+      const [part] = block.content;
+      part.text = part.text
+        .split('\n')
+        .map((line) => {
+          if (!line.startsWith('  {')) return line;
+          const reply = JSON.parse(line);
+          change(reply.findings[0]);
+          return `  ${JSON.stringify(reply)}`;
+        })
+        .join('\n');
+    }
+  }
+
+  if (result) {
+    const at = transcript.findIndex(
+      (e) =>
+        e.parent_tool_use_id === id &&
+        e.message.content.some((b) => b.input?.command === result.of),
+    );
+    const call = transcript[at].message.content.find(
+      (b) => b.input?.command === result.of,
+    );
+    transcript.splice(at + 1, 0, {
+      type: 'user',
+      parent_tool_use_id: id,
+      message: {
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: call.id,
+            content: result.content,
+            is_error: result.isError,
+          },
+        ],
+      },
+    });
+  }
+  return { report, facts: factsOf(transcript) };
+};
+
+test('executed evidence quoting a command a sub-agent ran fails nothing', () => {
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence(RULES_CHECK),
+  );
+  const out = normalized({ ...report, tier: 'review:agent' }, facts);
+  assert.deepEqual(out.runFacts.failures, []);
+  assert.equal(out.effectiveTier, 'review:agent');
+});
+
+test('executed evidence quoting a command no sub-agent ran: Agent Review Ran fails', () => {
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence('yarn nx test web-vault'),
+  );
+  const out = normalized({ ...report, tier: 'review:auto' }, facts);
+  assert.deepEqual(reasons(out), ['evidence-not-executed']);
+  const [failure] = out.runFacts.failures;
+  assert.equal(failure.axis, 'standards');
+  assert.match(failure.detail, /no sub-agent ran/);
+  assert.match(failure.detail, /yarn nx test web-vault/);
+  assert.match(failure.detail, /smell-duplicated-code/);
+  assert.equal(out.effectiveTier, HUMAN);
+  assert.ok(NormalizedReportSchema.safeParse(out).success);
+});
+
+test('the check edits no finding: a failed run still carries the finding as written', () => {
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence('yarn nx test web-vault'),
+  );
+  const out = normalized(report, facts);
+  assert.deepEqual(
+    out.findings.map((finding) => ({ ...finding, id: undefined })),
+    report.findings.map((finding) => ({ ...finding, id: undefined })),
+  );
+  assert.equal(out.verdict, normalizeReport(clone(report)).verdict);
+});
+
+test('a near-miss the matching rule allows fails nothing', () => {
+  // Re-quoted and re-spaced, against the call as the sub-agent typed it.
+  const typed = events(TWO_FINDINGS)
+    .flatMap((e) => e.message?.content ?? [])
+    .map((b) => b.input?.command)
+    .find((c) => c?.startsWith('git grep -n "SCHEMA_VERSION'));
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence(
+      typed.replaceAll('"', "'").replaceAll(' -- ', '   --   '),
+      0,
+    ),
+  );
+  assert.notEqual(report.findings[0].evidence.command, typed);
+  assert.deepEqual(normalized(report, facts).runFacts.failures, []);
+});
+
+test('a command only the main agent ran is not one a sub-agent ran', () => {
+  const { facts: bare } = real();
+  const mainOnly = bare.executions.find((e) => e.by === 'main').command;
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence(mainOnly, 0),
+  );
+  assert.deepEqual(reasons(normalized(report, facts)), [
+    'evidence-not-executed',
+  ]);
+});
+
+test('an obligation finding is the main agents own, and so is the command behind it', () => {
+  const { report, facts } = real();
+  const site = 'libs/web/ui/src/dialog.tsx';
+  const id = 'destructive-confirmation-names-what-it-mutates';
+  const worklist = {
+    selected: [{ id, truncated: 0, sites: [{ file: site }] }],
+  };
+  const obligation = (command) => ({
+    ...clone(report.findings[0]),
+    ruleId: `obligation-${id}`,
+    location: { ...report.findings[0].location, file: site },
+    evidence: executedEvidence(command, 0),
+  });
+  const mainOnly = facts.executions.find((e) => e.by === 'main').command;
+
+  const ranIt = clone(report);
+  ranIt.findings.push(obligation(mainOnly));
+  assert.deepEqual(
+    normalized(ranIt, facts, { worklist }).runFacts.failures,
+    [],
+  );
+
+  const didNot = clone(report);
+  didNot.findings.push(obligation('yarn nx test web-ui'));
+  const out = normalized(didNot, facts, { worklist });
+  assert.deepEqual(reasons(out), ['evidence-not-executed']);
+  assert.match(out.runFacts.failures[0].detail, /neither the main agent nor/);
+});
+
+test('an exit code the transcript contradicts: Agent Review Ran fails', () => {
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence(RULES_CHECK, 1),
+    { result: { of: RULES_CHECK, content: 'ok 37 rules', isError: false } },
+  );
+  const out = normalized(report, facts);
+  assert.deepEqual(reasons(out), ['evidence-not-executed']);
+  assert.match(out.runFacts.failures[0].detail, /exit code 1/);
+  assert.match(out.runFacts.failures[0].detail, /shows it exiting 0/);
+});
+
+test('an exit code the transcript agrees with, or does not carry, fails nothing', () => {
+  const agrees = withStandardsEvidence(executedEvidence(RULES_CHECK, 2), {
+    result: {
+      of: RULES_CHECK,
+      content: 'Exit code 2\nrule smell-x has no brief entry',
+      isError: true,
+    },
+  });
+  assert.deepEqual(
+    normalized(agrees.report, agrees.facts).runFacts.failures,
+    [],
+  );
+  // The fixture as cut carries no result for the call at all.
+  const silent = withStandardsEvidence(executedEvidence(RULES_CHECK, 2));
+  assert.deepEqual(
+    normalized(silent.report, silent.facts).runFacts.failures,
+    [],
+  );
+});
+
+test('cannot-tell fails nothing: an unreadable transcript, or facts read before executions were', () => {
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence('yarn nx test web-vault'),
+  );
+  const unreadable = normalized(report, {
+    ...facts,
+    shape: 'unknown',
+    shapeReason: 'the transcript has no result event',
+    dispatches: null,
+    axes: null,
+    standardsSources: null,
+    indexOpened: null,
+    executed: null,
+    executions: null,
+    unattributedDispatches: null,
+    repliesParsed: null,
+    returned: null,
+  });
+  assert.deepEqual(unreadable.runFacts.failures, []);
+  assert.deepEqual(unreadable.runFacts.tightenedBy, ['transcript-unreadable']);
+
+  const older = clone(facts);
+  delete older.executions;
+  assert.deepEqual(normalized(report, older).runFacts.failures, []);
+});
+
+test('the comment says the evidence was not executed, and still shows the finding', () => {
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence('yarn nx test web-vault'),
+  );
+  assert.match(
+    renderRunFacts(normalized(report, facts)).join('\n'),
+    /\*\*`Agent Review Ran` fails\*\* \(`evidence-not-executed`\)/,
+  );
+});
+
 // --- the vocabularies and the CLI -------------------------------------------
 
-test('the ladder names two failures and four tightening facts', () => {
-  assert.deepEqual(RUN_FAILURES, ['brief-not-read', 'finding-not-returned']);
+test('the ladder names three failures and four tightening facts', () => {
+  assert.deepEqual(RUN_FAILURES, [
+    'brief-not-read',
+    'finding-not-returned',
+    'evidence-not-executed',
+  ]);
   assert.deepEqual(TIGHTENING_FACTS, [
     'index-not-opened',
     'dispatch-off-template',
@@ -594,6 +828,18 @@ test('the validator writes a failed run and exits 0, so the findings are still p
   assert.match(run.stdout, /run failure \(finding-not-returned\)/);
   const written = JSON.parse(readFileSync(out, 'utf8'));
   assert.deepEqual(reasons(written), ['finding-not-returned']);
+  assert.equal(written.findings.length, 2);
+});
+
+test('a transcript read and a report validated, end to end: fabricated executed evidence is a printed run failure', () => {
+  const { report, facts } = withStandardsEvidence(
+    executedEvidence('yarn nx test web-vault'),
+  );
+  const { run, out } = validate(report, facts);
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /run failure \(evidence-not-executed\)/);
+  const written = JSON.parse(readFileSync(out, 'utf8'));
+  assert.deepEqual(reasons(written), ['evidence-not-executed']);
   assert.equal(written.findings.length, 2);
 });
 

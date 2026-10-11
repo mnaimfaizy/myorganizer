@@ -1,5 +1,6 @@
 /**
- * The words the run ladder speaks (issue #1031, ADR 0123 items 4 and 5).
+ * The words the run ladder speaks (issue #1031, ADR 0123 items 4 and 5;
+ * issue #1039, ADR 0126).
  *
  * Kept apart from `run-ladder.mjs` so a reader that only needs the
  * vocabulary imports no package. `golden-results.mjs` is one: it validates a
@@ -10,10 +11,15 @@
  * cases.
  */
 
-/** What fails `Agent Review Ran`, and voids a golden replay (ADR 0101). */
+/**
+ * What fails `Agent Review Ran`, and voids a golden replay (ADR 0101). The
+ * third is a finding's executed evidence the transcript does not bear out
+ * (issue #1039, ADR 0126).
+ */
 export const RUN_FAILURES = /** @type {const} */ ([
   'brief-not-read',
   'finding-not-returned',
+  'evidence-not-executed',
 ]);
 
 /**

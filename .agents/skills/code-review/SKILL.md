@@ -283,6 +283,13 @@ five with what the reviewer transcript shows, after you have exited
 Run interactively there is no transcript to read, so the report keeps what you wrote and is marked
 as self-reported. Either way, write what happened: do not pad a list or round a duration.
 
+A finding's `executed` evidence is checked the same way. In CI its `command` and `exitCode` are
+compared with the Bash calls the transcript shows, and evidence nobody executed fails
+`Agent Review Ran`
+([ADR 0126](../../../docs/adr/0126-a-findings-executed-evidence-is-compared-with-the-transcript.md)).
+Copy a sub-agent's evidence as it returned it. If you raise an obligation finding on a command you
+ran yourself, quote that command as you ran it.
+
 In CI the same transcript is what the run is held to. Each finding you report is compared, field for
 field, with the findings the sub-agents returned. One you changed, or one you wrote that is not an
 obligation finding for a worklist site, fails `Agent Review Ran`. So does an axis whose brief no

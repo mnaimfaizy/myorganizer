@@ -32,3 +32,57 @@ export function tokenize(command) {
   }
   return tokens;
 }
+
+/**
+ * Split a shell call into its simple commands, at `&&`, `||`, `;`, `|`, and a
+ * newline. Quoted text is kept whole, so a `;` inside a quoted pattern does
+ * not start a command; so is a character a backslash escapes, and a
+ * backslash at the end of a line continues the command onto the next.
+ *
+ * The quotes and backslashes are left in each command, for a caller that
+ * goes on to split it into words. A here-document's body is not recognised:
+ * its lines come back as commands, and a caller that cares must look for the
+ * `<<` itself.
+ *
+ * @param {string} command
+ * @returns {string[]}
+ */
+export function simpleCommands(command) {
+  const commands = [];
+  let current = '';
+  let quote = null;
+  for (let i = 0; i < command.length; i += 1) {
+    const ch = command[i];
+    // Inside single quotes a backslash is a backslash.
+    if (ch === '\\' && quote !== "'" && i + 1 < command.length) {
+      i += 1;
+      current += command[i] === '\n' && !quote ? ' ' : ch + command[i];
+      continue;
+    }
+    if (quote) {
+      current += ch;
+      if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      quote = ch;
+      current += ch;
+      continue;
+    }
+    const two = command.slice(i, i + 2);
+    if (two === '&&' || two === '||') {
+      commands.push(current);
+      current = '';
+      i += 1;
+      continue;
+    }
+    if (ch === ';' || ch === '|' || ch === '\n') {
+      commands.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  commands.push(current);
+  return commands.map((c) => c.trim()).filter(Boolean);
+}

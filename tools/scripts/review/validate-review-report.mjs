@@ -25,8 +25,9 @@
 // the reviewer wrote and is marked `runFactsFrom: reviewer`.
 //
 // With --facts the run is also judged (run-ladder.mjs). A fact that fails
-// `Agent Review Ran` — no sub-agent read an axis's brief, or a reported
-// finding is not one a sub-agent returned — is written to
+// `Agent Review Ran` — no sub-agent read an axis's brief, a reported
+// finding is not one a sub-agent returned, or a finding's executed evidence
+// is not in the transcript (ADR 0126) — is written to
 // `runFacts.failures` and printed; a fact that tightens the tier is written
 // to `runFacts.tightenedBy` and moves `effectiveTier`. Neither rejects the
 // report: it met its contract, and the caller fails the check from the
