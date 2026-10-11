@@ -146,7 +146,7 @@ export function BackLink({
         onPress={onPress}
         onFocus={focus.onFocus}
         onBlur={focus.onBlur}
-        android_ripple={feedback.android_ripple}
+        android_ripple={focus.ripple(feedback.android_ripple)}
         style={({ pressed }) => [
           styles.back,
           {

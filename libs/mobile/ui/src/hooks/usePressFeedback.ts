@@ -43,6 +43,9 @@ export function withAlpha(hex: string, alpha: number): string {
  * at 12% (16% in dark) — bounded on rows and buttons, borderless at radius 22
  * on icon buttons. Nothing presses by fading: an opacity change reads as
  * disabled, which is the opposite of what a press means.
+ *
+ * A control that can take keyboard focus passes the ripple through its
+ * `useFocusRing().ripple`, which keeps Android from filling it while focused.
  */
 export function usePressFeedback(shape: PressFeedbackShape = 'bounded'): {
   android_ripple: PressableAndroidRippleConfig | undefined;

@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { BlurEvent, FocusEvent, ViewStyle } from 'react-native';
+import {
+  Platform,
+  type BlurEvent,
+  type FocusEvent,
+  type PressableAndroidRippleConfig,
+  type ViewStyle,
+} from 'react-native';
 import { useTheme } from '../useTheme';
 import { useInFrontFocusLayer } from './focusLayer';
 import {
@@ -29,6 +35,16 @@ const OFFSET = {
   outside: RING_GAP,
   inset: -RING_WIDTH,
 } as const satisfies Record<FocusRingPlacement, number>;
+
+/**
+ * The ripple a focused control with none of its own is given on Android: one
+ * that draws nothing, there to keep the platform's highlight off (see
+ * `useFocusRing`).
+ */
+const NO_RIPPLE: PressableAndroidRippleConfig = {
+  color: 'transparent',
+  foreground: true,
+};
 
 /**
  * Whether a focus or blur event came up from a control inside this one.
@@ -61,10 +77,21 @@ function fromInside(event: FocusEvent | BlurEvent | undefined): boolean {
  * and its Pressability config carried no `onFocus`/`onBlur`. React Native
  * 0.87's `Pressable` passes both into that config, so the ring is now
  * reachable, and `focusRing.test.tsx` holds it there by firing focus at
- * rendered controls rather than at this hook. It has been seen drawing on an
- * Android emulator driven by hardware key events, not on a physical device.
- * It does not draw on iOS, where React Native sends these two events only on
- * tvOS (#1021).
+ * rendered controls rather than at this hook. On iOS React Native sends these
+ * two events only on tvOS, so the app's native code sends them for a control
+ * Full Keyboard Access moves to (#1021, `KeyboardFocusEvents.mm`). The ring
+ * has been seen drawing on an Android emulator driven by hardware key events
+ * and on an iOS simulator, not on a physical device.
+ *
+ * On Android the platform fills a focused view as well. A view with a ripple
+ * has the ripple drawn faintly for as long as it holds focus, and a view
+ * without one is given the platform's default highlight. `ripple` returns
+ * what a control hands `android_ripple` so that neither shows (#1018): its
+ * own ripple, transparent while it holds focus, or a transparent one
+ * throughout when it has none — the default highlight is chosen as focus
+ * arrives, before a render could answer it. A press by key therefore draws
+ * no ripple. Touching the screen takes focus away, and the ripple comes back
+ * with the blur. iOS is handed the control's own, which is nothing.
  *
  * The ring is drawn only in the layer in front. A control behind an open
  * sheet can hold its window's focus without ever being sent a blur (see
@@ -87,6 +114,9 @@ export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
   onFocus: (event?: FocusEvent) => void;
   onBlur: (event?: BlurEvent) => void;
   ringStyle: ViewStyle | null;
+  ripple: (
+    own?: PressableAndroidRippleConfig,
+  ) => PressableAndroidRippleConfig | undefined;
 } {
   const theme = useTheme();
   const [focused, setFocused] = useState(false);
@@ -125,5 +155,14 @@ export function useFocusRing(placement: FocusRingPlacement = 'outside'): {
     [focused, inFront, placement, theme.colors.focus],
   );
 
-  return { focused, onFocus, onBlur, ringStyle };
+  const ripple = useCallback(
+    (own?: PressableAndroidRippleConfig) => {
+      if (Platform.OS !== 'android') return own;
+      if (own == null) return NO_RIPPLE;
+      return focused ? { ...own, color: 'transparent' } : own;
+    },
+    [focused],
+  );
+
+  return { focused, onFocus, onBlur, ringStyle, ripple };
 }

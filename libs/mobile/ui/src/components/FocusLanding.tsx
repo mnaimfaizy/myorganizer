@@ -48,8 +48,7 @@ export const FOCUS_LANDING_NATIVE_ID = 'focus-landing';
  *
  * A sheet is a `Modal`, a window of its own with its own first focusable
  * view, and is not covered by this one. Nor is iOS, which is given nothing:
- * the behaviour is Android's, and no control there is told it has focus
- * (#1021).
+ * the behaviour is Android's.
  */
 export function FocusLanding(): React.JSX.Element | null {
   if (Platform.OS !== 'android') return null;

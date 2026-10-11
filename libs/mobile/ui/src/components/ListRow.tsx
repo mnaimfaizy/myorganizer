@@ -331,6 +331,7 @@ function PanelAction({
       accessibilityLabel={action.label}
       focusable
       onPress={action.onPress}
+      android_ripple={focus.ripple()}
       onFocus={(event: FocusEvent) => {
         focus.onFocus(event);
         onKeyboardFocus();
@@ -508,7 +509,7 @@ function RevertedNote({
           onPress={onAction}
           onFocus={focus.onFocus}
           onBlur={focus.onBlur}
-          android_ripple={press.android_ripple}
+          android_ripple={focus.ripple(press.android_ripple)}
           style={({ pressed }) => [
             styles.inline,
             styles.retry,
@@ -904,9 +905,9 @@ export function ListRow({
               onLongPress={onLongPress}
               onFocus={focus.onFocus}
               onBlur={focus.onBlur}
-              android_ripple={
-                onPress == null ? undefined : press.android_ripple
-              }
+              android_ripple={focus.ripple(
+                onPress == null ? undefined : press.android_ripple,
+              )}
               style={({ pressed }) => [
                 styles.row,
                 {

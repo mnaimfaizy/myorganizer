@@ -1,6 +1,6 @@
 import React from 'react';
 import { act, renderHook } from '@testing-library/react-native';
-import type { FocusEvent } from 'react-native';
+import { Platform, type FocusEvent } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { lightTheme } from '../theme';
 import { useFocusRing } from './useFocusRing';
@@ -75,6 +75,65 @@ describe('useFocusRing', () => {
       await act(() => result.current.onFocus(eventAt(row, row)));
       await act(() => result.current.onBlur(eventAt(row, row)));
       expect(result.current.ringStyle).toBeNull();
+    });
+  });
+
+  describe('ripple', () => {
+    const own = { color: '#00ff00', borderless: true, radius: 8 };
+
+    describe('off Android', () => {
+      it('hands back the own ripple, and undefined stays undefined, focused or not', async () => {
+        const { result } = await renderHook(() => useFocusRing(), { wrapper });
+        expect(result.current.ripple(own)).toBe(own);
+        expect(result.current.ripple()).toBeUndefined();
+        await act(() => result.current.onFocus());
+        expect(result.current.ripple(own)).toBe(own);
+        expect(result.current.ripple()).toBeUndefined();
+      });
+    });
+
+    describe('on Android', () => {
+      beforeEach(() => {
+        jest.replaceProperty(Platform, 'OS', 'android');
+      });
+      afterEach(() => jest.restoreAllMocks());
+
+      it('gives a control with no ripple a transparent foreground one, focused or not', async () => {
+        const { result } = await renderHook(() => useFocusRing(), { wrapper });
+        const transparent = { color: 'transparent', foreground: true };
+        expect(result.current.ripple()).toEqual(transparent);
+        await act(() => result.current.onFocus());
+        expect(result.current.ripple()).toEqual(transparent);
+      });
+
+      it('hands back the own ripple by reference while not focused', async () => {
+        const { result } = await renderHook(() => useFocusRing(), { wrapper });
+        expect(result.current.ripple(own)).toBe(own);
+      });
+
+      it('keeps the own ripple shape but makes its colour transparent while focused', async () => {
+        const { result } = await renderHook(() => useFocusRing(), { wrapper });
+        await act(() => result.current.onFocus());
+        expect(result.current.ripple(own)).toEqual({
+          ...own,
+          color: 'transparent',
+        });
+      });
+
+      it('restores the own ripple on blur', async () => {
+        const { result } = await renderHook(() => useFocusRing(), { wrapper });
+        await act(() => result.current.onFocus());
+        await act(() => result.current.onBlur());
+        expect(result.current.ripple(own)).toBe(own);
+      });
+
+      it('keeps the own ripple when a control inside it takes focus', async () => {
+        const row = { focus: jest.fn() };
+        const checkbox = { focus: jest.fn() };
+        const { result } = await renderHook(() => useFocusRing(), { wrapper });
+        await act(() => result.current.onFocus(eventAt(checkbox, row)));
+        expect(result.current.ripple(own)).toBe(own);
+      });
     });
   });
 });

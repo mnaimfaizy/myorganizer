@@ -570,7 +570,7 @@ function MonthlyEquivalentCard({
       onPress={onPress}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
-      android_ripple={press.android_ripple}
+      android_ripple={focus.ripple(press.android_ripple)}
       style={({ pressed }) => [
         styles.card,
         {

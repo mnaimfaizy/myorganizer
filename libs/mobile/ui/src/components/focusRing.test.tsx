@@ -1,10 +1,11 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react-native';
-import { StyleSheet } from 'react-native';
+import { Platform, processColor, StyleSheet } from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { lightTheme } from '../theme';
 import { BottomSheet } from './BottomSheet';
 import { Button } from './Button';
+import { SegmentedControl } from './SegmentedControl';
 import { Checkbox } from './Checkbox';
 import { Chip } from './Chip';
 import { EmptyState } from './EmptyState';
@@ -318,5 +319,69 @@ describe('the view a control hands a screen to focus', () => {
       </TestWrapper>,
     );
     expect(ref).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * The Android ripple through a real `Pressable`. The host view carries the
+ * ripple as `nativeForegroundAndroid`, with its colour already through
+ * `processColor`, so transparent is that colour's integer, not the string.
+ */
+describe('Android ripple on a focused control', () => {
+  const TRANSPARENT = processColor('transparent');
+  const rippleOf = (label: string) =>
+    screen.getByLabelText(label, { includeHiddenElements: true }).props
+      .nativeForegroundAndroid;
+
+  beforeEach(() => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it('a ghost Button keeps its own ripple until it has focus', async () => {
+    await render(
+      <TestWrapper>
+        <Button label="Log out" variant="ghost" onPress={jest.fn()} />
+      </TestWrapper>,
+    );
+    expect(rippleOf('Log out')).toBeDefined();
+    expect(rippleOf('Log out')?.color).not.toBe(TRANSPARENT);
+  });
+
+  it('a ghost Button draws no ripple while focused, and its own again on blur', async () => {
+    await render(
+      <TestWrapper>
+        <Button label="Log out" variant="ghost" onPress={jest.fn()} />
+      </TestWrapper>,
+    );
+    const own = rippleOf('Log out');
+
+    await fireEvent(
+      screen.getByLabelText('Log out', { includeHiddenElements: true }),
+      'focus',
+    );
+    expect(rippleOf('Log out')?.color).toBe(TRANSPARENT);
+
+    await fireEvent(
+      screen.getByLabelText('Log out', { includeHiddenElements: true }),
+      'blur',
+    );
+    expect(rippleOf('Log out')).toEqual(own);
+  });
+
+  it('a SegmentedControl segment, which has no ripple of its own, carries a transparent one before any focus', async () => {
+    await render(
+      <TestWrapper>
+        <SegmentedControl
+          segments={[
+            { value: 'list', label: 'List' },
+            { value: 'grid', label: 'Grid' },
+          ]}
+          value="list"
+          onChange={jest.fn()}
+        />
+      </TestWrapper>,
+    );
+    expect(rippleOf('Grid')?.color).toBe(TRANSPARENT);
   });
 });

@@ -69,7 +69,9 @@ export function nameSuccessor(
 
 /**
  * The view of the control holding keyboard focus now, or `null`: after a
- * touch, on iOS, and while focus is in a text input, which notes nothing.
+ * touch, and while focus is in a text input, which notes nothing. iOS keeps
+ * focus where Full Keyboard Access left it through a touch, so there a touch
+ * does not make this `null`.
  */
 export function keyboardFocusedView(): FocusTarget | null {
   return focusedSlot?.current ?? null;
@@ -135,7 +137,8 @@ export function useFocusAfterCommit(
  *
  * `focus()` on a view does nothing unless React Native's
  * `enableImperativeFocus` flag is on, which `MainApplication.kt` does for
- * Android. On iOS it is off, and no control is ever noted there (#1021).
+ * Android. On iOS it is off: a control is noted there once Full Keyboard
+ * Access has moved to it, and handing focus back to it does nothing.
  */
 export function useReturnFocusOnLeave(): void {
   const [opener] = useState(() => ({

@@ -150,11 +150,11 @@ export function Chip({
       onPress={onPress}
       disabled={disabled}
       hitSlop={{ top: slop, bottom: slop }}
-      android_ripple={
+      android_ripple={ring.ripple(
         selected
           ? labelRipple(theme, roles.label)
-          : unselectedFeedback.android_ripple
-      }
+          : unselectedFeedback.android_ripple,
+      )}
       onFocus={ring.onFocus}
       onBlur={ring.onBlur}
       style={({ pressed }) => [

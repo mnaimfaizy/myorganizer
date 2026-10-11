@@ -183,13 +183,13 @@ export function Button({
       accessibilityState={{ disabled: nativelyDisabled, busy }}
       disabled={nativelyDisabled}
       onPress={inert ? undefined : onPress}
-      android_ripple={
+      android_ripple={ring.ripple(
         inert
           ? undefined
           : roles.fill === null
             ? unfilledFeedback.android_ripple
-            : labelRipple(theme, roles.label)
-      }
+            : labelRipple(theme, roles.label),
+      )}
       onFocus={(event) => {
         ring.onFocus(event);
         onFocus?.(event);

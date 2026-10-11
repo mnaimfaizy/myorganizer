@@ -1,3 +1,4 @@
+import KeyboardFocusEvents
 import UIKit
 import React
 import React_RCTAppDelegate
@@ -15,6 +16,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
     KeyboardFocusShim.install()
+    KeyboardFocusEvents.install()
 
     let delegate = ReactNativeDelegate()
     let factory = RCTReactNativeFactory(delegate: delegate)
@@ -67,6 +69,9 @@ class ReactNativeDelegate: RCTDefaultReactNativeFactoryDelegate {
 /// screen below its header was a single group, so Tab went from "Log out" to
 /// the Passphrase field and back while "Unlock" and the link under it could
 /// only be reached with the arrows.
+///
+/// Being focusable does not tell a view it has focus: `KeyboardFocusEvents`
+/// sends the focus and blur events the app's own focus ring is drawn from.
 ///
 /// It is a runtime override of a React Native method, not an extension point.
 /// Remove it when React Native sets `focusable` on iOS itself. If an upgrade

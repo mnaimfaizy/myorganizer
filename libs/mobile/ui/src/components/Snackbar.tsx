@@ -125,6 +125,7 @@ export function Snackbar({
           onPress={onAction}
           onPressIn={() => setHeld(true)}
           onPressOut={() => setHeld(false)}
+          android_ripple={ring.ripple()}
           onFocus={ring.onFocus}
           onBlur={ring.onBlur}
           style={({ pressed }) => [
