@@ -296,7 +296,15 @@ function AppTabBar({
   );
 }
 
-/** The signed-in, unlocked app: five tabs, each owning a stack. */
+/**
+ * The signed-in, unlocked app: five tabs, each owning a stack.
+ *
+ * Android's system Back never moves between tabs (#1069). Inside a tab it
+ * pops that tab's stack; on a tab's home screen it leaves the app, and the
+ * last used tab is the one the app reopens on. React Navigation's default,
+ * `firstRoute`, instead sent Back to the first tab in the bar — Groceries,
+ * which is neither the tab the app opened on nor one the user came from.
+ */
 export function MainTabs(): React.JSX.Element {
   // Read once, imperatively: `initialRouteName` is only consulted when the
   // navigator first builds its state, and subscribing here would re-render
@@ -309,6 +317,7 @@ export function MainTabs(): React.JSX.Element {
   return (
     <Tab.Navigator
       initialRouteName={initialTab}
+      backBehavior="none"
       tabBar={(props) => <AppTabBar {...props} />}
       screenListeners={({ route }) => ({
         focus: () => setLastTab(route.name),
