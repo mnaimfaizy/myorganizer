@@ -601,7 +601,9 @@ do the generators. Aliases added by hand stay wherever they were typed unless yo
 #### Type Checking
 
 `yarn typecheck:check` compiles each project's lib, app, web, and spec tsconfig, wherever one
-exists, and is the command CI runs. Only `mobile` has a per-project `typecheck` target.
+exists, and is the command CI runs. A project with no lib, app, or web config, such as the
+Next.js app, is compiled from its `tsconfig.json`. Only `mobile` has a per-project `typecheck`
+target.
 
 ```bash
 # apps/backend/src/prisma is generated and gitignored, so a fresh checkout needs it first

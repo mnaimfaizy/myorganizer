@@ -863,7 +863,7 @@ jobs:
           npx prisma migrate deploy --schema prisma/schema
           npx prisma migrate diff --from-config-datasource --to-schema prisma/schema --exit-code
 
-      # Compiles every project tsconfig, lib/app and spec alike. Nothing ran
+      # Compiles each project's production and spec programs. Nothing ran
       # TypeScript in CI before this, so two type errors had reached main.
       - name: Typecheck all projects
         run: corepack yarn typecheck:check

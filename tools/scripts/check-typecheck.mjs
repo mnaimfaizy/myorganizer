@@ -1,5 +1,10 @@
 #!/usr/bin/env node
-// Typechecks every project tsconfig in the workspace.
+// Typechecks the production and spec programs of every project that has one.
+//
+// A project's production program is its `tsconfig.lib.json`,
+// `tsconfig.app.json`, or `tsconfig.web.json`; a project with none of those is
+// compiled from its `tsconfig.json`. A project with no tsconfig of any of these
+// names contributes nothing and is not reported.
 //
 //   node tools/scripts/check-typecheck.mjs [graphFile] [workspaceRoot]
 //
@@ -39,8 +44,7 @@ import { join, resolve } from 'node:path';
 
 import { GraphUnavailableError, loadProjectGraph } from './lib/nx-graph.mjs';
 
-// Checked in this order; every one that exists is checked, because a project's
-// production code and its specs compile under different options.
+// A project's production programs. Every one that exists is checked.
 //
 // `tsconfig.web.json` is a second production program, not an alias for the
 // app one. apps/mobile targets React Native and react-native-web, and ADR 0103
@@ -49,12 +53,25 @@ import { GraphUnavailableError, loadProjectGraph } from './lib/nx-graph.mjs';
 // is the only config that compiles those variants (`crypto.web.ts`,
 // `main-web.tsx`) under `moduleSuffixes`. Without it here, the web half would be
 // type-checked only when someone ran `mobile:typecheck` by hand.
-const CONFIG_NAMES = [
+const PRODUCTION_CONFIG_NAMES = [
   'tsconfig.lib.json',
   'tsconfig.app.json',
   'tsconfig.web.json',
-  'tsconfig.spec.json',
 ];
+
+// The production program of a project that has none of the above. A Next.js
+// app keeps its one program in `tsconfig.json` because that is the file
+// `next build` reads, so apps/myorganizer has no `tsconfig.app.json`, and
+// apps/myorganizer-e2e has no other config at all. Matching only the suffixed
+// names compiled the web app's specs and nothing else (#1060).
+//
+// It is a fallback, not a fourth name: beside a production config,
+// `tsconfig.json` is the editor's umbrella over the same files.
+const FALLBACK_CONFIG_NAME = 'tsconfig.json';
+
+// Checked alongside whichever production program a project has, because
+// production code and specs compile under different options.
+const SPEC_CONFIG_NAME = 'tsconfig.spec.json';
 
 const fail = (msg) => {
   console.error(`typecheck: ${msg}`);
@@ -76,11 +93,15 @@ const jobs = [];
 for (const [name, node] of Object.entries(nodes)) {
   const root = node.data?.root;
   if (!root) continue;
-  for (const config of CONFIG_NAMES) {
-    const relative = join(root, config);
-    if (existsSync(join(WORKSPACE_ROOT, relative))) {
-      jobs.push({ name, config, relative });
-    }
+  const has = (config) => existsSync(join(WORKSPACE_ROOT, root, config));
+  const production = PRODUCTION_CONFIG_NAMES.filter(has);
+  const configs = [...production];
+  if (production.length === 0 && has(FALLBACK_CONFIG_NAME)) {
+    configs.push(FALLBACK_CONFIG_NAME);
+  }
+  if (has(SPEC_CONFIG_NAME)) configs.push(SPEC_CONFIG_NAME);
+  for (const config of configs) {
+    jobs.push({ name, config, relative: join(root, config) });
   }
 }
 
@@ -104,7 +125,7 @@ function runTsc(job) {
 }
 
 // tsc is single-threaded and each config is independent, so run a pool rather
-// than 52 sequential compilers. Capped to keep CI runners from thrashing.
+// than one compiler after another. Capped to keep CI runners from thrashing.
 const limit = Math.max(2, Math.min(availableParallelism?.() ?? 4, 8));
 const queue = [...jobs];
 const results = [];
