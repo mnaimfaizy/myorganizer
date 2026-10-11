@@ -43,6 +43,7 @@ class MainApplication : Application(), ReactApplication {
       object : ReactInstanceEventListener {
         override fun onReactContextInitialized(context: ReactContext) {
           context.addExtraWindowEventListener(ModalEscapeGuard)
+          context.addExtraWindowEventListener(SwitchFocusEvents)
         }
       }
     )
