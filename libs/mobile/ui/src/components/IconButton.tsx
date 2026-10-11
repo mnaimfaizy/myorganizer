@@ -50,7 +50,7 @@ export function IconButton({
       onPress={onPress}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
-      android_ripple={disabled ? undefined : press.android_ripple}
+      android_ripple={focus.ripple(disabled ? undefined : press.android_ripple)}
       style={({ pressed }) => [
         styles.button,
         {

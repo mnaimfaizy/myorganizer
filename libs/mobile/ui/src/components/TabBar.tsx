@@ -117,6 +117,7 @@ function Tab({
       accessibilityLabel={item.accessibilityLabel ?? item.label}
       accessibilityState={{ selected: active }}
       onPress={() => onSelect(item.key)}
+      android_ripple={focus.ripple()}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
       style={[

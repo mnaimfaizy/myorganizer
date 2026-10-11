@@ -61,7 +61,8 @@ interface Debt<K> {
  *
  * Only a keyboard gets here. Nothing is noted after a touch, so an item
  * removed by touch hands nothing on and no ring appears; and Android refuses
- * a focus request in touch mode. iOS notes no control at all (#1021).
+ * a focus request in touch mode. iOS acts on no focus request at all
+ * (`useReturnFocusOnLeave`).
  *
  * Focus is requested in a layout effect, before the removed control's own
  * `useFocusRing` has cleaned up, which is why the view that left may still be

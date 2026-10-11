@@ -120,6 +120,7 @@ function SegmentButton({
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       onPress={onPress}
+      android_ripple={ring.ripple()}
       onFocus={ring.onFocus}
       onBlur={ring.onBlur}
       // The thumb is drawn inside the track's padding, so the track and the

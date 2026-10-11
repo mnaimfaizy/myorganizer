@@ -14,6 +14,28 @@ PODS:
   - hermes-engine (250829098.0.17):
     - hermes-engine/Pre-built (= 250829098.0.17)
   - hermes-engine/Pre-built (250829098.0.17)
+  - KeyboardFocusEvents (1.0.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-bridging
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - NitroModules (0.37.1):
     - hermes-engine
     - RCTRequired
@@ -2155,6 +2177,7 @@ DEPENDENCIES:
   - fmt (from `build/rndeps-facades/fmt`)
   - glog (from `build/rndeps-facades/glog`)
   - hermes-engine (from `../../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec`)
+  - KeyboardFocusEvents (from `./KeyboardFocusEvents`)
   - NitroModules (from `../../../node_modules/react-native-nitro-modules`)
   - QuickCrypto (from `../../../node_modules/react-native-quick-crypto`)
   - RCT-Folly (from `build/rndeps-facades/RCT-Folly`)
@@ -2268,6 +2291,8 @@ EXTERNAL SOURCES:
   hermes-engine:
     :podspec: "../../../node_modules/react-native/sdks/hermes-engine/hermes-engine.podspec"
     :tag: hermes-v250829098.0.17
+  KeyboardFocusEvents:
+    :path: "./KeyboardFocusEvents"
   NitroModules:
     :path: "../../../node_modules/react-native-nitro-modules"
   QuickCrypto:
@@ -2467,6 +2492,7 @@ SPEC CHECKSUMS:
   fmt: ba0886e864ebb21d14c98b2e12e164b8002f5b93
   glog: 3cf7cb46f743c4bc758ae3e6d9c15bd1b4cfd6d4
   hermes-engine: 8930e5f68b09f76e00ab617da3f7587e7262efd0
+  KeyboardFocusEvents: 5ae15178d0563441e9479517273be3675dd07f6a
   NitroModules: b4d92f95f7e70027935b09736d7a589181bc0912
   QuickCrypto: 4f663f8677036265f425e1ef309538b073fc6b3f
   RCT-Folly: 82921e585c0400eda46fac1068297aa9dfb035e4
@@ -2563,6 +2589,6 @@ SPEC CHECKSUMS:
   SocketRocket: 37aec555668fb852ec12e3c0de59a86ca58f0871
   Yoga: d1c536142c5ff8ec8cd856ab2a7c227a1d875c8e
 
-PODFILE CHECKSUM: 3537fb5f956dea971c2ceafba6d84815d75722e1
+PODFILE CHECKSUM: 532c84338d3f72cfb6da4d102c890311eb1b73ec
 
 COCOAPODS: 1.15.2

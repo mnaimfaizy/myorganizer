@@ -126,6 +126,7 @@ export function Checkbox({
         if (!disabled) pressTo(PRESS_SCALE);
       }}
       onPressOut={() => pressTo(1)}
+      android_ripple={focus.ripple()}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
       onPress={() => {

@@ -144,7 +144,7 @@ export function ListSection({
           }}
           onFocus={focus.onFocus}
           onBlur={focus.onBlur}
-          android_ripple={press.android_ripple}
+          android_ripple={focus.ripple(press.android_ripple)}
           style={({ pressed }) => [
             styles.header,
             styles.centred,

@@ -209,7 +209,7 @@ export function DateField({
           onPress={open}
           onFocus={valueFocus.onFocus}
           onBlur={valueFocus.onBlur}
-          android_ripple={feedback.android_ripple}
+          android_ripple={valueFocus.ripple(feedback.android_ripple)}
           style={({ pressed }) => [
             styles.value,
             {
@@ -236,6 +236,7 @@ export function DateField({
             accessibilityRole="button"
             accessibilityLabel={clearLabel ?? `Clear ${label.toLowerCase()}`}
             onPress={() => onChange(null)}
+            android_ripple={clearFocus.ripple()}
             onFocus={clearFocus.onFocus}
             onBlur={clearFocus.onBlur}
             style={[

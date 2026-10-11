@@ -20,8 +20,9 @@ import { useCallback, useEffect, useRef } from 'react';
  * keyboard blurs the input with nothing focused after it, and the group is
  * told focus left.
  *
- * iOS sends a view these two events only from a text input (#1021), which is
- * the one member a group there can lose focus from.
+ * On iOS a control other than a text input sends these two events only when
+ * Full Keyboard Access moves focus to or from it (#1021); a touch there moves
+ * focus between text inputs and nothing else.
  */
 export function useFocusWithin(onLeave: () => void): {
   onFocus: () => void;

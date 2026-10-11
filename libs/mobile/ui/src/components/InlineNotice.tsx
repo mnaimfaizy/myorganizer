@@ -173,7 +173,7 @@ export function InlineNotice({
           onPress={onAction}
           onFocus={actionFocus.onFocus}
           onBlur={actionFocus.onBlur}
-          android_ripple={actionFeedback.android_ripple}
+          android_ripple={actionFocus.ripple(actionFeedback.android_ripple)}
           style={({ pressed }) => [
             styles.action,
             {

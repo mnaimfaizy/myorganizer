@@ -325,7 +325,7 @@ function FitSheet({
                 onPress={onDismiss}
                 onFocus={closeFocus.onFocus}
                 onBlur={closeFocus.onBlur}
-                android_ripple={closeFeedback.android_ripple}
+                android_ripple={closeFocus.ripple(closeFeedback.android_ripple)}
                 style={({ pressed }) => [
                   styles.close,
                   {
@@ -491,7 +491,7 @@ function NavAction({
       onPress={onPress}
       onFocus={focus.onFocus}
       onBlur={focus.onBlur}
-      android_ripple={feedback.android_ripple}
+      android_ripple={focus.ripple(feedback.android_ripple)}
       style={({ pressed }) => [
         styles.navAction,
         {
