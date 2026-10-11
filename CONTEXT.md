@@ -286,6 +286,10 @@ _Avoid_: Component brief, component plan, design spec
 The React Native client in `apps/mobile`, sharing domain logic with the web app through cross-platform libraries. Feature code lives under `libs/mobile/*`.
 _Avoid_: native app, RN app, the app
 
+**Installed Web App**:
+The web app launched from a Home Screen, Dock, or desktop icon instead of a browser tab. The same client as the web app under the same rules — never a Mobile App and never a Mobile Release, so it has no version of its own and no Version Floor applies to it.
+_Avoid_: PWA (in anything a User reads), iOS app, web mobile app, the app
+
 **Platform Adapter**:
 A thin implementation of a shared abstract interface (e.g. `VaultCrypto`, token storage) that supplies platform-specific behavior to otherwise platform-agnostic code. An interface earns the name once a platform implements it; a shape written ahead of its implementors is not a Platform Adapter, it is a guess.
 _Avoid_: shim, wrapper, provider
@@ -769,8 +773,8 @@ An annotated `vX.Y.Z` tag applied after Production Host Apply has succeeded. A r
 _Avoid_: release tag (when you mean a trigger), version marker
 
 **Mobile Release**:
-A version of the Mobile App that an app store has approved and made available to Users, identified by a `mobile-vX.Y.Z` tag and numbered independently of Releases. Unlike a Release it is not live the moment it is approved — store review and rollout sit between the decision and the User — and earlier Mobile Releases stay in use alongside it.
-_Avoid_: store release, app release, mobile version, build (for the approved version)
+A signed Android build of the Mobile App published on a GitHub Release for anyone to download, identified by a `mobile-vX.Y.Z` tag and numbered independently of Releases. Unlike a Release it is not live once published — each User installs it themselves, nothing updates an installed one, and earlier Mobile Releases stay in use alongside it.
+_Avoid_: store release, app release, mobile version, build (for the published version)
 
 **Version Floor**:
 The lowest Mobile Release an environment's backend still serves. A Mobile App below it is refused and told to update. A refused edit is a failed push: it is never reported as saved, and the User is told it was not.
