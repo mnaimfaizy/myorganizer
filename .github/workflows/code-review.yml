@@ -506,15 +506,16 @@ jobs:
             echo "verdict=$VERDICT" >> "$GITHUB_OUTPUT"
             # A validated report is still not a review that ran as built. The
             # validator judged the run against the transcript (ADR 0123 item
-            # 4) and wrote what it found beside the findings: no sub-agent
-            # read an axis's brief, or a reported finding is not one a
-            # sub-agent returned. Both are facts about the pipeline (ADR
+            # 4, ADR 0126) and wrote what it found beside the findings: no
+            # sub-agent read an axis's brief, a reported finding is not one
+            # a sub-agent returned, or a finding gives as executed evidence
+            # a command nobody ran. All are facts about the pipeline (ADR
             # 0073). The report is published all the same, with the failure
             # stated in it: every step above ran, and the verdict is set.
             FAILURES="$(jq -r '.runFacts.failures // [] | .[] | "\(.reason): \(.detail)"' tmp/code-review/normalized.json)"
             if [ -n "$FAILURES" ]; then
               while IFS= read -r failure; do
-                echo "::error title=The review did not run as built::$failure (ADR 0123). The findings are published, and this pull request is review:human."
+                echo "::error title=The review did not run as built::$failure (ADR 0123, ADR 0126). The findings are published, and this pull request is review:human."
               done <<<"$FAILURES"
               exit 1
             fi

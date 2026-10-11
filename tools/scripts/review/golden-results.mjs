@@ -52,10 +52,11 @@ const CLEAN_OUTCOMES = Object.freeze(['clean-pass', 'clean-fail']);
  * refusing a permission the reviewer's own instructions told it to use —
  * at the turn ceiling, or on a write to its own report or answer sheet
  * (`prevented`, classified by `classify-reviewer-run.mjs`), the obligation
- * answer sheet failing `review:obligations:check` (ADR 0101), the two run
- * facts that fail `Agent Review Ran` in production (ADR 0123 item 7:
- * `RUN_FAILURES` in run-ladder-terms.mjs — no sub-agent read an axis's brief, or a
- * reported finding was not one a sub-agent returned), and a residual
+ * answer sheet failing `review:obligations:check` (ADR 0101), the run
+ * facts that fail `Agent Review Ran` in production (ADR 0123 item 7, ADR
+ * 0126: `RUN_FAILURES` in run-ladder-terms.mjs — no sub-agent read an axis's
+ * brief, a reported finding was not one a sub-agent returned, or a finding's
+ * executed evidence is not in the transcript), and a residual
  * `unknown` for a run that produced no valid report for a reason none of the
  * above names.
  */

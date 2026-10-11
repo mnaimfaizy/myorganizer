@@ -58,8 +58,8 @@ outputs:
     description: >-
       true when tmp/code-review/normalized.json was written. A validated
       report is not yet a run that passed: `runFacts.failures` in that file
-      lists the run facts that fail "Agent Review Ran" (ADR 0123 item 4),
-      and the caller reads it.
+      lists the run facts that fail "Agent Review Ran" (ADR 0123 item 4,
+      ADR 0126), and the caller reads it.
     value: ${{ steps.validate.outputs.validated }}
   facts-file:
     description: >-
@@ -307,9 +307,11 @@ runs:
     # the run (ADR 0123).
     #
     # The validator also judges the run against those facts. A run fact that
-    # fails "Agent Review Ran" — no sub-agent read an axis's brief, or a
-    # reported finding is not one a sub-agent returned — does not reject the
-    # report: it is written to `runFacts.failures` in the normalized file,
+    # fails "Agent Review Ran" — no sub-agent read an axis's brief, a
+    # reported finding is not one a sub-agent returned, or a finding gives as
+    # executed evidence a command the transcript does not show (ADR 0126) —
+    # does not reject the report: it is written to `runFacts.failures` in the
+    # normalized file,
     # and the caller fails its check from there, so the findings are still
     # published. `--worklist` is how the validator knows which findings the
     # main agent was meant to write itself (an obligation finding); a path

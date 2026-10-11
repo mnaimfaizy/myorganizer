@@ -165,6 +165,7 @@ test('OUTCOMES and VOID_REASONS are the documented vocabularies', () => {
     'answer-sheet-check-failed',
     'brief-not-read',
     'finding-not-returned',
+    'evidence-not-executed',
     'unknown',
   ]);
 });
@@ -360,7 +361,11 @@ test('GENERATED markers are the ones the checker and the ledger share', () => {
 // --- run facts on a result line (ADR 0123 item 7) ----------------------------
 
 test('a review that did not run as built is a void under its own reason', () => {
-  for (const voidReason of ['brief-not-read', 'finding-not-returned']) {
+  for (const voidReason of [
+    'brief-not-read',
+    'finding-not-returned',
+    'evidence-not-executed',
+  ]) {
     const record = buildResultRecord({ ...VOID, voidReason });
     assert.equal(record.outcome, 'void');
     assert.equal(record.void_reason, voidReason);

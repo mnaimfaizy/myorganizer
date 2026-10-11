@@ -1,12 +1,14 @@
 /**
- * What a run fact costs (issue #1031, ADR 0123 items 4 and 5).
+ * What a run fact costs (issue #1031, ADR 0123 items 4 and 5; issue #1039,
+ * ADR 0126).
  *
  * `transcript-facts.mjs` reads a reviewer transcript and decides nothing.
  * This module decides, from those facts and the report, in two kinds:
  *
  *   - a **failure** fails `Agent Review Ran`. It is a fact about the
- *     pipeline (ADR 0073): an axis did not run as built, or the main agent
- *     authored a finding.
+ *     pipeline (ADR 0073): an axis did not run as built, the main agent
+ *     authored a finding, or a finding gives as executed evidence a command
+ *     or an exit code the transcript does not bear out.
  *   - a **tightening fact** is published and moves the effective tier one
  *     step toward a human. It says the review was thin or cannot be vouched
  *     for, which is not a broken gate (ADR 0078): run 37576528356 skipped
@@ -19,6 +21,7 @@
  *
  * Pure: no file is read here. `normalizeReport` in schema.mjs is the caller.
  */
+import { matchExecutedEvidence } from './executed-evidence.mjs';
 import { obligationRuleId } from './obligations.mjs';
 import { RUN_FAILURES, TIGHTENING_FACTS } from './run-ladder-terms.mjs';
 
@@ -81,6 +84,43 @@ export const isObligationFinding = (finding, worklist) => {
   );
 };
 
+/** A model-written command as one bounded line of a failure's detail. */
+const oneLine = (command) => {
+  const line = command.replace(/\s+/g, ' ').trim();
+  return line.length > 200 ? `${line.slice(0, 200)}…` : line;
+};
+
+/**
+ * The failure a finding's executed evidence earns, or `null` (ADR 0126).
+ *
+ * The matching rule, and what it allows as a near-miss, is written down in
+ * `executed-evidence.mjs`. A sub-agent's finding is held to the commands
+ * sub-agents ran. An obligation finding is the main agent's own, so the
+ * command behind it may be the main agent's too.
+ *
+ * The finding is not touched. Evidence nobody executed is a fact about the
+ * reviewer, like a citation that does not match its source (ADR 0078): the
+ * report is published whole and the check fails beside it.
+ */
+const evidenceFailure = (finding, executions, isObligation) => {
+  if (finding.evidence?.kind !== 'executed') return null;
+  const match = matchExecutedEvidence(
+    finding.evidence,
+    isObligation ? executions : executions.filter((e) => e.by === 'sub-agent'),
+  );
+  if (match.status === 'ran') return null;
+  const which = `the ${finding.ruleId} finding at ${where(finding)}`;
+  const command = oneLine(finding.evidence.command);
+  return {
+    reason: 'evidence-not-executed',
+    axis: finding.axis,
+    detail:
+      match.status === 'not-run'
+        ? `${isObligation ? 'neither the main agent nor a sub-agent' : 'no sub-agent'} ran the command ${which} gives as executed evidence: ${command}`
+        : `${which} gives exit code ${finding.evidence.exitCode} for a command the transcript shows it exiting ${match.exitCodes.join(' and ')}: ${command}`,
+  };
+};
+
 /**
  * Judge one run.
  *
@@ -132,6 +172,18 @@ export const judgeRun = ({
   if (facts.axes.standards.briefRead && !facts.indexOpened)
     tightenedBy.add('index-not-opened');
   if (facts.repliesParsed === false) tightenedBy.add('reply-unparseable');
+
+  // Facts read before the calls were kept say nothing about them, and
+  // "cannot tell" is never a failure.
+  if (Array.isArray(facts.executions))
+    for (const finding of findings) {
+      const failure = evidenceFailure(
+        finding,
+        facts.executions,
+        isObligationFinding(finding, worklist),
+      );
+      if (failure) failures.push(failure);
+    }
 
   for (const finding of findings) {
     if (isObligationFinding(finding, worklist)) continue;

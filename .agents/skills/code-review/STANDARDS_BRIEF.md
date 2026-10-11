@@ -238,6 +238,11 @@ You run the commands in this review, so these rules are yours.
   project, so run it with `node --test <file>`: a package script that wraps it, the one
   `AGENTS.md` documents included, is refused (issue #1058). A throwaway reproduction goes in
   `git worktree add tmp/code-review/worktree HEAD`. Nothing from it is committed or pushed.
+- **Executed evidence quotes what you ran.** `command` is the command as you ran it and `exitCode`
+  is the code it returned. In CI both are compared with the transcript of your tool calls, and
+  evidence for a command you did not run, or with a code it did not return, fails the check
+  ([ADR 0126](../../../docs/adr/0126-a-findings-executed-evidence-is-compared-with-the-transcript.md)).
+  Never write the code you expect. If you did not run it, the evidence is `cited` or `inferred`.
 - **Do not remove the worktree.** It is throwaway and not yours to clean up, and the attempt is
   refused (ADR 0099).
 - **Write and Edit reach only `tmp/code-review/`.** There is no scratch file outside it to fall back

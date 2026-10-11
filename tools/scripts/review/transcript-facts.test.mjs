@@ -472,3 +472,170 @@ test('an unreadable transcript keeps the figures its result event did carry', ()
   });
   assert.equal(readTranscriptFacts('not json').cost, null);
 });
+
+// --- every Bash call, with the exit code the transcript carries (#1039) ----
+
+const TWO_FINDINGS = 'cli-2.1.293-template-two-findings';
+const RULES_CHECK = 'node tools/scripts/check-review-rules.mjs';
+
+/**
+ * A real transcript with a result added for one Bash call.
+ *
+ * The fixtures were cut down to the events #1031 read, which left out what a
+ * sub-agent's tool calls returned. The event added here is the shape the
+ * Claude Code CLI gives one: a `user` event under the same dispatch, holding
+ * a `tool_result` for the call's id.
+ */
+const withResultFor = (command, result) => {
+  const events = JSON.parse(fixture(TWO_FINDINGS));
+  const at = events.findIndex((e) =>
+    e.message?.content?.some?.(
+      (b) => b.type === 'tool_use' && b.input?.command === command,
+    ),
+  );
+  const call = events[at].message.content.find(
+    (b) => b.input?.command === command,
+  );
+  events.splice(at + 1, 0, {
+    type: 'user',
+    parent_tool_use_id: events[at].parent_tool_use_id,
+    message: {
+      content: [{ type: 'tool_result', tool_use_id: call.id, ...result }],
+    },
+  });
+  return readTranscriptFacts(JSON.stringify(events), { index: INDEX });
+};
+
+const executionOf = (f, command) =>
+  f.executions.filter((e) => e.command === command);
+
+test('executions holds every Bash call, the main agents marked as its own', () => {
+  const f = facts(TWO_FINDINGS);
+  assert.deepEqual(executionOf(f, RULES_CHECK), [
+    { command: RULES_CHECK, exitCode: null, by: 'sub-agent' },
+  ]);
+  // Both sub-agents ran the same `git diff --stat`: two calls, both kept.
+  assert.equal(
+    f.executions.filter((e) => e.command.endsWith('...HEAD --stat')).length,
+    2,
+  );
+  const main = f.executions.filter((e) => e.by === 'main');
+  assert.equal(main.length, 1);
+  assert.match(main[0].command, /review:validate/);
+});
+
+test('a call with no result in the transcript has no exit code, not zero', () => {
+  for (const e of facts(TWO_FINDINGS).executions)
+    assert.equal(e.exitCode, null);
+});
+
+test('a result that is not an error is exit 0', () => {
+  for (const result of [
+    { content: 'ok 12 rules', is_error: false },
+    { content: [{ type: 'text', text: 'ok 12 rules' }] },
+  ])
+    assert.equal(
+      executionOf(withResultFor(RULES_CHECK, result), RULES_CHECK)[0].exitCode,
+      0,
+    );
+});
+
+test('an error result is the exit code it opens with', () => {
+  assert.equal(
+    executionOf(
+      withResultFor(RULES_CHECK, {
+        content: 'Exit code 2\nrule smell-x has no brief entry',
+        is_error: true,
+      }),
+      RULES_CHECK,
+    )[0].exitCode,
+    2,
+  );
+  assert.equal(
+    executionOf(
+      withResultFor(RULES_CHECK, {
+        content: [{ type: 'text', text: 'Exit code 127\nnode: not found' }],
+        is_error: true,
+      }),
+      RULES_CHECK,
+    )[0].exitCode,
+    127,
+  );
+});
+
+test('an error result that names no exit code is cannot-tell', () => {
+  // A denied permission and a timeout are errors the command never exited.
+  for (const content of [
+    'This command requires approval',
+    'Command timed out after 2m 0s',
+    'the test printed Exit code 1 somewhere in its output',
+  ])
+    assert.equal(
+      executionOf(
+        withResultFor(RULES_CHECK, { content, is_error: true }),
+        RULES_CHECK,
+      )[0].exitCode,
+      null,
+      content,
+    );
+});
+
+test('an unreadable transcript states no executions', () => {
+  assert.equal(readTranscriptFacts('not json').executions, null);
+});
+
+test('a call the harness refused did not run, and is not an execution', () => {
+  // Run 37576528356: one sub-agent Bash call is in the result event's
+  // permission denials.
+  const events = JSON.parse(fixture('cli-2.1.292-paraphrased-dispatch'));
+  const [denial] = events.findLast(
+    (e) => e.type === 'result',
+  ).permission_denials;
+  const denied = events
+    .flatMap((e) => e.message?.content ?? [])
+    .find((b) => b.id === denial.tool_use_id);
+  assert.equal(denied.name, 'Bash');
+  const f = facts('cli-2.1.292-paraphrased-dispatch');
+  assert.deepEqual(executionOf(f, denied.input.command), []);
+  assert.ok(f.executions.length > 0);
+});
+
+test('a backgrounded call has no exit code to read', () => {
+  const events = JSON.parse(fixture(TWO_FINDINGS));
+  const call = events
+    .flatMap((e) => e.message?.content ?? [])
+    .find((b) => b.input?.command === RULES_CHECK);
+  call.input.run_in_background = true;
+  const at = events.findIndex((e) => e.message?.content?.includes?.(call));
+  events.splice(at + 1, 0, {
+    type: 'user',
+    parent_tool_use_id: events[at].parent_tool_use_id,
+    message: {
+      content: [
+        { type: 'tool_result', tool_use_id: call.id, content: 'started' },
+      ],
+    },
+  });
+  const f = readTranscriptFacts(JSON.stringify(events), { index: INDEX });
+  assert.equal(executionOf(f, RULES_CHECK)[0].exitCode, null);
+});
+
+test('a call that ends in & has no exit code to read either', () => {
+  const events = JSON.parse(fixture(TWO_FINDINGS));
+  const at = events.findIndex((e) =>
+    e.message?.content?.some?.((b) => b.input?.command === RULES_CHECK),
+  );
+  const call = events[at].message.content.find(
+    (b) => b.input?.command === RULES_CHECK,
+  );
+  call.input.command = `${RULES_CHECK} &`;
+  events.splice(at + 1, 0, {
+    type: 'user',
+    parent_tool_use_id: events[at].parent_tool_use_id,
+    message: {
+      content: [{ type: 'tool_result', tool_use_id: call.id, content: '' }],
+    },
+  });
+  const f = readTranscriptFacts(JSON.stringify(events), { index: INDEX });
+  assert.equal(executionOf(f, `${RULES_CHECK} &`)[0].exitCode, null);
+});
