@@ -1,9 +1,15 @@
 import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import { userEvent } from '@testing-library/react-native';
-import { Platform, StyleSheet } from 'react-native';
+import {
+  AccessibilityInfo,
+  Platform,
+  StyleSheet,
+  type View,
+} from 'react-native';
 import { ThemeProvider } from '../useTheme';
 import { COMFORTABLE_ROW_HEIGHT } from '../metrics';
+import { keyboardFocusedView } from '../hooks/focusReturn';
 import { lightTheme } from '../theme';
 import { ListSection } from './ListSection';
 import { ListRow } from './ListRow';
@@ -847,18 +853,32 @@ describe('ListRow Component', () => {
 
   /**
    * What a hardware keyboard may stop on. Android puts a view in the Tab
-   * order when it is `accessible` or `focusable`, so both are asserted: a
-   * control nobody can see, and a row that does nothing, must carry neither.
+   * order when it is `accessible` or `focusable`. A row that does nothing must
+   * carry neither. A swipe action is the exception: it is a stop even behind a
+   * closed row, because a hardware keyboard cannot swipe. Taking its focus
+   * opens the row to show it, and losing focus shuts the row again (#1027).
+   * Until then its panel is hidden from a screen reader.
    *
    * The swipe that reveals an action is not performed here: its callbacks are
    * worklets, and the Reanimated double this project runs under does not
-   * dispatch a gesture to a worklet.
+   * dispatch a gesture to a worklet. Focus is fired at the rendered action
+   * instead, which is the event a hardware keyboard sends.
    */
   describe('keyboard stops', () => {
-    afterEach(() => jest.restoreAllMocks());
+    beforeEach(() => jest.useFakeTimers());
+    afterEach(() => {
+      jest.useRealTimers();
+      jest.restoreAllMocks();
+    });
 
     const deleteAction = () =>
       screen.getByLabelText('Delete', { includeHiddenElements: true });
+    // The Reanimated double keeps a shared value only for one render, so the
+    // sheet's offset cannot be read back from the tree. Where the row opens
+    // to is what `settleTo` hands `withSpring`, so that is what is spied.
+    const reanimated = jest.requireMock<{
+      withSpring: (...args: unknown[]) => unknown;
+    }>('react-native-reanimated');
     const row = (
       <TestWrapper>
         <ListRow
@@ -871,16 +891,257 @@ describe('ListRow Component', () => {
       </TestWrapper>
     );
 
-    it('keeps a swipe action behind a closed row out of the Tab order and away from a screen reader', async () => {
+    it('keeps a swipe action behind a closed row a keyboard stop, hidden from a screen reader until it opens', async () => {
       await render(row);
 
-      expect(deleteAction().props.accessible).toBe(false);
-      expect(deleteAction().props.focusable).toBe(false);
+      expect(deleteAction().props.accessible).toBe(true);
+      expect(deleteAction().props.focusable).toBe(true);
       expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
       // The row still offers it.
       expect(
         screen.getByRole('button', { name: 'Milk' }).props.accessibilityActions,
       ).toEqual([{ name: 'del', label: 'Delete' }]);
+    });
+
+    it('reveals a focused swipe action to a screen reader', async () => {
+      await render(row);
+
+      await fireEvent(deleteAction(), 'focus');
+
+      expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
+    });
+
+    it('shuts the row again once focus has left its action', async () => {
+      await render(row);
+      await fireEvent(deleteAction(), 'focus');
+
+      await fireEvent(deleteAction(), 'blur');
+      // The shut waits for the zero-delay check, so a focus arriving in the
+      // meantime finds the row still open.
+      expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
+      await act(() => jest.advanceTimersByTime(0));
+
+      expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+    });
+
+    it('opens the row to the side of the action that took focus, and shuts it on blur', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            onPress={jest.fn()}
+            leftActions={[
+              { id: 'done', label: 'Done', icon: 'check', onPress: jest.fn() },
+            ]}
+            rightActions={[
+              { id: 'del', label: 'Delete', icon: 'trash', onPress: jest.fn() },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      const done = () =>
+        screen.getByLabelText('Done', { includeHiddenElements: true });
+
+      const spring = jest.spyOn(reanimated, 'withSpring');
+
+      await fireEvent(done(), 'focus');
+      expect(spring).toHaveBeenLastCalledWith(
+        88,
+        expect.anything(),
+        expect.any(Function),
+      );
+      await fireEvent(done(), 'blur');
+      await act(() => jest.advanceTimersByTime(0));
+      expect(spring).toHaveBeenLastCalledWith(
+        0,
+        expect.anything(),
+        expect.any(Function),
+      );
+
+      await fireEvent(deleteAction(), 'focus');
+      expect(spring).toHaveBeenLastCalledWith(
+        -88,
+        expect.anything(),
+        expect.any(Function),
+      );
+      await fireEvent(deleteAction(), 'blur');
+      await act(() => jest.advanceTimersByTime(0));
+      expect(spring).toHaveBeenLastCalledWith(
+        0,
+        expect.anything(),
+        expect.any(Function),
+      );
+    });
+
+    it('opens the row with no spring under Reduce Motion, and shuts it on blur once the check runs', async () => {
+      jest
+        .spyOn(AccessibilityInfo, 'isReduceMotionEnabled')
+        .mockResolvedValue(true);
+      const spring = jest.spyOn(reanimated, 'withSpring');
+      await render(row);
+      // The hook reads the setting in an effect, after its promise settles.
+      await act(() => Promise.resolve());
+
+      await fireEvent(deleteAction(), 'focus');
+      expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
+      // Not spring-less by accident: with motion on, focus starts one.
+      expect(spring).not.toHaveBeenCalled();
+
+      await fireEvent(deleteAction(), 'blur');
+      await act(() => jest.advanceTimersByTime(0));
+      expect(screen.queryByRole('button', { name: 'Delete' })).toBeNull();
+      expect(spring).not.toHaveBeenCalled();
+    });
+
+    it('keeps the row open while focus moves from one of its actions to another', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            onPress={jest.fn()}
+            rightActions={[
+              { id: 'del', label: 'Delete', icon: 'trash', onPress: jest.fn() },
+              {
+                id: 'archive',
+                label: 'Archive',
+                icon: 'info',
+                onPress: jest.fn(),
+              },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      await fireEvent(deleteAction(), 'focus');
+      await fireEvent(deleteAction(), 'blur');
+      await fireEvent(
+        screen.getByLabelText('Archive', { includeHiddenElements: true }),
+        'focus',
+      );
+      await act(() => jest.advanceTimersByTime(0));
+
+      expect(screen.getByRole('button', { name: 'Delete' })).toBeOnTheScreen();
+      expect(screen.getByRole('button', { name: 'Archive' })).toBeOnTheScreen();
+    });
+
+    it('draws a focused swipe action ring in its tile text colour, and none once unfocused', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Renew passport"
+            leftActions={[
+              {
+                id: 'done',
+                label: 'Done',
+                icon: 'check',
+                tone: 'primary',
+                onPress: jest.fn(),
+              },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      const done = () =>
+        screen.getByLabelText('Done', { includeHiddenElements: true });
+      expect(
+        StyleSheet.flatten(done().props.style).outlineColor,
+      ).toBeUndefined();
+
+      await fireEvent(done(), 'focus');
+      const ring = StyleSheet.flatten(done().props.style);
+      expect(ring.outlineWidth).toBe(2);
+      expect(ring.outlineColor).toBe(lightTheme.colors.primaryForeground);
+
+      await fireEvent(done(), 'blur');
+      expect(
+        StyleSheet.flatten(done().props.style).outlineColor,
+      ).toBeUndefined();
+    });
+
+    it('reports the row as the keyboard-focused view while one of its actions has focus', async () => {
+      const rowRef = React.createRef<React.ComponentRef<typeof View>>();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            onPress={jest.fn()}
+            ref={rowRef}
+            rightActions={[
+              { id: 'del', label: 'Delete', icon: 'trash', onPress: jest.fn() },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      expect(rowRef.current).not.toBeNull();
+
+      await fireEvent(deleteAction(), 'focus');
+      expect(keyboardFocusedView()).toBe(rowRef.current);
+
+      await fireEvent(deleteAction(), 'blur');
+      expect(keyboardFocusedView()).toBeNull();
+    });
+
+    it('hands the row view to a function ref, which keyboard focus on an action then reports', async () => {
+      const rowRef = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            onPress={jest.fn()}
+            ref={rowRef}
+            rightActions={[
+              { id: 'del', label: 'Delete', icon: 'trash', onPress: jest.fn() },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      const view: unknown = rowRef.mock.calls[0]?.[0];
+      expect(view).toBeTruthy();
+
+      await fireEvent(deleteAction(), 'focus');
+      expect(keyboardFocusedView()).toBe(view);
+    });
+
+    it('presses a focused swipe action through its own onPress', async () => {
+      const onDelete = jest.fn();
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Milk"
+            onPress={jest.fn()}
+            rightActions={[
+              { id: 'del', label: 'Delete', icon: 'trash', onPress: onDelete },
+            ]}
+          />
+        </TestWrapper>,
+      );
+      await fireEvent(deleteAction(), 'focus');
+
+      await fireEvent.press(screen.getByRole('button', { name: 'Delete' }));
+
+      expect(onDelete).toHaveBeenCalledTimes(1);
+    });
+
+    it('gives a disabled row no swipe actions, so there is no hidden stop to reach', async () => {
+      await render(
+        <TestWrapper>
+          <ListRow
+            title="Passport"
+            onPress={jest.fn()}
+            disabled
+            rightActions={[
+              { id: 'del', label: 'Delete', icon: 'trash', onPress: jest.fn() },
+            ]}
+          />
+        </TestWrapper>,
+      );
+
+      expect(
+        screen.queryByLabelText('Delete', { includeHiddenElements: true }),
+      ).toBeNull();
+      expect(
+        screen.getByRole('button', { name: 'Passport' }).props
+          .accessibilityActions,
+      ).toEqual([]);
     });
 
     it('keeps a pressable row a keyboard stop', async () => {
