@@ -99,4 +99,28 @@ describe('StackHeader', () => {
         .borderBottomColor,
     ).toBe('transparent');
   });
+
+  // A screen that never titles its bar (Task detail, Subscription detail)
+  // still needs the bar told apart from what scrolls under it (#948).
+  it('should draw the rule under an untitled bar once content has scrolled under it', async () => {
+    const { rerender } = await render(
+      <TestWrapper>
+        <StackHeader onBack={jest.fn()} testID="bar" />
+      </TestWrapper>,
+    );
+    expect(
+      StyleSheet.flatten(screen.getByTestId('bar').props.style)
+        .borderBottomColor,
+    ).toBe('transparent');
+
+    await rerender(
+      <TestWrapper>
+        <StackHeader onBack={jest.fn()} scrolledUnder testID="bar" />
+      </TestWrapper>,
+    );
+    expect(
+      StyleSheet.flatten(screen.getByTestId('bar').props.style)
+        .borderBottomColor,
+    ).toBe(lightTheme.colors.border);
+  });
 });

@@ -48,6 +48,7 @@ import {
 import { DateField } from './DateField';
 import { TASKS_ROUTES, type TasksStackParamList } from './tasksStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
+import { useBarRuleOnScroll } from './useBarRuleOnScroll';
 import {
   describeCreated,
   findVisibleTask,
@@ -223,6 +224,7 @@ export function TaskDetailScreen(): React.JSX.Element {
     // field below is where the name is read and changed.
     navigation.setOptions({ title: '' });
   }, [navigation]);
+  const barRule = useBarRuleOnScroll();
 
   // One push runs at a time, and `apply` refuses a second one outright. A
   // change made while the last one is still in flight waits here and goes
@@ -543,6 +545,8 @@ export function TaskDetailScreen(): React.JSX.Element {
           <ScrollView
             contentInsetAdjustmentBehavior="automatic"
             keyboardShouldPersistTaps="handled"
+            onScroll={barRule.onScroll}
+            scrollEventThrottle={barRule.scrollEventThrottle}
             contentContainerStyle={[
               styles.content,
               {

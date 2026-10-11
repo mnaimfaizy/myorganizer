@@ -76,6 +76,7 @@ import {
   type SubscriptionsStackParamList,
 } from './subscriptionsStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
+import { useBarRuleOnScroll } from './useBarRuleOnScroll';
 import { describeVaultLoadError } from './vaultLoadError';
 
 /**
@@ -267,6 +268,7 @@ export function SubscriptionDetailScreen(): React.JSX.Element {
       ),
     });
   }, [navigation, canEdit, openEdit, lock]);
+  const barRule = useBarRuleOnScroll();
 
   const commitEdit = useCallback(
     (values: SubscriptionEditValues): void => {
@@ -354,6 +356,8 @@ export function SubscriptionDetailScreen(): React.JSX.Element {
       ) : (
         <ScrollView
           contentInsetAdjustmentBehavior="automatic"
+          onScroll={barRule.onScroll}
+          scrollEventThrottle={barRule.scrollEventThrottle}
           contentContainerStyle={[
             styles.content,
             { paddingBottom: theme.spacing.lg },
