@@ -28,6 +28,6 @@ The repository still holds a complete iOS React Native project, and ADR 0114 and
 ## Consequences
 
 - **The Android release signing key is the app's permanent identity.** There is no Play App Signing behind it. Android installs an update only when the application id and the signing key both match the installed copy, so a lost key means no installed Mobile App can be updated in place. It is kept outside the repository and backed up (#972). Moving to Google Play later means enrolling this same key, or asking every User to reinstall.
-- **Nothing tells a User that a newer Mobile Release exists** except the Version Floor's update screen, which links to the GitHub Release.
+- **Nothing tells a User that a newer Mobile Release exists** except the Version Floor's update screen, which links to the web app's `/download` page; that page links to the GitHub Release.
 - **The Installed Web App needs a connection.** Its service worker holds an offline page and nothing else: no page of the dashboard, no API response, and no vault data, encrypted or not. Caching any of those is a separate design, because it decides where a vault key lives while offline; it is not an improvement to make to the worker in passing.
 - **The mobile release runbook still describes the store procedure.** It is kept for reference and is not the plan. Only its Android signing step is maintained.
