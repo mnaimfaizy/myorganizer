@@ -136,3 +136,90 @@ test('checks a tsconfig.web.json, the react-native-web program', (t) => {
   assert.match(result.stderr, /tsconfig\.web\.json/);
   assert.match(result.stderr, /broken\.web\.ts/);
 });
+
+test('checks a bare tsconfig.json when a project has no production config', (t) => {
+  // apps/myorganizer is a Next.js app: its production program is
+  // `tsconfig.json` itself, with no `tsconfig.app.json` beside it. A checker
+  // that knew only the suffixed names compiled its spec program and nothing
+  // else, so a production type error no spec imported passed the gate (#1060).
+  const dir = mkdtempSync(join(REPO_ROOT, '.tmp-typecheck-fixture-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  writeFileSync(
+    join(dir, 'tsconfig.json'),
+    JSON.stringify({
+      compilerOptions: { strict: true, noEmit: true, skipLibCheck: true },
+      include: ['broken.ts'],
+    }),
+  );
+  writeFileSync(join(dir, 'broken.ts'), 'export const n: number = "string";\n');
+  // The spec program is clean, as apps/myorganizer's was: only the production
+  // program can report this error.
+  writeFileSync(
+    join(dir, 'tsconfig.spec.json'),
+    JSON.stringify({
+      compilerOptions: { strict: true, noEmit: true, skipLibCheck: true },
+      include: ['clean.spec.ts'],
+    }),
+  );
+  writeFileSync(join(dir, 'clean.spec.ts'), 'export const n: number = 1;\n');
+
+  const graph = writeGraph(
+    t,
+    {
+      next: {
+        name: 'next',
+        data: { root: dir.slice(REPO_ROOT.length + 1), targets: {} },
+      },
+    },
+    dir,
+  );
+
+  const result = runChecker(graph, REPO_ROOT);
+
+  assert.equal(result.status, 1, result.stdout);
+  assert.match(result.stderr, /tsconfig\.json \(1\)/);
+  assert.match(result.stderr, /broken\.ts/);
+  assert.match(result.stderr, /1 of 2 config\(s\)/);
+});
+
+test('leaves tsconfig.json alone when a production config exists', (t) => {
+  // Beside a `tsconfig.lib.json`, `tsconfig.json` is the editor's umbrella
+  // config, not a program anyone ships. Compiling it as well would check the
+  // same files twice, under options the project does not build with.
+  const dir = mkdtempSync(join(REPO_ROOT, '.tmp-typecheck-fixture-'));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  writeFileSync(
+    join(dir, 'tsconfig.json'),
+    JSON.stringify({
+      compilerOptions: { strict: true, noEmit: true, skipLibCheck: true },
+      include: ['broken.ts'],
+    }),
+  );
+  writeFileSync(join(dir, 'broken.ts'), 'export const n: number = "string";\n');
+  writeFileSync(
+    join(dir, 'tsconfig.lib.json'),
+    JSON.stringify({
+      compilerOptions: { strict: true, noEmit: true, skipLibCheck: true },
+      include: ['clean.ts'],
+    }),
+  );
+  writeFileSync(join(dir, 'clean.ts'), 'export const n: number = 1;\n');
+
+  const graph = writeGraph(
+    t,
+    {
+      lib: {
+        name: 'lib',
+        data: { root: dir.slice(REPO_ROOT.length + 1), targets: {} },
+      },
+    },
+    dir,
+  );
+
+  const result = runChecker(graph, REPO_ROOT);
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /1 project config\(s\) compile clean/);
+});
