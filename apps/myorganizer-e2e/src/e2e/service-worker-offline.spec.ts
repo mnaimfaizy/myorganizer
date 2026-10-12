@@ -109,6 +109,10 @@ async function readOfflineStore(page: Page): Promise<{
   }, OFFLINE_CACHE_NAME);
 }
 
+// The WebKit project blocks service workers (see playwright.config.ts); this
+// file is the one place that needs them, so it opts back in for every browser.
+test.use({ serviceWorkers: 'allow' });
+
 test.describe('Offline service worker (E2E)', () => {
   test.afterEach(async ({ page }) => {
     // Restore the network even when an assertion fails, so the context is
