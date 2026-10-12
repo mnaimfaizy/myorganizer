@@ -14,6 +14,12 @@
       "port": 4200
     },
     {
+      "name": "web-prod",
+      "runtimeExecutable": "corepack",
+      "runtimeArgs": ["yarn", "nx", "run", "myorganizer:start", "--port=4200"],
+      "port": 4200
+    },
+    {
       "name": "metro",
       "runtimeExecutable": "corepack",
       "runtimeArgs": ["yarn", "nx", "start", "mobile"],
