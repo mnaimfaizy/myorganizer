@@ -1,6 +1,9 @@
 import type { Metadata } from 'next';
 
-import { ServiceWorkerRegistration } from '@myorganizer/web-pages/offline';
+import {
+  InstallPromptCapture,
+  ServiceWorkerRegistration,
+} from '@myorganizer/web-pages/offline';
 
 import './global.css';
 
@@ -130,6 +133,12 @@ export default function RootLayout({
          * covers a signed-out User opening the Installed Web App.
          */}
         <ServiceWorkerRegistration />
+        {/*
+         * Holds the browser's one early install prompt until the dashboard's
+         * install card asks for it. Here, not in the dashboard layout, because
+         * the browser can fire it on whichever page loads first.
+         */}
+        <InstallPromptCapture />
       </body>
     </html>
   );

@@ -5,6 +5,7 @@ import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
 import { useMemo } from 'react';
 
 import { AddressesCountCard } from './widgets/AddressesCountCard';
+import { InstallAppCard } from './widgets/InstallAppCard';
 import { MobileNumbersCountCard } from './widgets/MobileNumbersCountCard';
 import { QuickActionsCard } from './widgets/QuickActionsCard';
 import { RecentYouTubeCard } from './widgets/RecentYouTubeCard';
@@ -19,6 +20,9 @@ export function DashboardHomeClient() {
 
   return (
     <div className="grid auto-rows-min gap-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
+      {/* Install prompt: full width, renders nothing once installed or dismissed */}
+      <InstallAppCard />
+
       {/* Row 1: Welcome + Quick Actions */}
       <WelcomeCard user={user} />
       <QuickActionsCard />
