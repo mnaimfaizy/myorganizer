@@ -78,7 +78,7 @@ The on-demand command catalogue for the root [Agent Guide](../../AGENTS.md#comma
 
 ## Web app manifest and icons
 
-- Web app icon generation: `yarn web:app-icons:generate` (rebuilds the installable icons in `apps/myorganizer/public/icons/` from the AppLogo shield in `libs/web/ui/src/lib/components/AppLogo/AppLogo.tsx` and the design-token build; fails if it cannot find a shield path, check path, or colour it reads). Re-run and commit the output after the shield or a token it reads changes. See [ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md).
+- Web app icon generation: `yarn web:app-icons:generate` (rebuilds the installable icons in `apps/myorganizer/public/icons/` from the AppLogo shield in `libs/web/ui/src/lib/components/AppLogo/AppLogo.tsx` and the design-token build; fails if it cannot find a shield path, check path, or colour it reads). The icons change only when someone runs this: no gate compares the committed icons with the current shield or tokens, so re-run it and commit the output after either changes. See [ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md).
 
 ## Mobile
 

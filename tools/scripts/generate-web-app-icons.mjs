@@ -19,9 +19,13 @@
  * - apple-touch-icon.png — opaque full-bleed background, 180 × 180, the size
  *   iOS expects for a Home Screen icon.
  *
- * Re-run it after the shield or a Brand Primitive changes, and commit the
- * output. Rasterising goes through `sharp`, not a browser: every icon here is
- * a flat shape plus a linear gradient, which `sharp`'s SVG rasteriser renders
+ * The committed icons change only when someone runs this script. Nothing
+ * compares them with the current shield or tokens, so a change to either
+ * leaves them stale until it is re-run: re-run it after the shield or a Brand
+ * Primitive changes, and commit the output.
+ *
+ * Rasterising goes through `sharp`, not a browser: every icon here is a flat
+ * shape plus a linear gradient, which `sharp`'s SVG rasteriser renders
  * exactly, so there is no reason to pay for Chromium as
  * generate-mobile-app-icon.mjs and generate-og-image.mjs do.
  */
