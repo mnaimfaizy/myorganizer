@@ -118,17 +118,107 @@ test('--print resolves every extractor without reading the page', (t) => {
   assert.match(result.stdout, /productionApprovalGatedJobs/);
 });
 
-test('fails when a pinned version on the page drifts from source', (t) => {
+test('fails when a value on the page drifts from source', (t) => {
   const workspace = createWorkspace(t);
   editManifest(workspace, (m) => {
-    m.stagingVercelCliVersion = '49.0.0';
+    m.stagingScheduleCron = '0 4 * * *';
   });
 
   const result = runChecker(workspace);
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /stagingVercelCliVersion/);
-  assert.match(result.stderr, /50\.1\.1/);
+  assert.match(result.stderr, /stagingScheduleCron/);
+  assert.match(result.stderr, /0 16 \* \* \*/);
+});
+
+test('fails when the staging schedule moves in the workflow', (t) => {
+  const workspace = createWorkspace(t);
+  edit(workspace, STAGING, "- cron: '0 16 * * *'", "- cron: '30 2 * * *'");
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stagingScheduleCron/);
+  assert.match(result.stderr, /30 2 \* \* \*/);
+});
+
+test('fails when staging deploys on a push to main again', (t) => {
+  const workspace = createWorkspace(t);
+  // The regression ADR 0128 rules out: Staging is daily and on dispatch. A
+  // trigger added beside the schedule leaves the cron line exactly as it was.
+  edit(
+    workspace,
+    STAGING,
+    '  workflow_dispatch:\n',
+    "  workflow_run:\n    workflows: ['CI']\n    types: [completed]\n  workflow_dispatch:\n",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stagingTriggers/);
+  assert.match(result.stderr, /workflow_run/);
+});
+
+test('fails when the staging same-site assertion is removed', (t) => {
+  const workspace = createWorkspace(t);
+  // The step is one line of `run:`; without it a web address on another site
+  // deploys green and sign-in stops surviving a restart (#1138).
+  edit(
+    workspace,
+    STAGING,
+    'run: node tools/scripts/staging-web-deploy.mjs same-site "$WEB_ORIGIN" "$API_ORIGIN"',
+    "run: echo 'skipped'",
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stagingAssertsSameSite/);
+  assert.match(result.stderr, /page says true, source says false/);
+});
+
+test('fails when the staging frontend upload becomes cancellable again', (t) => {
+  const workspace = createWorkspace(t);
+  // A run cancelled mid-FTP leaves a half-written web bundle on the host.
+  edit(
+    workspace,
+    STAGING,
+    '      group: deploy-staging-web\n      cancel-in-progress: false',
+    '      group: deploy-staging-web\n      cancel-in-progress: true',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stagingFrontendCancelInProgress/);
+});
+
+test('fails when the staging frontend stops going to cPanel', (t) => {
+  const workspace = createWorkspace(t);
+  // Staging's web app on a different kind of host from its API is the defect
+  // of #1138. The job calls the FTP action twice (bundle, then restart file),
+  // so both are replaced: one surviving call would still read as cPanel.
+  const before = readFixture(workspace, STAGING);
+  const at = before.indexOf('  deploy-frontend:\n');
+  assert.notEqual(at, -1, 'fixture has no staging deploy-frontend job');
+  const job = before.slice(at);
+  assert.ok(job.includes('uses: samkirkland/ftp-deploy-action'));
+  writeFixture(
+    workspace,
+    STAGING,
+    before.slice(0, at) +
+      job.replaceAll(
+        'uses: samkirkland/ftp-deploy-action',
+        'run: some-other-host deploy #',
+      ),
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stagingFrontendTarget/);
+  assert.match(result.stderr, /not-cpanel-ftp/);
 });
 
 test('fails when a deploy job loses its production environment', (t) => {
@@ -151,7 +241,7 @@ test('fails when the production frontend stops going to cPanel', (t) => {
     workspace,
     PRODUCTION,
     'uses: samkirkland/ftp-deploy-action',
-    'run: vercel deploy --prod #',
+    'run: some-other-host deploy #',
   );
 
   const result = runChecker(workspace);

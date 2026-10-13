@@ -77,7 +77,7 @@ test('passes when the workflows match the contract', (t) => {
 test('fails when staging host-apply lacks environment: staging', (t) => {
   const workspace = createWorkspace(t);
 
-  // The staging workflow has three job-level `environment: staging` declarations.
+  // The staging workflow has several job-level `environment: staging` declarations.
   // Target only the host-apply job's occurrence by finding its block.
   const stagingContent = readFixture(workspace, STAGING);
   const lines = stagingContent.split('\n');
@@ -283,8 +283,8 @@ test('fails when staging deploy-backend no longer skips on apply_only', (t) => {
   edit(
     workspace,
     STAGING,
-    "  deploy-backend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}",
-    "  deploy-backend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch') }}",
+    "  deploy-backend:\n    if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}",
+    "  deploy-backend:\n    if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch')) }}",
   );
 
   const result = runChecker(workspace);
@@ -302,8 +302,8 @@ test('fails when staging deploy-frontend no longer skips on apply_only', (t) => 
   edit(
     workspace,
     STAGING,
-    "  deploy-frontend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}",
-    "  deploy-frontend:\n    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch') }}",
+    "  deploy-frontend:\n    if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}",
+    "  deploy-frontend:\n    if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch')) }}",
   );
 
   const result = runChecker(workspace);
@@ -408,7 +408,10 @@ test('fails when staging host-apply cancel-in-progress is true', (t) => {
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: \${{ github.event.workflow_run.head_sha || github.sha }}
+          # Dispatch only, so this is the commit \`select\` chose as well; it is
+          # read directly because an apply_only dispatch must not depend on
+          # the upload chain.
+          ref: \${{ github.sha }}
 
       - name: Setup Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -425,7 +428,10 @@ test('fails when staging host-apply cancel-in-progress is true', (t) => {
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: \${{ github.event.workflow_run.head_sha || github.sha }}
+          # Dispatch only, so this is the commit \`select\` chose as well; it is
+          # read directly because an apply_only dispatch must not depend on
+          # the upload chain.
+          ref: \${{ github.sha }}
 
       - name: Setup Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -483,8 +489,8 @@ test('fails when the staging upload leaves the apply group', (t) => {
 test('fails when staging host-apply can run without a dispatch', (t) => {
   const workspace = createWorkspace(t);
 
-  // The regression: chaining apply back onto the green-main workflow_run, on a
-  // host whose SSH shell is a manual toggle that reverts.
+  // The regression: chaining apply back onto the automatic trigger (the daily
+  // schedule), on a host whose SSH shell is a manual toggle that reverts.
   edit(
     workspace,
     STAGING,

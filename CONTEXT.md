@@ -741,7 +741,7 @@ _Avoid_: follow-on (a different section), side finding, bonus finding
 ## Release & Deploy
 
 **Staging**:
-The QA deployment target. Its backend is a distinct app root with its own database. Staging is never a second name for Production.
+The QA deployment target. Its backend is a distinct app root with its own database, and its web app is hosted beside that backend, on the same site. Staging is never a second name for Production.
 _Avoid_: test production, preview, staging as the live Namecheap host
 
 **Production**:

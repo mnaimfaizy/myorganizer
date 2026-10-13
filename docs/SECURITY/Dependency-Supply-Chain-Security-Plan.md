@@ -19,7 +19,6 @@ This document records the dependency, package-manager, and CI hardening posture 
 - Pull requests are blocked if they introduce or modify `package-lock.json` or `pnpm-lock.yaml`.
 - Backend cPanel deploy artifacts include generated npm guardrail config and a deploy-only `package-lock.json` under `dist/deploy/backend-api` so shared hosting can run `npm ci --omit=dev` without making npm authoritative for the source repository.
 - Dependabot keeps its npm ecosystem cooldown aligned to the same 7-day release-aging policy.
-- GitHub Actions deploys to Vercel via a pinned ephemeral CLI invocation (`corepack yarn dlx -p vercel@50.1.1 vercel`) so the Vercel builder packages do not live in the primary repository lockfile.
 - Dependency manifests, lockfiles, package-manager policy files, workflows, and security documents are protected with `CODEOWNERS` review.
 
 ## Axios 2026 Lessons That Apply Here
@@ -127,4 +126,3 @@ rg '"(preinstall|install|postinstall)"' node_modules/**/package.json
 - Review Dependabot PR cadence after a few update cycles and tune grouping or limits if it creates too much churn.
 - Prefer OIDC-based authentication if future workflows need cloud or package-registry access.
 - Keep Yarn and pnpm configs aligned whenever dependency-management settings change.
-- Review the pinned Vercel CLI version periodically and bump it when Vercel publishes security fixes for its builder stack.

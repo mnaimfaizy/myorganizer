@@ -52,3 +52,12 @@ Grilled on #437 after the Staging half of the engine went live (#569). The decis
 - **No readiness endpoint.** With the Cut guard covering Staging and Production Host Apply verifying itself after Deploy Approval, what remains is drift outside a deploy — and a public migration-status probe would publish schema state unless guarded by yet another secret. Not worth either.
 
 Considered and rejected here: making the backend upload dispatch-only as well (keeps the host consistent, but the same toggle then blocks every Staging backend update); attempting Host Apply on every push with a named "shell off" failure (a red that is expected most days trains people to ignore red); a checklist item alone for the Cut (a green run on Monday reads as ticked for Wednesday's Cut of different commits).
+
+## Amendment (2026-10-13)
+
+[ADR 0128](0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md) moved the Staging backend upload from every green `main` to a daily schedule. Two lines of the 2026-09-14 amendment change with it.
+
+- **The backend upload is scheduled, not per push.** It is still automatic, and Staging may still run an uploaded bundle that no Host Apply has touched.
+- **A scheduled upload cannot be Cut without a full dispatch.** A scheduled run chooses its commit inside the run, so its name records none, and the Cut guard refuses an upload that does not record its commit. An `apply_only` dispatch after a scheduled upload therefore no longer satisfies the guard; a full dispatch, which uploads and applies one named commit, does. The guard's code is unchanged.
+
+Host Apply itself is untouched: operator-dispatched, backend-only, over SSH. Staging's web app goes live by a restart file and is not part of Host Apply.

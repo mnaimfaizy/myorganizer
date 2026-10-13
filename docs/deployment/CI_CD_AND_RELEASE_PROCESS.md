@@ -6,9 +6,9 @@ This repo uses GitHub Actions for CI/CD.
 
 - `main`
   - CI runs on every push.
-  - After CI passes, **staging deploy** runs automatically:
-    - Frontend deploys to **Vercel** (used as the staging frontend).
-    - Backend deploys to **cPanel** via FTP/FTPS.
+  - **Staging** deploys from `main` once a day, and on a manual dispatch — not on every push ([ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)).
+    - The scheduled run deploys the newest `main` commit whose CI is green.
+    - Web app and backend both go to **cPanel** via FTP/FTPS, on the same site.
 
 - `release/*`
   - CI runs on every push.
@@ -24,9 +24,11 @@ This repo uses GitHub Actions for CI/CD.
   - Chromatic needs repository secret `CHROMATIC_PROJECT_TOKEN`. Unreviewed visual diffs leave **UI Tests** pending; the publish job still passes (`--exit-zero-on-changes`) so Accept does not require a re-run. Free-plan snapshot quota (CLI exit 11) warns and passes the publish job. See [ADR 0027](../adr/0027-chromatic-ci-visual-tests.md).
 
 - `.github/workflows/deploy-staging.yml` (name: `Deploy Staging`)
-  - Runs only after `CI` succeeds on `main`.
+  - Runs on a daily schedule (`0 16 * * *` UTC: 02:00 in Sydney in standard time, 03:00 in daylight time) and on `workflow_dispatch`. It does not run after `CI` or on a push.
+  - `select` picks the commit every later job checks out. A dispatch deploys the commit it was dispatched at. A scheduled run takes the newest `main` commit whose `CI` run is green and deploys it, with three exceptions: it stops green when there is no such commit, when the Staging web app already serves it, or when Staging holds a newer commit that a dispatch put there (the schedule never rolls Staging back); and it **fails without uploading** when that commit is already uploaded but not running — an install is owed or a restart did not take. See [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
   - Packages backend via `yarn package:backend:api` and uploads `dist/deploy/backend-api/`.
-  - Deploys frontend to Vercel using the Vercel CLI.
+  - `host-apply` runs on a dispatch only — see [Host Apply](#host-apply-staging--production).
+  - `deploy-frontend` packages the web app via `yarn package:myorganizer:web`, uploads `dist/deploy/myorganizer-web/`, restarts the app by uploading `tmp/restart.txt`, and probes the running build — see [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
 
 - `.github/workflows/deploy-production.yml` (name: `Deploy Production (manual)`)
   - `workflow_dispatch` only — started either by a person or by `dispatch-production-deploy.yml`.
@@ -112,7 +114,7 @@ Then:
 
 This matches how the workflows are intended to be used:
 
-- `Deploy Staging` runs for `main`
+- `Deploy Staging` runs for `main` (the schedule always runs there; dispatch it from `main`)
 - `Deploy Production (manual)` should only be run from `release/*`
 
 Required (already configured):
@@ -165,24 +167,17 @@ Backend (cPanel FTP/FTPS):
 - `FTP_PASSWORD`
 - `FTP_SERVER_DIR` (remote directory for backend app root)
 
-Frontend (Vercel):
+Web app (cPanel FTP/FTPS, same `FTP_HOST`):
 
-- `VERCEL_TOKEN`
-- `VERCEL_ORG_ID`
-- `VERCEL_PROJECT_ID`
+- `FTP_FRONTEND_USERNAME`
+- `FTP_FRONTEND_PASSWORD`
+- `FTP_FRONTEND_DIR` (remote directory for the web app root; must end with `/`, because the restart file is uploaded to `<FTP_FRONTEND_DIR>tmp/`)
+- `WEB_ORIGIN` — the Staging web address, with scheme and no trailing slash. A secret, like `API_ORIGIN`, because the public tree names no Staging host ([ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md)). The run reads it to decide whether Staging already serves a commit, to plan the deploy, and to probe the result; the package step also passes it to the build as `NEXT_PUBLIC_APP_URL`.
+- `API_ORIGIN` — already set for Host Apply (below). The web job compares it with `WEB_ORIGIN` and fails when the two are on different sites.
 
-How to get these values:
+Web app **build-time** (GitHub Environment **variable** on `staging`, not a secret):
 
-- `VERCEL_TOKEN`: Vercel Account Settings → Tokens
-- `VERCEL_ORG_ID` / `VERCEL_PROJECT_ID`: run `corepack yarn dlx vercel@latest link` from the repo root, then read `.vercel/project.json`
-
-Note: Vercel may display this as a **Team ID** in the UI (even for personal accounts). That value maps to `VERCEL_ORG_ID`.
-
-Notes:
-
-- The staging workflow uses `vercel ... --prod`. In practice, this means: “deploy to the Production environment of the Vercel project used for staging”.
-- The staging workflow syncs the Vercel project's Install Command, Build Command, Output Directory, and Node.js version before deploying. The token used for `VERCEL_TOKEN` must therefore be allowed to update project settings.
-- If you prefer Vercel Preview deployments for staging instead, change `--prod` to a preview deploy and update the docs accordingly.
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — Vault Cloud Backup GIS client for Staging (the Testing-project client). Read at the `yarn package:myorganizer:web` step, as for Production. Empty leaves the vault page on _"Cloud backup is not configured"_.
 
 ### Production (release/\*)
 
@@ -250,7 +245,7 @@ left two holes. `COUNTERPART_APP_ROOT` is what makes the `APP_ROOT` guard mean
 anything: a job scoped to `environment: staging` cannot read `production`'s
 secrets to compare the two roots, so each environment carries the other's pin
 and refuses to run when they match — without it the guard could only catch an
-`APP_ROOT` that was unset, and a shared hosting account would let a `main` push
+`APP_ROOT` that was unset, and a shared hosting account would let a Staging run
 migrate Production. `SSH_KNOWN_HOSTS` replaces `StrictHostKeyChecking=accept-new`:
 the runner is ephemeral and remembers nothing, so trust-on-first-use would have
 meant trusting whatever answered, on every run. Both are host paths and public
@@ -265,28 +260,39 @@ as the rest of that Environment. Each workflow also accepts a
 `workflow_dispatch` input, `apply_only` (default `false` in both), that re-runs
 `host-apply` alone without re-uploading the backend bundle.
 
-**Staging Host Apply is operator-triggered, not automatic.** A green `main`
-still uploads a Staging bundle on its own, but nothing applies it until someone
-dispatches `Deploy Staging`. SSH shell access on the hosting account is a manual
-toggle that reverts, so an apply chained to the upload would go red on every
-push where the shell happened to be off — and a red apply nobody reads is how
+**Staging Host Apply is operator-triggered, not automatic.** The daily schedule
+uploads a Staging backend bundle on its own, but nothing applies it until
+someone dispatches `Deploy Staging`. SSH shell access on the hosting account is
+a manual toggle that reverts, so an apply chained to the upload would go red on
+every night the shell happened to be off — and a red apply nobody reads is how
 unapplied migrations shipped in the first place. This amends PRD #565 user
 story 3; it means an uploaded Staging bundle is not a migrated Staging backend
-until you say so. An automatic upload writes a "Backend uploaded, not applied"
-notice to its job summary so a green run does not read as a finished deploy,
-and `release:cut` refuses any commit Staging has not both uploaded and Host
-Applied — see [Release script notes](#release-script-notes) and the
+until you say so. A scheduled upload writes a "Backend uploaded by the
+schedule, not applied" notice to its job summary so a green run does not read
+as a finished deploy. To apply it, dispatch `Deploy Staging` in full, not with
+`apply_only`: `host-apply` checks out the tip of the dispatched ref, which may
+not be the commit the schedule uploaded. And `release:cut` refuses any commit Staging has not both
+uploaded and Host Applied — see [Release script notes](#release-script-notes)
+and the
 [ADR 0056 amendment](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md#amendment-2026-09-14).
+
+Host Apply is backend-only on both environments. The Staging web app's restart
+is part of `deploy-frontend`, needs no shell, and is not Host Apply
+([ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)).
 
 Staging splits its concurrency by whether a job writes to `APP_ROOT`.
 `deploy-backend` and `host-apply` share `deploy-staging-apply` with
-`cancel-in-progress: false`: a newer push to `main` queues behind them rather
+`cancel-in-progress: false`: a later run queues behind them rather
 than cancelling an in-flight `prisma migrate deploy` — and rather than FTPing a
 fresh bundle into a tree `npm ci` is still working in, which a group covering
-only `host-apply` would have allowed. `prepare-dependencies` and
-`deploy-frontend` keep `deploy-staging` with `cancel-in-progress: true`, since
-neither touches `APP_ROOT`. Production's whole workflow already queues instead
-of cancelling, so it needs no such split.
+only `host-apply` would have allowed. `deploy-frontend` has its own group,
+`deploy-staging-web`, also with `cancel-in-progress: false`: it writes the web
+app's tree over FTP, and a run cancelled halfway would leave half a bundle
+under a process that may restart onto it. It is a separate group from the
+backend's because the web app has its own root and may deploy beside a Host
+Apply. Only `prepare-dependencies` keeps `deploy-staging` with
+`cancel-in-progress: true`, since it touches nothing on the host. Production's
+whole workflow already queues instead of cancelling, so it needs no such split.
 
 The SSH step captures its output to a file instead of streaming it, and
 `tools/scripts/scrub-host-apply-log.mjs` decides whether that output may reach
@@ -297,7 +303,8 @@ it.
 
 A failed Host Apply fails the job with no automated rollback and no
 restart-anyway; `deploy-frontend` does not depend on `host-apply`, so the two
-may run side by side once the backend upload succeeds.
+may run side by side once the backend upload succeeds. On Staging the web app
+has its own application root, so its upload and restart never touch `APP_ROOT`.
 
 ## How to cut a release
 
@@ -334,7 +341,7 @@ Use a versioned release branch so production deploys are unambiguous:
 
 ### Release steps
 
-1. Ensure `main` is green (CI + staging deploy succeeded).
+1. Ensure CI is green on `main`, and that a full `Deploy Staging` dispatch at the commit you will cut is green, including `host-apply`.
 2. Create and push a release branch from `main`.
 
 - Recommended (script):
@@ -376,8 +383,8 @@ Replace `vX.Y.Z` with your version (example: `v0.1.1`).
 1. Ensure `main` is healthy:
 
 - CI is green
-- Staging deploy is successful
-- **Staging Host Apply is green for the commit you will cut.** It does not run by itself — dispatch `Deploy Staging` (with `apply_only` if the bundle is already uploaded) with the SSH shell toggled on. `release:cut` checks this and refuses otherwise; ticking it here saves you the refusal.
+- **Staging has uploaded and Host Applied the commit you will cut, from a dispatch.** Neither happens by itself for a Cut: with the SSH shell toggled on, dispatch `Deploy Staging` in full (leave `apply_only` unticked) at that commit. A scheduled upload does not count, and **never use `apply_only` after one**: `host-apply` checks out the tip of the dispatched ref, which may not be the commit the schedule uploaded, and the Cut guard refuses a scheduled upload anyway because the run records no commit. `apply_only` is only the retry after a dispatched upload whose `host-apply` went red. `release:cut` checks this and refuses otherwise; ticking it here saves you the refusal.
+- The same dispatch deployed the Staging web app at that commit; its probe is green.
 - **Production Host Apply has been rehearsed**: `yarn host-apply:preflight production` passes its readiness checks. Do this before cutting, not during the release — see [the operator runbook](HOST_APPLY_OPERATOR_SETUP.md#step-8--production). Production Host Apply has never run, so the first release after this feature is the first time it will.
 
 2. Cut the release branch (recommended):
@@ -440,7 +447,7 @@ The script lives at `tools/scripts/release.mjs` and automates the git steps.
 - It enforces `vX.Y.Z` format (no prerelease strings).
 - It requires a clean working tree.
 - `release:cut` requires you to be on `main` and up-to-date with `origin/main`.
-- `release:cut` then refuses unless Staging holds that commit, Host Applied: the latest successful Staging `deploy-backend` uploaded it, and a green `host-apply` at that commit started after the upload landed, with no upload of another commit in between. An `apply_only` retry counts. The uploaded commit is read from each run's name (`run-name` in `deploy-staging.yml`), so a run from before that line existed can only refuse. It reads the recent `Deploy Staging` runs with `gh api`, so the GitHub CLI must be installed and authenticated. There is no flag to skip it — a break-glass SSH apply is invisible to CI, so it cannot satisfy the check ([ADR 0056 amendment](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md#amendment-2026-09-14)). `--dry-run` runs the check too.
+- `release:cut` then refuses unless Staging holds that commit, Host Applied: the latest successful Staging `deploy-backend` uploaded it, and a green `host-apply` at that commit started after the upload landed, with no upload of another commit in between. An `apply_only` retry counts when the upload it applies was a dispatched one. The uploaded commit is read from each run's name (`run-name` in `deploy-staging.yml`). A dispatched run names its commit; a scheduled run names none, because the commit it deploys is chosen inside the run. The guard refuses an upload that names no commit, so a scheduled upload cannot be Cut — with or without an `apply_only` dispatch after it — until a full dispatch uploads and applies the commit ([ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)). A run from before `run-name` existed can only refuse, for the same reason. It reads the recent `Deploy Staging` runs with `gh api`, so the GitHub CLI must be installed and authenticated. There is no flag to skip it — a break-glass SSH apply is invisible to CI, so it cannot satisfy the check ([ADR 0056 amendment](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md#amendment-2026-09-14)). `--dry-run` runs the check too.
 - It does **not** dispatch or approve any deploy. Pushing the release branch is what dispatches a production run (via `dispatch-production-deploy.yml`), and that run still waits for approval.
 - `release:cut` **cannot** create a tag. Tagging is a separate command, run only after Production Host Apply succeeds — the tag is a receipt, not a trigger. See [ADR 0028](../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md) and [ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md).
 
@@ -451,15 +458,12 @@ Both deploy bundles are designed for cPanel shared hosting:
 - Backend bundle includes a deploy-ready `package.json`, npm guardrail config, `prisma.config.cjs`, and `prisma/` folder.
   - It also includes a deploy-only `package-lock.json` generated during packaging.
   - An upload is not a deploy: Host Apply installs, migrates, regenerates the Prisma client, and restarts — see [Host Apply](#host-apply-staging--production). Do not run those steps by hand except through [Break-glass](HOST_APPLY_OPERATOR_SETUP.md#break-glass).
-- Frontend bundle is a Next standalone-based deploy with a Linux-safe `server.js`.
-  - After upload, run `npm install` in the frontend app root.
+- Frontend bundle is a Next standalone-based deploy with a Linux-safe `server.js`. It ships without `node_modules`.
+  - Production: after upload, click **Run NPM Install**, then **Restart**, in the Node.js app.
+  - Staging: the run restarts the app itself, and fails asking for **Run NPM Install** and **Restart** only when the bundle's dependency list changed. See [Web app on cPanel](CPANEL_WEB_HOSTING.md#after-an-upload).
 
 The deploy folders also contain `CPANEL_STARTUP.md` files with the exact startup file names.
 
 What the host needs, and what differs between Staging and Production, is in
 [Backend API on cPanel](CPANEL_BACKEND_HOSTING.md) and
 [Web app on cPanel](CPANEL_WEB_HOSTING.md).
-
-## Hosting the frontend on Vercel
-
-If you want to host the frontend yourself (independent of this repo’s CI/CD), see: [./VERCEL_FRONTEND_HOSTING.md](./VERCEL_FRONTEND_HOSTING.md).

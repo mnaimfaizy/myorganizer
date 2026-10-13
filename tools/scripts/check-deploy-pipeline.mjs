@@ -8,9 +8,15 @@
 // The page is a hand-designed diagram, so its prose cannot be generated. What can
 // be checked is the set of constants it asserts: the embedded
 // #release-pipeline-manifest must agree with .github/workflows/*.yml, package.json
-// and tools/scripts/release.mjs. A pinned Vercel CLI that moves, an approval gate
+// and tools/scripts/release.mjs. A Staging schedule that moves, an approval gate
 // removed from a deploy job, or a frontend that stops going to cPanel then fails
 // here instead of leaving a confidently wrong deployment reference in docs/.
+//
+// Direction: both ways, between the manifest and the extractors. Every manifest
+// key must match what its extractor reads from source, a manifest key with no
+// extractor is a finding, and an extractor with no manifest key is a finding.
+// Not asserted: the page's prose and diagrams. Nothing ties a sentence to the
+// manifest value it restates, so a correct manifest under stale prose passes.
 //
 // Nothing here is an exported `const` — these are YAML keys, shell guards inside
 // `run:` blocks, and a version string in a heredoc. Each value therefore gets a
@@ -127,16 +133,42 @@ const theOnly = (values, label) => {
 const allMatches = (path, pattern) =>
   [...read(path).matchAll(pattern)].map((m) => m[1]);
 
-/** Which host a deploy job ships a frontend to, read from what it actually calls. */
-const frontendTarget = (path) => {
-  const block = jobBlock(path, 'deploy-frontend');
-  const ftp = /uses:\s*samkirkland\/ftp-deploy-action/.test(block);
-  const vercel = /vercel\s+deploy\b/.test(block);
-  if (ftp && vercel) fail(`${path} deploy-frontend uses both FTP and Vercel`);
-  if (ftp) return 'cpanel-ftp';
-  if (vercel) return 'vercel';
-  return fail(`${path} deploy-frontend deploys to neither FTP nor Vercel`);
+/**
+ * Which host a deploy job ships a frontend to, read from what it actually calls.
+ * cPanel over FTP is the only target either environment has (ADR 0128); a job
+ * that stops calling the FTP action reads as `not-cpanel-ftp`, which no page
+ * may claim, so it surfaces as drift naming the key.
+ */
+const frontendTarget = (path) =>
+  /^\s*uses:\s*samkirkland\/ftp-deploy-action/m.test(
+    jobBlock(path, 'deploy-frontend'),
+  )
+    ? 'cpanel-ftp'
+    : 'not-cpanel-ftp';
+
+/** The first `local-dir:` a job hands the FTP action: the bundle it ships. */
+const artifactDir = (path, jobId) =>
+  jobBlock(path, jobId).match(/^\s*local-dir:\s*(\S+)/m)?.[1] ??
+  fail(`${path} ${jobId} declares no local-dir`);
+
+/** The workflow's top-level `on:` block, up to the next top-level key. */
+const triggerBlock = (path) => {
+  const source = read(path);
+  const on = source.match(/^on:\s*$/m);
+  if (!on) fail(`${path} has no top-level on: key`);
+  const body = source.slice(on.index + on[0].length);
+  const next = body.search(/^\S/m);
+  return next === -1 ? body : body.slice(0, next);
 };
+
+/** The events a workflow runs on: the two-space keys under `on:`, in file order. */
+const triggers = (path) =>
+  [...triggerBlock(path).matchAll(/^ {2}([a-z_]+):/gm)].map((m) => m[1]);
+
+const scheduleCrons = (path) =>
+  [...triggerBlock(path).matchAll(/^\s*-\s*cron:\s*'([^']+)'/gm)].map(
+    (m) => m[1],
+  );
 
 const timeoutMinutes = (path, jobId) =>
   Number(
@@ -165,11 +197,12 @@ const cancelInProgress = (path) => {
  * Staging moved `cancel-in-progress` to job-level `concurrency:` blocks (issue
  * #567): a workflow-level group would have covered Host Apply too, and a newer
  * `main` push cancelling an in-flight `prisma migrate deploy` is the one
- * behavior ADR 0056 rules out. The two groups now say different things, so the
- * page asserts both — `deploy-staging-apply` (deploy-backend and host-apply,
- * the jobs that touch `APP_ROOT`) queues, while `deploy-staging`
- * (deploy-frontend) still cancels. Production keeps its cancel-in-progress at
- * the top level (`cancelInProgress` above), so only staging needs this
+ * behavior ADR 0056 rules out. The page asserts both deploy groups, and since
+ * ADR 0128 neither cancels: `deploy-staging-apply` (deploy-backend and
+ * host-apply, the jobs that touch `APP_ROOT`) queues, and so does
+ * `deploy-staging-web` (deploy-frontend), which writes the web app's tree over
+ * FTP and must not be cut off halfway. Production keeps its cancel-in-progress
+ * at the top level (`cancelInProgress` above), so only staging needs this
  * job-scoped variant.
  */
 const jobCancelInProgress = (path, jobId) => {
@@ -208,12 +241,27 @@ const EXTRACTORS = {
       ),
     ),
 
-  // Staging ships the frontend to Vercel and production ships it to cPanel. This
-  // asymmetry is the page's second panel, so both halves are read from the jobs.
-  stagingVercelCliVersion: () =>
-    capture(STAGING, /VERCEL_CLI_VERSION='([^']+)'/, 'the pinned Vercel CLI'),
+  // Staging and Production both ship the web app to cPanel over FTP, so the
+  // web app sits beside its API on one site (ADR 0128). Both are read from the
+  // jobs: a second kind of host on either environment is the defect of #1138.
   stagingFrontendTarget: () => frontendTarget(STAGING),
   productionFrontendTarget: () => frontendTarget(PRODUCTION),
+
+  // Staging deploys once a day and on dispatch, never on a push to `main`
+  // (ADR 0128). The trigger list is asserted whole, so a `push` or
+  // `workflow_run` that comes back fails here as loudly as a moved cron.
+  stagingTriggers: () => triggers(STAGING),
+  stagingScheduleCron: () =>
+    theOnly(scheduleCrons(STAGING), 'cron in the staging schedule'),
+
+  // The session needs the web app and its API on one site, and on Staging one
+  // step is what refuses a deploy that breaks that (ADR 0128). True only while
+  // the frontend job still runs it: a deleted step leaves every other line of
+  // the workflow reading exactly as before.
+  stagingAssertsSameSite: () =>
+    /^\s*run:.*\bstaging-web-deploy\.mjs same-site\b/m.test(
+      jobBlock(STAGING, 'deploy-frontend'),
+    ),
 
   // The approval gate is the page's hero: it exists only because these jobs name
   // an environment. A job that loses `environment: production` loses the gate
@@ -232,8 +280,9 @@ const EXTRACTORS = {
     jobsInEnvironment(PRODUCTION, 'production'),
 
   // Reversing any of these is a behaviour change the page would otherwise keep
-  // describing the old way. The staging jobs that write to `APP_ROOT` queue;
-  // the frontend job, which does not, still cancels; production queues wholesale.
+  // describing the old way. Every job that writes to the host queues: the
+  // staging jobs that write to `APP_ROOT`, the staging frontend job, which
+  // writes the web app's own root over FTP (ADR 0128), and production wholesale.
   stagingApplyCancelInProgress: () =>
     jobCancelInProgress(STAGING, 'deploy-backend'),
   stagingFrontendCancelInProgress: () =>
@@ -290,18 +339,14 @@ const EXTRACTORS = {
 
   backendArtifactDir: () =>
     theOnly(
-      [STAGING, PRODUCTION].map(
-        (file) =>
-          jobBlock(file, 'deploy-backend').match(
-            /^\s*local-dir:\s*(\S+)/m,
-          )?.[1] ?? fail(`${file} deploy-backend declares no local-dir`),
-      ),
+      [STAGING, PRODUCTION].map((file) => artifactDir(file, 'deploy-backend')),
       'backend artifact directory across staging and production',
     ),
+  // Read per environment rather than collapsed: Staging's job has a second
+  // FTP upload (the restart file), so "the" local-dir means the first one.
+  stagingFrontendArtifactDir: () => artifactDir(STAGING, 'deploy-frontend'),
   productionFrontendArtifactDir: () =>
-    jobBlock(PRODUCTION, 'deploy-frontend').match(
-      /^\s*local-dir:\s*(\S+)/m,
-    )?.[1] ?? fail(`${PRODUCTION} deploy-frontend declares no local-dir`),
+    artifactDir(PRODUCTION, 'deploy-frontend'),
 
   // The publish workflow reads the notes from the tagged commit; release.mjs
   // writes them at cut. Two scopes, and the release breaks if they disagree.

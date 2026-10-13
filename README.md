@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <a href="https://myorganizer-seven.vercel.app" target="_blank"><strong>Live Demo →</strong></a>
+  <a href="https://myorganiser.app" target="_blank"><strong>Live Demo →</strong></a>
   &nbsp;·&nbsp;
   <a href="#getting-started">Getting Started</a>
   &nbsp;·&nbsp;
@@ -26,8 +26,8 @@
   <a href="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml">
     <img src="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
-  <a href="https://myorganizer-seven.vercel.app">
-    <img src="https://img.shields.io/badge/demo-live-brightgreen?logo=vercel" alt="Live Demo" />
+  <a href="https://myorganiser.app">
+    <img src="https://img.shields.io/badge/demo-live-brightgreen" alt="Live Demo" />
   </a>
   <a href="LICENSE">
     <img src="https://img.shields.io/badge/license-Elastic%202.0-blue" alt="Elastic License 2.0" />

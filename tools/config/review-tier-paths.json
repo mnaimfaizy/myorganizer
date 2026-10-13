@@ -68,7 +68,6 @@
         "tsconfig.json",
         "jest.preset.js",
         "jest.config.ts",
-        "vercel.json",
         "openapitools.json"
       ]
     },

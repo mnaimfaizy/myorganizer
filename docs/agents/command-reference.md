@@ -38,6 +38,7 @@ The on-demand command catalogue for the root [Agent Guide](../../AGENTS.md#comma
 - Auth diagram pages check: `yarn auth:pages:check` (asserts `docs/authentication/session-lifecycle.html` against the auth source constants). See [ADR 0052](../adr/0052-a-built-explainer-page-is-its-own-source.md).
 - Review pipeline page check: `yarn review:pages:check` (asserts `docs/review/finding-lifecycle.html` against the finding contract in `tools/scripts/review/schema.mjs`, the CI job names, and the gate tier labels). See [ADR 0046](../adr/0046-house-explainer-pages-have-a-designer-and-a-gate.md).
 - Release pipeline page check: `yarn deploy:pages:check` (asserts `docs/deployment/release-pipeline.html` against `.github/workflows/*.yml`, `package.json`, and `tools/scripts/release.mjs`; `--print` shows what each extractor resolved). See [ADR 0046](../adr/0046-house-explainer-pages-have-a-designer-and-a-gate.md).
+- Staging web deploy tests: `yarn staging-web:test` (the same-site comparison, the `restart` / `install-owed` plan, and the probe that `deploy-staging.yml` runs through `tools/scripts/staging-web-deploy.mjs`, with every network read injected; CI runs it). See [ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md).
 
 ## Documentation
 

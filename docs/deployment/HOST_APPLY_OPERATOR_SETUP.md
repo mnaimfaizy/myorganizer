@@ -220,7 +220,7 @@ Two of these are worth dwelling on.
 holds _Production's_ root; in `production` it holds _Staging's_. Both jobs
 refuse to run when their two values are equal. The hosting account is shared, so
 an SSH principal that can apply to Staging can reach Production's tree — this
-pin is the only thing standing between a typo in `APP_ROOT` and a `main` push
+pin is the only thing standing between a typo in `APP_ROOT` and a Staging run
 migrating Production. Get these backwards and both environments refuse, which is
 the safe direction to be wrong in.
 
@@ -318,10 +318,11 @@ host is the domain rather than the app root.
 
 Only once the preflight is green.
 
-**Staging Host Apply does not run on its own.** A green `main` uploads a bundle
-automatically, but nothing applies it until you dispatch the workflow. SSH shell
-access on this account is a manual toggle that reverts, so an automatic apply
-would go red on every push where the shell happened to be off. That is a
+**Staging Host Apply does not run on its own.** The daily schedule uploads a
+bundle from the newest green `main` commit, but nothing applies it until you
+dispatch the workflow. SSH shell access on this account is a manual toggle that
+reverts, so an automatic apply would go red on every night the shell happened
+to be off. That is a
 deliberate amendment to PRD #565 user story 3, and it has a cost worth stating
 plainly: **an uploaded Staging bundle is not a migrated Staging backend.**
 Between an upload and your dispatch, Staging is running new code against an old
@@ -333,7 +334,11 @@ now confined to Staging and to a window you control.
    A reverted toggle answers `Shell access is not enabled on your account!`
    after authenticating, which is what a red `host-apply` will look like.
 2. _Actions → Deploy Staging → Run workflow._ Leave `apply_only` unticked for
-   upload → apply in one go, or tick it to apply a bundle already uploaded.
+   upload → apply in one go. Tick it only to retry the apply of a bundle a
+   dispatch uploaded, never for one the daily schedule uploaded. A
+   full dispatch also deploys the Staging web app at the same commit; that is
+   a separate job with no shell, and is not Host Apply
+   ([Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live)).
 3. Watch the `host-apply` job. The `Host Apply output (redaction-checked)` step
    is where the on-host log appears — it is withheld rather than printed if it
    carries a connection string.
@@ -355,9 +360,14 @@ upload jobs skip; `host-apply` runs alone against the bundle already on the host
 This should be green immediately after Step 6, and it is worth doing once while
 things are known-good rather than discovering it during an incident.
 
-On Staging this is also the normal path, not just a recovery one: `main` keeps
-uploading on its own, so most applies are an `apply_only` dispatch against a
-bundle that landed earlier.
+**Never use `apply_only` after a scheduled upload.** `host-apply` checks out
+the tip of the dispatched ref, which may not be the commit the schedule
+uploaded, so the apply could run one commit's sequence against another's
+bundle. A scheduled run also does not record which commit it uploaded, so
+`release:cut` refuses a scheduled upload whether or not anything was applied
+afterwards. To apply what the schedule uploaded, and before any Cut, dispatch
+`Deploy Staging` in full — `apply_only` unticked — at the commit you want
+([ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)).
 
 ## Step 8 — Production
 
@@ -405,7 +415,9 @@ it is off.
 ### 8c. The release itself
 
 1. Cut the release branch. `release:cut` refuses unless **Staging Host Apply
-   is green for the commit being cut** — not merely CI and a successful upload.
+   is green for the commit being cut** — not merely CI and a successful upload —
+   and the upload it applied came from a dispatch, not the daily schedule. A
+   full `Deploy Staging` dispatch at that commit satisfies both.
 2. The Production run waits on **Deploy Approval**. The approval authorises Host
    Apply; it does not replace it. Approving is the ship decision, and `host-apply`
    is what executes it.

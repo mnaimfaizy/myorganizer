@@ -29,10 +29,21 @@ description: 'Use when cutting releases, preparing staging or production deploym
 
 ## Branch + Environment Model
 
-| Branch           | CI            | Staging auto-deploy   | Production deploy                        |
-| ---------------- | ------------- | --------------------- | ---------------------------------------- |
-| `main`           | ✅ on push/PR | ✅ automatic after CI | ❌ never                                 |
-| `release/vX.Y.Z` | ✅ on push/PR | ❌                    | ✅ only after required-reviewer approval |
+| Branch           | CI            | Staging deploy                         | Production deploy                        |
+| ---------------- | ------------- | -------------------------------------- | ---------------------------------------- |
+| `main`           | ✅ on push/PR | ✅ daily at 16:00 UTC, and on dispatch | ❌ never                                 |
+| `release/vX.Y.Z` | ✅ on push/PR | ❌                                     | ✅ only after required-reviewer approval |
+
+- Staging does **not** deploy on a push to `main`. The scheduled run deploys the newest `main` commit
+  whose CI is green. It stops green when Staging already serves that commit or holds a newer,
+  dispatched one (it never rolls Staging back), and fails without uploading when that commit is
+  uploaded but not running. A dispatch always deploys the dispatched commit. Its web app is on cPanel beside its
+  API, on the same site
+  ([ADR 0128](../../../docs/adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)).
+- **A scheduled Staging upload cannot be Cut.** `release:cut` refuses unless a full `Deploy Staging`
+  dispatch (`apply_only` unticked) has uploaded and Host Applied the commit being cut. Never
+  recommend `apply_only` after a scheduled upload: `host-apply` checks out the tip of the dispatched
+  ref, which may not be the commit the schedule uploaded, and the Cut guard refuses it anyway.
 
 - GitHub environment `staging` is restricted to `main`.
 - GitHub environment `production` is restricted to `release/*` **and** carries a `required_reviewers`
@@ -203,12 +214,18 @@ This keeps `main` current with the CHANGELOG entry and version bump from the rel
 
 ## Staging-only deploy (no release)
 
-Staging is automatic — it deploys on every green push to `main`. No manual steps needed.
+Staging deploys once a day (16:00 UTC) from the newest green `main` commit. To deploy sooner,
+dispatch `Deploy Staging` from `main`: a full dispatch uploads the backend, runs Host Apply (SSH
+shell access must be switched on), and deploys the web app at that commit.
 
 If staging is broken:
 
 - Fix on a feature branch, open a PR to `main`, merge after CI passes
-- Staging re-deploys automatically
+- Dispatch `Deploy Staging`, or wait for the next scheduled run
+- A web job that fails with "install owed" uploaded the bundle but did not restart the app, and a
+  scheduled run that fails in `Select Commit` found its commit uploaded but not running. Either way
+  the operator clicks **Run NPM Install** then **Restart** in cPanel, then dispatches again. See
+  [Web app on cPanel](../../../docs/deployment/CPANEL_WEB_HOSTING.md#when-a-staging-run-fails-with-install-owed)
 
 ---
 
@@ -247,22 +264,24 @@ before "fixing" the `create:` trigger on `dispatch-production-deploy.yml` — it
 
 ## Secrets reference
 
-| Secret                       | Environment  | Purpose                    |
-| ---------------------------- | ------------ | -------------------------- |
-| `FTP_HOST`                   | `staging`    | Backend cPanel host        |
-| `FTP_USERNAME`               | `staging`    | Backend cPanel user        |
-| `FTP_PASSWORD`               | `staging`    | Backend cPanel password    |
-| `FTP_SERVER_DIR`             | `staging`    | Remote backend dir         |
-| `VERCEL_TOKEN`               | `staging`    | Vercel deploy token        |
-| `VERCEL_ORG_ID`              | `staging`    | Vercel org/team id         |
-| `VERCEL_PROJECT_ID`          | `staging`    | Vercel project id          |
-| `FTP_PROD_HOST`              | `production` | Prod cPanel host           |
-| `FTP_PROD_BACKEND_USERNAME`  | `production` | Prod backend FTP user      |
-| `FTP_PROD_BACKEND_PASSWORD`  | `production` | Prod backend FTP password  |
-| `FTP_PROD_BACKEND_DIR`       | `production` | Prod backend remote dir    |
-| `FTP_PROD_FRONTEND_USERNAME` | `production` | Prod frontend FTP user     |
-| `FTP_PROD_FRONTEND_PASSWORD` | `production` | Prod frontend FTP password |
-| `FTP_PROD_FRONTEND_DIR`      | `production` | Prod frontend remote dir   |
+| Secret                       | Environment  | Purpose                      |
+| ---------------------------- | ------------ | ---------------------------- |
+| `FTP_HOST`                   | `staging`    | Backend cPanel host          |
+| `FTP_USERNAME`               | `staging`    | Backend cPanel user          |
+| `FTP_PASSWORD`               | `staging`    | Backend cPanel password      |
+| `FTP_SERVER_DIR`             | `staging`    | Remote backend dir           |
+| `FTP_FRONTEND_USERNAME`      | `staging`    | Web app FTP user             |
+| `FTP_FRONTEND_PASSWORD`      | `staging`    | Web app FTP password         |
+| `FTP_FRONTEND_DIR`           | `staging`    | Remote web app dir, ends `/` |
+| `WEB_ORIGIN`                 | `staging`    | Staging web address          |
+| `API_ORIGIN`                 | `staging`    | Staging API address          |
+| `FTP_PROD_HOST`              | `production` | Prod cPanel host             |
+| `FTP_PROD_BACKEND_USERNAME`  | `production` | Prod backend FTP user        |
+| `FTP_PROD_BACKEND_PASSWORD`  | `production` | Prod backend FTP password    |
+| `FTP_PROD_BACKEND_DIR`       | `production` | Prod backend remote dir      |
+| `FTP_PROD_FRONTEND_USERNAME` | `production` | Prod frontend FTP user       |
+| `FTP_PROD_FRONTEND_PASSWORD` | `production` | Prod frontend FTP password   |
+| `FTP_PROD_FRONTEND_DIR`      | `production` | Prod frontend remote dir     |
 
 ---
 
