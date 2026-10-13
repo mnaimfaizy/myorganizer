@@ -165,7 +165,18 @@ export default defineConfig({
     },
     {
       name: 'webkit',
-      use: { ...devices['Desktop Safari'] },
+      use: {
+        ...devices['Desktop Safari'],
+        /**
+         * The app registers a service worker in production builds (ADR 0127).
+         * In Playwright's WebKit, a page a worker controls stops sending its
+         * cross-origin API requests through `page.route`, so every stubbed
+         * spec fails at login. Blocked here; `service-worker-offline.spec.ts`
+         * opts back in for the checks WebKit can run. Chromium and Firefox
+         * route through a controlled page normally and keep the worker.
+         */
+        serviceWorkers: 'block',
+      },
     },
   ],
 });

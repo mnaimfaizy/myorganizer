@@ -15,6 +15,7 @@ export * from './lib/components/Dialog/Dialog';
 export * from './lib/components/DropdownMenu/DropdownMenu';
 export * from './lib/components/Form/Form';
 export * from './lib/components/Input/Input';
+export * from './lib/components/InstallAppInstructions/InstallAppInstructions';
 export * from './lib/components/Label/Label';
 export * from './lib/components/Popover/Popover';
 export * from './lib/components/Select/Select';
@@ -27,8 +28,10 @@ export * from './lib/components/Toast/Toast';
 export * from './lib/components/Toaster/Toaster';
 export * from './lib/components/Tooltip/Tooltip';
 
+export * from './lib/hooks/use-app-install';
 export * from './lib/hooks/use-media-query';
 export * from './lib/hooks/use-mobile';
+export * from './lib/hooks/use-online-status';
 export * from './lib/hooks/use-toast';
 
 export * from './lib/utils';

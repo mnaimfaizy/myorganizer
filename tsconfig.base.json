@@ -47,6 +47,7 @@
       "@myorganizer/web-pages/mobile-numbers": [
         "libs/web/pages/mobile-numbers/src/index.ts"
       ],
+      "@myorganizer/web-pages/offline": ["libs/web/pages/offline/src/index.ts"],
       "@myorganizer/web-pages/subscriptions": [
         "libs/web/pages/subscriptions/src/index.ts"
       ],

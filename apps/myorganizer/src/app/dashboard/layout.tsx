@@ -10,6 +10,7 @@ import {
   DashboardGuard,
   DashboardSidebar,
   DynamicBreadcrumb,
+  OfflineNotice,
 } from '@myorganizer/web-pages/dashboard';
 
 import {
@@ -65,6 +66,12 @@ export default function DashboardLayout({
                   <SyncStatusWidget />
                 </div>
               </header>
+              {/*
+               * Explains why a save fails while the browser reports no
+               * connection. It changes no save path and queues nothing, and
+               * it is a browser signal, not a server reachability check.
+               */}
+              <OfflineNotice />
               {children}
             </SidebarInset>
             <Toaster />

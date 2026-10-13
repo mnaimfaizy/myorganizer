@@ -1,5 +1,12 @@
 import * as React from 'react';
 
+// The shield and check mark, in AppLogo's own 32 × 32 viewBox. Exported so a
+// build script (e.g. tools/scripts/generate-web-app-icons.mjs) can read the
+// mark by name instead of pattern-matching this component's JSX.
+export const SHIELD_PATH = 'M4 3 L28 3 L28 19 Q28 30 16 31 Q4 30 4 19 Z';
+export const CHECK_PATH = 'M8 17 L13.5 22.5 L24 11';
+export const CHECK_STROKE_WIDTH = 3;
+
 export type AppLogoVariant = 'full' | 'icon';
 
 export interface AppLogoProps {
@@ -50,19 +57,13 @@ export function AppLogo({
         </radialGradient>
       </defs>
       {/* Classic heraldic shield: flat top, straight sides, pointed base */}
-      <path
-        d="M4 3 L28 3 L28 19 Q28 30 16 31 Q4 30 4 19 Z"
-        fill={`url(#${gradId})`}
-      />
-      <path
-        d="M4 3 L28 3 L28 19 Q28 30 16 31 Q4 30 4 19 Z"
-        fill={`url(#${shineId})`}
-      />
+      <path d={SHIELD_PATH} fill={`url(#${gradId})`} />
+      <path d={SHIELD_PATH} fill={`url(#${shineId})`} />
       {/* Bold single checkmark – legible down to 16 × 16 */}
       <path
-        d="M8 17 L13.5 22.5 L24 11"
+        d={CHECK_PATH}
         stroke="white"
-        strokeWidth="3"
+        strokeWidth={CHECK_STROKE_WIDTH}
         strokeLinecap="round"
         strokeLinejoin="round"
         fill="none"

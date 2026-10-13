@@ -1,5 +1,10 @@
 import type { Metadata } from 'next';
 
+import {
+  InstallPromptCapture,
+  ServiceWorkerRegistration,
+} from '@myorganizer/web-pages/offline';
+
 import './global.css';
 
 export const dynamic = 'force-dynamic';
@@ -74,6 +79,7 @@ export const metadata: Metadata = {
       { url: '/favicon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: '32x32' },
     ],
+    apple: '/icons/apple-touch-icon.png',
   },
 };
 
@@ -119,7 +125,21 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        {/*
+         * Registers the service worker in production builds only (ADR 0127).
+         * In the root layout, not the dashboard's, so the offline page also
+         * covers a signed-out User opening the Installed Web App.
+         */}
+        <ServiceWorkerRegistration />
+        {/*
+         * Holds the browser's one early install prompt until the dashboard's
+         * install card asks for it. Here, not in the dashboard layout, because
+         * the browser can fire it on whichever page loads first.
+         */}
+        <InstallPromptCapture />
+      </body>
     </html>
   );
 }

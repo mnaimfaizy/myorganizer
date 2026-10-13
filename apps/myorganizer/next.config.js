@@ -13,6 +13,31 @@ const nextConfig = {
   // Keep standalone for self-hosted/cPanel deployments, but disable it when building on Vercel.
   ...(process.env.VERCEL === '1' ? {} : { output: 'standalone' }),
   poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        // The service worker (ADR 0127). Never cached, so a deployment's
+        // worker is the one a browser runs on its next check, and confined to
+        // same-origin scripts and requests. These are set here, not in a
+        // request-interception file (ADR 0019).
+        source: '/sw.js',
+        headers: [
+          {
+            key: 'Content-Type',
+            value: 'application/javascript; charset=utf-8',
+          },
+          {
+            key: 'Cache-Control',
+            value: 'no-cache, no-store, must-revalidate',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: "default-src 'self'; script-src 'self'",
+          },
+        ],
+      },
+    ];
+  },
   async redirects() {
     return [
       {

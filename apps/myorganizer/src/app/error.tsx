@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect } from 'react';
 
 import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
@@ -21,9 +22,10 @@ export default function GlobalError({
         <CardTitle className="text-lg">Something went wrong</CardTitle>
         <CardContent className="mt-4 space-y-4">
           <p className="text-sm text-muted-foreground">
-            Please try again. If the problem persists, reload the page.
+            Please try again. If the problem persists, reload the page or go
+            back to the dashboard.
           </p>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Button
               type="button"
               onClick={() => {
@@ -40,6 +42,9 @@ export default function GlobalError({
               }}
             >
               Reload
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/dashboard">Go to dashboard</Link>
             </Button>
           </div>
         </CardContent>
