@@ -11,7 +11,8 @@ backend, which is described in
 refresh cookie is `SameSite=Lax`, so a browser sends it to the API only from a
 page on the same site; on two sites, sign-in does not survive closing the web
 app. In practice: host both on subdomains of one domain. Staging's deploy
-asserts this before it uploads; Production relies on the rule. See
+asserts this before it packages and uploads the web bundle (the backend upload
+comes first); Production relies on the rule. See
 [ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md).
 
 > The repository is public. Host, user, and app-root values are GitHub
@@ -136,20 +137,28 @@ backend-only.
 
 First the `select` job decides whether the run deploys at all, and at which
 commit. A dispatch always proceeds, at the commit it was dispatched at. A
-scheduled run takes the newest `main` commit whose CI is green and has four
-outcomes (`decideSchedule` in `tools/scripts/lib/staging-web-deploy.mjs`):
+scheduled run takes the newest `main` commit whose CI is green, or stops green
+when there is none, and then checks these in order, looking at both the web
+host and the latest backend upload (`decideSchedule` in
+`tools/scripts/lib/staging-web-deploy.mjs`):
 
-| What the run finds                                              | Outcome                                                                                                   |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| The running web app already serves that commit                  | Stops green; nothing is uploaded                                                                          |
-| That commit is uploaded but not running                         | **Fails**; nothing is uploaded again ([below](#when-a-scheduled-run-fails-with-uploaded-but-not-running)) |
-| Staging holds a newer commit, which a dispatch put there        | Stops green; the schedule never rolls Staging back                                                        |
-| Anything else, including a Staging address that does not answer | Proceeds with that commit                                                                                 |
+| What the run finds, in order                                                                           | Outcome                                                                        |
+| ------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| The commit predates the Staging web deploy, so its build cannot name itself                            | Stops green                                                                    |
+| The Staging web address did not answer, or `WEB_ORIGIN` is unset                                       | **Fails**: unknown is not "nothing there"                                      |
+| The running web app already serves that commit                                                         | Stops green — but **fails** if `/sw.js` lacks its two headers                  |
+| An earlier run already uploaded that commit (web bundle or backend), and the web app is not serving it | **Fails** ([below](#when-a-scheduled-run-fails-with-uploaded-but-not-running)) |
+| The web app or the backend holds a newer commit, which a dispatch put there                            | Stops green; the schedule never rolls Staging back                             |
+| None of the above                                                                                      | Proceeds with that commit                                                      |
 
-It also stops green when `main` has no green CI run.
+The run also fails if it cannot read the recent `Deploy Staging` runs from the
+Actions API. Nothing is uploaded on any stop or failure.
 
 Then the `deploy-frontend` job does this without a shell
-(`tools/scripts/staging-web-deploy.mjs`). It has its own concurrency group and
+(`tools/scripts/staging-web-deploy.mjs`). The bundle is built from the selected
+commit, while the job runs that script from a separate checkout of the tip
+(`.deploy-tools`), so the workflow's steps and the script they call always
+match ([ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)). It has its own concurrency group and
 is never cancelled in progress, because a cancelled FTP upload would leave half
 a bundle on the host; a second run queues behind it.
 
@@ -205,13 +214,16 @@ run at that commit fails as described below.
 
 ### When a scheduled run fails with "uploaded but not running"
 
-The newest green `main` commit is already on the host, but the running web app
-is not serving it: an install is owed, or a restart did not take. The run
-uploads nothing, because uploading the same commit again fixes neither.
+An earlier run already uploaded the newest green `main` commit — the web
+bundle, or the backend, for example a dispatch whose web job failed — but the
+running web app is not serving it. The run uploads nothing, because uploading
+the same commit again fixes nothing.
 
-- In cPanel, click **Run NPM Install**, then **Restart**, for the Staging web
-  app; or
-- dispatch `Deploy Staging` in full.
+- **If an install is owed** (the earlier run's web job said so): in cPanel,
+  click **Run NPM Install**, then **Restart**, for the Staging web app. A
+  dispatch is not a substitute; it would go red with "install owed" again.
+- **Otherwise** (a restart did not take, or the web job failed before
+  uploading): dispatch `Deploy Staging` in full at that commit.
 
 A probe that times out instead ("did not answer from build … within 300s")
 means the bundle is uploaded and the restart file was written, but the process
@@ -251,24 +263,14 @@ the app's `public/` folder holds an `.htaccess`, and Staging's plan step refuses
 bundle that contains one. Never upload an `.htaccess`, and never replace the
 host's.
 
-Instead, an operator appends this block **once per environment**, by hand, to
-the host's existing `.htaccess` in the web app's document root — at the bottom,
-below the host's managed blocks, changing nothing above it:
-
-```apache
-<IfModule mod_headers.c>
-  <Files "sw.js">
-    Header set Cache-Control "no-cache, no-store, must-revalidate"
-    Header set Content-Security-Policy "default-src 'self'; script-src 'self'"
-  </Files>
-</IfModule>
-```
-
-The repository keeps the block as a snippet at
-`apps/myorganizer/deploy/sw-headers.htaccess`, outside `public/`, so it is never
-uploaded; copy it from there. The two values are stated in `next.config.js`, in
-the snippet, and in the probe's constants, and `yarn staging-web:test` fails
-when they fall out of step.
+Instead, an operator appends a block **once per environment**, by hand, to the
+host's existing `.htaccess` in the web app's document root — at the bottom,
+below the host's managed blocks, changing nothing above it. Copy the block from
+[`apps/myorganizer/deploy/sw-headers.htaccess`](../../apps/myorganizer/deploy/sw-headers.htaccess);
+it lives outside `public/`, so it is never uploaded. It is not reproduced here
+on purpose: the two values are stated in `next.config.js`, in that snippet, and
+in the probe's constants, and `yarn staging-web:test` fails when they fall out
+of step.
 
 The rules sit inside `<IfModule mod_headers.c>`, so a web server without that
 module ignores them silently. Staging's probe compares both headers with the
@@ -311,8 +313,14 @@ panel. Re-check `/sw.js` after changing the app's settings in the panel.
 
 ### A scheduled Staging run is red in `Select Commit`
 
-- The commit is uploaded but not running. See
+- The job summary says which. The commit is uploaded but not running: see
   [uploaded but not running](#when-a-scheduled-run-fails-with-uploaded-but-not-running).
+- The Staging web address did not answer, or the `WEB_ORIGIN` secret is unset.
+  Nothing was uploaded; check the app is up and the secret is set.
+- Staging serves the commit but `/sw.js` lacks its two headers: see
+  [Service worker headers](#service-worker-headers).
+- The run could not read recent `Deploy Staging` runs from the Actions API.
+  Re-run it.
 
 ### The Staging probe fails on `/sw.js` headers
 
@@ -321,6 +329,8 @@ panel. Re-check `/sw.js` after changing the app's settings in the panel.
   or differs from the snippet. Append it again — see
   [Service worker headers](#service-worker-headers) — then dispatch
   `Deploy Staging`.
+- It is not forgiven on the next run: the build is live, but every scheduled
+  run at that commit fails in `Select Commit` until the block is in place.
 
 ### 404s for static assets
 

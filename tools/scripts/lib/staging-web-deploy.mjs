@@ -3,13 +3,13 @@
  *
  * The Staging web app runs on a host where nothing automatic may open a shell:
  * the bundle arrives by FTP, the app restarts when `tmp/restart.txt` changes,
- * and an operator runs "Run NPM Install" by hand. This module decides three
- * things for `deploy-staging.yml`, with every network read injected so the
- * decisions run under test without a host:
+ * and an operator runs "Run NPM Install" by hand. This module makes the
+ * decisions `deploy-staging.yml` needs, with every read of the host, of git
+ * and of the Actions API injected so they run under test without any of them:
  *
  *   - whether the web address and the API address are on the same site;
  *   - whether the schedule should deploy at all, or would repeat or roll
- *     back what Staging already holds;
+ *     back what Staging already holds — its web app or its backend;
  *   - whether an upload may restart the app, or an install is owed first;
  *   - whether the build that answers is the build just uploaded.
  *
@@ -21,12 +21,18 @@
  * `dynamic = 'force-dynamic'`: a prerendered `/login` would be read from disk
  * and say what was uploaded, not what is running.
  *
+ * A host that does not answer is not a host that holds nothing. A missing
+ * state file (404) is the first deploy; a state file that cannot be read is
+ * unknown, and both the schedule and the plan stop on it rather than guess.
+ *
  * No function here puts an origin in a message: both addresses are GitHub
  * Environment secrets (ADR 0056), and a message names the path only.
  *
  * Run the tests with: yarn staging-web:test
  */
 import { createHash } from 'node:crypto';
+
+import { UPLOAD_JOB } from './staging-host-apply-guard.mjs';
 
 /** A page the Node process renders, so its HTML carries the running build id. */
 export const RUNNING_BUILD_PATH = '/login';
@@ -52,7 +58,21 @@ export const SERVICE_WORKER_CSP = "default-src 'self'; script-src 'self'";
 export const SCHEDULE_PROCEED = 'proceed';
 export const SCHEDULE_SKIP_SERVING = 'skip-serving';
 export const SCHEDULE_SKIP_NEWER = 'skip-newer';
+export const SCHEDULE_SKIP_PREDATES = 'skip-predates';
 export const SCHEDULE_FAIL_UPLOADED_NOT_RUNNING = 'fail-uploaded-not-running';
+export const SCHEDULE_FAIL_UNREACHABLE = 'fail-unreachable';
+export const SCHEDULE_FAIL_HEADERS = 'fail-headers';
+
+/** What a read of `/deploy-state.json` settled on. */
+export const STATE_PRESENT = 'present';
+/** 404: nothing was ever uploaded by this deploy. The first deploy. */
+export const STATE_NONE = 'none';
+/** No answer, a server error, or a body that is not a state file: unknown. */
+export const STATE_UNREADABLE = 'unreadable';
+
+/** The file a commit must carry to produce a build named after it. */
+export const BUILD_ID_CONFIG = 'apps/myorganizer/next.config.js';
+export const BUILD_ID_VARIABLE = 'WEB_BUILD_ID';
 
 const COMMIT = /^[0-9a-f]{40}$/;
 const HASH = /^[0-9a-f]{64}$/;
@@ -95,39 +115,85 @@ export function isSameSite(webOrigin, apiOrigin) {
 }
 
 /**
+ * The commit named by Staging's latest successful backend upload, or null.
+ *
+ * `jobs` is what `normalizeJobs` in staging-host-apply-guard.mjs returns for
+ * recent `Deploy Staging` runs. Only a dispatched run names its commit, so
+ * null means either that nothing was uploaded in the window read or that the
+ * latest upload was a scheduled one — which the schedule may follow freely,
+ * since it only ever uploads the newest green commit.
+ */
+export function latestBackendUploadSha(jobs) {
+  const latest = jobs
+    .filter((job) => job.name === UPLOAD_JOB && job.conclusion === 'success')
+    .sort((a, b) => Date.parse(a.completedAt) - Date.parse(b.completedAt))
+    .at(-1);
+  return latest?.headSha ?? null;
+}
+
+/**
  * Decides what a scheduled run does with the newest green `main` commit.
  *
- * The schedule may only move Staging forward, and only once per commit:
+ * The schedule may only move Staging forward, and only once per commit. It
+ * looks at both halves: what the web host holds, and what the latest backend
+ * upload was. Reading the web host alone would miss a dispatch whose backend
+ * landed and whose web job then failed; the schedule would upload the backend
+ * again without naming a commit, which makes the Cut guard refuse the
+ * dispatched commit, and could land an older backend over newer migrations.
+ * In order:
  *
- *   - the running process already serves the commit: nothing to do;
- *   - the commit is uploaded but not running (an install is owed, or a
- *     restart did not take): uploading it again fixes nothing, and a nameless
- *     scheduled re-upload of a commit a dispatch already uploaded and Host
- *     Applied would make the Cut guard refuse that commit — so the run fails
- *     and uploads nothing;
- *   - Staging holds a commit newer than the green one (a dispatch put it
- *     there): the schedule does not roll it back;
+ *   - the commit cannot name its own build (it predates this deploy): stop,
+ *     green, before the backend is uploaded for a web job that must fail;
+ *   - the state file cannot be read: stop, red. Unknown is not "nothing";
+ *   - the running process serves the commit: nothing to deploy — but red if
+ *     `/sw.js` lacks its headers, or a run that failed only on them would be
+ *     followed by green runs with nothing fixed;
+ *   - the commit is already uploaded, as the web bundle or as the backend,
+ *     and is not running: uploading again fixes nothing. Stop, red;
+ *   - Staging holds a commit strictly newer than the green one, as either
+ *     half: a dispatch put it there and the schedule does not roll it back;
  *   - otherwise deploy.
  *
- * `greenIsAncestorOfUploaded` is git's answer, and false when git does not
- * know the uploaded commit: an unknown commit is not evidence of a newer one.
+ * The two ancestry inputs are git's answers, and false when git does not know
+ * the other commit: an unknown commit is not evidence of a newer one.
  *
  * @param {{
  *   greenSha: string,
+ *   buildsNamedBundle: boolean,
+ *   stateStatus: typeof STATE_PRESENT | typeof STATE_NONE | typeof STATE_UNREADABLE,
  *   runningServesGreen: boolean,
+ *   serviceWorkerHeadersOk: boolean,
  *   uploadedSha: string | null,
- *   greenIsAncestorOfUploaded: boolean,
+ *   backendSha: string | null,
+ *   greenIsStrictAncestorOfUploaded: boolean,
+ *   greenIsStrictAncestorOfBackend: boolean,
  * }} input
  */
 export function decideSchedule({
   greenSha,
+  buildsNamedBundle,
+  stateStatus,
   runningServesGreen,
+  serviceWorkerHeadersOk,
   uploadedSha,
-  greenIsAncestorOfUploaded,
+  backendSha,
+  greenIsStrictAncestorOfUploaded,
+  greenIsStrictAncestorOfBackend,
 }) {
-  if (runningServesGreen) return SCHEDULE_SKIP_SERVING;
-  if (uploadedSha === greenSha) return SCHEDULE_FAIL_UPLOADED_NOT_RUNNING;
-  if (uploadedSha !== null && greenIsAncestorOfUploaded) {
+  if (!buildsNamedBundle) return SCHEDULE_SKIP_PREDATES;
+  if (stateStatus === STATE_UNREADABLE) return SCHEDULE_FAIL_UNREACHABLE;
+  if (runningServesGreen) {
+    return serviceWorkerHeadersOk
+      ? SCHEDULE_SKIP_SERVING
+      : SCHEDULE_FAIL_HEADERS;
+  }
+  if (uploadedSha === greenSha || backendSha === greenSha) {
+    return SCHEDULE_FAIL_UPLOADED_NOT_RUNNING;
+  }
+  if (
+    (uploadedSha !== null && greenIsStrictAncestorOfUploaded) ||
+    (backendSha !== null && greenIsStrictAncestorOfBackend)
+  ) {
     return SCHEDULE_SKIP_NEWER;
   }
   return SCHEDULE_PROCEED;
@@ -147,57 +213,104 @@ export const SCHEDULE_OUTCOMES = Object.freeze({
     summary:
       'Staging holds a newer commit (dispatched); the schedule does not roll it back. Nothing was uploaded.',
   },
+  [SCHEDULE_SKIP_PREDATES]: {
+    proceed: false,
+    failed: false,
+    summary:
+      'The newest green commit predates the Staging web deploy; nothing was uploaded.',
+  },
   [SCHEDULE_FAIL_UPLOADED_NOT_RUNNING]: {
     proceed: false,
     failed: true,
     summary:
-      'That commit is already uploaded to Staging, but the running web app is not serving it: an install is owed, or a restart did not take. ' +
-      'In cPanel, open the Staging web app under **Setup Node.js App**, click **Run NPM Install**, then **Restart**; or dispatch `Deploy Staging`. ' +
-      'Nothing was uploaded again.',
+      'That commit is already uploaded to Staging by an earlier run, but the web app is not serving it. ' +
+      'If an install is owed, open the Staging web app under **Setup Node.js App** in cPanel, click **Run NPM Install**, then **Restart**. ' +
+      'Otherwise dispatch `Deploy Staging` in full at that commit. Nothing was uploaded.',
+  },
+  [SCHEDULE_FAIL_UNREACHABLE]: {
+    proceed: false,
+    failed: true,
+    summary: 'The Staging web address did not answer; nothing was uploaded.',
+  },
+  [SCHEDULE_FAIL_HEADERS]: {
+    proceed: false,
+    failed: true,
+    summary:
+      'Staging serves that commit, but `/sw.js` does not carry its two headers. ' +
+      "Append the block from `apps/myorganizer/deploy/sw-headers.htaccess` to the host's `.htaccess`. Nothing was uploaded.",
   },
 });
 
 /**
- * Gathers what `decideSchedule` needs and decides. An address that is unset,
- * malformed or unreachable reads as "nothing known", which proceeds: silence
- * is not proof that Staging holds anything. `isAncestor(a, b)` is injected and
- * is only asked when there is an uploaded commit other than the green one.
+ * Gathers what `decideSchedule` needs, asking only for what the decision can
+ * still turn on, and decides. Everything it reads is injected:
+ *
+ *   - `buildsNamedBundle(sha)`: whether that commit's Next.js config reads the
+ *     build-id variable;
+ *   - `readBackendJobs()`: normalized jobs of recent `Deploy Staging` runs;
+ *   - `isStrictAncestor(a, b)`: git's answer, false for an unknown commit.
+ *
+ * An address that is unset or malformed is unreadable, like one that does
+ * not answer.
  */
 export async function planSchedule({
   fetcher,
   webOrigin,
   greenSha,
-  isAncestor,
+  buildsNamedBundle,
+  readBackendJobs,
+  isStrictAncestor,
+  sleep = realSleep,
 }) {
   if (!COMMIT.test(greenSha)) {
     throw new StagingWebDeployRefusal('the commit is not a 40-character SHA');
   }
 
-  let runningHtml = null;
-  let uploadedState = null;
+  const facts = {
+    greenSha,
+    buildsNamedBundle: Boolean(await buildsNamedBundle(greenSha)),
+    stateStatus: STATE_UNREADABLE,
+    runningServesGreen: false,
+    serviceWorkerHeadersOk: false,
+    uploadedSha: null,
+    backendSha: null,
+    greenIsStrictAncestorOfUploaded: false,
+    greenIsStrictAncestorOfBackend: false,
+  };
+  if (!facts.buildsNamedBundle) return decideSchedule(facts);
+
   try {
     siteOf(webOrigin, 'the web origin');
-    [runningHtml, uploadedState] = await Promise.all([
-      fetchRunningHtml(fetcher, webOrigin),
-      fetchUploadedState(fetcher, webOrigin),
-    ]);
   } catch {
-    // Unset or malformed: treated as unreachable.
+    return decideSchedule(facts);
   }
 
-  const uploadedSha = uploadedState?.sha ?? null;
-  const runningServesGreen = (runningHtml ?? '').includes(greenSha);
-  const greenIsAncestorOfUploaded =
-    !runningServesGreen && uploadedSha !== null && uploadedSha !== greenSha
-      ? Boolean(await isAncestor(greenSha, uploadedSha))
-      : false;
+  const [runningHtml, uploaded] = await Promise.all([
+    readRunningHtml(fetcher, webOrigin, { sleep }),
+    readUploadedState(fetcher, webOrigin, { sleep }),
+  ]);
+  facts.stateStatus = uploaded.status;
+  facts.uploadedSha = uploaded.state?.sha ?? null;
+  if (facts.stateStatus === STATE_UNREADABLE) return decideSchedule(facts);
 
-  return decideSchedule({
-    greenSha,
-    runningServesGreen,
-    uploadedSha,
-    greenIsAncestorOfUploaded,
-  });
+  facts.runningServesGreen = (runningHtml ?? '').includes(greenSha);
+  if (facts.runningServesGreen) {
+    facts.serviceWorkerHeadersOk =
+      (await readServiceWorkerProblems(fetcher, webOrigin)).length === 0;
+    return decideSchedule(facts);
+  }
+
+  facts.backendSha = latestBackendUploadSha(await readBackendJobs());
+  const newerThanGreen = async (sha) =>
+    sha !== null && sha !== greenSha
+      ? Boolean(await isStrictAncestor(greenSha, sha))
+      : false;
+  facts.greenIsStrictAncestorOfUploaded = await newerThanGreen(
+    facts.uploadedSha,
+  );
+  facts.greenIsStrictAncestorOfBackend = await newerThanGreen(facts.backendSha);
+
+  return decideSchedule(facts);
 }
 
 /** Where a bundle would carry an `.htaccess` into the host's document root. */
@@ -251,11 +364,14 @@ export function parseDeployState(value) {
  * Decides whether this upload may restart the app.
  *
  * The host cannot be asked what is in its `node_modules`, so "installed" is
- * inferred: when the running process serves the build that was last uploaded,
- * that build's dependency list is proven installed (it could not have started
- * otherwise). When it serves an older build, the last list an earlier run
- * proved is carried forward unchanged. With no state at all, nothing is proven
- * and an install is owed — which is the first deploy.
+ * an inference, not a proof: when the running process serves the build that
+ * was last uploaded, that build's dependency list is taken as installed. It
+ * can be wrong — an app may start on an older patch version of a package, and
+ * an operator may install without restarting — and the probe after the
+ * restart is what catches a build that does not come up. When the process
+ * serves an older build, the last list an earlier run inferred is carried
+ * forward unchanged. With no state at all, nothing is known and an install is
+ * owed — which is the first deploy.
  *
  * @param {{
  *   sha: string,
@@ -284,25 +400,77 @@ async function get(fetcher, origin, path) {
   return fetcher(new URL(path, origin), { headers: NO_CACHE });
 }
 
-/** The running process's HTML, or null when the host does not answer with a page. */
-export async function fetchRunningHtml(fetcher, webOrigin) {
-  try {
-    const response = await get(fetcher, webOrigin, RUNNING_BUILD_PATH);
-    return response.ok ? await response.text() : null;
-  } catch {
-    return null;
+const realSleep = (ms) => new Promise((done) => setTimeout(done, ms));
+
+/** Reads settle after this many tries: one slow answer is not an outage. */
+export const READ_ATTEMPTS = 3;
+const READ_BACKOFF_MS = 2000;
+
+/** Runs `read` until it returns something other than `retry`, or tries run out. */
+async function settle(read, retry, { attempts, sleep }) {
+  let result = retry;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    result = await read();
+    if (result !== retry) return result;
+    if (attempt < attempts) await sleep(READ_BACKOFF_MS * attempt);
   }
+  return result;
 }
 
-/** The last uploaded state, or null when there is none or it does not parse. */
-export async function fetchUploadedState(fetcher, webOrigin) {
-  try {
-    const response = await get(fetcher, webOrigin, DEPLOY_STATE_PATH);
-    if (!response.ok) return null;
-    return parseDeployState(JSON.parse(await response.text()));
-  } catch {
-    return null;
-  }
+/**
+ * The running process's HTML, or null when it does not answer with a page.
+ * Not answering is not an error here: with a readable state file it means
+ * "not serving", which is what a stopped or restarting app looks like.
+ */
+export async function readRunningHtml(
+  fetcher,
+  webOrigin,
+  { attempts = READ_ATTEMPTS, sleep = realSleep } = {},
+) {
+  return settle(
+    async () => {
+      try {
+        const response = await get(fetcher, webOrigin, RUNNING_BUILD_PATH);
+        return response.status === 200 ? await response.text() : null;
+      } catch {
+        return null;
+      }
+    },
+    null,
+    { attempts, sleep },
+  );
+}
+
+const UNREADABLE = Object.freeze({ status: STATE_UNREADABLE, state: null });
+
+/**
+ * The last uploaded state, as one of three outcomes that must not be
+ * confused: present, none (404 — the first deploy), or unreadable (no
+ * answer, a timeout, a server error, or a 200 whose body is not a state
+ * file). Only unreadable is retried.
+ *
+ * @returns {Promise<{ status: string, state: ReturnType<typeof parseDeployState> }>}
+ */
+export async function readUploadedState(
+  fetcher,
+  webOrigin,
+  { attempts = READ_ATTEMPTS, sleep = realSleep } = {},
+) {
+  return settle(
+    async () => {
+      try {
+        const response = await get(fetcher, webOrigin, DEPLOY_STATE_PATH);
+        if (response.status === 404) return { status: STATE_NONE, state: null };
+        if (response.status !== 200) return UNREADABLE;
+        const state = parseDeployState(JSON.parse(await response.text()));
+        return state ? { status: STATE_PRESENT, state } : UNREADABLE;
+      } catch {
+        return UNREADABLE;
+      }
+    },
+    UNREADABLE,
+    { attempts, sleep },
+  );
 }
 
 /** Refuses before any request, so a bad input never reads as "host is down". */
@@ -313,17 +481,33 @@ function assertDeployInputs(webOrigin, sha) {
   }
 }
 
-export async function planDeploy({ fetcher, webOrigin, sha, packageJson }) {
+/**
+ * Reads the host and decides the plan. Refuses when the state file cannot be
+ * read: writing a fresh state over an unknown one would forget which
+ * dependency list is installed, and restart or withhold on a guess.
+ */
+export async function planDeploy({
+  fetcher,
+  webOrigin,
+  sha,
+  packageJson,
+  sleep = realSleep,
+}) {
   assertDeployInputs(webOrigin, sha);
-  const [runningHtml, uploadedState] = await Promise.all([
-    fetchRunningHtml(fetcher, webOrigin),
-    fetchUploadedState(fetcher, webOrigin),
+  const [runningHtml, uploaded] = await Promise.all([
+    readRunningHtml(fetcher, webOrigin, { sleep }),
+    readUploadedState(fetcher, webOrigin, { sleep }),
   ]);
+  if (uploaded.status === STATE_UNREADABLE) {
+    throw new StagingWebDeployRefusal(
+      `the Staging web address did not answer for ${DEPLOY_STATE_PATH}, so what is installed there is unknown. Nothing was uploaded.`,
+    );
+  }
   return decidePlan({
     sha,
     depsHash: hashDependencies(packageJson),
     runningHtml,
-    uploadedState,
+    uploadedState: uploaded.state,
   });
 }
 
@@ -347,12 +531,27 @@ export function findServiceWorkerHeaderProblems(headers) {
     if (actual === null) {
       problems.push(`${SERVICE_WORKER_PATH} has no ${name}`);
     } else if (normalizeHeader(actual) !== normalizeHeader(expected)) {
+      // The value the host sent is never repeated: a host-level policy can
+      // name hostnames, and only exact secrets are masked in a log (ADR 0056).
       problems.push(
-        `${SERVICE_WORKER_PATH} ${name} is ${JSON.stringify(actual)}, expected ${JSON.stringify(expected)}`,
+        `${SERVICE_WORKER_PATH} ${name} differs from the expected value`,
       );
     }
   }
   return problems;
+}
+
+/** Fetches `/sw.js` and returns what is wrong with it; empty when nothing is. */
+export async function readServiceWorkerProblems(fetcher, webOrigin) {
+  try {
+    const response = await get(fetcher, webOrigin, SERVICE_WORKER_PATH);
+    if (response.status !== 200) {
+      return [`${SERVICE_WORKER_PATH} answered ${response.status}`];
+    }
+    return findServiceWorkerHeaderProblems(response.headers);
+  } catch {
+    return [`${SERVICE_WORKER_PATH} could not be fetched`];
+  }
 }
 
 /**
@@ -363,8 +562,6 @@ export function findServiceWorkerHeaderProblems(headers) {
  */
 const normalizeHeader = (value) =>
   value.trim().replace(/\s+/g, ' ').toLowerCase();
-
-const realSleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
 /**
  * Waits for the uploaded build to answer, then checks the service worker's
@@ -389,7 +586,8 @@ export async function probeDeploy({
   let live = false;
   for (;;) {
     attempts += 1;
-    const html = await fetchRunningHtml(fetcher, webOrigin);
+    // One try per poll: the loop is the retry.
+    const html = await readRunningHtml(fetcher, webOrigin, { attempts: 1 });
     if (html?.includes(sha)) {
       live = true;
       break;
@@ -407,21 +605,7 @@ export async function probeDeploy({
     };
   }
 
-  let headers;
-  try {
-    const response = await get(fetcher, webOrigin, SERVICE_WORKER_PATH);
-    if (!response.ok) {
-      return {
-        ok: false,
-        reason: `${SERVICE_WORKER_PATH} answered ${response.status}`,
-      };
-    }
-    headers = response.headers;
-  } catch {
-    return { ok: false, reason: `${SERVICE_WORKER_PATH} could not be fetched` };
-  }
-
-  const problems = findServiceWorkerHeaderProblems(headers);
+  const problems = await readServiceWorkerProblems(fetcher, webOrigin);
   if (problems.length > 0) {
     return { ok: false, reason: problems.join('; ') };
   }

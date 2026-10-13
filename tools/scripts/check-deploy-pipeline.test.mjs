@@ -167,7 +167,7 @@ test('fails when the staging same-site assertion is removed', (t) => {
   edit(
     workspace,
     STAGING,
-    'run: node tools/scripts/staging-web-deploy.mjs same-site "$WEB_ORIGIN" "$API_ORIGIN"',
+    'run: node .deploy-tools/tools/scripts/staging-web-deploy.mjs same-site "$WEB_ORIGIN" "$API_ORIGIN"',
     "run: echo 'skipped'",
   );
 
@@ -176,6 +176,36 @@ test('fails when the staging same-site assertion is removed', (t) => {
   assert.equal(result.status, 1);
   assert.match(result.stderr, /stagingAssertsSameSite/);
   assert.match(result.stderr, /page says true, source says false/);
+});
+
+test('fails when the staging web upload stops excluding .htaccess', (t) => {
+  const workspace = createWorkspace(t);
+  // The host keeps its own .htaccess in the folder the bundle's public/ is
+  // uploaded to. One deleted line and an upload may overwrite it.
+  edit(workspace, STAGING, '            **/.htaccess\n', '');
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stagingWebUploadExcludesHtaccess/);
+  assert.match(result.stderr, /page says true, source says false/);
+});
+
+test('an .htaccess exclude on another step does not count for the web upload', (t) => {
+  const workspace = createWorkspace(t);
+  // Move the line from the bundle upload to the restart upload below it.
+  edit(workspace, STAGING, '            **/.htaccess\n', '');
+  edit(
+    workspace,
+    STAGING,
+    '          server-dir: ${{ secrets.FTP_FRONTEND_DIR }}tmp/\n          timeout: 300000\n',
+    '          server-dir: ${{ secrets.FTP_FRONTEND_DIR }}tmp/\n          timeout: 300000\n          exclude: |\n            **/.htaccess\n',
+  );
+
+  const result = runChecker(workspace);
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /stagingWebUploadExcludesHtaccess/);
 });
 
 test('fails when the staging frontend upload becomes cancellable again', (t) => {

@@ -87,7 +87,7 @@ export function evaluateStagingHostApply({ cutSha, jobs, runsRead }) {
       ok: false,
       reason:
         `Refusing to Cut ${short(cutSha)}: Staging's latest backend upload is ${short(latest.headSha)}, not the commit being cut. ` +
-        'Wait for `Deploy Staging` to upload this commit, then Host Apply it.',
+        'Dispatch `Deploy Staging` in full at this commit, then Cut once `host-apply` is green.',
     };
   }
 

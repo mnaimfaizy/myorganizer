@@ -966,7 +966,7 @@
       <code>apply_only</code> &mdash; at the commit you mean to Cut. An
       <code>apply_only</code> dispatch after a scheduled upload no longer
       satisfies the guard
-      (<code>deploy-staging.yml:16</code>, <code>:226-243</code>;
+      (<code>deploy-staging.yml:16</code>, <code>:240-257</code>;
       <a href="../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md"
         >ADR&nbsp;0128</a
       >, Consequences).
@@ -1589,28 +1589,37 @@
         <dt>staging</dt>
         <dd id="note-staging">
           Two triggers: <code>schedule</code> at <code>0 16 * * *</code>
-          &mdash; 02:00 in Sydney in standard time, 03:00 in daylight time
-          &mdash; and <code>workflow_dispatch</code>
+          &mdash; 16:00 UTC &mdash; and <code>workflow_dispatch</code>
           (<code>deploy-staging.yml:18-23</code>). It no longer deploys when
           CI goes green on <code>main</code>. The first job, <code>select</code>
-          (<code>:58</code>), picks the commit. A dispatch always deploys the
+          (<code>:70</code>), picks the commit. A dispatch always deploys the
           dispatched commit. On a schedule it takes the newest
           <code>main</code> commit whose CI succeeded
-          (<code>:106-108</code>) and then decides one of four outcomes
-          (<code>decideSchedule</code>, <code>:42-53</code>,
-          <code>:123-125</code>): <b>proceed</b> with that commit; <b>stop,
-          green</b>, because Staging already serves it; <b>stop, green</b>,
-          because Staging holds a newer commit that a dispatch put there
-          &mdash; the schedule never rolls Staging back; or <b>fail without
-          uploading</b>, because that commit is uploaded but not running (an
-          install is owed, or a restart did not take). In that last case the
-          operator installs and restarts in cPanel, or dispatches. Never near production
+          (<code>:119-121</code>) and then decides, from what Staging's web
+          app and its backend uploads already hold
+          (<code>decideSchedule</code>, <code>:42-61</code>,
+          <code>:137-139</code>), among three kinds of result. <b>Proceed</b>
+          with that commit. <b>Stop, green</b>: the commit predates the
+          Staging web deploy; Staging already serves it; or the web app or
+          the backend holds a newer commit that a dispatch put there &mdash;
+          the schedule never rolls Staging back. <b>Fail without
+          uploading</b>: the web address did not answer (no answer is not
+          evidence that Staging is empty); Staging serves the commit but
+          <code>/sw.js</code> lacks its two headers; or the commit is already
+          uploaded by an earlier run, as the web bundle or the backend, and
+          the web app is not serving it. Nothing is uploaded on any stop or
+          failure. For that last failure, when an install is owed the
+          operator clicks &#8220;Run NPM Install&#8221; then
+          &#8220;Restart&#8221; in cPanel first; a full dispatch helps only
+          when a restart did not take, because with an install owed it would
+          fail again. Never near production
           &mdash; see panel&nbsp;2. Uploaded is not applied:
           <code>host-apply</code> runs only on <code>workflow_dispatch</code>
-          (<code>:263</code>, <code>:265</code>), so a scheduled run uploads
-          the backend bundle and stops &mdash; it writes a
+          (<code>:277</code>, <code>:279</code>), so a scheduled run uploads
+          the backend bundle and deploys the web app, but nothing applies
+          the backend &mdash; it writes a
           &#8220;Backend uploaded by the schedule, not applied&#8221; notice to
-          the job summary instead (<code>:226-243</code>). The run name
+          the job summary instead (<code>:240-257</code>). The run name
           carries the commit only on a dispatch (<code>:16</code>), and the
           Cut step reads the uploaded commit from that name, so it refuses a
           scheduled upload: only a full dispatch (upload and Host Apply)
@@ -1820,7 +1829,7 @@
               <code>Deploy Staging</code> &#8594; the newest
               <code>main</code> commit whose CI succeeded
             </td>
-            <td class="cite">deploy-staging.yml:18-23, :58, :106-108</td>
+            <td class="cite">deploy-staging.yml:18-23, :70, :119-121</td>
           </tr>
           <tr>
             <td>3</td>
@@ -1903,12 +1912,12 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/backend-api/</code></p>
-          <span class="cite">deploy-staging.yml:216, :222</span>
+          <span class="cite">deploy-staging.yml:230, :236</span>
         </div>
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP, then restart and probe</div>
           <p><code>./dist/deploy/myorganizer-web/</code></p>
-          <span class="cite">deploy-staging.yml:502, :508</span>
+          <span class="cite">deploy-staging.yml:533, :539</span>
         </div>
 
         <div class="rlabel">Production</div>
@@ -1930,36 +1939,45 @@
       </p>
       <ol class="chain">
         <li>
+          Checks out the tip's <code>tools/scripts</code> into
+          <code>.deploy-tools</code> <span class="cite">deploy-staging.yml:424-430</span>, so
+          the workflow's steps and the deploy script always come from the
+          same commit while the bundle is built from the selected commit;
+          every script step below runs <code>.deploy-tools/&hellip;</code>.
+        </li>
+        <li>
           Asserts the web address and the API address share a parent domain,
           because the Session's refresh cookie is not sent across sites; the
           deploy-pipeline gate asserts the step is present
           (<code>stagingAssertsSameSite</code>)
-          <span class="cite">deploy-staging.yml:464-468</span>.
+          <span class="cite">deploy-staging.yml:493-497</span>.
         </li>
         <li>
           Builds the bundle with <code>yarn package:myorganizer:web</code>,
           setting the commit as the build id
-          <span class="cite">:470-480</span>.
+          <span class="cite">:499-509</span>.
         </li>
         <li>
           Plans: <code>restart</code>, or <code>install-owed</code> when the
-          bundle's dependency list differs from what is installed
-          <span class="cite">:486-500</span>.
+          bundle's dependency list differs from the list known to be
+          installed, or when nothing is known yet (the first deploy to a
+          host)
+          <span class="cite">:515-529</span>.
         </li>
         <li>
-          Uploads the bundle by FTP <span class="cite">:502-510</span>.
+          Uploads the bundle by FTP <span class="cite">:533-541</span>.
         </li>
         <li>
           On <code>restart</code>: uploads <code>tmp/restart.txt</code>
-          <span class="cite">:528-547</span>, then probes until the running
+          <span class="cite">:559-578</span>, then probes until the running
           process answers with the uploaded commit and the service worker's
           <code>Cache-Control</code> and <code>Content-Security-Policy</code>
-          equal their exact expected values <span class="cite">:553-562</span>.
+          equal their exact expected values <span class="cite">:584-593</span>.
         </li>
         <li>
           Otherwise it does not restart and <b>fails</b>: &#8220;Run NPM
           Install&#8221; and &#8220;Restart&#8221; are owed in cPanel
-          <span class="cite">:570-583</span>. The next run confirms it.
+          <span class="cite">:601-614</span>. The next run confirms it.
         </li>
       </ol>
     </div>
@@ -2059,18 +2077,16 @@
         <div class="fact">
           <div class="fname">Staging schedule</div>
           <p>
-            <code>0 16 * * *</code>, which GitHub reads as UTC: 02:00 in
-            Sydney in standard time, 03:00 in daylight time
-            (<code>deploy-staging.yml:18-23</code>). A schedule cannot follow
-            a timezone, so the Sydney hour moves by one with daylight time.
+            <code>0 16 * * *</code>, which GitHub reads as 16:00 UTC
+            (<code>deploy-staging.yml:18-23</code>).
           </p>
         </div>
         <div class="fact">
           <div class="fname">FTP transfer timeout</div>
           <p>
             <code>300000</code> ms, the same value at five sites: staging
-            backend (<code>deploy-staging.yml:224</code>), staging web app
-            (<code>:510</code>) and its restart upload (<code>:547</code>),
+            backend (<code>deploy-staging.yml:238</code>), staging web app
+            (<code>:541</code>) and its restart upload (<code>:578</code>),
             production backend (<code>deploy-production.yml:170</code>),
             production frontend (<code>:361</code>). <code>host-apply</code> has no FTP step and
             no site here &mdash; it applies over SSH, not FTP.
@@ -2080,8 +2096,8 @@
           <div class="fname">Job timeouts</div>
           <p>
             <code>validate</code> 5&nbsp;min (<code>:29</code>); staging jobs
-            30&nbsp;min (<code>deploy-staging.yml:64</code>, <code>:132</code>,
-            <code>:172</code>, <code>:267</code>, <code>:385</code>) &mdash;
+            30&nbsp;min (<code>deploy-staging.yml:76</code>, <code>:146</code>,
+            <code>:186</code>, <code>:281</code>, <code>:399</code>) &mdash;
             five now, including <code>select</code> and
             <code>host-apply</code>; production's three approval-gated jobs
             45&nbsp;min each (<code>deploy-production.yml:127</code>,
@@ -2099,7 +2115,7 @@
             <code>deploy-staging-apply</code>
             (<code>cancel-in-progress: false</code>) covers
             <code>deploy-backend</code> and <code>host-apply</code>
-            (<code>deploy-staging.yml:178-180</code>, <code>:269-271</code>)
+            (<code>deploy-staging.yml:192-194</code>, <code>:283-285</code>)
             &mdash; the two jobs that land and then apply the bundle. A newer
             run queues behind them: it must not cancel an
             in-flight <code>prisma migrate deploy</code> (the one behaviour
@@ -2108,11 +2124,11 @@
             <code>deploy-staging</code>
             (<code>cancel-in-progress: true</code>) covers only
             <code>prepare-dependencies</code>
-            (<code>:133-135</code>) &mdash; it touches no host, so a newer run
+            (<code>:147-149</code>) &mdash; it touches no host, so a newer run
             still kills it in flight. <code>deploy-frontend</code> has its own
             group, <code>deploy-staging-web</code>, with
             <code>cancel-in-progress: false</code>
-            (<code>:392-394</code>): its upload is FTP into a live app root, and
+            (<code>:406-408</code>): its upload is FTP into a live app root, and
             a cancelled upload would leave half a bundle, so a second run
             queues. It is a separate group from the backend's because the web
             app has its own root and may deploy beside a Host Apply. Production is unchanged: one workflow-level group,
@@ -2732,36 +2748,37 @@
       "deploy-production.yml:361": { "file": ".github/workflows/deploy-production.yml", "start": "timeout: 300000" },
       "deploy-staging.yml:16": { "file": ".github/workflows/deploy-staging.yml", "start": "run-name: Deploy Staging ${{ github.event_name == 'schedule' && '(scheduled)' || github.sha }}" },
       "deploy-staging.yml:18-23": { "file": ".github/workflows/deploy-staging.yml", "start": "on:", "end": "workflow_dispatch:" },
-      "deploy-staging.yml:58": { "file": ".github/workflows/deploy-staging.yml", "start": "select:" },
-      "deploy-staging.yml:64": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:106-108": { "file": ".github/workflows/deploy-staging.yml", "start": "sha=\"$(gh run list --repo \"$GITHUB_REPOSITORY\" --workflow ci.yml \\", "end": "--json headSha --jq '.[0].headSha // empty')\"" },
-      "deploy-staging.yml:42-53": { "file": ".github/workflows/deploy-staging.yml", "start": "# The schedule takes the newest `main` commit whose CI run is green: a red", "end": "#   - otherwise deploy it." },
-      "deploy-staging.yml:123-125": { "file": ".github/workflows/deploy-staging.yml", "start": "node tools/scripts/staging-web-deploy.mjs schedule \\", "end": "--web-origin \"$WEB_ORIGIN\"" },
-      "deploy-staging.yml:132": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:133-135": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: true" },
-      "deploy-staging.yml:172": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:178-180": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
-      "deploy-staging.yml:216": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy backend to cPanel (staging)" },
-      "deploy-staging.yml:222": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/backend-api/" },
-      "deploy-staging.yml:224": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
-      "deploy-staging.yml:226-243": { "file": ".github/workflows/deploy-staging.yml", "start": "# A scheduled upload is not a deploy: host-apply only runs on dispatch,", "end": "} >> \"$GITHUB_STEP_SUMMARY\"" },
-      "deploy-staging.yml:263": { "file": ".github/workflows/deploy-staging.yml", "start": "host-apply:" },
-      "deploy-staging.yml:265": { "file": ".github/workflows/deploy-staging.yml", "start": "if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}" },
-      "deploy-staging.yml:267": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:269-271": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
-      "deploy-staging.yml:385": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:392-394": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
-      "deploy-staging.yml:464-468": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Assert the web app and the API are on the same site", "end": "run: node tools/scripts/staging-web-deploy.mjs same-site \"$WEB_ORIGIN\" \"$API_ORIGIN\"" },
-      "deploy-staging.yml:470-480": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Package web app (cPanel)", "end": "run: corepack yarn package:myorganizer:web" },
-      "deploy-staging.yml:486-500": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Plan the web deploy", "end": "rm -f dist/deploy/myorganizer-web/myorganizer-web.zip" },
-      "deploy-staging.yml:502": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)" },
-      "deploy-staging.yml:502-510": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)", "end": "timeout: 300000" },
-      "deploy-staging.yml:508": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
-      "deploy-staging.yml:510": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
-      "deploy-staging.yml:528-547": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Write the restart file", "end": "timeout: 300000" },
-      "deploy-staging.yml:547": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
-      "deploy-staging.yml:553-562": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Probe the running build", "end": "--timeout-seconds 300" },
-      "deploy-staging.yml:570-583": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Report install owed", "end": "exit 1" },
+      "deploy-staging.yml:70": { "file": ".github/workflows/deploy-staging.yml", "start": "select:" },
+      "deploy-staging.yml:76": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:119-121": { "file": ".github/workflows/deploy-staging.yml", "start": "sha=\"$(gh run list --repo \"$GITHUB_REPOSITORY\" --workflow ci.yml \\", "end": "--json headSha --jq '.[0].headSha // empty')\"" },
+      "deploy-staging.yml:42-61": { "file": ".github/workflows/deploy-staging.yml", "start": "# The schedule takes the newest `main` commit whose CI run is green: a red", "end": "#   - otherwise deploy it." },
+      "deploy-staging.yml:137-139": { "file": ".github/workflows/deploy-staging.yml", "start": "node tools/scripts/staging-web-deploy.mjs schedule \\", "end": "--web-origin \"$WEB_ORIGIN\"" },
+      "deploy-staging.yml:146": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:147-149": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: true" },
+      "deploy-staging.yml:186": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:192-194": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
+      "deploy-staging.yml:230": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy backend to cPanel (staging)" },
+      "deploy-staging.yml:236": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/backend-api/" },
+      "deploy-staging.yml:238": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
+      "deploy-staging.yml:240-257": { "file": ".github/workflows/deploy-staging.yml", "start": "# A scheduled upload is not a deploy: host-apply only runs on dispatch,", "end": "} >> \"$GITHUB_STEP_SUMMARY\"" },
+      "deploy-staging.yml:277": { "file": ".github/workflows/deploy-staging.yml", "start": "host-apply:" },
+      "deploy-staging.yml:279": { "file": ".github/workflows/deploy-staging.yml", "start": "if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}" },
+      "deploy-staging.yml:281": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:283-285": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
+      "deploy-staging.yml:399": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:406-408": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
+      "deploy-staging.yml:424-430": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Checkout deploy tools", "end": "sparse-checkout-cone-mode: false" },
+      "deploy-staging.yml:493-497": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Assert the web app and the API are on the same site", "end": "run: node .deploy-tools/tools/scripts/staging-web-deploy.mjs same-site \"$WEB_ORIGIN\" \"$API_ORIGIN\"" },
+      "deploy-staging.yml:499-509": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Package web app (cPanel)", "end": "run: corepack yarn package:myorganizer:web" },
+      "deploy-staging.yml:515-529": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Plan the web deploy", "end": "rm -f dist/deploy/myorganizer-web/myorganizer-web.zip" },
+      "deploy-staging.yml:533": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)" },
+      "deploy-staging.yml:533-541": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)", "end": "timeout: 300000" },
+      "deploy-staging.yml:539": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
+      "deploy-staging.yml:541": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
+      "deploy-staging.yml:559-578": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Write the restart file", "end": "timeout: 300000" },
+      "deploy-staging.yml:578": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
+      "deploy-staging.yml:584-593": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Probe the running build", "end": "--timeout-seconds 300" },
+      "deploy-staging.yml:601-614": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Report install owed", "end": "exit 1" },
       "dispatch-production-deploy.yml:5": { "file": ".github/workflows/dispatch-production-deploy.yml", "start": "create:" },
       "dispatch-production-deploy.yml:17": { "file": ".github/workflows/dispatch-production-deploy.yml", "start": "if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'create' && github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/v')) }}" },
       "dispatch-production-deploy.yml:38": { "file": ".github/workflows/dispatch-production-deploy.yml", "start": "if [[ ! \"${CREATED_REF}\" =~ ^release/v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then" },
@@ -2799,6 +2816,7 @@
     "stagingTriggers": ["schedule", "workflow_dispatch"],
     "stagingScheduleCron": "0 16 * * *",
     "stagingAssertsSameSite": true,
+    "stagingWebUploadExcludesHtaccess": true,
     "stagingEnvironmentName": "staging",
     "productionEnvironmentName": "production",
     "productionApprovalGatedJobs": ["deploy-backend", "host-apply", "deploy-frontend"],

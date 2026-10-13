@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Runs the three decisions of Staging's web deploy for deploy-staging.yml
-// (issue #1138, ADR 0128). The logic lives in lib/staging-web-deploy.mjs; this
-// file only reads arguments, the bundle and the network, and reports.
+// Runs the decisions of Staging's web deploy for deploy-staging.yml (issue
+// #1138, ADR 0128). The logic lives in lib/staging-web-deploy.mjs; this file
+// only reads arguments, the bundle, the network, git and the Actions API, and
+// reports.
 //
 //   node tools/scripts/staging-web-deploy.mjs same-site <webOrigin> <apiOrigin>
 //   node tools/scripts/staging-web-deploy.mjs schedule --sha <greenSha> [--web-origin <origin>]
@@ -9,24 +10,25 @@
 //   node tools/scripts/staging-web-deploy.mjs probe --web-origin <origin> --sha <sha> [--timeout-seconds 300]
 //
 // `schedule` decides whether a scheduled run deploys the newest green commit
-// (see decideSchedule). It asks git whether that commit is an ancestor of the
-// one Staging holds, so it runs in a checkout with full history. It prints the
-// decision, appends `proceed=<true|false>` to $GITHUB_OUTPUT and a line to
-// $GITHUB_STEP_SUMMARY when set, and exits 1 only when the commit is uploaded
-// but not running.
+// (see decideSchedule). It asks git about that commit, so it runs with the
+// repository as its working directory and with full history, and it reads
+// recent `Deploy Staging` runs with `gh api` (GH_TOKEN, `actions: read`). It
+// prints the decision, appends `proceed=<true|false>` and
+// `decision=<outcome>` to $GITHUB_OUTPUT and a line to $GITHUB_STEP_SUMMARY
+// when set, and exits 1 on any outcome that starts with `fail-`.
 //
 // `plan` writes <bundle>/public/deploy-state.json, prints `restart` or
 // `install-owed`, and appends `action=<value>` to $GITHUB_OUTPUT when set.
-// It refuses, before any request, a bundle that carries public/.htaccess:
-// that file would overwrite the host's own.
+// It refuses, writing nothing, a bundle that carries public/.htaccess (that
+// file would overwrite the host's own), a bundle built under another build
+// id, and a host whose state file cannot be read.
 //
 // Both origins are GitHub Environment secrets (ADR 0056), so no message
 // printed here contains one — only a path such as /login or /sw.js.
 //
-// Exit 0 = same site / schedule decided / plan written / build is live.
-// Exit 1 = different sites, a commit uploaded but not running, a refused
-// input, or the probe failed. Exit 2 = bad invocation.
-import { spawnSync } from 'node:child_process';
+// Exit 0 = same site / schedule decided without failing / plan written /
+// build is live. Exit 1 = different sites, a failing schedule outcome, a
+// refused input, or the probe failed. Exit 2 = bad invocation.
 import {
   appendFileSync,
   existsSync,
@@ -36,7 +38,15 @@ import {
 } from 'node:fs';
 import { join } from 'node:path';
 
+import { ghJson } from './lib/gh.mjs';
+import { normalizeJobs } from './lib/staging-host-apply-guard.mjs';
 import {
+  fileAtCommitMentions,
+  isStrictAncestor,
+} from './lib/staging-web-deploy-git.mjs';
+import {
+  BUILD_ID_CONFIG,
+  BUILD_ID_VARIABLE,
   BUNDLE_HTACCESS,
   SCHEDULE_OUTCOMES,
   StagingWebDeployRefusal,
@@ -76,12 +86,33 @@ function required(flags, name) {
   return flags[name];
 }
 
-const git = (...args) => spawnSync('git', args, { stdio: 'ignore' }).status;
+// As many as `release:cut` reads, for the same reason: runs on Staging queue
+// one at a time, so its latest upload cannot be outside the window.
+const STAGING_RUNS_TO_READ = 20;
 
-/** False when git does not know `descendant`: unknown is not "newer". */
-const isAncestor = (ancestor, descendant) =>
-  git('cat-file', '-e', `${descendant}^{commit}`) === 0 &&
-  git('merge-base', '--is-ancestor', ancestor, descendant) === 0;
+/** Normalized jobs of recent `Deploy Staging` runs, from every ref. */
+function readBackendJobs() {
+  const repo = process.env.GITHUB_REPOSITORY ?? '{owner}/{repo}';
+  const api = (endpoint) => {
+    try {
+      return ghJson(['api', `repos/${repo}/${endpoint}`]);
+    } catch {
+      // Unknown is not "no upload": the schedule stops rather than guess.
+      throw new StagingWebDeployRefusal(
+        'could not read recent `Deploy Staging` runs with `gh api`. Nothing was uploaded.',
+      );
+    }
+  };
+  const { workflow_runs: runs } = api(
+    `actions/workflows/deploy-staging.yml/runs?per_page=${STAGING_RUNS_TO_READ}`,
+  );
+  return runs.flatMap((stagingRun) =>
+    normalizeJobs(
+      stagingRun,
+      api(`actions/runs/${stagingRun.id}/jobs?per_page=100`).jobs,
+    ),
+  );
+}
 
 const [, , command, ...rest] = process.argv;
 
@@ -106,10 +137,14 @@ async function main() {
     const flags = parseFlags(rest);
     const decision = await planSchedule({
       fetcher,
-      // Optional on purpose: an unset address is "nothing known", not an error.
+      // Optional on purpose: an unset address is unreadable, which the
+      // decision fails on by name, rather than a bad invocation.
       webOrigin: flags['web-origin'] ?? '',
       greenSha: required(flags, 'sha'),
-      isAncestor,
+      buildsNamedBundle: (sha) =>
+        fileAtCommitMentions(sha, BUILD_ID_CONFIG, BUILD_ID_VARIABLE),
+      readBackendJobs,
+      isStrictAncestor,
     });
     const outcome = SCHEDULE_OUTCOMES[decision];
 

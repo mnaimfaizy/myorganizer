@@ -263,6 +263,21 @@ const EXTRACTORS = {
       jobBlock(STAGING, 'deploy-frontend'),
     ),
 
+  // The web app's document root on the host is the bundle's public/ folder,
+  // which holds the host's own .htaccess: the file that starts the app. True
+  // only while the step that uploads the bundle excludes every .htaccess.
+  stagingWebUploadExcludesHtaccess: () => {
+    const upload = jobBlock(STAGING, 'deploy-frontend')
+      .split(/^ {6}- /m)
+      .find((step) =>
+        step.includes(`local-dir: ${artifactDir(STAGING, 'deploy-frontend')}`),
+      );
+    const excluded = upload?.match(/^( +)exclude:\s*\|\n((?:\1 +\S.*\n?)+)/m);
+    return Boolean(
+      excluded?.[2].split('\n').some((line) => line.trim() === '**/.htaccess'),
+    );
+  },
+
   // The approval gate is the page's hero: it exists only because these jobs name
   // an environment. A job that loses `environment: production` loses the gate
   // while every other line of the workflow reads exactly as before (ADR 0028).

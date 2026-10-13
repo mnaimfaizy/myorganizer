@@ -58,6 +58,6 @@ Considered and rejected here: making the backend upload dispatch-only as well (k
 [ADR 0128](0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md) moved the Staging backend upload from every green `main` to a daily schedule. Two lines of the 2026-09-14 amendment change with it.
 
 - **The backend upload is scheduled, not per push.** It is still automatic, and Staging may still run an uploaded bundle that no Host Apply has touched.
-- **A scheduled upload cannot be Cut without a full dispatch.** A scheduled run chooses its commit inside the run, so its name records none, and the Cut guard refuses an upload that does not record its commit. An `apply_only` dispatch after a scheduled upload therefore no longer satisfies the guard; a full dispatch, which uploads and applies one named commit, does. The guard's code is unchanged.
+- **A scheduled upload cannot be Cut without a full dispatch.** A scheduled run chooses its commit inside the run, so its name records none, and the Cut guard refuses an upload that does not record its commit. An `apply_only` dispatch after a scheduled upload therefore no longer satisfies the guard; a full dispatch, which uploads and applies one named commit, does. The guard decides as it did before; only the refusal that told the operator to wait for an upload was reworded, because waiting now yields a scheduled upload that cannot qualify.
 
 Host Apply itself is untouched: operator-dispatched, backend-only, over SSH. Staging's web app goes live by a restart file and is not part of Host Apply.

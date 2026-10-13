@@ -24,8 +24,8 @@ This repo uses GitHub Actions for CI/CD.
   - Chromatic needs repository secret `CHROMATIC_PROJECT_TOKEN`. Unreviewed visual diffs leave **UI Tests** pending; the publish job still passes (`--exit-zero-on-changes`) so Accept does not require a re-run. Free-plan snapshot quota (CLI exit 11) warns and passes the publish job. See [ADR 0027](../adr/0027-chromatic-ci-visual-tests.md).
 
 - `.github/workflows/deploy-staging.yml` (name: `Deploy Staging`)
-  - Runs on a daily schedule (`0 16 * * *` UTC: 02:00 in Sydney in standard time, 03:00 in daylight time) and on `workflow_dispatch`. It does not run after `CI` or on a push.
-  - `select` picks the commit every later job checks out. A dispatch deploys the commit it was dispatched at. A scheduled run takes the newest `main` commit whose `CI` run is green and deploys it, with three exceptions: it stops green when there is no such commit, when the Staging web app already serves it, or when Staging holds a newer commit that a dispatch put there (the schedule never rolls Staging back); and it **fails without uploading** when that commit is already uploaded but not running — an install is owed or a restart did not take. See [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
+  - Runs on a daily schedule (`0 16 * * *`, 16:00 UTC) and on `workflow_dispatch`. It does not run after `CI` or on a push.
+  - `select` picks the commit every later job checks out. A dispatch deploys the commit it was dispatched at. A scheduled run takes the newest `main` commit whose `CI` run is green and deploys it, unless it stops or fails first. It stops green when there is no such commit, when the commit predates the Staging web deploy, when the Staging web app already serves it, or when the web app or the backend holds a newer commit that a dispatch put there (the schedule never rolls Staging back). It **fails** when the Staging web address does not answer (or `WEB_ORIGIN` is unset), when Staging serves the commit but `/sw.js` lacks its two headers, when an earlier run already uploaded the commit but the web app is not serving it, or when the Actions API cannot be read. Nothing is uploaded on a stop or a failure. See [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
   - Packages backend via `yarn package:backend:api` and uploads `dist/deploy/backend-api/`.
   - `host-apply` runs on a dispatch only — see [Host Apply](#host-apply-staging--production).
   - `deploy-frontend` packages the web app via `yarn package:myorganizer:web`, uploads `dist/deploy/myorganizer-web/`, restarts the app by uploading `tmp/restart.txt`, and probes the running build — see [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
@@ -460,7 +460,7 @@ Both deploy bundles are designed for cPanel shared hosting:
   - An upload is not a deploy: Host Apply installs, migrates, regenerates the Prisma client, and restarts — see [Host Apply](#host-apply-staging--production). Do not run those steps by hand except through [Break-glass](HOST_APPLY_OPERATOR_SETUP.md#break-glass).
 - Frontend bundle is a Next standalone-based deploy with a Linux-safe `server.js`. It ships without `node_modules`.
   - Production: after upload, click **Run NPM Install**, then **Restart**, in the Node.js app.
-  - Staging: the run restarts the app itself, and fails asking for **Run NPM Install** and **Restart** only when the bundle's dependency list changed. See [Web app on cPanel](CPANEL_WEB_HOSTING.md#after-an-upload).
+  - Staging: the run restarts the app itself, and fails asking for **Run NPM Install** and **Restart** when the bundle's dependency list differs from the one known to be installed, or when nothing is known yet (the first deploy to a host). See [Web app on cPanel](CPANEL_WEB_HOSTING.md#after-an-upload).
 
 The deploy folders also contain `CPANEL_STARTUP.md` files with the exact startup file names.
 

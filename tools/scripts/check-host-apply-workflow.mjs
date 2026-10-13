@@ -3,20 +3,22 @@
 // its acceptance criteria promise, read straight from the two workflow files
 // rather than from a doc page: `host-apply` needs the backend upload job,
 // runs under the right GitHub Environment, is reachable by an apply-only
-// `workflow_dispatch` without re-running the upload jobs, staging's apply
-// group never cancels in progress while its upload group still can, and no
+// `workflow_dispatch` on which `deploy-backend` and `deploy-frontend` skip
+// themselves, Staging's upload and apply share one concurrency group that
+// never cancels in progress, Staging's apply requires a dispatch, and no
 // `secrets.*` reference in the job falls outside the documented allowlist
 // (`DATABASE_URL` is never one of them, anywhere in either file). It also
-// pins the two hardening decisions the wiring depends on: ssh verifies the
-// host against pinned keys, and the captured output passes the redaction
-// scrubber before anything prints it.
+// pins the hardening the wiring depends on: ssh verifies the host against
+// pinned keys, the SSH secrets are validated before use, the two HTTP probes
+// keep their shape, and the captured output passes the redaction scrubber
+// before anything prints it.
 //
 // Direction: one way, workflow to contract. Each check reads a shape out of
 // the workflow text and fails when it is gone; the secret allowlist alone
-// runs both ways, against `HOST_APPLY_SECRET_NAMES`. Not asserted: which
-// events trigger the Staging workflow (check-deploy-pipeline.mjs reads the
-// trigger list), and anything a job does outside `host-apply` beyond its
-// `if:` and its concurrency group.
+// runs both ways, against `HOST_APPLY_SECRET_NAMES`. Not asserted here: which
+// events trigger the Staging workflow, and the concurrency group of
+// `deploy-frontend` (check-deploy-pipeline.mjs reads both); the concurrency
+// of Production's jobs; and what any step outside `host-apply` does.
 //
 //   node tools/scripts/check-host-apply-workflow.mjs [repoRoot]
 //

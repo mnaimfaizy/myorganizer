@@ -1,48 +1,51 @@
 /**
  * Tests for staging-web-deploy.mjs — the decisions behind Staging's web deploy
- * (issue #1138, ADR 0128). Every read of a host is a stub. The one CLI test that
- * reaches the real fetch names a reserved `.invalid` host, which never resolves.
+ * (issue #1138, ADR 0128). Every read of a host, of git and of the Actions API
+ * is a stub here; the command-line glue that makes the real reads is tested in
+ * ../staging-web-deploy.test.mjs.
  *
  * Run with: yarn staging-web:test
  */
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import {
-  existsSync,
-  mkdirSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { APPLY_JOB, UPLOAD_JOB } from './staging-host-apply-guard.mjs';
 import {
   BUNDLE_HTACCESS,
   PLAN_INSTALL_OWED,
   PLAN_RESTART,
+  READ_ATTEMPTS,
+  SCHEDULE_FAIL_HEADERS,
+  SCHEDULE_FAIL_UNREACHABLE,
   SCHEDULE_FAIL_UPLOADED_NOT_RUNNING,
   SCHEDULE_OUTCOMES,
   SCHEDULE_PROCEED,
   SCHEDULE_SKIP_NEWER,
+  SCHEDULE_SKIP_PREDATES,
   SCHEDULE_SKIP_SERVING,
   SERVICE_WORKER_CACHE_CONTROL,
   SERVICE_WORKER_CSP,
+  STATE_NONE,
+  STATE_PRESENT,
+  STATE_UNREADABLE,
   StagingWebDeployRefusal,
   assertBundleKeepsHostHtaccess,
   decidePlan,
   decideSchedule,
-  fetchUploadedState,
   findServiceWorkerHeaderProblems,
   hashDependencies,
   isSameSite,
+  latestBackendUploadSha,
   parseDeployState,
   planDeploy,
   planSchedule,
   probeDeploy,
+  readRunningHtml,
+  readUploadedState,
   siteOf,
 } from './staging-web-deploy.mjs';
 
@@ -81,34 +84,57 @@ const response = (status, body = '', headers = {}) => ({
 
 /**
  * A host as the deploy sees it: what the process renders, what was uploaded,
- * and what `/sw.js` comes back with. `login` may be a function of the attempt
- * number, so a probe test can make the new build appear late.
+ * and what `/sw.js` comes back with.
+ *
+ *   - `login`: HTML, null (503), 'throw', or a function of the attempt number;
+ *   - `state`: an object or string (200), undefined (404), a status number,
+ *     'throw', or a function of the attempt number returning any of those;
+ *   - `sw`: headers (200), null (404) or 'throw'.
  */
 function host({ login = null, state = undefined, sw = GOOD_SW_HEADERS } = {}) {
   const calls = [];
-  let loginAttempts = 0;
+  const attempts = { login: 0, state: 0 };
+  const refused = () => {
+    throw new Error('connect ECONNREFUSED');
+  };
   const fetcher = async (url) => {
     const path = new URL(url).pathname;
     calls.push(path);
     if (path === '/login') {
-      loginAttempts += 1;
-      const body = typeof login === 'function' ? login(loginAttempts) : login;
-      if (body === 'throw') throw new Error('connect ECONNREFUSED');
+      attempts.login += 1;
+      const body = typeof login === 'function' ? login(attempts.login) : login;
+      if (body === 'throw') refused();
       return body === null ? response(503) : response(200, body);
     }
     if (path === '/deploy-state.json') {
-      if (state === undefined) return response(404, 'Not Found');
+      attempts.state += 1;
+      const value = typeof state === 'function' ? state(attempts.state) : state;
+      if (value === 'throw') refused();
+      if (value === undefined) return response(404, 'Not Found');
+      if (typeof value === 'number') return response(value, 'error');
       return response(
         200,
-        typeof state === 'string' ? state : JSON.stringify(state),
+        typeof value === 'string' ? value : JSON.stringify(value),
       );
     }
     if (path === '/sw.js') {
+      if (sw === 'throw') refused();
       return sw === null ? response(404) : response(200, '// sw', sw);
     }
     return response(404);
   };
   return { fetcher, calls };
+}
+
+/** A sleep that returns at once and records how long it was asked to wait. */
+function noSleep() {
+  const waits = [];
+  return {
+    waits,
+    sleep: async (ms) => {
+      waits.push(ms);
+    },
+  };
 }
 
 /** A clock the probe advances by sleeping, so no test waits in real time. */
@@ -222,9 +248,63 @@ test('parseDeployState rejects anything this module did not write', () => {
   });
 });
 
-test('an HTML 404 page for the state file reads as no state', async () => {
-  const { fetcher } = host({ state: '<html>Not Found</html>' });
-  assert.equal(await fetchUploadedState(fetcher, WEB), null);
+// === Reading the host: three outcomes that must not be confused ===
+
+const stateFor = (sha) => ({
+  sha,
+  depsHash: HASH_1,
+  installedDepsHash: HASH_1,
+});
+
+test('a valid state file is present', async () => {
+  const { fetcher, calls } = host({ state: stateFor(SHA_A) });
+  const read = await readUploadedState(fetcher, WEB, noSleep());
+  assert.deepEqual(read, { status: STATE_PRESENT, state: stateFor(SHA_A) });
+  assert.equal(calls.length, 1);
+});
+
+test('a 404 is no state — the first deploy — and is not retried', async () => {
+  const { fetcher, calls } = host();
+  const read = await readUploadedState(fetcher, WEB, noSleep());
+  assert.deepEqual(read, { status: STATE_NONE, state: null });
+  assert.equal(calls.length, 1);
+});
+
+test('no answer, a server error and an unparseable 200 are each unreadable, after three tries', async () => {
+  for (const state of [
+    'throw',
+    503,
+    500,
+    '<html>Not Found</html>',
+    '{"sha":"nope"}',
+  ]) {
+    const { fetcher, calls } = host({ state });
+    const clock = noSleep();
+    const read = await readUploadedState(fetcher, WEB, clock);
+    assert.deepEqual(read, { status: STATE_UNREADABLE, state: null });
+    assert.equal(calls.length, READ_ATTEMPTS);
+    assert.equal(clock.waits.length, READ_ATTEMPTS - 1);
+  }
+});
+
+test('a state file that answers on the second try is read', async () => {
+  const { fetcher } = host({
+    state: (attempt) => (attempt === 1 ? 'throw' : stateFor(SHA_A)),
+  });
+  const read = await readUploadedState(fetcher, WEB, noSleep());
+  assert.equal(read.status, STATE_PRESENT);
+});
+
+test('/login that does not answer is null after three tries, and HTML as soon as it does', async () => {
+  const down = host({ login: 'throw' });
+  assert.equal(await readRunningHtml(down.fetcher, WEB, noSleep()), null);
+  assert.equal(down.calls.length, READ_ATTEMPTS);
+
+  const slow = host({ login: (attempt) => (attempt < 3 ? null : html(SHA_A)) });
+  assert.equal(
+    await readRunningHtml(slow.fetcher, WEB, noSleep()),
+    html(SHA_A),
+  );
 });
 
 // === Plan ===
@@ -330,7 +410,7 @@ test('operator installed after an install-owed: the list is promoted and the nex
   });
 });
 
-test('an unreachable host falls back to the last proven list', () => {
+test('a process that is not answering falls back to the last inferred list', () => {
   const uploadedState = {
     sha: SHA_A,
     depsHash: HASH_2,
@@ -368,6 +448,44 @@ test('plan refuses a commit that is not a full SHA before any request', async ()
     StagingWebDeployRefusal,
   );
   assert.deepEqual(calls, []);
+});
+
+test('plan refuses, naming no host, when the state file cannot be read', async () => {
+  for (const state of ['throw', 503, '<html>oops</html>']) {
+    const { fetcher } = host({ login: html(SHA_A), state });
+    await assert.rejects(
+      planDeploy({
+        fetcher,
+        webOrigin: WEB,
+        sha: SHA_B,
+        packageJson: { dependencies: DEPS_1 },
+        ...noSleep(),
+      }),
+      (err) =>
+        err instanceof StagingWebDeployRefusal &&
+        /did not answer for \/deploy-state\.json/.test(err.message) &&
+        /Nothing was uploaded/.test(err.message) &&
+        !/example\.test/.test(err.message),
+    );
+  }
+});
+
+test('plan with a readable state and a silent /login keeps the last inferred list', async () => {
+  const { fetcher } = host({
+    login: 'throw',
+    state: { sha: SHA_A, depsHash: HASH_2, installedDepsHash: HASH_1 },
+  });
+
+  const plan = await planDeploy({
+    fetcher,
+    webOrigin: WEB,
+    sha: SHA_B,
+    packageJson: { dependencies: DEPS_1 },
+    ...noSleep(),
+  });
+
+  assert.equal(plan.action, PLAN_RESTART);
+  assert.equal(plan.state.installedDepsHash, HASH_1);
 });
 
 // === Probe ===
@@ -454,8 +572,10 @@ test('probe fails when /sw.js carries a permissive policy', async () => {
   });
 
   assert.equal(result.ok, false);
-  assert.match(result.reason, /Content-Security-Policy is "default-src \*"/);
-  assert.doesNotMatch(result.reason, /Cache-Control/);
+  assert.equal(
+    result.reason,
+    '/sw.js Content-Security-Policy differs from the expected value',
+  );
 });
 
 test('probe fails when /sw.js is missing', async () => {
@@ -469,6 +589,18 @@ test('probe fails when /sw.js is missing', async () => {
   });
 
   assert.deepEqual(result, { ok: false, reason: '/sw.js answered 404' });
+});
+
+test('a wrong header value is never repeated in the problem', () => {
+  // A host-level policy can name hostnames, and a log masks exact secrets only.
+  const problems = findServiceWorkerHeaderProblems(
+    new Headers({
+      'cache-control': 'public, s-maxage=60, x-origin=internal.example.test',
+      'content-security-policy': 'default-src https://internal.example.test',
+    }),
+  );
+  assert.equal(problems.length, 2);
+  assert.doesNotMatch(problems.join(' '), /example|public|https/);
 });
 
 test('service worker headers are compared exactly, but for spacing and case', () => {
@@ -577,39 +709,6 @@ test('a bundle without one passes', () => {
   assert.doesNotThrow(() => assertBundleKeepsHostHtaccess([]));
 });
 
-test('the plan CLI refuses such a bundle before reading the host or writing state', (t) => {
-  const bundle = mkdtempSync(join(tmpdir(), 'staging-web-bundle-'));
-  t.after(() => rmSync(bundle, { recursive: true, force: true }));
-  mkdirSync(join(bundle, 'public'));
-  mkdirSync(join(bundle, '.next'));
-  writeFileSync(join(bundle, 'package.json'), '{"dependencies":{}}');
-  writeFileSync(join(bundle, '.next', 'BUILD_ID'), SHA_A);
-  writeFileSync(join(bundle, 'public', '.htaccess'), '# ours');
-
-  const result = spawnSync(
-    process.execPath,
-    [
-      CLI,
-      'plan',
-      '--web-origin',
-      'https://staging-web-deploy.invalid',
-      '--sha',
-      SHA_A,
-      '--bundle',
-      bundle,
-    ],
-    { encoding: 'utf8', env: { PATH: process.env.PATH } },
-  );
-
-  assert.equal(result.status, 1);
-  assert.match(
-    result.stderr,
-    /refused - the bundle contains public\/\.htaccess/,
-  );
-  assert.equal(existsSync(join(bundle, 'public', 'deploy-state.json')), false);
-  assert.equal(result.stdout, '');
-});
-
 // === What the probe stands on ===
 
 test('the root layout stays force-dynamic, so /login comes from the running process', () => {
@@ -622,61 +721,215 @@ test('the root layout stays force-dynamic, so /login comes from the running proc
   );
 });
 
+// === Latest backend upload ===
+
+const job = (name, conclusion, headSha, completedAt) => ({
+  name,
+  conclusion,
+  headSha,
+  startedAt: completedAt,
+  completedAt,
+});
+
+test('the latest successful backend upload names its commit', () => {
+  assert.equal(
+    latestBackendUploadSha([
+      job(UPLOAD_JOB, 'success', SHA_C, '2026-10-12T10:00:00Z'),
+      job(UPLOAD_JOB, 'success', SHA_A, '2026-10-10T10:00:00Z'),
+      job(UPLOAD_JOB, 'success', SHA_B, '2026-10-11T10:00:00Z'),
+    ]),
+    SHA_C,
+  );
+});
+
+test('a failed, cancelled or skipped upload, and a Host Apply, are not uploads', () => {
+  assert.equal(
+    latestBackendUploadSha([
+      job(UPLOAD_JOB, 'success', SHA_A, '2026-10-10T10:00:00Z'),
+      job(UPLOAD_JOB, 'failure', SHA_B, '2026-10-11T10:00:00Z'),
+      job(UPLOAD_JOB, 'cancelled', SHA_B, '2026-10-12T10:00:00Z'),
+      job(UPLOAD_JOB, 'skipped', SHA_B, '2026-10-13T10:00:00Z'),
+      job(APPLY_JOB, 'success', SHA_C, '2026-10-14T10:00:00Z'),
+    ]),
+    SHA_A,
+  );
+});
+
+test('a scheduled upload after a dispatched one yields no commit', () => {
+  // The schedule only uploads the newest green commit, so its own last
+  // upload is never something to protect.
+  assert.equal(
+    latestBackendUploadSha([
+      job(UPLOAD_JOB, 'success', SHA_A, '2026-10-10T10:00:00Z'),
+      job(UPLOAD_JOB, 'success', null, '2026-10-11T16:00:00Z'),
+    ]),
+    null,
+  );
+});
+
+test('no uploads at all yields no commit', () => {
+  assert.equal(latestBackendUploadSha([]), null);
+});
+
 // === Schedule ===
 
 const schedule = (input) =>
   decideSchedule({
     greenSha: SHA_B,
+    buildsNamedBundle: true,
+    stateStatus: STATE_NONE,
     runningServesGreen: false,
+    serviceWorkerHeadersOk: false,
     uploadedSha: null,
-    greenIsAncestorOfUploaded: false,
+    backendSha: null,
+    greenIsStrictAncestorOfUploaded: false,
+    greenIsStrictAncestorOfBackend: false,
     ...input,
   });
 
-test('schedule proceeds when Staging holds nothing known', () => {
+test('schedule proceeds when Staging holds nothing', () => {
   assert.equal(schedule({}), SCHEDULE_PROCEED);
 });
 
-test('schedule proceeds when Staging holds an older commit', () => {
-  assert.equal(schedule({ uploadedSha: SHA_A }), SCHEDULE_PROCEED);
-});
-
-test('schedule skips when the running process already serves the commit', () => {
-  assert.equal(
-    schedule({ runningServesGreen: true, uploadedSha: SHA_B }),
-    SCHEDULE_SKIP_SERVING,
-  );
-  // Running wins over everything else that might also be true.
+test('schedule proceeds when Staging holds older commits on both halves', () => {
   assert.equal(
     schedule({
+      stateStatus: STATE_PRESENT,
+      uploadedSha: SHA_A,
+      backendSha: SHA_A,
+    }),
+    SCHEDULE_PROCEED,
+  );
+});
+
+test('schedule stops green when the commit predates the web deploy, before anything else', () => {
+  assert.equal(schedule({ buildsNamedBundle: false }), SCHEDULE_SKIP_PREDATES);
+  assert.equal(
+    schedule({ buildsNamedBundle: false, stateStatus: STATE_UNREADABLE }),
+    SCHEDULE_SKIP_PREDATES,
+  );
+});
+
+test('schedule fails when the state file is unreadable, whatever else is true', () => {
+  assert.equal(
+    schedule({ stateStatus: STATE_UNREADABLE }),
+    SCHEDULE_FAIL_UNREACHABLE,
+  );
+  assert.equal(
+    schedule({
+      stateStatus: STATE_UNREADABLE,
       runningServesGreen: true,
-      uploadedSha: SHA_C,
-      greenIsAncestorOfUploaded: true,
+      serviceWorkerHeadersOk: true,
+    }),
+    SCHEDULE_FAIL_UNREACHABLE,
+  );
+});
+
+test('schedule skips when the running process serves the commit with its headers', () => {
+  assert.equal(
+    schedule({
+      stateStatus: STATE_PRESENT,
+      runningServesGreen: true,
+      serviceWorkerHeadersOk: true,
+      uploadedSha: SHA_B,
+      backendSha: SHA_B,
     }),
     SCHEDULE_SKIP_SERVING,
   );
 });
 
-test('schedule fails, uploading nothing, when the commit is uploaded but not running', () => {
+test('schedule fails when the running process serves the commit without its headers', () => {
+  // The run that deployed it failed on /sw.js alone. Skipping green here
+  // would bury that failure under a run that fixed nothing.
   assert.equal(
-    schedule({ uploadedSha: SHA_B }),
+    schedule({
+      stateStatus: STATE_PRESENT,
+      runningServesGreen: true,
+      serviceWorkerHeadersOk: false,
+      uploadedSha: SHA_B,
+    }),
+    SCHEDULE_FAIL_HEADERS,
+  );
+});
+
+test('schedule fails when the web bundle of that commit is uploaded but not running', () => {
+  assert.equal(
+    schedule({ stateStatus: STATE_PRESENT, uploadedSha: SHA_B }),
     SCHEDULE_FAIL_UPLOADED_NOT_RUNNING,
   );
 });
 
-test('schedule does not roll back a newer dispatched commit', () => {
+test('schedule fails when the backend of that commit is uploaded and the web bundle is not', () => {
+  // A dispatch uploaded and Host Applied the backend, then its web job failed
+  // before uploading: the state file still names an older commit.
   assert.equal(
-    schedule({ uploadedSha: SHA_C, greenIsAncestorOfUploaded: true }),
+    schedule({
+      stateStatus: STATE_PRESENT,
+      uploadedSha: SHA_A,
+      backendSha: SHA_B,
+    }),
+    SCHEDULE_FAIL_UPLOADED_NOT_RUNNING,
+  );
+  assert.equal(
+    schedule({ backendSha: SHA_B }),
+    SCHEDULE_FAIL_UPLOADED_NOT_RUNNING,
+  );
+});
+
+test('schedule does not roll back a newer dispatched web bundle', () => {
+  assert.equal(
+    schedule({
+      stateStatus: STATE_PRESENT,
+      uploadedSha: SHA_C,
+      greenIsStrictAncestorOfUploaded: true,
+    }),
     SCHEDULE_SKIP_NEWER,
   );
 });
 
-test('every schedule decision has an outcome, and only one of them fails the run', () => {
+test('schedule does not roll back a newer dispatched backend', () => {
+  assert.equal(
+    schedule({
+      stateStatus: STATE_PRESENT,
+      uploadedSha: SHA_A,
+      backendSha: SHA_C,
+      greenIsStrictAncestorOfBackend: true,
+    }),
+    SCHEDULE_SKIP_NEWER,
+  );
+});
+
+test('an ancestry answer about a commit that is not there changes nothing', () => {
+  assert.equal(
+    schedule({
+      greenIsStrictAncestorOfUploaded: true,
+      greenIsStrictAncestorOfBackend: true,
+    }),
+    SCHEDULE_PROCEED,
+  );
+});
+
+test('uploaded-not-running outranks newer: the same commit on one half fails', () => {
+  assert.equal(
+    schedule({
+      stateStatus: STATE_PRESENT,
+      uploadedSha: SHA_B,
+      backendSha: SHA_C,
+      greenIsStrictAncestorOfBackend: true,
+    }),
+    SCHEDULE_FAIL_UPLOADED_NOT_RUNNING,
+  );
+});
+
+test('every schedule decision has an outcome; only proceed deploys; the fail- ones fail', () => {
   const decisions = [
     SCHEDULE_PROCEED,
     SCHEDULE_SKIP_SERVING,
     SCHEDULE_SKIP_NEWER,
+    SCHEDULE_SKIP_PREDATES,
     SCHEDULE_FAIL_UPLOADED_NOT_RUNNING,
+    SCHEDULE_FAIL_UNREACHABLE,
+    SCHEDULE_FAIL_HEADERS,
   ];
   assert.deepEqual(
     Object.keys(SCHEDULE_OUTCOMES).sort(),
@@ -686,106 +939,168 @@ test('every schedule decision has an outcome, and only one of them fails the run
     decisions.filter((d) => SCHEDULE_OUTCOMES[d].proceed),
     [SCHEDULE_PROCEED],
   );
-  assert.deepEqual(
-    decisions.filter((d) => SCHEDULE_OUTCOMES[d].failed),
-    [SCHEDULE_FAIL_UPLOADED_NOT_RUNNING],
-  );
+  for (const decision of decisions) {
+    assert.equal(
+      SCHEDULE_OUTCOMES[decision].failed,
+      decision.startsWith('fail-'),
+      decision,
+    );
+    if (decision !== SCHEDULE_PROCEED) {
+      assert.match(SCHEDULE_OUTCOMES[decision].summary, /othing was uploaded/);
+    }
+  }
   assert.match(
     SCHEDULE_OUTCOMES[SCHEDULE_FAIL_UPLOADED_NOT_RUNNING].summary,
-    /Run NPM Install.*Restart.*dispatch/s,
+    /Run NPM Install.*Restart.*dispatch `Deploy Staging` in full/s,
+  );
+  assert.match(
+    SCHEDULE_OUTCOMES[SCHEDULE_FAIL_HEADERS].summary,
+    /apps\/myorganizer\/deploy\/sw-headers\.htaccess/,
   );
 });
 
-/** An `isAncestor` stub that records what it was asked. */
-function ancestry(answer) {
-  const asked = [];
+/**
+ * Everything `planSchedule` reads besides the host, as stubs that record what
+ * they were asked. `newer` lists the commits git says descend from the green one.
+ */
+function world({ builds = true, backendJobs = [], newer = [] } = {}) {
+  const asked = { builds: [], ancestry: [], backendReads: 0 };
   return {
     asked,
-    isAncestor: (ancestor, descendant) => {
-      asked.push([ancestor, descendant]);
-      return answer;
+    buildsNamedBundle: (sha) => {
+      asked.builds.push(sha);
+      return builds;
+    },
+    readBackendJobs: () => {
+      asked.backendReads += 1;
+      return backendJobs;
+    },
+    isStrictAncestor: (ancestor, descendant) => {
+      asked.ancestry.push([ancestor, descendant]);
+      return newer.includes(descendant);
     },
   };
 }
 
-const stateFor = (sha) => ({
-  sha,
-  depsHash: HASH_1,
-  installedDepsHash: HASH_1,
+const runSchedule = (hostOptions, worldOptions = {}, webOrigin = WEB) => {
+  const site = host(hostOptions);
+  const w = world(worldOptions);
+  const { asked, ...inputs } = w;
+  return planSchedule({
+    fetcher: site.fetcher,
+    webOrigin,
+    greenSha: SHA_B,
+    ...inputs,
+    ...noSleep(),
+  }).then((decision) => ({ decision, asked, calls: site.calls }));
+};
+
+const dispatchedUpload = (sha, completedAt = '2026-10-12T10:00:00Z') =>
+  job(UPLOAD_JOB, 'success', sha, completedAt);
+
+test('planSchedule: a commit that predates the deploy stops before any read', async () => {
+  const { decision, asked, calls } = await runSchedule({}, { builds: false });
+  assert.equal(decision, SCHEDULE_SKIP_PREDATES);
+  assert.deepEqual(asked.builds, [SHA_B]);
+  assert.deepEqual(calls, []);
+  assert.equal(asked.backendReads, 0);
 });
 
-test('planSchedule: running the green commit skips without asking git', async () => {
-  const { fetcher } = host({ login: html(SHA_B), state: stateFor(SHA_B) });
-  const git = ancestry(true);
+test('planSchedule: an unreadable state file fails, and nothing further is read', async () => {
+  for (const state of ['throw', 503, '<html>oops</html>']) {
+    const { decision, asked } = await runSchedule({
+      login: html(SHA_A),
+      state,
+    });
+    assert.equal(decision, SCHEDULE_FAIL_UNREACHABLE);
+    assert.equal(asked.backendReads, 0);
+  }
+});
 
-  const decision = await planSchedule({
-    fetcher,
-    webOrigin: WEB,
-    greenSha: SHA_B,
-    isAncestor: git.isAncestor,
+test('planSchedule: an unset or malformed address is unreachable, with no request', async () => {
+  for (const webOrigin of ['', 'not a url']) {
+    const { decision, calls } = await runSchedule({}, {}, webOrigin);
+    assert.equal(decision, SCHEDULE_FAIL_UNREACHABLE);
+    assert.deepEqual(calls, []);
+  }
+});
+
+test('planSchedule: running the green commit with good headers skips, asking neither git nor the API', async () => {
+  const { decision, asked, calls } = await runSchedule({
+    login: html(SHA_B),
+    state: stateFor(SHA_B),
   });
-
   assert.equal(decision, SCHEDULE_SKIP_SERVING);
-  assert.deepEqual(git.asked, []);
+  assert.deepEqual(asked.ancestry, []);
+  assert.equal(asked.backendReads, 0);
+  assert.ok(calls.includes('/sw.js'));
 });
 
-test('planSchedule: the green commit uploaded under an older running build fails', async () => {
-  const { fetcher } = host({ login: html(SHA_A), state: stateFor(SHA_B) });
-  const git = ancestry(true);
+test('planSchedule: running the green commit with wrong or missing headers fails', async () => {
+  for (const sw of [
+    {},
+    null,
+    'throw',
+    { ...GOOD_SW_HEADERS, 'cache-control': 'public' },
+  ]) {
+    const { decision } = await runSchedule({
+      login: html(SHA_B),
+      state: stateFor(SHA_B),
+      sw,
+    });
+    assert.equal(decision, SCHEDULE_FAIL_HEADERS);
+  }
+});
 
-  const decision = await planSchedule({
-    fetcher,
-    webOrigin: WEB,
-    greenSha: SHA_B,
-    isAncestor: git.isAncestor,
+test('planSchedule: the green web bundle uploaded under an older running build fails', async () => {
+  const { decision } = await runSchedule({
+    login: html(SHA_A),
+    state: stateFor(SHA_B),
   });
-
   assert.equal(decision, SCHEDULE_FAIL_UPLOADED_NOT_RUNNING);
-  assert.deepEqual(git.asked, []);
 });
 
-test('planSchedule: a newer uploaded commit is asked of git as (green, uploaded)', async () => {
-  const { fetcher } = host({ login: html(SHA_C), state: stateFor(SHA_C) });
-  const git = ancestry(true);
+test('planSchedule: the green backend uploaded by a dispatch whose web job never uploaded fails', async () => {
+  const { decision, asked } = await runSchedule(
+    { login: html(SHA_A), state: stateFor(SHA_A) },
+    { backendJobs: [dispatchedUpload(SHA_B)] },
+  );
+  assert.equal(decision, SCHEDULE_FAIL_UPLOADED_NOT_RUNNING);
+  assert.equal(asked.backendReads, 1);
+});
 
-  const decision = await planSchedule({
-    fetcher,
-    webOrigin: WEB,
-    greenSha: SHA_B,
-    isAncestor: git.isAncestor,
-  });
-
+test('planSchedule: a newer web bundle is asked of git as (green, uploaded) and skips', async () => {
+  const { decision, asked } = await runSchedule(
+    { login: html(SHA_C), state: stateFor(SHA_C) },
+    { newer: [SHA_C] },
+  );
   assert.equal(decision, SCHEDULE_SKIP_NEWER);
-  assert.deepEqual(git.asked, [[SHA_B, SHA_C]]);
+  assert.deepEqual(asked.ancestry, [[SHA_B, SHA_C]]);
 });
 
-test('planSchedule: an uploaded commit git does not know, or an older one, proceeds', async () => {
-  const { fetcher } = host({ login: html(SHA_A), state: stateFor(SHA_A) });
+test('planSchedule: a newer backend alone is asked of git as (green, backend) and skips', async () => {
+  const { decision, asked } = await runSchedule(
+    { login: html(SHA_A), state: stateFor(SHA_A) },
+    { backendJobs: [dispatchedUpload(SHA_C)], newer: [SHA_C] },
+  );
+  assert.equal(decision, SCHEDULE_SKIP_NEWER);
+  assert.deepEqual(asked.ancestry, [
+    [SHA_B, SHA_A],
+    [SHA_B, SHA_C],
+  ]);
+});
 
-  const decision = await planSchedule({
-    fetcher,
-    webOrigin: WEB,
-    greenSha: SHA_B,
-    isAncestor: ancestry(false).isAncestor,
-  });
-
+test('planSchedule: older or unknown commits on both halves proceed', async () => {
+  const { decision } = await runSchedule(
+    { login: html(SHA_A), state: stateFor(SHA_A) },
+    { backendJobs: [dispatchedUpload(SHA_A)] },
+  );
   assert.equal(decision, SCHEDULE_PROCEED);
 });
 
-test('planSchedule: an unreachable, unset or malformed address proceeds and names no host', async () => {
-  const down = host({ login: 'throw' });
-  const git = ancestry(true);
-
-  for (const webOrigin of [WEB, '', 'not a url']) {
-    const decision = await planSchedule({
-      fetcher: down.fetcher,
-      webOrigin,
-      greenSha: SHA_B,
-      isAncestor: git.isAncestor,
-    });
-    assert.equal(decision, SCHEDULE_PROCEED);
-  }
-  assert.deepEqual(git.asked, []);
+test('planSchedule: a first deploy, with a silent /login and no state, proceeds', async () => {
+  const { decision } = await runSchedule({ login: 'throw' });
+  assert.equal(decision, SCHEDULE_PROCEED);
 });
 
 test('planSchedule refuses a commit that is not a full SHA', async () => {
@@ -795,28 +1110,9 @@ test('planSchedule refuses a commit that is not a full SHA', async () => {
       fetcher,
       webOrigin: WEB,
       greenSha: 'main',
-      isAncestor: () => true,
+      ...world(),
     }),
     StagingWebDeployRefusal,
   );
   assert.deepEqual(calls, []);
-});
-
-test('the schedule CLI proceeds against a host that does not resolve, printing no host', () => {
-  const result = spawnSync(
-    process.execPath,
-    [
-      CLI,
-      'schedule',
-      '--sha',
-      SHA_B,
-      '--web-origin',
-      'https://staging-web-deploy.invalid',
-    ],
-    { encoding: 'utf8', env: { PATH: process.env.PATH } },
-  );
-
-  assert.equal(result.status, 0, result.stderr);
-  assert.equal(result.stdout.trim(), SCHEDULE_PROCEED);
-  assert.doesNotMatch(result.stdout + result.stderr, /\.invalid/);
 });

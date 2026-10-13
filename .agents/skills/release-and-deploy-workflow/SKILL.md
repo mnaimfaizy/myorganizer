@@ -35,9 +35,12 @@ description: 'Use when cutting releases, preparing staging or production deploym
 | `release/vX.Y.Z` | ✅ on push/PR | ❌                                     | ✅ only after required-reviewer approval |
 
 - Staging does **not** deploy on a push to `main`. The scheduled run deploys the newest `main` commit
-  whose CI is green. It stops green when Staging already serves that commit or holds a newer,
-  dispatched one (it never rolls Staging back), and fails without uploading when that commit is
-  uploaded but not running. A dispatch always deploys the dispatched commit. Its web app is on cPanel beside its
+  whose CI is green. It stops green when that commit predates the Staging web deploy, when Staging already serves
+  it, or when the web app or the backend holds a newer, dispatched one (it never rolls Staging
+  back). It fails when the Staging web address does not answer, when Staging serves the commit but
+  `/sw.js` lacks its two headers, when an earlier run uploaded the commit but the web app is not
+  serving it, or when the Actions API cannot be read. Nothing is uploaded on a stop or a failure. A
+  dispatch always deploys the dispatched commit. Its web app is on cPanel beside its
   API, on the same site
   ([ADR 0128](../../../docs/adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)).
 - **A scheduled Staging upload cannot be Cut.** `release:cut` refuses unless a full `Deploy Staging`
