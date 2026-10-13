@@ -18,19 +18,23 @@ and it does not carry the Host Apply sequence, which lives once, in
 
 ## What differs between environments
 
-| Concern               | Staging                                                                                 | Production                                                                                                                                           |
-| --------------------- | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| API origin            | `API_ORIGIN` secret on the `staging` Environment                                        | `https://api.myorganiser.app`                                                                                                                        |
-| Frontend it serves    | The Vercel Staging frontend ([Vercel hosting](VERCEL_FRONTEND_HOSTING.md))              | `https://myorganiser.app` on cPanel ([Web app on cPanel](CPANEL_WEB_HOSTING.md))                                                                     |
-| `CORS_ORIGINS`        | The Staging frontend origin: the domain of the Vercel project `VERCEL_PROJECT_ID` names | `https://myorganiser.app,https://www.myorganiser.app`                                                                                                |
-| `APP_FRONTEND_URL`    | That same Staging frontend origin                                                       | `https://myorganiser.app`                                                                                                                            |
-| `GOOGLE_REDIRECT_URI` | That Staging frontend origin + `/dashboard/youtube/callback`                            | `https://myorganiser.app/dashboard/youtube/callback`                                                                                                 |
-| `YOUTUBE_AVAILABLE`   | `true` — Staging's Cloud project stays in Testing and needs no verification             | `false` until Production's Cloud project is verified ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)) |
-| YouTube cron jobs     | **Not installed** — Staging is QA only                                                  | Installed ([YouTube integration](../features/youtube-integration.md#cpanel-cron-configuration))                                                      |
-| Bundle upload         | Automatic after CI is green on `main`                                                   | After Deploy Approval on a `release/vX.Y.Z` run                                                                                                      |
-| Host Apply            | Operator-dispatched `Deploy Staging` run; required green before a Cut                   | Runs after Deploy Approval; required green before a Tag                                                                                              |
+| Concern               | Staging                                                                                                                                                  | Production                                                                                                                                           |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| API origin            | `API_ORIGIN` secret on the `staging` Environment                                                                                                         | `https://api.myorganiser.app`                                                                                                                        |
+| Frontend it serves    | The Staging web app on cPanel, on the same site ([Web app on cPanel](CPANEL_WEB_HOSTING.md))                                                             | `https://myorganiser.app` on cPanel ([Web app on cPanel](CPANEL_WEB_HOSTING.md))                                                                     |
+| `CORS_ORIGINS`        | The Staging web address (the `WEB_ORIGIN` secret on the `staging` Environment)                                                                           | `https://myorganiser.app,https://www.myorganiser.app`                                                                                                |
+| `APP_FRONTEND_URL`    | That same Staging web address                                                                                                                            | `https://myorganiser.app`                                                                                                                            |
+| `GOOGLE_REDIRECT_URI` | The Staging web address + `/dashboard/youtube/callback`                                                                                                  | `https://myorganiser.app/dashboard/youtube/callback`                                                                                                 |
+| `YOUTUBE_AVAILABLE`   | `true` — Staging's Cloud project stays in Testing and needs no verification                                                                              | `false` until Production's Cloud project is verified ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)) |
+| YouTube cron jobs     | **Not installed** — Staging is QA only                                                                                                                   | Installed ([YouTube integration](../features/youtube-integration.md#cpanel-cron-configuration))                                                      |
+| Bundle upload         | Daily at 16:00 UTC from the newest green `main` commit, and on a dispatch                                                                                | After Deploy Approval on a `release/vX.Y.Z` run                                                                                                      |
+| Host Apply            | Operator-dispatched `Deploy Staging` run. A Cut needs a full dispatch whose backend upload and Host Apply are green; the guard does not read the web job | Runs after Deploy Approval; required green before a Tag                                                                                              |
 
 Everything not in this table is the same in both environments.
+
+On every environment the API and the web app it serves must be on the same
+site, because the refresh cookie is `SameSite=Lax`
+([ADR 0128](../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)).
 
 ## The bundle
 
@@ -158,9 +162,11 @@ verify — has gone green for it. Release v0.4.0 served Production with four una
 the deploy that fixed them still answered every cron call with a 500 because the
 Prisma client predated the new models (#273, #437).
 
-- **CI runs it.** Staging: dispatch `Deploy Staging` (use `apply_only` when the
-  bundle is already uploaded) with SSH shell access switched on. Production: it
-  follows Deploy Approval. See
+- **CI runs it.** Staging: dispatch `Deploy Staging` with SSH shell access
+  switched on, in full. `apply_only` is only the retry after a dispatched
+  upload whose Host Apply went red; never use it after an upload made by the
+  daily schedule, which also cannot be Cut. Production: it follows Deploy
+  Approval. See
   [CI/CD and release process](CI_CD_AND_RELEASE_PROCESS.md#host-apply-staging--production).
 - **When Actions cannot connect**, the fallback is interactive SSH with the same
   sequence: [Break-glass](HOST_APPLY_OPERATOR_SETUP.md#break-glass). Do not keep a
@@ -187,8 +193,7 @@ for your own account and confirm the message arrives from `EMAIL_SENDER`.
 ### API works via curl but the frontend fails
 
 - The frontend's `API_BASE_URL` is missing or wrong — see
-  [Web app on cPanel](CPANEL_WEB_HOSTING.md) or
-  [Vercel hosting](VERCEL_FRONTEND_HOSTING.md).
+  [Web app on cPanel](CPANEL_WEB_HOSTING.md).
 - Router prefix mismatch: the API serves under `/api/v1`.
 
 ### Cron endpoint answers 404, HTML 403, or 500

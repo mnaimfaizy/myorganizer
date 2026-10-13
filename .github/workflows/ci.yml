@@ -831,6 +831,9 @@ jobs:
       - name: Host Apply workflow checker contracts
         run: corepack yarn host-apply:workflow:test
 
+      - name: Staging web deploy contracts
+        run: corepack yarn staging-web:test
+
       - name: Nightly E2E rot-issue contracts
         run: corepack yarn nightly-e2e:rot:test
 

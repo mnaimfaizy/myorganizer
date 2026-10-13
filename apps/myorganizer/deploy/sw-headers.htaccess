@@ -1,0 +1,23 @@
+# Service worker headers, for a host that serves the web app's public/ folder
+# from disk.
+#
+# This is a block, not a file to upload. An operator appends it ONCE to the
+# .htaccess the host already keeps in the web app's document root, below the
+# host's own managed blocks. It never replaces that file: the host's blocks
+# are what start the app, and the deploy refuses a bundle that carries a
+# public/.htaccess of its own for that reason.
+#
+# It exists because next.config.js sets these two headers for /sw.js only on
+# requests that reach the Next.js process. Where the web server answers a file
+# under public/ itself, that rule never runs, and this block is what keeps the
+# worker uncached and confined to same-origin scripts (ADR 0127).
+#
+# Keep both values in step with next.config.js; `yarn staging-web:test` fails
+# when they differ. Staging's deploy fails its probe when /sw.js comes back
+# without them.
+<IfModule mod_headers.c>
+  <Files "sw.js">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Content-Security-Policy "default-src 'self'; script-src 'self'"
+  </Files>
+</IfModule>

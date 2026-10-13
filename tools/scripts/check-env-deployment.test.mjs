@@ -76,8 +76,8 @@ test('a document with no fenced assignments passes', (t) => {
   writeEnvExample(workspace, []);
   writeDeploymentDoc(
     workspace,
-    'VERCEL.md',
-    '# Vercel\n\nSet `API_BASE_URL` in the dashboard. No fenced code here.\n',
+    'PANEL.md',
+    '# Panel\n\nSet `API_BASE_URL` in the dashboard. No fenced code here.\n',
   );
 
   const result = runChecker(workspace);

@@ -3,13 +3,22 @@
 // its acceptance criteria promise, read straight from the two workflow files
 // rather than from a doc page: `host-apply` needs the backend upload job,
 // runs under the right GitHub Environment, is reachable by an apply-only
-// `workflow_dispatch` without re-running the upload jobs, staging's apply
-// group never cancels in progress while its upload group still can, and no
+// `workflow_dispatch` on which `deploy-backend` and `deploy-frontend` skip
+// themselves, Staging's upload and apply share one concurrency group that
+// never cancels in progress, Staging's apply requires a dispatch, and no
 // `secrets.*` reference in the job falls outside the documented allowlist
 // (`DATABASE_URL` is never one of them, anywhere in either file). It also
-// pins the two hardening decisions the wiring depends on: ssh verifies the
-// host against pinned keys, and the captured output passes the redaction
-// scrubber before anything prints it.
+// pins the hardening the wiring depends on: ssh verifies the host against
+// pinned keys, the SSH secrets are validated before use, the two HTTP probes
+// keep their shape, and the captured output passes the redaction scrubber
+// before anything prints it.
+//
+// Direction: one way, workflow to contract. Each check reads a shape out of
+// the workflow text and fails when it is gone; the secret allowlist alone
+// runs both ways, against `HOST_APPLY_SECRET_NAMES`. Not asserted here: which
+// events trigger the Staging workflow, and the concurrency group of
+// `deploy-frontend` (check-deploy-pipeline.mjs reads both); the concurrency
+// of Production's jobs; and what any step outside `host-apply` does.
 //
 //   node tools/scripts/check-host-apply-workflow.mjs [repoRoot]
 //
@@ -167,23 +176,27 @@ function concurrencyOf(path, jobId) {
  * `APP_ROOT` that the older run's `npm ci` and `prisma migrate deploy` are
  * still working in. One shared, queueing group closes both.
  *
- * `deploy-frontend` deliberately stays in the cancelling `deploy-staging`
- * group: it ships to a different target and never touches `APP_ROOT`.
+ * `deploy-frontend` is deliberately outside this group: the web app has its
+ * own root on the host and the job never touches `APP_ROOT`, so it may run
+ * beside an apply. It holds its own `deploy-staging-web` group, which also
+ * never cancels (an FTP upload cut off halfway leaves a half-written tree);
+ * check-deploy-pipeline.mjs asserts that, not this checker.
  */
 /**
  * Staging's apply is operator-triggered, never automatic.
  *
  * SSH shell access on the hosting account is a manual toggle that reverts, so
- * an apply chained to the `workflow_run` that follows a green `main` would go
- * red on every push where the shell happened to be off — and a red apply that
- * nobody reads is how unapplied migrations shipped in the first place. Uploads
- * still land automatically; applying them is a deliberate act. Amends PRD #565
- * user story 3, recorded on that issue.
+ * an apply chained to the automatic trigger — the daily `schedule` since
+ * ADR 0128, the `workflow_run` after a green `main` before it — would go red
+ * every time the shell happened to be off, and a red apply that nobody reads
+ * is how unapplied migrations shipped in the first place. Uploads still land
+ * automatically; applying them is a deliberate act. Amends PRD #565 user
+ * story 3, recorded on that issue.
  *
  * The guard has to be a *required* conjunct, so a substring match will not do:
- * the previous condition mentioned `workflow_dispatch` too, inside an `||`
- * that let `workflow_run` through. Parenthesised groups are stripped first, so
- * what remains is the top level, and the guard must survive there with no
+ * an earlier condition mentioned `workflow_dispatch` too, inside an `||` that
+ * let the automatic trigger through. Parenthesised groups are stripped first,
+ * so what remains is the top level, and the guard must survive there with no
  * top-level `||` able to route around it.
  */
 function checkStagingApplyIsDispatchOnly() {

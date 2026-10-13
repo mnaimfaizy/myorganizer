@@ -22,3 +22,7 @@ accepted
 - The required-reviewer rule lives in GitHub repo settings, **not** in this repo. It is not code-reviewable and can be removed without a PR. Verify it with `gh api repos/mnaimfaizy/myorganizer/environments/production --jq '.protection_rules'`.
 - `dispatch-production-deploy.yml` fires on branch creation, so the approval prompt can appear **before** CI has gone green on `release/vX.Y.Z`. Check CI before approving; the pipeline does not check it for you.
 - Renaming the dispatcher matters: its old name, `Deploy Production (latest release)`, read as though the workflow itself deployed. It only dispatches.
+
+## Amendment (2026-10-13)
+
+Staging no longer deploys on every green push to `main`. It deploys once a day from the newest green `main` commit, and on a manual dispatch ([ADR 0128](0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md)). The rejection of pre-release versions stands: Staging is still the pre-release channel, on a daily cadence.

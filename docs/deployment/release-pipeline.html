@@ -469,13 +469,6 @@
   .ccard.cpanel .ctop {
     color: var(--auto-ink);
   }
-  .ccard.vercel {
-    background: var(--human-sf);
-    border-color: var(--human-ln);
-  }
-  .ccard.vercel .ctop {
-    color: var(--human-ink);
-  }
   @media (max-width: 640px) {
     .compare {
       grid-template-columns: 1fr;
@@ -963,6 +956,23 @@
     </p>
   </div>
 
+  <div class="callout">
+    <div class="ctitle">Before you Cut</div>
+    <p>
+      <b>A scheduled Staging upload cannot be Cut.</b> Staging uploads once a
+      day from the newest green <code>main</code> commit, and that run's name
+      records no commit, so <code>release:cut</code> refuses it. Dispatch
+      <code>Deploy Staging</code> <b>in full</b> &mdash; not
+      <code>apply_only</code> &mdash; at the commit you mean to Cut. An
+      <code>apply_only</code> dispatch after a scheduled upload no longer
+      satisfies the guard
+      (<code>deploy-staging.yml:16</code>, <code>:240-257</code>;
+      <a href="../adr/0128-the-web-app-is-hosted-on-the-same-site-as-its-api-and-staging-deploys-daily.md"
+        >ADR&nbsp;0128</a
+      >, Consequences).
+    </p>
+  </div>
+
   <!-- ══ HERO ══════════════════════════════════════════════════════════════ -->
   <section class="panel" aria-labelledby="hero-h">
     <div class="phead">
@@ -1022,13 +1032,15 @@
           >
             <desc id="pipelineDesc">
               A push or pull request against main or release triggers CI,
-              drawn as one pass or fail box. Green CI on main also triggers a
-              fully automatic staging deploy, off to the side, that never
-              leads to production; applying that upload on the host is a
-              separate, operator-triggered dispatch. A maintainer decides
+              drawn as one pass or fail box. Separately, off to the side, a
+              Deploy Staging workflow runs once a day, or when dispatched,
+              and uploads the newest main commit whose CI succeeded; it never
+              leads to production. Applying a backend upload on the host is a
+              separate, operator-triggered dispatch, and a scheduled upload
+              cannot be cut: a full dispatch is required. A maintainer decides
               when to run yarn release colon cut, which refuses to proceed
               unless staging already holds this exact commit, host applied,
-              with no flag to skip that check, and otherwise creates and
+              from a run that recorded its commit, with no flag to skip that check, and otherwise creates and
               pushes a release branch. That single push produces two
               simultaneous, independent
               consequences: a Release PR workflow that opens or updates a
@@ -1067,12 +1079,12 @@
               </marker>
             </defs>
 
-            <!-- ── Section A: automatic on green main ────────────────────── -->
+            <!-- ── Section A: automatic CI, scheduled staging ────────────────────── -->
             <g class="sec">
               <line x1="20" y1="26" x2="1160" y2="26" />
               <rect x="20" y="16" width="470" height="20" />
               <text x="26" y="30">
-                AUTOMATIC &#183; A COMMIT LANDS ON MAIN
+                AUTOMATIC &#183; CI ON A PUSH, STAGING ON A SCHEDULE
               </text>
             </g>
 
@@ -1128,16 +1140,16 @@
               data-tip="staging"
               tabindex="0"
               role="button"
-              aria-label="Deploy Staging &#8212; automatic, and not on the way to a Release"
+              aria-label="Deploy Staging &#8212; daily or dispatched, from the newest green main commit, and not on the way to a Release"
               aria-describedby="note-staging"
             >
               <rect class="box" x="864" y="106" width="296" height="68" rx="5" />
               <circle class="tipdot" cx="871" cy="114" r="3" />
               <text class="nl mono" x="876" y="128">
-                CI green on main &#8594; Deploy Staging
+                daily 16:00 UTC &#8594; Deploy Staging
               </text>
               <text class="nc" x="876" y="143">
-                deploy-staging.yml:9-12, :29
+                newest green main &#183; deploy-staging.yml:18-23
               </text>
               <text class="nc" x="876" y="158">
                 a dead end here &#8212; see panel 2
@@ -1475,7 +1487,7 @@
               data-tip="deployfrontend"
               tabindex="0"
               role="button"
-              aria-label="deploy-frontend &#8212; package and FTP to cPanel, never Vercel, running beside host-apply rather than after it"
+              aria-label="deploy-frontend &#8212; package and FTP to cPanel, running beside host-apply rather than after it"
               aria-describedby="note-deployfrontend"
             >
               <rect class="box" x="260" y="924" width="760" height="52" rx="5" />
@@ -1484,7 +1496,7 @@
                 deploy-frontend &#8594; cPanel over FTP, beside host-apply
               </text>
               <text class="nc" x="272" y="962">
-                not Vercel &#183; needs deploy-backend, not host-apply (:290)
+                needs deploy-backend, not host-apply (:290)
                 &#183; deploy-production.yml:344-361
               </text>
             </g>
@@ -1576,19 +1588,42 @@
         </dd>
         <dt>staging</dt>
         <dd id="note-staging">
-          <code>workflow_run</code> on <code>CI</code> completing with
-          <code>conclusion == 'success'</code> on <code>main</code>
-          (<code>deploy-staging.yml:9-12</code>, <code>:29</code>). Fully
-          automatic, and it never leads anywhere near production &mdash; the
-          backend path is identical to production's, the frontend path is
-          not. See panel&nbsp;2. Uploaded is not applied: <code>host-apply</code>
-          runs only on <code>workflow_dispatch</code>
-          (<code>:161</code>, <code>:163</code>), so an automatic run lands the
-          bundle and stops &mdash; it writes a
-          &#8220;Backend uploaded, not applied&#8221; notice to the job
-          summary instead (<code>:126-141</code>). The Cut step below refuses
-          this commit until an operator dispatches
-          <code>Deploy Staging</code> with <code>apply_only</code>.
+          Two triggers: <code>schedule</code> at <code>0 16 * * *</code>
+          &mdash; 16:00 UTC &mdash; and <code>workflow_dispatch</code>
+          (<code>deploy-staging.yml:18-23</code>). It no longer deploys when
+          CI goes green on <code>main</code>. The first job, <code>select</code>
+          (<code>:70</code>), picks the commit. A dispatch always deploys the
+          dispatched commit. On a schedule it takes the newest
+          <code>main</code> commit whose CI succeeded
+          (<code>:119-121</code>) and then decides, from what Staging's web
+          app and its backend uploads already hold
+          (<code>decideSchedule</code>, <code>:42-61</code>,
+          <code>:137-139</code>), among three kinds of result. <b>Proceed</b>
+          with that commit. <b>Stop, green</b>: the commit predates the
+          Staging web deploy; Staging already serves it; or the web app or
+          the backend holds a newer commit that a dispatch put there &mdash;
+          the schedule never rolls Staging back. <b>Fail without
+          uploading</b>: the web address did not answer (no answer is not
+          evidence that Staging is empty); Staging serves the commit but
+          <code>/sw.js</code> lacks its two headers; or the commit is already
+          uploaded by an earlier run, as the web bundle or the backend, and
+          the web app is not serving it. Nothing is uploaded on any stop or
+          failure. For that last failure, when an install is owed the
+          operator clicks &#8220;Run NPM Install&#8221; then
+          &#8220;Restart&#8221; in cPanel first; a full dispatch helps only
+          when a restart did not take, because with an install owed it would
+          fail again. Never near production
+          &mdash; see panel&nbsp;2. Uploaded is not applied:
+          <code>host-apply</code> runs only on <code>workflow_dispatch</code>
+          (<code>:277</code>, <code>:279</code>), so a scheduled run uploads
+          the backend bundle and deploys the web app, but nothing applies
+          the backend &mdash; it writes a
+          &#8220;Backend uploaded by the schedule, not applied&#8221; notice to
+          the job summary instead (<code>:240-257</code>). The run name
+          carries the commit only on a dispatch (<code>:16</code>), and the
+          Cut step reads the uploaded commit from that name, so it refuses a
+          scheduled upload: only a full dispatch (upload and Host Apply)
+          satisfies it.
         </dd>
         <dt>cut</dt>
         <dd id="note-cut">
@@ -1601,12 +1636,18 @@
           must have started after that upload landed. There is no flag to
           skip this. Only then does it create + push
           <code>release/vX.Y.Z</code> (<code>package.json:26</code>,
-          <code>release.mjs:604</code>, <code>:632-641</code>). If Staging's
-          last green <code>host-apply</code> is older than its last upload,
-          the Cut refuses and names which condition failed &mdash; dispatch
-          <code>Deploy Staging</code> with <code>apply_only</code> first
+          <code>release.mjs:604</code>, <code>:632-641</code>). The commit is
+          read from the upload run's name, and a scheduled run's name
+          carries none (<code>deploy-staging.yml:16</code>), so the Cut
+          refuses a scheduled upload until a <b>full</b> dispatch of
+          <code>Deploy Staging</code> uploads and applies the commit;
+          <code>apply_only</code> after a scheduled upload does not satisfy
+          it. When the upload came from a dispatch and only
+          <code>host-apply</code> is missing or older,
+          <code>apply_only</code> is still the next step
           (<code>staging-host-apply-guard.mjs</code>, ADR&nbsp;0056,
-          amendment 2026-09-14). <code>release:cut</code> has no
+          amendments 2026-09-14 and 2026-10-13; ADR&nbsp;0128).
+          <code>release:cut</code> has no
           <code>--tag</code> flag &mdash; cutting cannot tag.
         </dd>
         <dt>releasepr</dt>
@@ -1723,9 +1764,9 @@
         <dd id="note-deployfrontend">
           Packages with <code>yarn package:myorganizer:web</code> and ships
           <code>./dist/deploy/myorganizer-web/</code> over FTP to cPanel
-          (<code>deploy-production.yml:344-361</code>). Production never
-          invokes Vercel; staging's frontend does. That is the one place the
-          two environments genuinely diverge &mdash; see panel&nbsp;2. Runs
+          (<code>deploy-production.yml:344-361</code>). The job ends at the
+          upload; Staging's frontend job goes on to restart the app and probe
+          it &mdash; see panel&nbsp;2. Runs
           alongside <code>host-apply</code>, not after it &mdash; its
           <code>needs:</code> lists <code>deploy-backend</code>, not
           <code>host-apply</code> (<code>:290</code>), since neither job needs
@@ -1780,11 +1821,15 @@
           <tr>
             <td>2</td>
             <td>
-              <code>CI</code> completed on <code>main</code>,
-              <code>conclusion == 'success'</code>
+              <code>schedule</code> (daily, <code>0 16 * * *</code>) or
+              <code>workflow_dispatch</code> &mdash; not a push to
+              <code>main</code>
             </td>
-            <td><code>Deploy Staging</code></td>
-            <td class="cite">deploy-staging.yml:9-12, :29</td>
+            <td>
+              <code>Deploy Staging</code> &#8594; the newest
+              <code>main</code> commit whose CI succeeded
+            </td>
+            <td class="cite">deploy-staging.yml:18-23, :70, :119-121</td>
           </tr>
           <tr>
             <td>3</td>
@@ -1851,10 +1896,12 @@
     </div>
     <div class="pbody">
       <p class="small muted">
-        The backend path is identical on both. The frontend path is not
-        &mdash; a production frontend deploy exercises FTP-to-cPanel code
-        that a staging run never touches, and a staging frontend deploy
-        exercises Vercel CLI code production never touches.
+        Both environments ship both bundles the same way: by FTP to cPanel.
+        What differs is what surrounds the upload. Staging runs on a
+        schedule with no approval, and a scheduled run that finds the
+        commit uploaded but not running fails rather than re-uploading; its frontend job also restarts the web
+        app and probes it, where Production's frontend job ends at the
+        upload.
       </p>
       <div class="compare">
         <div class="chead"></div>
@@ -1865,12 +1912,12 @@
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
           <p><code>./dist/deploy/backend-api/</code></p>
-          <span class="cite">deploy-staging.yml:116, :122</span>
+          <span class="cite">deploy-staging.yml:230, :236</span>
         </div>
-        <div class="ccard vercel">
-          <div class="ctop">Vercel</div>
-          <p>CLI pinned to <code>50.1.1</code></p>
-          <span class="cite">deploy-staging.yml:317-351, :332</span>
+        <div class="ccard cpanel">
+          <div class="ctop">cPanel over FTP, then restart and probe</div>
+          <p><code>./dist/deploy/myorganizer-web/</code></p>
+          <span class="cite">deploy-staging.yml:533, :539</span>
         </div>
 
         <div class="rlabel">Production</div>
@@ -1886,10 +1933,53 @@
         </div>
       </div>
       <p class="small muted">
-        Production's frontend card is styled like its backend card on
-        purpose &mdash; both ship the same way. Staging's frontend card is
-        the one that looks different, because it is.
+        The Staging web app is not Host Applied: Host Apply stays
+        backend-only and operator-dispatched. Its restart is a file upload,
+        and the job in order does this:
       </p>
+      <ol class="chain">
+        <li>
+          Checks out the tip's <code>tools/scripts</code> into
+          <code>.deploy-tools</code> <span class="cite">deploy-staging.yml:424-430</span>, so
+          the workflow's steps and the deploy script always come from the
+          same commit while the bundle is built from the selected commit;
+          every script step below runs <code>.deploy-tools/&hellip;</code>.
+        </li>
+        <li>
+          Asserts the web address and the API address share a parent domain,
+          because the Session's refresh cookie is not sent across sites; the
+          deploy-pipeline gate asserts the step is present
+          (<code>stagingAssertsSameSite</code>)
+          <span class="cite">deploy-staging.yml:493-497</span>.
+        </li>
+        <li>
+          Builds the bundle with <code>yarn package:myorganizer:web</code>,
+          setting the commit as the build id
+          <span class="cite">:499-509</span>.
+        </li>
+        <li>
+          Plans: <code>restart</code>, or <code>install-owed</code> when the
+          bundle's dependency list differs from the list known to be
+          installed, or when nothing is known yet (the first deploy to a
+          host)
+          <span class="cite">:515-529</span>.
+        </li>
+        <li>
+          Uploads the bundle by FTP <span class="cite">:533-541</span>.
+        </li>
+        <li>
+          On <code>restart</code>: uploads <code>tmp/restart.txt</code>
+          <span class="cite">:559-578</span>, then probes until the running
+          process answers with the uploaded commit and the service worker's
+          <code>Cache-Control</code> and <code>Content-Security-Policy</code>
+          equal their exact expected values <span class="cite">:584-593</span>.
+        </li>
+        <li>
+          Otherwise it does not restart and <b>fails</b>: &#8220;Run NPM
+          Install&#8221; and &#8220;Restart&#8221; are owed in cPanel
+          <span class="cite">:601-614</span>. The next run confirms it.
+        </li>
+      </ol>
     </div>
   </section>
 
@@ -1985,23 +2075,20 @@
           </p>
         </div>
         <div class="fact">
-          <div class="fname">Vercel CLI</div>
+          <div class="fname">Staging schedule</div>
           <p>
-            <code>50.1.1</code>, staging frontend deploy only
-            (<code>deploy-staging.yml:332</code>). Production never invokes
-            Vercel.
-            <a href="VERCEL_FRONTEND_HOSTING.md">VERCEL_FRONTEND_HOSTING.md:56-66</a>
-            says <code>vercel@latest</code> &mdash; that is human first-time
-            setup, not the pipeline, and the two do not conflict.
+            <code>0 16 * * *</code>, which GitHub reads as 16:00 UTC
+            (<code>deploy-staging.yml:18-23</code>).
           </p>
         </div>
         <div class="fact">
           <div class="fname">FTP transfer timeout</div>
           <p>
-            <code>300000</code> ms, the same value at three sites: staging
-            backend (<code>deploy-staging.yml:124</code>), production backend
-            (<code>deploy-production.yml:170</code>), production frontend
-            (<code>:361</code>). <code>host-apply</code> has no FTP step and
+            <code>300000</code> ms, the same value at five sites: staging
+            backend (<code>deploy-staging.yml:238</code>), staging web app
+            (<code>:541</code>) and its restart upload (<code>:578</code>),
+            production backend (<code>deploy-production.yml:170</code>),
+            production frontend (<code>:361</code>). <code>host-apply</code> has no FTP step and
             no site here &mdash; it applies over SSH, not FTP.
           </p>
         </div>
@@ -2009,8 +2096,9 @@
           <div class="fname">Job timeouts</div>
           <p>
             <code>validate</code> 5&nbsp;min (<code>:29</code>); staging jobs
-            30&nbsp;min (<code>deploy-staging.yml:32</code>, <code>:72</code>,
-            <code>:165</code>, <code>:280</code>) &mdash; four now, including
+            30&nbsp;min (<code>deploy-staging.yml:76</code>, <code>:146</code>,
+            <code>:186</code>, <code>:281</code>, <code>:399</code>) &mdash;
+            five now, including <code>select</code> and
             <code>host-apply</code>; production's three approval-gated jobs
             45&nbsp;min each (<code>deploy-production.yml:127</code>,
             <code>:180</code>, <code>:292</code>) &mdash; three now, also
@@ -2022,23 +2110,28 @@
           <div class="fname">Concurrency</div>
           <p>
             Staging has no workflow-level <code>concurrency:</code> block any
-            more &mdash; it moved to two job-level groups (issue&nbsp;#567),
+            more &mdash; it moved to job-level groups (issue&nbsp;#567),
             split by whether the job writes to <code>APP_ROOT</code>.
             <code>deploy-staging-apply</code>
             (<code>cancel-in-progress: false</code>) covers
             <code>deploy-backend</code> and <code>host-apply</code>
-            (<code>deploy-staging.yml:78-80</code>, <code>:167-169</code>)
+            (<code>deploy-staging.yml:192-194</code>, <code>:283-285</code>)
             &mdash; the two jobs that land and then apply the bundle. A newer
-            <code>main</code> push queues behind them: it must not cancel an
+            run queues behind them: it must not cancel an
             in-flight <code>prisma migrate deploy</code> (the one behaviour
             ADR&nbsp;0056 rules out), and it must not FTP a fresh bundle into a
             tree that <code>npm ci</code> is still working in either.
             <code>deploy-staging</code>
-            (<code>cancel-in-progress: true</code>) covers
-            <code>prepare-dependencies</code> and <code>deploy-frontend</code>
-            (<code>:33-35</code>, <code>:282-284</code>) &mdash; neither
-            touches <code>APP_ROOT</code>, so a newer run still kills whichever
-            is in flight. Production is unchanged: one workflow-level group,
+            (<code>cancel-in-progress: true</code>) covers only
+            <code>prepare-dependencies</code>
+            (<code>:147-149</code>) &mdash; it touches no host, so a newer run
+            still kills it in flight. <code>deploy-frontend</code> has its own
+            group, <code>deploy-staging-web</code>, with
+            <code>cancel-in-progress: false</code>
+            (<code>:406-408</code>): its upload is FTP into a live app root, and
+            a cancelled upload would leave half a bundle, so a second run
+            queues. It is a separate group from the backend's because the web
+            app has its own root and may deploy beside a Host Apply. Production is unchanged: one workflow-level group,
             <code>deploy-production</code>,
             <code>cancel-in-progress: false</code>
             (<code>deploy-production.yml:18-21</code>) &mdash; runs queue and
@@ -2096,10 +2189,10 @@
           <span class="cite">:672</span>
         </li>
         <li>
-          Build Backend <span class="cite">:1236</span>, only when
-          <code>backend</code> is affected <span class="cite">:1240</span>, and
-          Build Frontend <span class="cite">:1282</span>,
-          <span class="cite">:1286</span>
+          Build Backend <span class="cite">:1239</span>, only when
+          <code>backend</code> is affected <span class="cite">:1243</span>, and
+          Build Frontend <span class="cite">:1285</span>,
+          <span class="cite">:1289</span>
         </li>
       </ol>
       <p class="small muted">
@@ -2114,7 +2207,7 @@
 
   <footer class="foot">
     <div>
-      <b>Read from source on 2026-08-30</b>, from
+      <b>Read from source on 2026-10-13</b>, from
       <code>.github/workflows/ci.yml</code>,
       <code>deploy-staging.yml</code>, <code>deploy-production.yml</code>,
       <code>dispatch-production-deploy.yml</code>,
@@ -2129,11 +2222,8 @@
         >ADR&nbsp;0056</a
       >
       for why <code>host-apply</code> runs in this repository and what it is
-      not allowed to print. Docs and source agree throughout this subject
-      &mdash;
-      <a href="CI_CD_AND_RELEASE_PROCESS.md">CI_CD_AND_RELEASE_PROCESS.md</a>
-      already states the auto-dispatch and the approval gate correctly, so
-      this page's value is legibility, not correction.
+      not allowed to print. Every claim here is read from the workflow files and scripts named
+      beside it; where a prose doc and the source ever differ, the source wins.
     </div>
     <div>
       Diff this page against the source with the embedded
@@ -2373,8 +2463,8 @@
 
     const NOTE = {
       1: 'A push or PR lands on main or a release branch, and CI runs as one pass/fail box. Nobody decided anything yet.',
-      2: 'Green CI on main also uploads to staging automatically, off to the side. Applying that upload on the host is a separate, operator-triggered dispatch. It is not on the way to a Release — see panel 2.',
-      3: 'The one human choice on this whole spine: a maintainer decides when to cut the release branch. Cutting now refuses unless Staging already holds this exact commit, Host Applied — if Staging’s last green host-apply is older than its last upload, release:cut refuses and dispatching Deploy Staging with apply_only is next. There is no flag to skip this.',
+      2: 'Staging is uploaded once a day, off to the side, from the newest main commit whose CI is green. Applying that upload on the host is a separate, operator-triggered dispatch. It is not on the way to a Release — see panel 2.',
+      3: 'The one human choice on this whole spine: a maintainer decides when to cut the release branch. Cutting now refuses unless Staging already holds this exact commit, Host Applied — if Staging’s last green host-apply is older than its last upload, release:cut refuses. A scheduled upload records no commit in its run name, so it cannot be Cut at all: dispatch Deploy Staging in full, not apply_only. There is no flag to skip this.',
       4: 'One push, two simultaneous consequences. The dispatcher only dispatches — it does not check whether CI is green on the branch it just found.',
       5: 'The workflow named "(manual)" started on workflow_dispatch — fired by the node one step back, not by a person.',
       6: 'validate rejects a non-release ref, then resolves which branch actually gets checked out. Panel 3 has the asymmetry in full.',
@@ -2382,7 +2472,7 @@
       8: 'THE WALL. This is where a named human must act, and the walkthrough will not advance past it until you use a control — because neither will the run.',
       9: 'Only after approval: deploy-backend ships over FTP to cPanel.',
       10: 'host-apply then installs, migrates, generates, and restarts over SSH, and verifies with two HTTP probes. It fails closed — one failing step stops everything after it, with no rollback and no Tag.',
-      11: 'deploy-frontend ships over FTP to cPanel too — production never touches Vercel. It runs beside host-apply, not after it.',
+      11: 'deploy-frontend ships over FTP to cPanel too. It runs beside host-apply, not after it.',
       12: 'A maintainer confirms production is live, then records it: no commit, no files, just a tag.',
       13: 'The tag push publishes the GitHub Release. Re-running this step is safe.',
     };
@@ -2606,7 +2696,6 @@
   {
     "note": "Expected-content anchors for every file:line citation on this page (ADR 0085). Key is name:line or name:start-end with the name the citation resolves to, which is not always the name the page prints: most citations here are bare (\":181\", \":126-141\") and inherit the last file named ahead of them. \"file\" resolves that name to a repo-relative path; \"start\" is the text at that line and \"end\" the text at the last line of a range, both whitespace-normalised on comparison. Verified against the tree on 2026-09-15.",
     "anchors": {
-      "VERCEL_FRONTEND_HOSTING.md:56-66": { "file": "docs/deployment/VERCEL_FRONTEND_HOSTING.md", "start": "- `corepack yarn dlx vercel@latest login`", "end": "- `corepack yarn dlx vercel@latest --prod`" },
       "ci.yml:3-12": { "file": ".github/workflows/ci.yml", "start": "on:", "end": "workflow_dispatch:" },
       "ci.yml:22": { "file": ".github/workflows/ci.yml", "start": "authoritative-lockfile-policy:" },
       "ci.yml:77": { "file": ".github/workflows/ci.yml", "start": "dependency-review:" },
@@ -2619,10 +2708,10 @@
       "ci.yml:542": { "file": ".github/workflows/ci.yml", "start": "setup:" },
       "ci.yml:620": { "file": ".github/workflows/ci.yml", "start": "lint:" },
       "ci.yml:672": { "file": ".github/workflows/ci.yml", "start": "test:" },
-      "ci.yml:1236": { "file": ".github/workflows/ci.yml", "start": "build-backend:" },
-      "ci.yml:1240": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}" },
-      "ci.yml:1282": { "file": ".github/workflows/ci.yml", "start": "build-frontend:" },
-      "ci.yml:1286": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}" },
+      "ci.yml:1239": { "file": ".github/workflows/ci.yml", "start": "build-backend:" },
+      "ci.yml:1243": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}" },
+      "ci.yml:1285": { "file": ".github/workflows/ci.yml", "start": "build-frontend:" },
+      "ci.yml:1289": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}" },
       "deploy-production.yml:1": { "file": ".github/workflows/deploy-production.yml", "start": "name: Deploy Production (manual)" },
       "deploy-production.yml:3-4": { "file": ".github/workflows/deploy-production.yml", "start": "on:", "end": "workflow_dispatch:" },
       "deploy-production.yml:18-21": { "file": ".github/workflows/deploy-production.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
@@ -2657,24 +2746,39 @@
       "deploy-production.yml:353": { "file": ".github/workflows/deploy-production.yml", "start": "- name: Deploy frontend to cPanel (production)" },
       "deploy-production.yml:359": { "file": ".github/workflows/deploy-production.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
       "deploy-production.yml:361": { "file": ".github/workflows/deploy-production.yml", "start": "timeout: 300000" },
-      "deploy-staging.yml:9-12": { "file": ".github/workflows/deploy-staging.yml", "start": "workflow_run:", "end": "branches: [main]" },
-      "deploy-staging.yml:29": { "file": ".github/workflows/deploy-staging.yml", "start": "if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}" },
-      "deploy-staging.yml:32": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:33-35": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: true" },
-      "deploy-staging.yml:72": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:78-80": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
-      "deploy-staging.yml:116": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy backend to cPanel (staging)" },
-      "deploy-staging.yml:122": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/backend-api/" },
-      "deploy-staging.yml:124": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
-      "deploy-staging.yml:126-141": { "file": ".github/workflows/deploy-staging.yml", "start": "# An automatic upload is not a deploy: host-apply only runs on dispatch,", "end": "} >> \"$GITHUB_STEP_SUMMARY\"" },
-      "deploy-staging.yml:161": { "file": ".github/workflows/deploy-staging.yml", "start": "host-apply:" },
-      "deploy-staging.yml:163": { "file": ".github/workflows/deploy-staging.yml", "start": "if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}" },
-      "deploy-staging.yml:165": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:167-169": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
-      "deploy-staging.yml:280": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
-      "deploy-staging.yml:282-284": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: true" },
-      "deploy-staging.yml:317-351": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy frontend to Vercel (staging)", "end": "corepack yarn dlx -p \"vercel@${VERCEL_CLI_VERSION}\" vercel deploy --prod --yes --token \"$VERCEL_TOKEN\"" },
-      "deploy-staging.yml:332": { "file": ".github/workflows/deploy-staging.yml", "start": "VERCEL_CLI_VERSION='50.1.1'" },
+      "deploy-staging.yml:16": { "file": ".github/workflows/deploy-staging.yml", "start": "run-name: Deploy Staging ${{ github.event_name == 'schedule' && '(scheduled)' || github.sha }}" },
+      "deploy-staging.yml:18-23": { "file": ".github/workflows/deploy-staging.yml", "start": "on:", "end": "workflow_dispatch:" },
+      "deploy-staging.yml:70": { "file": ".github/workflows/deploy-staging.yml", "start": "select:" },
+      "deploy-staging.yml:76": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:119-121": { "file": ".github/workflows/deploy-staging.yml", "start": "sha=\"$(gh run list --repo \"$GITHUB_REPOSITORY\" --workflow ci.yml \\", "end": "--json headSha --jq '.[0].headSha // empty')\"" },
+      "deploy-staging.yml:42-61": { "file": ".github/workflows/deploy-staging.yml", "start": "# The schedule takes the newest `main` commit whose CI run is green: a red", "end": "#   - otherwise deploy it." },
+      "deploy-staging.yml:137-139": { "file": ".github/workflows/deploy-staging.yml", "start": "node tools/scripts/staging-web-deploy.mjs schedule \\", "end": "--web-origin \"$WEB_ORIGIN\"" },
+      "deploy-staging.yml:146": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:147-149": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: true" },
+      "deploy-staging.yml:186": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:192-194": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
+      "deploy-staging.yml:230": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy backend to cPanel (staging)" },
+      "deploy-staging.yml:236": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/backend-api/" },
+      "deploy-staging.yml:238": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
+      "deploy-staging.yml:240-257": { "file": ".github/workflows/deploy-staging.yml", "start": "# A scheduled upload is not a deploy: host-apply only runs on dispatch,", "end": "} >> \"$GITHUB_STEP_SUMMARY\"" },
+      "deploy-staging.yml:277": { "file": ".github/workflows/deploy-staging.yml", "start": "host-apply:" },
+      "deploy-staging.yml:279": { "file": ".github/workflows/deploy-staging.yml", "start": "if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}" },
+      "deploy-staging.yml:281": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:283-285": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
+      "deploy-staging.yml:399": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout-minutes: 30" },
+      "deploy-staging.yml:406-408": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
+      "deploy-staging.yml:424-430": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Checkout deploy tools", "end": "sparse-checkout-cone-mode: false" },
+      "deploy-staging.yml:493-497": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Assert the web app and the API are on the same site", "end": "run: node .deploy-tools/tools/scripts/staging-web-deploy.mjs same-site \"$WEB_ORIGIN\" \"$API_ORIGIN\"" },
+      "deploy-staging.yml:499-509": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Package web app (cPanel)", "end": "run: corepack yarn package:myorganizer:web" },
+      "deploy-staging.yml:515-529": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Plan the web deploy", "end": "rm -f dist/deploy/myorganizer-web/myorganizer-web.zip" },
+      "deploy-staging.yml:533": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)" },
+      "deploy-staging.yml:533-541": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)", "end": "timeout: 300000" },
+      "deploy-staging.yml:539": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
+      "deploy-staging.yml:541": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
+      "deploy-staging.yml:559-578": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Write the restart file", "end": "timeout: 300000" },
+      "deploy-staging.yml:578": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
+      "deploy-staging.yml:584-593": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Probe the running build", "end": "--timeout-seconds 300" },
+      "deploy-staging.yml:601-614": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Report install owed", "end": "exit 1" },
       "dispatch-production-deploy.yml:5": { "file": ".github/workflows/dispatch-production-deploy.yml", "start": "create:" },
       "dispatch-production-deploy.yml:17": { "file": ".github/workflows/dispatch-production-deploy.yml", "start": "if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'create' && github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/v')) }}" },
       "dispatch-production-deploy.yml:38": { "file": ".github/workflows/dispatch-production-deploy.yml", "start": "if [[ ! \"${CREATED_REF}\" =~ ^release/v[0-9]+\\.[0-9]+\\.[0-9]+$ ]]; then" },
@@ -2707,14 +2811,17 @@
     "ciRunnerNodeMajor": "22",
     "repoEnginesNodeRange": ">=22.0.0",
     "releaseScriptMinNodeMajor": 22,
-    "stagingVercelCliVersion": "50.1.1",
-    "stagingFrontendTarget": "vercel",
+    "stagingFrontendTarget": "cpanel-ftp",
     "productionFrontendTarget": "cpanel-ftp",
+    "stagingTriggers": ["schedule", "workflow_dispatch"],
+    "stagingScheduleCron": "0 16 * * *",
+    "stagingAssertsSameSite": true,
+    "stagingWebUploadExcludesHtaccess": true,
     "stagingEnvironmentName": "staging",
     "productionEnvironmentName": "production",
     "productionApprovalGatedJobs": ["deploy-backend", "host-apply", "deploy-frontend"],
     "stagingApplyCancelInProgress": false,
-    "stagingFrontendCancelInProgress": true,
+    "stagingFrontendCancelInProgress": false,
     "productionConcurrencyCancelInProgress": false,
     "productionValidateTimeoutMinutes": 5,
     "productionDeployTimeoutMinutes": 45,
@@ -2726,6 +2833,7 @@
     "cutGuardUploadJob": "deploy-backend",
     "cutGuardApplyJob": "host-apply",
     "backendArtifactDir": "./dist/deploy/backend-api/",
+    "stagingFrontendArtifactDir": "./dist/deploy/myorganizer-web/",
     "productionFrontendArtifactDir": "./dist/deploy/myorganizer-web/",
     "releaseNotesFileName": "RELEASE_NOTES.md"
   }

@@ -1,28 +1,36 @@
 /**
  * Decides whether Staging holds the commit being Cut, Host Applied.
  *
- * Staging Host Apply is operator-dispatched while the backend upload stays
- * automatic, so "a green apply exists" is not enough: a green run on Monday
- * says nothing about the commits uploaded on Tuesday. The Cut is allowed only
- * when Staging's latest upload is the cut commit and a green `host-apply` at
- * that commit started after it landed — with no upload of another commit in
- * between. An `apply_only` retry, or an automatic upload applied by a later
- * dispatch, both qualify. See ADR 0056, amendment 2026-09-14.
+ * Staging Host Apply is operator-dispatched while the backend upload also
+ * runs on a daily schedule, so "a green apply exists" is not enough: a green
+ * run on Monday says nothing about the commits uploaded on Tuesday. The Cut is
+ * allowed only when Staging's latest upload is the cut commit and a green
+ * `host-apply` at that commit started after it landed — with no upload of
+ * another commit in between.
+ *
+ * What qualifies is a full dispatch, which uploads and applies one named
+ * commit; an `apply_only` retry after that dispatch's upload qualifies too. A
+ * scheduled upload never does: its run records no commit, so it can refuse a
+ * Cut but not allow one, and an `apply_only` dispatch after it does not
+ * change that. See ADR 0056, amendments 2026-09-14 and 2026-10-13; ADR 0128.
  */
 
 export const UPLOAD_JOB = 'deploy-backend';
 export const APPLY_JOB = 'host-apply';
 
-// `deploy-staging.yml` puts the commit it checks out into `run-name`. A job's
-// own `head_sha` cannot be trusted for this: on `workflow_run` it may name the
-// tip of `main` when the run fired rather than the commit CI tested, which is
-// why the workflow checks out `github.event.workflow_run.head_sha`.
+// `deploy-staging.yml` puts the commit it uploads into `run-name`, when it can
+// be sure of it. A dispatched run uploads `github.sha` and names it. A
+// scheduled run uploads the newest green `main` commit, which it works out in
+// a job and which need not be the run's own `head_sha` (the tip of `main`
+// when the schedule fired) — so a job's `head_sha` cannot be trusted here, and
+// a scheduled run's name carries no commit at all.
 const RUN_NAME_COMMIT = /\b([0-9a-f]{40})\b/;
 
 /**
  * Reads one Actions API run and its jobs into the shape the guard compares.
- * A run whose name carries no commit yields `headSha: null`, which never
- * matches a cut commit — so it can refuse a Cut but never allow one.
+ * A run whose name carries no commit — every scheduled run — yields
+ * `headSha: null`, which never matches a cut commit, so it can refuse a Cut
+ * but never allow one.
  */
 export function normalizeJobs(apiRun, apiJobs) {
   const headSha = RUN_NAME_COMMIT.exec(apiRun.display_title ?? '')?.[1] ?? null;
@@ -79,7 +87,7 @@ export function evaluateStagingHostApply({ cutSha, jobs, runsRead }) {
       ok: false,
       reason:
         `Refusing to Cut ${short(cutSha)}: Staging's latest backend upload is ${short(latest.headSha)}, not the commit being cut. ` +
-        'Wait for `Deploy Staging` to upload this commit, then Host Apply it.',
+        'Dispatch `Deploy Staging` in full at this commit, then Cut once `host-apply` is green.',
     };
   }
 

@@ -7,11 +7,15 @@
  * @type {import('next').NextConfig}
  **/
 const nextConfig = {
-  // cPanel-friendly Node deployment.
-  // Produces .next/standalone which can run with `node server.js`.
-  // NOTE: Vercel's Next.js builder does not require (and can conflict with) standalone output.
-  // Keep standalone for self-hosted/cPanel deployments, but disable it when building on Vercel.
-  ...(process.env.VERCEL === '1' ? {} : { output: 'standalone' }),
+  // cPanel-friendly Node deployment, on every environment (ADR 0128).
+  // Produces .next/standalone, which `yarn package:myorganizer:web` turns into
+  // a bundle that runs with `node server.js`.
+  output: 'standalone',
+  // The running process puts its build id in the HTML it renders. Staging's
+  // deploy sets WEB_BUILD_ID to the commit, so a probe can tell which build
+  // is answering without a shell on the host (issue #1138). Unset, `null`
+  // makes Next.js generate its own id, which is every other build.
+  generateBuildId: async () => process.env.WEB_BUILD_ID || null,
   poweredByHeader: false,
   async headers() {
     return [
@@ -19,7 +23,11 @@ const nextConfig = {
         // The service worker (ADR 0127). Never cached, so a deployment's
         // worker is the one a browser runs on its next check, and confined to
         // same-origin scripts and requests. These are set here, not in a
-        // request-interception file (ADR 0019).
+        // request-interception file (ADR 0019). A host that serves public/
+        // from disk never reaches this rule. There the last two headers come
+        // from a block in the host's own .htaccess, appended once from
+        // deploy/sw-headers.htaccess: keep the two in step. Never add a
+        // public/.htaccess; it would overwrite the host's.
         source: '/sw.js',
         headers: [
           {

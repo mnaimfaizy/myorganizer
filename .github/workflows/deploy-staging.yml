@@ -1,22 +1,32 @@
 name: Deploy Staging
-# The commit this run checks out and uploads. `release:cut` reads it from here
-# rather than from a job's head_sha, which on workflow_run may be the tip of
-# main when the run fired instead of the commit CI tested (ADR 0056,
-# amendment 2026-09-14; tools/scripts/lib/staging-host-apply-guard.mjs).
-run-name: Deploy Staging ${{ github.event.workflow_run.head_sha || github.sha }}
+# `release:cut` reads the commit a run uploaded out of this name, by looking
+# for a 40-character SHA (tools/scripts/lib/staging-host-apply-guard.mjs), so
+# the name may only carry a commit the run is certain to upload.
+#
+#   - A dispatched run uploads `github.sha`, and says so.
+#   - A scheduled run uploads the newest `main` commit whose CI is green,
+#     which the `select` job works out and which need not be `github.sha`
+#     (the tip of `main`). A run name cannot read a job output, so a scheduled
+#     run names no commit at all rather than a possibly wrong one.
+#
+# The guard treats a nameless upload as one that "did not record which commit
+# it uploaded" and refuses the Cut until a full dispatch uploads and applies a
+# named commit. That is fail closed, by the guard's existing design, and the
+# guard is unchanged (ADR 0056, amendments 2026-09-14 and 2026-10-13; ADR 0128).
+run-name: Deploy Staging ${{ github.event_name == 'schedule' && '(scheduled)' || github.sha }}
 
 on:
-  workflow_run:
-    workflows: ['CI']
-    types: [completed]
-    branches: [main]
+  schedule:
+    # 16:00 UTC, every day. GitHub schedules are UTC and cannot follow a
+    # timezone.
+    - cron: '0 16 * * *'
   workflow_dispatch:
     inputs:
       apply_only:
         description:
           'Re-run Host Apply only, without re-uploading the backend bundle.
           Leave unchecked to run the full pipeline by hand (upload, Host
-          Apply, frontend).'
+          Apply, web app).'
         required: false
         type: boolean
         default: false
@@ -25,8 +35,112 @@ permissions:
   contents: read
 
 jobs:
+  # Chooses the commit every later job checks out.
+  #
+  # A dispatch deploys the commit it was dispatched at, always.
+  #
+  # The schedule takes the newest `main` commit whose CI run is green: a red
+  # or still-running newest commit is not an error, it is simply not chosen.
+  # It then moves Staging forward only, and once per commit, looking at both
+  # halves: the web host, and the latest backend upload among recent runs of
+  # this workflow (`decideSchedule` in tools/scripts/lib/staging-web-deploy.mjs).
+  # In order:
+  #
+  #   - that commit predates the Staging web deploy and cannot name its own
+  #     build: skip, green, before the backend is uploaded for nothing;
+  #   - the web address does not answer for its state file: fail. Unknown is
+  #     not "nothing there", so nothing is uploaded;
+  #   - the running web app already serves that commit: skip, green — but
+  #     fail if /sw.js lacks its two headers;
+  #   - that commit is already uploaded, as the web bundle or as the backend,
+  #     and is not running: fail, uploading nothing. A second, nameless upload
+  #     of a commit a dispatch already uploaded and Host Applied would make
+  #     `release:cut` refuse it;
+  #   - Staging holds a newer commit on either half, put there by a dispatch:
+  #     skip, green. The schedule does not roll Staging back;
+  #   - otherwise deploy it.
+  #
+  # This job runs the tip's own scripts: its checkout is `github.sha`, the
+  # commit this workflow file comes from. `deploy-frontend` builds the chosen
+  # commit and so fetches the same scripts separately.
+  #
+  # Runs on an `apply_only` dispatch too, where it only repeats `github.sha`:
+  # the upload jobs skip themselves on `!inputs.apply_only`, and `host-apply`
+  # does not read this job.
+  select:
+    name: Select Commit
+    runs-on: ubuntu-latest
+    # One number for every job in the `staging` environment: the release
+    # pipeline page states a single Staging timeout. Each request below is
+    # bounded on its own.
+    timeout-minutes: 30
+    # For WEB_ORIGIN, which is an Environment secret like API_ORIGIN: the tree
+    # names the secret, never the host (ADR 0056).
+    environment: staging
+    permissions:
+      actions: read
+      contents: read
+    outputs:
+      sha: ${{ steps.pick.outputs.sha }}
+      proceed: ${{ steps.pick.outputs.proceed }}
+
+    steps:
+      # Full history, so git can say whether the green commit is an ancestor
+      # of the one Staging holds. The default ref: on the schedule that is the
+      # tip of `main`, which carries the script the next step runs.
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          ref: ${{ github.sha }}
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Pick the commit to deploy
+        id: pick
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          DISPATCH_SHA: ${{ github.sha }}
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+        run: |
+          set -euo pipefail
+
+          if [ "$EVENT_NAME" != 'schedule' ]; then
+            echo "sha=$DISPATCH_SHA" >> "$GITHUB_OUTPUT"
+            echo 'proceed=true' >> "$GITHUB_OUTPUT"
+            echo "Dispatched at \`$DISPATCH_SHA\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+
+          sha="$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml \
+            --branch main --event push --status success --limit 1 \
+            --json headSha --jq '.[0].headSha // empty')"
+
+          if ! printf '%s' "$sha" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo 'proceed=false' >> "$GITHUB_OUTPUT"
+            echo 'Found no green CI run on `main`, so there is nothing to deploy.' >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "Newest green \`main\` commit: \`$sha\`." >> "$GITHUB_STEP_SUMMARY"
+
+          # Reads Staging through the script, never with curl here: curl names
+          # the host in its own error on a failed lookup or connection, and
+          # the host is a secret (ADR 0056). The script also asks git about
+          # the commit and reads recent runs of this workflow with `gh api`.
+          # It writes `proceed`, `decision` and the summary line, and exits 1
+          # on every `fail-` outcome.
+          node tools/scripts/staging-web-deploy.mjs schedule \
+            --sha "$sha" \
+            --web-origin "$WEB_ORIGIN"
+
   prepare-dependencies:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}
+    if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}
+    needs: select
     name: Prepare Dependency Cache
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -39,7 +153,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.select.outputs.sha }}
 
       - name: Setup Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -66,14 +180,14 @@ jobs:
         run: git diff --exit-code -- yarn.lock
 
   deploy-backend:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}
-    needs: prepare-dependencies
+    if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}
+    needs: [select, prepare-dependencies]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: staging
     # Shares `deploy-staging-apply` with host-apply, and never cancels:
-    # the upload and the apply touch the same APP_ROOT, so a newer `main`
-    # run must queue behind an in-flight apply rather than FTP a new bundle
+    # the upload and the apply touch the same APP_ROOT, so a scheduled run
+    # must queue behind an in-flight apply rather than FTP a new bundle
     # over a tree `npm ci` and `prisma migrate deploy` are still working in.
     concurrency:
       group: deploy-staging-apply
@@ -84,7 +198,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.select.outputs.sha }}
 
       - name: Setup Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -123,41 +237,43 @@ jobs:
           server-dir: ${{ secrets.FTP_SERVER_DIR }}
           timeout: 300000
 
-      # An automatic upload is not a deploy: host-apply only runs on dispatch,
+      # A scheduled upload is not a deploy: host-apply only runs on dispatch,
       # so without this a green run reads as "Staging is on this commit" while
       # the running process still uses the previous install and schema. A
       # dispatched run applies in the next job and needs no notice.
       - name: Report upload awaiting Host Apply
         if: ${{ github.event_name != 'workflow_dispatch' }}
         env:
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          HEAD_SHA: ${{ needs.select.outputs.sha }}
         run: |
           {
-            echo "### Backend uploaded, not applied"
+            echo "### Backend uploaded by the schedule, not applied"
             echo
             echo "Bundle \`${HEAD_SHA:0:7}\` is uploaded to Staging, but nothing runs it until **Host Apply** is green for it."
             echo
-            echo "Switch SSH shell access on, then dispatch \`Deploy Staging\` with **apply_only**. \`release:cut\` refuses this commit until then (ADR 0056)."
+            echo "Switch SSH shell access on, then dispatch \`Deploy Staging\` **in full** (leave apply_only unchecked) at the commit to apply. A full dispatch uploads and applies one named commit."
+            echo
+            echo "Do not use **apply_only** after a scheduled upload: it builds Host Apply from the tip of \`main\`, which may not be this commit, and \`release:cut\` refuses a scheduled upload either way because the run does not record its commit in its name (ADR 0056, ADR 0128)."
           } >> "$GITHUB_STEP_SUMMARY"
 
   # Applies backend upload (install, migrate, generate, restart) over SSH and
   # verifies with HTTP probes (ADR 0056).
   #
-  # Deliberately `workflow_dispatch` only, never the `workflow_run` that
-  # follows a green `main`: SSH shell access on this hosting account is a
-  # manual toggle that reverts, so an automatic apply would go red on every
-  # push where the shell happened to be off. Uploads still land automatically;
-  # applying them is an operator action taken with the shell switched on.
+  # Deliberately `workflow_dispatch` only, never the daily schedule: SSH shell
+  # access on this hosting account is a manual toggle that reverts, so an
+  # automatic apply would go red on every night the shell happened to be off.
+  # Uploads still land on the schedule; applying them is an operator action
+  # taken with the shell switched on.
   # Nothing else applies a Staging migration now, so `release:cut` refuses a
   # commit Staging has not both uploaded and Host Applied (ADR 0056,
   # amendment 2026-09-14). Amends PRD #565 user story 3.
   #
   # Shares the `deploy-staging-apply` group with deploy-backend, and never
-  # cancels in progress: an automatic upload must queue behind an in-flight
+  # cancels in progress: a scheduled upload must queue behind an in-flight
   # `prisma migrate deploy` rather than kill it (ADR 0056 "Cancel-in-progress
   # through migrate — rejected") or land a new bundle on top of it. May run
-  # beside deploy-frontend, which holds the separate `deploy-staging` group
-  # and never touches APP_ROOT.
+  # beside deploy-frontend, which holds the separate `deploy-staging-web`
+  # group and never touches APP_ROOT: the web app has its own root.
   host-apply:
     needs: deploy-backend
     if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}
@@ -173,7 +289,10 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          # Dispatch only, so this is the commit `select` chose as well; it is
+          # read directly because an apply_only dispatch must not depend on
+          # the upload chain.
+          ref: ${{ github.sha }}
 
       - name: Setup Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -274,21 +393,41 @@ jobs:
           node tools/scripts/verify-host-apply.mjs "$docs_status" "$cron_status"
 
   deploy-frontend:
-    if: ${{ github.event.workflow_run.conclusion == 'success' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only) }}
-    needs: [prepare-dependencies, deploy-backend]
+    if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}
+    needs: [select, prepare-dependencies, deploy-backend]
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: staging
+    # Its own group, and never cancels: the job writes the web app's tree over
+    # FTP, and a run cancelled halfway would leave a half-written bundle under
+    # a process that may restart onto it. A second run queues instead. Not the
+    # backend's `deploy-staging-apply` group, because the web app has its own
+    # root and may deploy beside a Host Apply.
     concurrency:
-      group: deploy-staging
-      cancel-in-progress: true
+      group: deploy-staging-web
+      cancel-in-progress: false
 
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.select.outputs.sha }}
+
+      # The steps below belong to this workflow file, which comes from
+      # `github.sha`; the bundle is built from the commit `select` chose,
+      # which on the schedule may be older and carry an older deploy script,
+      # or none. So the deploy script is fetched from `github.sha`, beside the
+      # build rather than over it, and every step runs that copy. Only
+      # tools/scripts is fetched, with no cone: a cone would also bring the
+      # root package.json, a second workspace for the build to trip over.
+      - name: Checkout deploy tools
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          path: .deploy-tools
+          sparse-checkout: tools/scripts
+          sparse-checkout-cone-mode: false
 
       - name: Setup Node.js 22
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -314,38 +453,162 @@ jobs:
         if: steps.dependency-cache.outputs.cache-hit != 'true'
         run: git diff --exit-code -- yarn.lock
 
-      - name: Deploy frontend to Vercel (staging)
+      - name: Validate staging web deploy secrets
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          FTP_HOST: ${{ secrets.FTP_HOST }}
+          FTP_FRONTEND_USERNAME: ${{ secrets.FTP_FRONTEND_USERNAME }}
+          FTP_FRONTEND_PASSWORD: ${{ secrets.FTP_FRONTEND_PASSWORD }}
+          FTP_FRONTEND_DIR: ${{ secrets.FTP_FRONTEND_DIR }}
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          API_ORIGIN: ${{ secrets.API_ORIGIN }}
         run: |
-          # This workflow deploys to a dedicated Vercel staging project.
-          # In that project we intentionally use the production environment
-          # for the staging app, so `--environment=production` and `--prod`
-          # are both expected here.
-          # See VERCEL_FRONTEND_HOSTING.md and CI_CD_AND_RELEASE_PROCESS.md.
-          #
-          # Nx recommends keeping the Vercel project's Root Directory at the
-          # workspace root and setting the Build Command to `npx nx build myorganizer`.
           set -euo pipefail
-          VERCEL_CLI_VERSION='50.1.1'
+          missing=0
 
-          corepack yarn dlx -p "vercel@${VERCEL_CLI_VERSION}" vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+          if [ -z "$FTP_HOST" ]; then echo 'Missing secret: FTP_HOST'; missing=1; fi
+          if [ -z "$FTP_FRONTEND_USERNAME" ]; then echo 'Missing secret: FTP_FRONTEND_USERNAME'; missing=1; fi
+          if [ -z "$FTP_FRONTEND_PASSWORD" ]; then echo 'Missing secret: FTP_FRONTEND_PASSWORD'; missing=1; fi
+          if [ -z "$FTP_FRONTEND_DIR" ]; then echo 'Missing secret: FTP_FRONTEND_DIR'; missing=1; fi
+          if [ -z "$WEB_ORIGIN" ]; then echo 'Missing secret: WEB_ORIGIN'; missing=1; fi
+          if [ -z "$API_ORIGIN" ]; then echo 'Missing secret: API_ORIGIN'; missing=1; fi
 
-          echo '--- Vercel diagnostics (sanitized) ---'
-          if [ -d .vercel ]; then
-            echo 'Vercel metadata files (names only):'
-            find .vercel -maxdepth 2 -type f -print
-          else
-            echo 'No .vercel directory found after vercel pull.'
+          if [ "$missing" -ne 0 ]; then
+            echo 'One or more required staging web deploy secrets are not set (or are empty).'
+            exit 1
           fi
 
-          node tools/scripts/sync-vercel-project-settings.mjs
+          # The restart file is uploaded to "<FTP_FRONTEND_DIR>tmp/", and the
+          # FTP action requires a server-dir that ends in a slash.
+          case "$FTP_FRONTEND_DIR" in
+            */) ;;
+            *) echo 'FTP_FRONTEND_DIR must end with a slash.'; exit 1 ;;
+          esac
 
-          echo 'NOTE: Not printing any .vercel/.env* files to avoid leaking secrets.'
-          echo '--- end Vercel diagnostics ---'
+      # The session depends on the web app and its API being the same site:
+      # the refresh cookie is SameSite=Lax with no Domain, so a browser does
+      # not send it across sites and sign-in does not survive closing the web
+      # app (issue #1138, ADR 0128). The script compares the last two labels
+      # of each hostname. That is a rule of thumb, wrong for a suffix that is
+      # itself two labels, such as `co.uk`.
+      - name: Assert the web app and the API are on the same site
+        env:
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          API_ORIGIN: ${{ secrets.API_ORIGIN }}
+        run: node .deploy-tools/tools/scripts/staging-web-deploy.mjs same-site "$WEB_ORIGIN" "$API_ORIGIN"
 
-          # Avoid `--prebuilt`: prebuilt bundles can fail in monorepos when
-          # file-trace references point outside the uploaded artifact set.
-          corepack yarn dlx -p "vercel@${VERCEL_CLI_VERSION}" vercel deploy --prod --yes --token "$VERCEL_TOKEN"
+      - name: Package web app (cPanel)
+        env:
+          # Public GIS client for Vault Cloud Backup, as in Production's web
+          # job. Empty means the card shows "not configured". See issue #751.
+          NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
+          NEXT_PUBLIC_APP_URL: ${{ secrets.WEB_ORIGIN }}
+          # Makes the commit the Next.js build id, which the running process
+          # puts in the HTML it renders. That is how the probe below, and the
+          # `select` job of the next run, tell which build is answering.
+          WEB_BUILD_ID: ${{ needs.select.outputs.sha }}
+        run: corepack yarn package:myorganizer:web
+
+      # Refuses a bundle that carries public/.htaccess, then decides `restart`
+      # or `install-owed` and writes public/deploy-state.json into the bundle. The host has no shell to ask, so the script infers
+      # what is installed from two reads: the state file last uploaded, and
+      # the build the running process answers from.
+      - name: Plan the web deploy
+        id: plan
+        env:
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          HEAD_SHA: ${{ needs.select.outputs.sha }}
+        run: |
+          set -euo pipefail
+          node .deploy-tools/tools/scripts/staging-web-deploy.mjs plan \
+            --web-origin "$WEB_ORIGIN" \
+            --sha "$HEAD_SHA" \
+            --bundle dist/deploy/myorganizer-web
+          # The packager also zips the bundle for a manual upload. Deleted
+          # rather than excluded: setting the FTP action's `exclude` replaces
+          # its default exclusions instead of adding to them.
+          rm -f dist/deploy/myorganizer-web/myorganizer-web.zip
+
+      # Pinned by check-deploy-pipeline.mjs: the `exclude` below must keep
+      # `**/.htaccess`.
+      - name: Deploy web app to cPanel (staging)
+        uses: samkirkland/ftp-deploy-action@110f9186c050f71550953127052e77650219c287 # v4.4.0
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_FRONTEND_USERNAME }}
+          password: ${{ secrets.FTP_FRONTEND_PASSWORD }}
+          local-dir: ./dist/deploy/myorganizer-web/
+          server-dir: ${{ secrets.FTP_FRONTEND_DIR }}
+          timeout: 300000
+          # The web app's document root on the host is this bundle's public/
+          # folder, and the host keeps its own .htaccess there: the
+          # configuration that starts the app. No .htaccess is ever uploaded
+          # or deleted by this step. The plan step already refuses a bundle
+          # that carries one; this is the second lock. Setting `exclude`
+          # replaces the action's defaults, so the first three lines restate
+          # them (the action's README at this pin).
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            **/.htaccess
+
+      # The host restarts a Node.js app when tmp/restart.txt changes, so this
+      # needs no shell. Uploaded after the bundle, on its own, so the restart
+      # is the last thing that happens. The timestamp makes the file differ on
+      # every run, including a second run of one commit.
+      - name: Write the restart file
+        if: ${{ steps.plan.outputs.action == 'restart' }}
+        env:
+          HEAD_SHA: ${{ needs.select.outputs.sha }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist/deploy/staging-web-restart
+          printf '%s %s\n' "$HEAD_SHA" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            > dist/deploy/staging-web-restart/restart.txt
+
+      - name: Restart web app (upload tmp/restart.txt)
+        if: ${{ steps.plan.outputs.action == 'restart' }}
+        uses: samkirkland/ftp-deploy-action@110f9186c050f71550953127052e77650219c287 # v4.4.0
+        with:
+          server: ${{ secrets.FTP_HOST }}
+          username: ${{ secrets.FTP_FRONTEND_USERNAME }}
+          password: ${{ secrets.FTP_FRONTEND_PASSWORD }}
+          local-dir: ./dist/deploy/staging-web-restart/
+          server-dir: ${{ secrets.FTP_FRONTEND_DIR }}tmp/
+          timeout: 300000
+
+      # Green only when the running process answers from this build. A static
+      # file would only say the bundle is uploaded. Then /sw.js must carry its
+      # two headers, which on this host come from a block in the host's own
+      # .htaccess, appended once from apps/myorganizer/deploy/sw-headers.htaccess.
+      - name: Probe the running build
+        if: ${{ steps.plan.outputs.action == 'restart' }}
+        env:
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+          HEAD_SHA: ${{ needs.select.outputs.sha }}
+        run: |
+          node .deploy-tools/tools/scripts/staging-web-deploy.mjs probe \
+            --web-origin "$WEB_ORIGIN" \
+            --sha "$HEAD_SHA" \
+            --timeout-seconds 300
+
+      # The host's Node.js selector owns node_modules and installs only from
+      # its own panel, so a changed dependency list cannot go live from here.
+      # The bundle is uploaded and the restart is withheld: restarting onto
+      # missing packages would take Staging down. Once the operator has
+      # installed and restarted, the process answers from this build, which
+      # the next run reads as proof that its dependencies are installed.
+      - name: Report install owed
+        if: ${{ steps.plan.outputs.action != 'restart' }}
+        env:
+          HEAD_SHA: ${{ needs.select.outputs.sha }}
+        run: |
+          {
+            echo "### Web app uploaded, not live: install owed"
+            echo
+            echo "Bundle \`${HEAD_SHA:0:7}\` is uploaded to Staging, but its dependency list differs from the list known to be installed, or nothing is known yet, so the app was not restarted."
+            echo
+            echo "In cPanel, open the Staging web app under **Setup Node.js App**, click **Run NPM Install**, then **Restart**. The next run confirms it."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo '::error::The Staging web app dependency list differs from the list known to be installed, or nothing is known yet. In cPanel click "Run NPM Install" then "Restart" for the Staging web app; the next run confirms it.'
+          exit 1
