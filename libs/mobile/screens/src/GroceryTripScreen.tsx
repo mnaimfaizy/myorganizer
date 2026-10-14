@@ -469,7 +469,10 @@ export function GroceryTripScreen(): React.JSX.Element {
     setDeletedLine(null);
     const now = new Date().toISOString();
     // A new line rather than the old one: the deleted line's id is in the
-    // Deletion Log for good, so a merge would bury it again.
+    // Deletion Log for good, so a merge would bury it again. Being a new
+    // record, it carries only what the trip view shows, not the deleted
+    // line's Unknown Fields — those went with the deletion (ADR 0114
+    // decision 3 protects fields on records that are kept).
     const restored: ListLine = {
       id: newRecordId(),
       catalogItemId: deletedLine.catalogItemId,
