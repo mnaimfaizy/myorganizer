@@ -52,6 +52,13 @@ on:
         description: Model id for this replay only. Empty uses CODE_REVIEW_MODEL.
         type: string
         default: ''
+      # A bake-off is about the cases it names, not a whole tier: three cases
+      # on two models is six sessions where the frontier tier would be
+      # eighteen (issue #1140). Still one repetition per case (ADR 0072 item 8).
+      cases:
+        description: Comma-separated case ids to replay instead of the tier. Empty replays the tier.
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -142,6 +149,8 @@ jobs:
           TIERS: ${{ steps.tiers.outputs.tiers }}
           EVENT: ${{ github.event_name }}
           MODEL: ${{ inputs.model || vars.CODE_REVIEW_MODEL || 'claude-sonnet-5' }}
+          # Only a dispatch has inputs; on any other event this is empty.
+          CASES: ${{ inputs.cases }}
         run: |
           set -euo pipefail
           # One date for every case this run replays, computed once before
@@ -172,7 +181,7 @@ jobs:
           # three per frontier case on the schedule, one otherwise (ADR 0116).
           # The event is passed rather than read by the script, so the number
           # of sessions a run buys is visible in the line that asks for them.
-          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --matrix --tier "$TIERS" --event "$EVENT")"
+          MATRIX="$(node tools/scripts/review/golden-tiers.mjs --matrix --tier "$TIERS" --event "$EVENT" --cases "$CASES")"
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           echo "tier $TIERS: $MATRIX"
 
@@ -193,7 +202,7 @@ jobs:
           {
             echo '## Golden replay'
             echo
-            echo "Tier \`$TIERS\`, model \`$MODEL\`, $(jq '[.[].case] | unique | length' <<<"$MATRIX") case(s), $(jq 'length' <<<"$MATRIX") reviewer session(s)."
+            echo "${CASES:+Cases \`$CASES\` (in place of the tier), }Tier \`$TIERS\`, model \`$MODEL\`, $(jq '[.[].case] | unique | length' <<<"$MATRIX") case(s), $(jq 'length' <<<"$MATRIX") reviewer session(s)."
           } >> "$GITHUB_STEP_SUMMARY"
           if [ "$HAS_KEY" != 'true' ]; then
             {

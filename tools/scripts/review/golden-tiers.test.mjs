@@ -271,3 +271,30 @@ test('the matrix CLI prints what the workflow reads, with nothing installed', ()
     committed.cases.map((c) => ({ case: c.id, repetition: 1 })),
   );
 });
+
+// A model bake-off is a dispatch over the cases it is about (ADR 0072 item 6),
+// not over a whole tier: three cases on two models is six sessions, where the
+// frontier tier would be eighteen (issue #1140). Still one repetition per
+// dispatch, as item 8 requires.
+test('a dispatch may name its cases, from any tier, one repetition each', () => {
+  assert.deepEqual(
+    replayMatrix(set, ALL_TIERS, {
+      event: 'workflow_dispatch',
+      cases: ['c-frontier', 'a-guard'],
+    }),
+    [
+      { case: 'a-guard', repetition: 1 },
+      { case: 'c-frontier', repetition: 1 },
+    ],
+  );
+  // A mistyped id replays nothing it was asked for, so it is refused.
+  assert.throws(
+    () => replayMatrix(set, ALL_TIERS, { cases: ['c-frontier', 'nope'] }),
+    /no golden case "nope"/,
+  );
+  // An empty list is no selection, not a request for nothing.
+  assert.deepEqual(
+    replayMatrix(set, 'frontier', { cases: [] }),
+    replayMatrix(set, 'frontier'),
+  );
+});
