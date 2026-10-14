@@ -8,7 +8,9 @@ describe('InstallAppInstructions', () => {
     const onInstall = jest.fn();
     render(<InstallAppInstructions mode="prompt" onInstall={onInstall} />);
 
-    fireEvent.click(screen.getByRole('button', { name: 'Install app' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Install MyOrganiser' }),
+    );
 
     expect(onInstall).toHaveBeenCalledTimes(1);
   });
@@ -40,11 +42,11 @@ describe('InstallAppInstructions', () => {
 
     expect(
       screen.getByText(
-        "You'll sign in and unlock your vault again inside the installed app.",
+        "You'll sign in and unlock your vault again inside the installed MyOrganiser.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Install app' }),
+      screen.queryByRole('button', { name: 'Install MyOrganiser' }),
     ).not.toBeInTheDocument();
     expect(onInstall).not.toHaveBeenCalled();
   });
@@ -66,11 +68,11 @@ describe('InstallAppInstructions', () => {
 
     expect(
       screen.getByText(
-        "You'll sign in and unlock your vault again inside the installed app.",
+        "You'll sign in and unlock your vault again inside the installed MyOrganiser.",
       ),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole('button', { name: 'Install app' }),
+      screen.queryByRole('button', { name: 'Install MyOrganiser' }),
     ).not.toBeInTheDocument();
     expect(onInstall).not.toHaveBeenCalled();
   });

@@ -25,6 +25,12 @@ import {
   buildLoginUserBody,
   buildRefreshTokenRequest,
 } from './refresh-client-contract';
+import {
+  createSessionEndedSignal,
+  isRefreshRejectedByServer,
+  type SessionEndedListener,
+  type SessionEndedSignal,
+} from './session-ended-signal';
 
 function toSessionData(
   response: import('@myorganizer/app-api-client').Login200Response,
@@ -73,13 +79,38 @@ export interface AuthSessionModule {
   getCurrentUser(): ReturnType<AuthSessionStorageAdapter['getCurrentUser']>;
   getAuthAxios(): AxiosInstance;
   getAuthApi(): AuthenticationApi;
+  /**
+   * Subscribe to the Session ending without this window asking for it: the
+   * server refused a token refresh (HTTP 401 or 403), or another window of
+   * this browser signed out. The Session is already cleared when the listener
+   * runs. Returns the function that unsubscribes.
+   *
+   * Does not fire for this window's own `signOut()`, nor for a refresh that
+   * failed without an answer from the server.
+   */
+  onSessionEnded(listener: SessionEndedListener): () => void;
 }
 
 export function createAuthSessionModule(deps: {
   storage: AuthSessionStorageAdapter;
   transport: AuthSessionTransportAdapter;
+  /**
+   * The signal the transport reports a refused refresh on. Pass the one the
+   * transport was built with so `onSessionEnded` hears the interceptor too.
+   */
+  sessionEnded?: SessionEndedSignal;
 }): AuthSessionModule {
   const { storage, transport } = deps;
+  const sessionEnded = deps.sessionEnded ?? createSessionEndedSignal();
+  let subscriberCount = 0;
+  let stopWatchingOtherWindows: (() => void) | null = null;
+
+  function handleSignedOutElsewhere(): void {
+    // The other window removed the shared user; what is left here is at most
+    // this window's own access token, which is no longer a Session.
+    storage.clearSession();
+    sessionEnded.emit({ reason: 'signed_out_elsewhere' });
+  }
 
   async function refreshSessionViaTransport(): Promise<AuthSessionData> {
     const res = await transport.getAuthApi().refreshToken({
@@ -92,30 +123,44 @@ export function createAuthSessionModule(deps: {
   }
 
   return {
+    // A Session is an access token *and* its user. The two live in different
+    // stores — the token can be per-window (`sessionStorage`), the user is
+    // shared (`localStorage`) — so a sign-out in another window leaves this
+    // one holding a token with no user. Either half alone is only
+    // `restorable`: the server decides, through a refresh, whether it is one.
     getSnapshot(): SessionSnapshot {
-      if (storage.getAccessToken()) {
+      const hasToken = Boolean(storage.getAccessToken());
+      const hasUser = Boolean(storage.getCurrentUser());
+
+      if (hasToken && hasUser) {
         return { status: 'authenticated' };
       }
-      if (storage.getCurrentUser()) {
+      if (hasToken || hasUser) {
         return { status: 'restorable' };
       }
       return { status: 'guest' };
     },
 
     async restoreSession(): Promise<RestoreSessionOutcome> {
-      if (storage.getAccessToken()) {
+      const hasToken = Boolean(storage.getAccessToken());
+      const hasUser = Boolean(storage.getCurrentUser());
+
+      if (hasToken && hasUser) {
         return { kind: 'authenticated' };
       }
 
-      if (!storage.getCurrentUser()) {
+      if (!hasToken && !hasUser) {
         return { kind: 'session_cleared' };
       }
 
       try {
         await refreshSessionViaTransport();
         return { kind: 'authenticated' };
-      } catch {
+      } catch (err) {
         storage.clearSession();
+        if (isRefreshRejectedByServer(err)) {
+          sessionEnded.emit({ reason: 'refresh_rejected' });
+        }
         return { kind: 'session_cleared' };
       }
     },
@@ -272,11 +317,37 @@ export function createAuthSessionModule(deps: {
     getCurrentUser: () => storage.getCurrentUser(),
     getAuthAxios: () => transport.getAuthAxios(),
     getAuthApi: () => transport.getAuthApi(),
+
+    onSessionEnded(listener: SessionEndedListener): () => void {
+      const unsubscribe = sessionEnded.subscribe(listener);
+      subscriberCount += 1;
+      // Watch other windows only while something is listening, so creating a
+      // module — which happens at import — registers nothing on its own.
+      if (subscriberCount === 1) {
+        stopWatchingOtherWindows =
+          storage.onSignedOutElsewhere?.(handleSignedOutElsewhere) ?? null;
+      }
+
+      let subscribed = true;
+      return () => {
+        if (!subscribed) return;
+        subscribed = false;
+        unsubscribe();
+        subscriberCount -= 1;
+        if (subscriberCount === 0) {
+          stopWatchingOtherWindows?.();
+          stopWatchingOtherWindows = null;
+        }
+      };
+    },
   };
 }
 
 export function createDefaultAuthSessionModule(): AuthSessionModule {
   const storage = createBrowserAuthSessionStorageAdapter();
-  const transport = createAuthSessionTransportAdapter(storage);
-  return createAuthSessionModule({ storage, transport });
+  const sessionEnded = createSessionEndedSignal();
+  const transport = createAuthSessionTransportAdapter(storage, {
+    sessionEnded,
+  });
+  return createAuthSessionModule({ storage, transport, sessionEnded });
 }

@@ -130,7 +130,7 @@ describe('PrivacyPolicyPage', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(/Acme Ops/);
-      expect(text).not.toMatch(/mailto:/);
+      expect(container.querySelector('a[href^="mailto:"]')).toBeNull();
     });
 
     it('should render contact email when only OPERATOR_CONTACT_EMAIL is set (no OPERATOR_NAME)', () => {
@@ -170,6 +170,31 @@ describe('PrivacyPolicyPage', () => {
       render(<PrivacyPolicyPage />);
       const termsLink = screen.getByRole('link', { name: /Terms of Service/i });
       expect(termsLink).toHaveAttribute('href', '/terms');
+    });
+  });
+
+  describe('Back control', () => {
+    it('should place the Back link before the single h1', () => {
+      render(<PrivacyPolicyPage />);
+      const backLink = screen.getByRole('link', { name: 'Back' });
+      const heading = screen.getByRole('heading', { level: 1 });
+
+      expect(backLink).toHaveAttribute('href', '/');
+      expect(
+        backLink.compareDocumentPosition(heading) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
+    });
+  });
+
+  describe('YouTube Data Privacy link', () => {
+    it('should open in the same tab on the standalone page', () => {
+      render(<PrivacyPolicyPage />);
+      const link = screen.getByRole('link', {
+        name: /YouTube Data Privacy page/i,
+      });
+      expect(link).not.toHaveAttribute('target');
     });
   });
 });
