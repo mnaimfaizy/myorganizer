@@ -928,6 +928,9 @@ jobs:
       - name: Mobile platform checker contracts
         run: corepack yarn mobile-platform:test
 
+      - name: Signing material checker contracts
+        run: corepack yarn signing-material:test
+
       - name: Prisma migration history checker contracts
         run: corepack yarn prisma:migrations:test
 
@@ -1081,6 +1084,10 @@ jobs:
 
       - name: Check mobile platform rules
         run: corepack yarn mobile-platform:check
+
+      # Why a committed keystore is unrecoverable: see the checker's header.
+      - name: Check no signing material is committed
+        run: corepack yarn signing-material:check
 
       # The file-reading half of the Prisma migration gate (ADR 0094). The
       # half that needs a database is the "Apply Prisma migrations and check

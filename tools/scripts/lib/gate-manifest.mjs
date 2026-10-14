@@ -189,6 +189,14 @@ export const GATE_MANIFEST = [
     script: 'tools/scripts/check-mobile-platform.mjs',
     args: [],
   },
+  // Reads the index, so in the pre-commit hook it refuses what is staged and
+  // in CI what is already tracked (PRD #956).
+  {
+    id: 'signing-material:check',
+    npmScript: 'signing-material:check',
+    script: 'tools/scripts/check-signing-material.mjs',
+    args: [],
+  },
   // The file-reading half of the Prisma migration gate (ADR 0094). Whether
   // the history applies and reproduces the schema needs a database, so that
   // half is the `Apply Prisma migrations and check schema drift` step of the

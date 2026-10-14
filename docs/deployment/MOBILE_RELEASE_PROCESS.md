@@ -41,7 +41,7 @@ The repository is public. None of the following ever enters git, an issue, a pul
 | Google Play service account JSON, when CI arrives           | Uploading bundles without the Console | Delete the key in Google Cloud.                                                                                                                |
 | Reviewer account email, password, and vault passphrase      | Store review sign-in                  | Change the password. Keep even the email out of the repo, because a public login name invites guessing.                                        |
 
-`debug.keystore` in `apps/mobile/android/app` is the public React Native debug key and is safe to commit. It must never sign a release.
+`debug.keystore` in `apps/mobile/android/app` is the public React Native debug key and is safe to commit. It must never sign a release. `yarn signing-material:check`, which runs in the pre-commit hook and in CI, refuses any other keystore and every store credential.
 
 ## Before you start
 
