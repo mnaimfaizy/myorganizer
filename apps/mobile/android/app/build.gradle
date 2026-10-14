@@ -75,6 +75,18 @@ def enableProguardInReleaseBuilds = false
  */
 def jscFlavor = 'io.github.react-native-community:jsc-android:2026004.+'
 
+/**
+ * Gradle properties that sign a release build. Set them in the user-level
+ * ~/.gradle/gradle.properties, never in a file inside the repository.
+ */
+def releaseSigningProperties = [
+    'MYORGANISER_RELEASE_STORE_FILE',
+    'MYORGANISER_RELEASE_STORE_PASSWORD',
+    'MYORGANISER_RELEASE_KEY_ALIAS',
+    'MYORGANISER_RELEASE_KEY_PASSWORD',
+]
+def missingReleaseSigningProperties = releaseSigningProperties.findAll { !findProperty(it) }
+
 android {
     ndkVersion rootProject.ext.ndkVersion
     buildToolsVersion rootProject.ext.buildToolsVersion
@@ -107,15 +119,27 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // The release signing key is the app's permanent signing identity. Its
+        // values come only from the operator's user-level Gradle properties
+        // (~/.gradle/gradle.properties); see docs/deployment/MOBILE_RELEASE_PROCESS.md.
+        if (missingReleaseSigningProperties.isEmpty()) {
+            release {
+                storeFile file(findProperty('MYORGANISER_RELEASE_STORE_FILE'))
+                storePassword findProperty('MYORGANISER_RELEASE_STORE_PASSWORD')
+                keyAlias findProperty('MYORGANISER_RELEASE_KEY_ALIAS')
+                keyPassword findProperty('MYORGANISER_RELEASE_KEY_PASSWORD')
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Never the debug key: without the properties, preReleaseBuild fails below.
+            if (missingReleaseSigningProperties.isEmpty()) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }
@@ -142,5 +166,19 @@ dependencies {
         implementation("com.facebook.react:hermes-android")
     } else {
         implementation jscFlavor
+    }
+}
+
+// A release build refuses to run without the release signing key rather than
+// falling back to the debug key. Debug builds never reach this check.
+tasks.matching { it.name == 'preReleaseBuild' }.configureEach {
+    def missing = missingReleaseSigningProperties
+    doFirst {
+        if (!missing.isEmpty()) {
+            throw new GradleException(
+                "Release signing is not configured. Missing user-level Gradle properties " +
+                "(~/.gradle/gradle.properties): ${missing.join(', ')}. " +
+                "See docs/deployment/MOBILE_RELEASE_PROCESS.md, Part 2.")
+        }
     }
 }

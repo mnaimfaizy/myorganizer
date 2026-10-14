@@ -33,13 +33,13 @@ The web and backend path is [CI_CD_AND_RELEASE_PROCESS.md](CI_CD_AND_RELEASE_PRO
 
 The repository is public. None of the following ever enters git, an issue, a pull request, or a CI log. Keep each one in the password manager, and keep the files themselves in a signing directory outside the repository (written `<signing-dir>` below).
 
-| Secret                                                 | Used for                              | If it leaks                                                                                             |
-| ------------------------------------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Android upload keystore (`.jks`) and its passwords     | Signing the bundle you upload to Play | Ask Google to reset the upload key. Google holds the real app signing key.                              |
-| Apple distribution certificate (`.p12`) and password   | Signing the iOS archive               | Revoke it in the Apple Developer portal and issue a new one.                                            |
-| App Store Connect API key (`.p8`), when CI arrives     | Uploading builds without Xcode        | **The dangerous one.** Someone can push builds to your account. Revoke it immediately.                  |
-| Google Play service account JSON, when CI arrives      | Uploading bundles without the Console | Delete the key in Google Cloud.                                                                         |
-| Reviewer account email, password, and vault passphrase | Store review sign-in                  | Change the password. Keep even the email out of the repo, because a public login name invites guessing. |
+| Secret                                                      | Used for                              | If it leaks                                                                                                                                    |
+| ----------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android release signing keystore (`.jks`) and its passwords | Signing every Android release         | Nobody can reset it. A leaked key lets anyone sign an update your Users would install; a lost key means no installed copy can ever be updated. |
+| Apple distribution certificate (`.p12`) and password        | Signing the iOS archive               | Revoke it in the Apple Developer portal and issue a new one.                                                                                   |
+| App Store Connect API key (`.p8`), when CI arrives          | Uploading builds without Xcode        | **The dangerous one.** Someone can push builds to your account. Revoke it immediately.                                                         |
+| Google Play service account JSON, when CI arrives           | Uploading bundles without the Console | Delete the key in Google Cloud.                                                                                                                |
+| Reviewer account email, password, and vault passphrase      | Store review sign-in                  | Change the password. Keep even the email out of the repo, because a public login name invites guessing.                                        |
 
 `debug.keystore` in `apps/mobile/android/app` is the public React Native debug key and is safe to commit. It must never sign a release.
 
@@ -90,15 +90,23 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
 
 ### Android
 
-1. Generate an **upload key** into `<signing-dir>`. Never generate it inside the repository.
+1. Generate the **release signing key** into `<signing-dir>`. Never generate it inside the repository.
 
    ```bash
-   keytool -genkeypair -v -storetype PKCS12 -keystore <signing-dir>/upload.jks -alias myorganiser-upload -keyalg RSA -keysize 2048 -validity 10000
+   keytool -genkeypair -v -storetype PKCS12 -keystore <signing-dir>/release.jks -alias myorganiser-release -keyalg RSA -keysize 2048 -validity 10000
    ```
 
-2. Store the keystore file and both passwords in the password manager straight away. Without them you cannot update the app, short of asking Google to reset the upload key.
-3. Point Gradle at it from your **user-level** Gradle properties file in your home directory, never from `apps/mobile/android/gradle.properties`, which is tracked. **This does not work yet.** Today the release build type in `apps/mobile/android/app/build.gradle` signs with the public debug key, as its own "Caution!" comment says. Making it read these properties, and refuse to build a release without them, is the readiness PRD's signing work (#956), which also fixes the property names.
-4. **Play App Signing** is automatic for a new app. You sign uploads with the upload key, and Google signs what users install with a key it holds.
+2. **This key is the app's permanent signing identity.** There is no Play App Signing behind it. Android installs an update only when it is signed with the same key as the installed copy. If you lose the keystore or either password, no installed Mobile App can ever be updated in place: every User has to uninstall, losing the copy on their device, and install a new app. Store the keystore file and both passwords in the password manager straight away, and keep a second backup of the keystore outside the repository and away from this Mac.
+3. Point Gradle at it from your **user-level** Gradle properties file, `~/.gradle/gradle.properties`, never from `apps/mobile/android/gradle.properties`, which is tracked. Set one line per property, as `NAME=value`:
+
+   | Property                             | Value                                            |
+   | ------------------------------------ | ------------------------------------------------ |
+   | `MYORGANISER_RELEASE_STORE_FILE`     | The absolute path to `<signing-dir>/release.jks` |
+   | `MYORGANISER_RELEASE_STORE_PASSWORD` | The keystore password                            |
+   | `MYORGANISER_RELEASE_KEY_ALIAS`      | `myorganiser-release`                            |
+   | `MYORGANISER_RELEASE_KEY_PASSWORD`   | The key password                                 |
+
+   `apps/mobile/android/app/build.gradle` signs the release build type with these and nothing else. A release build with any of them missing fails and names the missing properties; it never falls back to the debug key. Debug builds keep using the debug key.
 
 ### iOS
 
