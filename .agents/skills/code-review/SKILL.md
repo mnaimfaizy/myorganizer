@@ -379,8 +379,9 @@ rediscover them:
 - **Those facts are enforced.** `Agent Review Ran` fails when no sub-agent read an axis's brief, and
   when the report carries a finding that is not, field for field, one a sub-agent returned (an
   obligation finding for a worklist site excepted). The Review Tier moves one step toward a human
-  when the Standards sub-agent never opened `CODING_STANDARDS.md`, when a dispatch carried text
-  beyond the template, or when the transcript or a reply could not be read.
+  when the Standards sub-agent never opened `CODING_STANDARDS.md`, when the Spec sub-agent never opened
+  a changed workflow or script (a diff of it does not count), when a dispatch carried text beyond
+  the template, or when the transcript or a reply could not be read.
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
   Request goes to `review:human`. Nothing is downgraded to make it pass.
 - **Your run ends when you reply without a tool call, and no background notification reaches you.**

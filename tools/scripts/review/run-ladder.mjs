@@ -122,6 +122,44 @@ const evidenceFailure = (finding, executions, isObligation) => {
 };
 
 /**
+ * Code that runs, for the Spec brief's trace (issue #1140): a workflow or an
+ * action, or a script. Its defects sit in how a changed line meets an unchanged
+ * one, so a hunk is not enough and the bar is the whole file, opened.
+ */
+const EXECUTABLE = [
+  /^\.github\/(?:workflows|actions)\//,
+  /\.(?:sh|mjs|cjs)$/,
+  /^tools\/.*\.(?:js|ts)$/,
+];
+export const isExecutable = (file) => EXECUTABLE.some((re) => re.test(file));
+
+const coverageOf = (axis, file) => {
+  if (axis?.opened?.includes(file)) return 'opened';
+  const diffedHere = (path) => file === path || file.startsWith(`${path}/`);
+  if (axis?.diffed?.some(diffedHere)) return 'diffed';
+  return 'neither';
+};
+
+/**
+ * Each changed file, on each axis: opened (its content came back), diffed (a
+ * diff named it or a directory above it), or neither. The changed-file list is
+ * the selector's, never the reviewer's; with none, there is nothing to say.
+ *
+ * @param {object} facts the run facts
+ * @param {unknown} worklist the obligation worklist, when one was selected
+ * @returns {{ file: string, added: number, standards: string, spec: string }[] | null}
+ */
+export const fileCoverage = (facts, worklist) => {
+  if (!Array.isArray(worklist?.changedFiles)) return null;
+  return worklist.changedFiles.map(({ file, added }) => ({
+    file,
+    added,
+    standards: coverageOf(facts.axes.standards, file),
+    spec: coverageOf(facts.axes.spec, file),
+  }));
+};
+
+/**
  * Judge one run.
  *
  * @param {object} run
@@ -172,6 +210,15 @@ export const judgeRun = ({
   if (facts.axes.standards.briefRead && !facts.indexOpened)
     tightenedBy.add('index-not-opened');
   if (facts.repliesParsed === false) tightenedBy.add('reply-unparseable');
+  // Thin, not broken: a Spec pass that never opened a changed workflow or
+  // script can still be right, and says so in the published coverage table.
+  if (
+    expected.spec &&
+    fileCoverage(facts, worklist)?.some(
+      (c) => isExecutable(c.file) && c.spec !== 'opened',
+    )
+  )
+    tightenedBy.add('spec-axis-left-executable-file-unopened');
 
   // Facts read before the calls were kept say nothing about them, and
   // "cannot tell" is never a failure.

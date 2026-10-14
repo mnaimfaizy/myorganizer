@@ -23,6 +23,7 @@ import { ZodError } from 'zod';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
 import { evidenceText } from './evidence.mjs';
+import { isExecutable } from './run-ladder.mjs';
 import {
   AXIS_TITLES,
   FINDING_AXES,
@@ -165,7 +166,11 @@ export const renderRunFacts = (report) => {
     lines.push(
       '- sub-agent replies: **not all readable** — a reply held no findings list this pipeline could parse, so the findings reported cannot all be compared with the findings returned',
     );
-  return [...lines, ...renderRunCost(report)];
+  return [
+    ...lines,
+    ...renderCoverage(facts.coverage),
+    ...renderRunCost(report),
+  ];
 };
 
 /**
@@ -406,3 +411,33 @@ export const main = (argv) => {
 };
 
 if (isMain(import.meta.url)) main(process.argv.slice(2));
+
+const COVERAGE_ROWS = 25;
+
+/**
+ * Which changed files each axis opened, diffed, or neither (issue #1140), as
+ * a table under the run facts, most lines added first. A Spec cell is bold
+ * where the Spec brief asks for the whole file and the axis did not open it.
+ * With no changed-file list there is no table, rather than an empty one.
+ */
+const renderCoverage = (coverage) => {
+  if (!coverage?.length) return [];
+  const rows = coverage
+    .slice(0, COVERAGE_ROWS)
+    .map(
+      (c) =>
+        `| ${codePath(c.file)} | ${c.added} | ${c.standards} | ${
+          isExecutable(c.file) && c.spec !== 'opened' ? `**${c.spec}**` : c.spec
+        } |`,
+    );
+  const rest = coverage.length - rows.length;
+  return [
+    '- changed files, most lines added first (read from the transcript):',
+    '',
+    '| File | Added | Standards | Spec |',
+    '| --- | --- | --- | --- |',
+    ...rows,
+    ...(rest > 0 ? ['', `_…and ${rest} more changed file(s)._`] : []),
+    '',
+  ];
+};

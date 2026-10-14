@@ -18,7 +18,12 @@ import { createHash } from 'node:crypto';
 import { z } from 'zod';
 
 import { RULES_DISPLAY_PATH, ruleById, ruleIds } from './rules.mjs';
-import { RUN_FAILURES, TIGHTENING_FACTS, judgeRun } from './run-ladder.mjs';
+import {
+  RUN_FAILURES,
+  TIGHTENING_FACTS,
+  fileCoverage,
+  judgeRun,
+} from './run-ladder.mjs';
 
 /**
  * Bumped to 2 when `rule` left the identity tuple (issue #718), to 3 when the
@@ -491,6 +496,13 @@ const AxisFactsSchema = z.strictObject({
    */
   replyIsJson: z.boolean().nullable().optional(),
   toolCalls: z.int().nonnegative(),
+  /**
+   * The files this axis's sub-agents opened and the files they diffed by
+   * path (issue #1140). Optional, so a report normalized before coverage was
+   * read still parses.
+   */
+  opened: z.array(nonEmpty).optional(),
+  diffed: z.array(nonEmpty).optional(),
 });
 
 /** Both axes' facts; null when the transcript could not be read. */
@@ -588,6 +600,8 @@ export const RunFactsSchema = z
  * What a normalized report keeps of the facts file, beside the envelope
  * fields the facts overwrite.
  */
+const FILE_COVERAGE = ['opened', 'diffed', 'neither'];
+
 const RunFactsSummarySchema = z.strictObject({
   shape: z.enum(RUN_FACTS_SHAPES),
   shapeReason: nonEmpty.nullable(),
@@ -612,6 +626,22 @@ const RunFactsSummarySchema = z.strictObject({
     )
     .optional(),
   tightenedBy: z.array(z.enum(TIGHTENING_FACTS)).optional(),
+  /**
+   * Each changed file the selector listed, and whether each axis opened it,
+   * diffed it, or neither (issue #1140). Null with no changed-file list;
+   * optional, so an earlier normalized report still parses.
+   */
+  coverage: z
+    .array(
+      z.strictObject({
+        file: nonEmpty,
+        added: z.int().nonnegative(),
+        standards: z.enum(FILE_COVERAGE),
+        spec: z.enum(FILE_COVERAGE),
+      }),
+    )
+    .nullable()
+    .optional(),
 });
 
 /**
@@ -962,6 +992,7 @@ const runFactsFor = (input, rawFacts, worklist) => {
       indexOpened: readable ? facts.indexOpened : null,
       repliesParsed: readable ? facts.repliesParsed : null,
       unattributedDispatches: readable ? facts.unattributedDispatches : null,
+      coverage: readable ? fileCoverage(facts, worklist) : null,
       failures,
       tightenedBy,
     },

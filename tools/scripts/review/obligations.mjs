@@ -478,7 +478,12 @@ export const selectObligations = ({
       truncated: Math.max(0, sites.length - maxSites),
     });
   }
-  return { head, selected };
+  // Every file the diff added lines to, most lines first, so a run fact can be
+  // held to a changed-file list the reviewer did not write (issue #1140).
+  const changedFiles = [...addedLines]
+    .map(([file, lines]) => ({ file, added: lines.length }))
+    .sort((a, b) => b.added - a.added || a.file.localeCompare(b.file));
+  return { head, selected, changedFiles };
 };
 
 /** One answer per site the worklist named. */

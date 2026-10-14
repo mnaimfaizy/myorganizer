@@ -1284,3 +1284,31 @@ test("the checker's declaration sites are not consumers and never a site", async
       `${path} fired`,
     );
 });
+
+test('the worklist names every file the diff added lines to, most lines first', () => {
+  // Read outside the model, so the coverage fact is held to a list the
+  // reviewer did not write (issue #1140).
+  const { changedFiles } = selectObligations({
+    catalogue: { schemaVersion: 1, obligations: [] },
+    addedLines: parseAddedLines(
+      diff(
+        '--- a/tools/a.mjs',
+        '+++ b/tools/a.mjs',
+        '@@ -1,0 +2,2 @@',
+        '+one',
+        '+two',
+        '--- a/.github/workflows/deploy.yml',
+        '+++ b/.github/workflows/deploy.yml',
+        '@@ -1,0 +2,3 @@',
+        '+a',
+        '+b',
+        '+c',
+      ),
+    ),
+    head: 'abc',
+  });
+  assert.deepEqual(changedFiles, [
+    { file: '.github/workflows/deploy.yml', added: 3 },
+    { file: 'tools/a.mjs', added: 2 },
+  ]);
+});
