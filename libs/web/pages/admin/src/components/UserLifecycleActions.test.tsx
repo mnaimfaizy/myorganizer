@@ -29,6 +29,8 @@ const mockForceLogoutUser = jest.fn();
 const mockResendVerification = jest.fn();
 const mockPromoteUser = jest.fn();
 const mockDemoteUser = jest.fn();
+const mockGrantYouTubeAccess = jest.fn();
+const mockWithdrawYouTubeAccess = jest.fn();
 const mockToast = jest.fn();
 const mockOnUserUpdated = jest.fn();
 
@@ -63,6 +65,13 @@ const platformAdmin: AdminUserIdentity = {
   youtubeAccess: false,
 };
 
+const youtubeUser: AdminUserIdentity = {
+  ...activeUser,
+  id: 'u-youtube',
+  name: 'YouTube User',
+  youtubeAccess: true,
+};
+
 function createAxiosError(message: string, status: number) {
   return Object.assign(new Error(message), {
     isAxiosError: true,
@@ -95,6 +104,8 @@ describe('UserLifecycleActions', () => {
       resendVerification: mockResendVerification,
       promoteUser: mockPromoteUser,
       demoteUser: mockDemoteUser,
+      grantYouTubeAccess: mockGrantYouTubeAccess,
+      withdrawYouTubeAccess: mockWithdrawYouTubeAccess,
     });
   });
 
@@ -305,5 +316,146 @@ describe('UserLifecycleActions', () => {
     expect(
       screen.queryByRole('heading', { name: 'Disable user?' }),
     ).not.toBeInTheDocument();
+  });
+
+  it('shows Grant YouTube Access and hides Withdraw for a user without YouTube Access', () => {
+    renderUserLifecycleActions(activeUser);
+
+    expect(
+      screen.getByRole('button', { name: 'Grant YouTube Access' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Withdraw YouTube Access' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows Withdraw YouTube Access and hides Grant for a user with YouTube Access', () => {
+    renderUserLifecycleActions(youtubeUser);
+
+    expect(
+      screen.getByRole('button', { name: 'Withdraw YouTube Access' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Grant YouTube Access' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('grants YouTube Access after confirmation and passes the response identity to the parent', async () => {
+    const updatedUser = { ...activeUser, youtubeAccess: true };
+    mockGrantYouTubeAccess.mockResolvedValue({ data: updatedUser });
+
+    renderUserLifecycleActions(activeUser);
+    openAction('Grant YouTube Access');
+    expect(
+      screen.getByRole('heading', { name: 'Grant YouTube Access?' }),
+    ).toBeInTheDocument();
+    confirmDialog('Grant access');
+
+    await waitFor(() => {
+      expect(mockGrantYouTubeAccess).toHaveBeenCalledWith({
+        userId: activeUser.id,
+      });
+    });
+    expect(mockOnUserUpdated).toHaveBeenCalledWith(updatedUser);
+    expect(mockToast).toHaveBeenCalledWith({ title: 'YouTube Access granted' });
+  });
+
+  it('withdraws YouTube Access after a confirmation that names the data deletion, and strips youtubeDisconnect from the identity', async () => {
+    mockWithdrawYouTubeAccess.mockResolvedValue({
+      data: {
+        ...youtubeUser,
+        youtubeAccess: false,
+        youtubeDisconnect: 'completed',
+      },
+    });
+
+    renderUserLifecycleActions(youtubeUser);
+    openAction('Withdraw YouTube Access');
+    expect(
+      screen.getByRole('heading', { name: 'Withdraw YouTube Access?' }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/Their YouTube data will be deleted/),
+    ).toBeInTheDocument();
+    confirmDialog('Withdraw access');
+
+    await waitFor(() => {
+      expect(mockWithdrawYouTubeAccess).toHaveBeenCalledWith({
+        userId: youtubeUser.id,
+      });
+    });
+    expect(mockOnUserUpdated).toHaveBeenCalledWith({
+      ...youtubeUser,
+      youtubeAccess: false,
+    });
+    expect(mockOnUserUpdated.mock.calls[0][0]).not.toHaveProperty(
+      'youtubeDisconnect',
+    );
+  });
+
+  it.each([
+    {
+      outcome: 'completed',
+      expectedToast: {
+        title: 'YouTube Access withdrawn',
+        description: 'Their YouTube data was deleted.',
+      },
+    },
+    {
+      outcome: 'pending',
+      expectedToast: {
+        title: 'YouTube Access withdrawn',
+        description:
+          'A YouTube sync is running. Their YouTube data will be deleted when it finishes.',
+      },
+    },
+    {
+      outcome: 'not_connected',
+      expectedToast: { title: 'YouTube Access withdrawn' },
+    },
+  ])(
+    'shows the withdrawal toast for the $outcome disconnect outcome',
+    async ({ outcome, expectedToast }) => {
+      mockWithdrawYouTubeAccess.mockResolvedValue({
+        data: {
+          ...youtubeUser,
+          youtubeAccess: false,
+          youtubeDisconnect: outcome,
+        },
+      });
+
+      renderUserLifecycleActions(youtubeUser);
+      openAction('Withdraw YouTube Access');
+      confirmDialog('Withdraw access');
+
+      await waitFor(() => {
+        expect(mockToast).toHaveBeenCalledWith(expectedToast);
+      });
+      expect(mockOnUserUpdated).toHaveBeenCalledTimes(1);
+    },
+  );
+
+  it('shows the server ceiling message in a destructive toast and leaves the user unchanged', async () => {
+    const ceilingMessage =
+      'YouTube Access ceiling reached: 25 of 25 places used. Raise YOUTUBE_ACCESS_CEILING to grant more.';
+    mockGrantYouTubeAccess.mockRejectedValue(
+      createAxiosError(ceilingMessage, 409),
+    );
+
+    renderUserLifecycleActions(activeUser);
+    openAction('Grant YouTube Access');
+    confirmDialog('Grant access');
+
+    await waitFor(() => {
+      expect(mockToast).toHaveBeenCalledWith({
+        title: 'Action failed',
+        description: ceilingMessage,
+        variant: 'destructive',
+      });
+    });
+    expect(mockOnUserUpdated).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('heading', { name: 'Grant YouTube Access?' }),
+    ).toBeInTheDocument();
   });
 });
