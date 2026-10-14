@@ -10,6 +10,7 @@ import {
   Put,
   Query,
   Request,
+  Response,
   Route,
   Security,
   Tags,
@@ -25,6 +26,7 @@ import youtubeSyncService, {
   YouTubeVideoWithChannel,
   isShortDuration,
 } from '../services/YouTubeSyncService';
+import { VersionFloorRefusal } from '../types';
 
 type YouTubeErrorResponse = { message: string };
 
@@ -258,6 +260,7 @@ function toSyncResponse(result: YouTubeRefreshResult): SyncResponse {
 
 @Tags('YouTube')
 @Route('/youtube')
+@Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class YouTubeController extends Controller {
   /**
    * Returns the Google OAuth consent URL for linking YouTube.

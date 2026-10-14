@@ -18,10 +18,15 @@ import { requireUserId } from '../guards/AuthGuard';
 import { ValidateErrorJSON } from '../interfaces';
 import { UserDeletionSchema } from '../schemas/auth.schema';
 import userService from '../services/UserService';
-import { UserDeletionBody, UserDeletionRefusal } from '../types';
+import {
+  UserDeletionBody,
+  UserDeletionRefusal,
+  VersionFloorRefusal,
+} from '../types';
 
 @Tags('Users')
 @Route('/users')
+@Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class UserDeletionController extends Controller {
   /**
    * User Deletion: permanently and immediately deletes the signed-in User and

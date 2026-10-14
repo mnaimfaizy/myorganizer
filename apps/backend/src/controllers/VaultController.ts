@@ -23,6 +23,7 @@ import vaultService, {
   VaultMetaV1,
 } from '../services/VaultService';
 import { ErrorResponse } from './ErrorResponse';
+import { VersionFloorRefusal } from '../types';
 
 type GetVaultMetaResponse =
   | { meta: VaultMetaV1; updatedAt: string; etag: string }
@@ -59,6 +60,7 @@ type ImportVaultResponse = { ok: true } | ErrorResponse;
 @Tags('Vault')
 @Route('/vault')
 @Security('jwt')
+@Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class VaultController extends Controller {
   private matchesIfNoneMatch(etag: string, ifNoneMatch?: string): boolean {
     return ifNoneMatch !== undefined && ifNoneMatch === etag;

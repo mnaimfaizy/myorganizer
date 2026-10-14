@@ -6,6 +6,35 @@ components:
   requestBodies: {}
   responses: {}
   schemas:
+    VersionFloorRefusal:
+      description: "HTTP 426: the Mobile App is below this environment's Version Floor."
+      properties:
+        code:
+          type: string
+          enum:
+            - below_version_floor
+          nullable: false
+        message:
+          type: string
+          description: "Short and User-safe: tells the User to update the Mobile App."
+        versionFloor:
+          type: string
+          description: The configured floor as written.
+        platform:
+          type: string
+          enum:
+            - android
+            - ios
+            - null
+          nullable: true
+          description: From the X-Client header; null when it could not be read.
+      required:
+        - code
+        - message
+        - versionFloor
+        - platform
+      type: object
+      additionalProperties: false
     AuthUrlResponse:
       properties:
         url:
@@ -1065,6 +1094,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/AuthUrlResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Returns the Google OAuth consent URL for linking YouTube.
       tags:
         - YouTube
@@ -1089,6 +1124,12 @@ paths:
                   - message
                   - ok
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: OAuth callback — exchanges the authorization code for tokens.
       tags:
         - YouTube
@@ -1118,6 +1159,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/StatusResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Returns the user's YouTube integration status.
       tags:
         - YouTube
@@ -1134,6 +1181,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/DisconnectResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: >-
         Disconnects the user's YouTube account after revoking the token.
 
@@ -1164,6 +1217,12 @@ paths:
                       $ref: "#/components/schemas/SubscriptionResponse"
                     type: array
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Returns the user's synced YouTube channel subscriptions.
       tags:
         - YouTube
@@ -1182,6 +1241,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/ChannelSyncResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: "Channel Sync: fetches fresh subscriptions from YouTube and upserts
         Followed Channels."
       tags:
@@ -1201,6 +1266,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/SyncResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: "Upload Sync: fetches Cached Uploads for every Enabled Channel."
       tags:
         - YouTube
@@ -1219,6 +1290,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/SyncStatusResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Returns the latest cached-video sync outcome and retry time.
       tags:
         - YouTube
@@ -1242,6 +1319,12 @@ paths:
                       - ok
                     type: object
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Toggles a subscription's enabled state.
       tags:
         - YouTube
@@ -1276,6 +1359,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/VideosPageResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Returns cached videos with sorting, searching, and pagination.
       tags:
         - YouTube
@@ -1339,6 +1428,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/WatchedResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Marks a Cached Upload as Watched or New.
       tags:
         - YouTube
@@ -1370,6 +1465,12 @@ paths:
                       $ref: "#/components/schemas/ChannelCarouselResponse"
                     type: array
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Returns videos grouped by channel for the carousel view.
       tags:
         - YouTube
@@ -1388,6 +1489,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/NotificationSettingsResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Returns the user's YouTube notification preferences.
       tags:
         - YouTube
@@ -1405,6 +1512,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/NotificationSettingsResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Updates the user's YouTube notification preferences.
       tags:
         - YouTube
@@ -1427,6 +1540,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/YouTubeAvailabilityResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: >-
         Public availability report (ADR 0091): whether YouTube is available
         right
@@ -1450,6 +1569,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/UnsubscribeResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: |-
         Turns the weekly digest off from the link carried by every digest email.
         Unauthenticated by design — the opaque token is the only credential a
@@ -1476,6 +1601,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/CronSyncResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: |-
         Cron-only endpoint: runs one bounded pass of the metadata sync worker.
         Authenticated via X-Cron-Secret header instead of JWT.
@@ -1496,6 +1627,12 @@ paths:
                 anyOf:
                   - $ref: "#/components/schemas/CronDigestResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: |-
         Cron-only endpoint: runs one bounded pass of the weekly digest worker.
         Separate from `/cron/sync` so neither job can starve or fail the other.
@@ -1514,6 +1651,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetVaultMetaResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Vault
       security:
@@ -1528,6 +1671,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PutVaultMetaResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Vault
       security:
@@ -1561,6 +1710,12 @@ paths:
                 $ref: "#/components/schemas/GetVaultBlobResponse"
         "304":
           description: ""
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Vault
       security:
@@ -1585,6 +1740,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PutVaultBlobResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Vault
       security:
@@ -1626,6 +1787,12 @@ paths:
                 $ref: "#/components/schemas/GetVaultBlobInventoryResponse"
         "304":
           description: ""
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Vault
       security:
@@ -1646,6 +1813,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ExportVaultResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Vault
       security:
@@ -1661,6 +1834,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ImportVaultResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Vault
       security:
@@ -1682,6 +1861,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RecordVaultBackupResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - VaultBackups
       security:
@@ -1702,6 +1887,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ListVaultBackupsResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - VaultBackups
       security:
@@ -1733,6 +1924,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/GetLatestVaultBackupResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - VaultBackups
       security:
@@ -1777,6 +1974,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidateErrorJSON"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: >-
         User Deletion: permanently and immediately deletes the signed-in User
         and
@@ -1847,6 +2050,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidateErrorJSON"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security: []
@@ -1876,6 +2085,12 @@ paths:
           description: Unauthorized
         "403":
           description: Forbidden
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
         "500":
           description: Failed to logout
       tags:
@@ -1955,6 +2170,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidateErrorJSON"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security: []
@@ -1981,6 +2202,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidateErrorJSON"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security: []
@@ -2012,6 +2239,12 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ValidateErrorJSON"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security: []
@@ -2042,6 +2275,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security: []
@@ -2072,6 +2311,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security:
@@ -2097,6 +2342,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security: []
@@ -2122,6 +2373,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       tags:
         - Authentication
       security: []
@@ -2144,6 +2401,12 @@ paths:
                 items:
                   $ref: "#/components/schemas/AdminUserIdentity"
                 type: array
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: List/search Users (identity fields only). Platform Admin only.
       tags:
         - Platform Admin
@@ -2177,6 +2440,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Get a User by id (identity fields only). Platform Admin only.
       tags:
         - Platform Admin
@@ -2210,6 +2479,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Disable a User (soft-block) and invalidate active sessions immediately.
       tags:
         - Platform Admin
@@ -2243,6 +2518,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Re-enable a Disabled User so authentication works again.
       tags:
         - Platform Admin
@@ -2276,6 +2557,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Force logout a User without disabling the account.
       tags:
         - Platform Admin
@@ -2325,6 +2612,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
         "429":
           description: ""
           content:
@@ -2370,6 +2663,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: Promote a User to Platform Admin.
       tags:
         - Platform Admin
@@ -2414,6 +2713,12 @@ paths:
                 required:
                   - message
                 type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: |-
         Demote a Platform Admin to a normal User.
         Rejects demotion of the last Platform Admin.
@@ -2440,6 +2745,12 @@ paths:
                 items:
                   $ref: "#/components/schemas/AdminAuditLogEntry"
                 type: array
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
       description: List recent Admin Audit Log entries (newest first). Platform Admin only.
       tags:
         - Platform Admin

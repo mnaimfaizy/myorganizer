@@ -719,6 +719,37 @@ export interface VaultMetaV1 {
 export interface VerifyEmailRequest {
     'token': string;
 }
+/**
+ * HTTP 426: the Mobile App is below this environment\'s Version Floor.
+ */
+export interface VersionFloorRefusal {
+    'code': VersionFloorRefusalCodeEnum;
+    /**
+     * Short and User-safe: tells the User to update the Mobile App.
+     */
+    'message': string;
+    /**
+     * The configured floor as written.
+     */
+    'versionFloor': string;
+    /**
+     * From the X-Client header; null when it could not be read.
+     */
+    'platform': VersionFloorRefusalPlatformEnum | null;
+}
+
+export const VersionFloorRefusalCodeEnum = {
+    BelowVersionFloor: 'below_version_floor',
+} as const;
+
+export type VersionFloorRefusalCodeEnum = typeof VersionFloorRefusalCodeEnum[keyof typeof VersionFloorRefusalCodeEnum];
+export const VersionFloorRefusalPlatformEnum = {
+    Android: 'android',
+    Ios: 'ios',
+} as const;
+
+export type VersionFloorRefusalPlatformEnum = typeof VersionFloorRefusalPlatformEnum[keyof typeof VersionFloorRefusalPlatformEnum];
+
 export interface VideoResponse {
     'id': string;
     'videoId': string;

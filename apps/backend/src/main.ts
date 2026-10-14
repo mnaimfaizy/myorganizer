@@ -11,6 +11,7 @@ import { createCorsOptions } from './config/http';
 import { validateGoogleRedirectUriOnBoot } from './config/youtubeRedirectUri';
 import { createTsoaErrorHandler } from './helpers/httpErrorHandler';
 import { maybeCreateGlobalApiRateLimiterFromEnv } from './middleware/globalRateLimit';
+import { createVersionFloorMiddleware } from './middleware/versionFloor';
 import { createYouTubeAvailabilityGate } from './middleware/youtubeAvailabilityGate';
 import { vaultRateLimiter } from './middleware/vaultRateLimit';
 import { bootstrapPlatformAdminFromEnv } from './bootstrap/platformAdminBootstrap';
@@ -140,6 +141,10 @@ app.use(passport.initialize());
 
 // Define the API routes under a single prefix.
 const api = express.Router();
+
+// ADR 0114: refuse Mobile Apps below the Version Floor first, before the rate
+// limiter, the routers, and authentication, so a stale client is told to update.
+api.use(createVersionFloorMiddleware());
 
 // Optional global API rate limiting (recommended for production).
 // Note: default store is in-memory; for multi-instance deployments use a shared store.

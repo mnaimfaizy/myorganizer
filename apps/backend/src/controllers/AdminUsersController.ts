@@ -27,11 +27,12 @@ import {
 } from '../guards/AuthGuard';
 import { toAdminUserIdentity } from '../helpers/filterUser';
 import userService from '../services/UserService';
-import { AdminUserIdentity } from '../types';
+import { AdminUserIdentity, VersionFloorRefusal } from '../types';
 
 @Tags('Platform Admin')
 @Route('/admin/users')
 @Security('jwt', ['platform_admin'])
+@Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class AdminUsersController extends Controller {
   /**
    * List/search Users (identity fields only). Platform Admin only.

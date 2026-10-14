@@ -1,4 +1,13 @@
-import { Controller, Get, Query, Request, Route, Security, Tags } from 'tsoa';
+import {
+  Controller,
+  Get,
+  Query,
+  Request,
+  Response,
+  Route,
+  Security,
+  Tags,
+} from 'tsoa';
 import { Request as ExRequest } from 'express';
 import {
   ForbiddenError,
@@ -6,11 +15,12 @@ import {
   requirePlatformAdmin,
 } from '../guards/AuthGuard';
 import userService from '../services/UserService';
-import { AdminAuditLogEntry } from '../types';
+import { AdminAuditLogEntry, VersionFloorRefusal } from '../types';
 
 @Tags('Platform Admin')
 @Route('/admin/audit-logs')
 @Security('jwt', ['platform_admin'])
+@Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class AdminAuditLogController extends Controller {
   /**
    * List recent Admin Audit Log entries (newest first). Platform Admin only.

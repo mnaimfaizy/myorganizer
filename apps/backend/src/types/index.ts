@@ -77,6 +77,17 @@ export interface UserDeletionBody {
   confirmation: 'DELETE';
 }
 
+/** HTTP 426: the Mobile App is below this environment's Version Floor. */
+export interface VersionFloorRefusal {
+  code: 'below_version_floor';
+  /** Short and User-safe: tells the User to update the Mobile App. */
+  message: string;
+  /** The configured floor as written. */
+  versionFloor: string;
+  /** From the X-Client header; null when it could not be read. */
+  platform: 'android' | 'ios' | null;
+}
+
 export class MyError extends Error {
   public statusCode;
   public data;

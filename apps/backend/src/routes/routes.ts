@@ -27,6 +27,17 @@ const expressAuthenticationRecasted = expressAuthentication as (req: ExRequest, 
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 
 const models: TsoaRoute.Models = {
+    "VersionFloorRefusal": {
+        "dataType": "refObject",
+        "properties": {
+            "code": {"dataType":"enum","enums":["below_version_floor"],"required":true},
+            "message": {"dataType":"string","required":true},
+            "versionFloor": {"dataType":"string","required":true},
+            "platform": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["android"]},{"dataType":"enum","enums":["ios"]},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AuthUrlResponse": {
         "dataType": "refObject",
         "properties": {

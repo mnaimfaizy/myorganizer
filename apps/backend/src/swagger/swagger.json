@@ -7,6 +7,44 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
+			"VersionFloorRefusal": {
+				"description": "HTTP 426: the Mobile App is below this environment's Version Floor.",
+				"properties": {
+					"code": {
+						"type": "string",
+						"enum": [
+							"below_version_floor"
+						],
+						"nullable": false
+					},
+					"message": {
+						"type": "string",
+						"description": "Short and User-safe: tells the User to update the Mobile App."
+					},
+					"versionFloor": {
+						"type": "string",
+						"description": "The configured floor as written."
+					},
+					"platform": {
+						"type": "string",
+						"enum": [
+							"android",
+							"ios",
+							null
+						],
+						"nullable": true,
+						"description": "From the X-Client header; null when it could not be read."
+					}
+				},
+				"required": [
+					"code",
+					"message",
+					"versionFloor",
+					"platform"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"AuthUrlResponse": {
 				"properties": {
 					"url": {
@@ -1520,6 +1558,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Returns the Google OAuth consent URL for linking YouTube.",
@@ -1556,6 +1604,16 @@
 										"ok"
 									],
 									"type": "object"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -1611,6 +1669,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Returns the user's YouTube integration status.",
@@ -1635,6 +1703,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/DisconnectResponse"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -1685,6 +1763,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Returns the user's synced YouTube channel subscriptions.",
@@ -1716,6 +1804,16 @@
 											"$ref": "#/components/schemas/YouTubeErrorResponse"
 										}
 									]
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -1753,6 +1851,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Upload Sync: fetches Cached Uploads for every Enabled Channel.",
@@ -1784,6 +1892,16 @@
 											"$ref": "#/components/schemas/YouTubeErrorResponse"
 										}
 									]
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -1826,6 +1944,16 @@
 											"$ref": "#/components/schemas/YouTubeErrorResponse"
 										}
 									]
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -1887,6 +2015,16 @@
 											"$ref": "#/components/schemas/YouTubeErrorResponse"
 										}
 									]
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -1990,6 +2128,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Marks a Cached Upload as Watched or New.",
@@ -2046,6 +2194,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Returns videos grouped by channel for the carousel view.",
@@ -2080,6 +2238,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Returns the user's YouTube notification preferences.",
@@ -2109,6 +2277,16 @@
 											"$ref": "#/components/schemas/YouTubeErrorResponse"
 										}
 									]
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2149,6 +2327,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Public availability report (ADR 0091): whether YouTube is available right\nnow. Unauthenticated and reports booleans only — never configuration\nvalues — so the web can hide the feature without needing a session.",
@@ -2176,6 +2364,16 @@
 											"$ref": "#/components/schemas/YouTubeErrorResponse"
 										}
 									]
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2219,6 +2417,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Cron-only endpoint: runs one bounded pass of the metadata sync worker.\nAuthenticated via X-Cron-Secret header instead of JWT.",
@@ -2253,6 +2461,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Cron-only endpoint: runs one bounded pass of the weekly digest worker.\nSeparate from `/cron/sync` so neither job can starve or fail the other.",
@@ -2280,6 +2498,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -2301,6 +2529,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/PutVaultMetaResponse"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2360,6 +2598,16 @@
 					},
 					"304": {
 						"description": ""
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -2398,6 +2646,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/PutVaultBlobResponse"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2469,6 +2727,16 @@
 					},
 					"304": {
 						"description": ""
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -2504,6 +2772,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -2527,6 +2805,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ImportVaultResponse"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2566,6 +2854,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -2597,6 +2895,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ListVaultBackupsResponse"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2649,6 +2957,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/GetLatestVaultBackupResponse"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2723,6 +3041,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ValidateErrorJSON"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -2829,6 +3157,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -2875,6 +3213,16 @@
 					},
 					"403": {
 						"description": "Forbidden"
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					},
 					"500": {
 						"description": "Failed to logout"
@@ -3004,6 +3352,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -3043,6 +3401,16 @@
 							"application/json": {
 								"schema": {
 									"$ref": "#/components/schemas/ValidateErrorJSON"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -3096,6 +3464,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -3141,6 +3519,16 @@
 										"message"
 									],
 									"type": "object"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -3192,6 +3580,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -3235,6 +3633,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -3275,6 +3683,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"tags": [
@@ -3307,6 +3725,16 @@
 										"$ref": "#/components/schemas/AdminUserIdentity"
 									},
 									"type": "array"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -3366,6 +3794,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Get a User by id (identity fields only). Platform Admin only.",
@@ -3419,6 +3857,16 @@
 										"message"
 									],
 									"type": "object"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -3478,6 +3926,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Re-enable a Disabled User so authentication works again.",
@@ -3531,6 +3989,16 @@
 										"message"
 									],
 									"type": "object"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -3617,6 +4085,16 @@
 							}
 						}
 					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
+					},
 					"429": {
 						"description": "",
 						"content": {
@@ -3687,6 +4165,16 @@
 										"message"
 									],
 									"type": "object"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
@@ -3764,6 +4252,16 @@
 								}
 							}
 						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
+								}
+							}
+						}
 					}
 				},
 				"description": "Demote a Platform Admin to a normal User.\nRejects demotion of the last Platform Admin.",
@@ -3802,6 +4300,16 @@
 										"$ref": "#/components/schemas/AdminAuditLogEntry"
 									},
 									"type": "array"
+								}
+							}
+						}
+					},
+					"426": {
+						"description": "Below the Version Floor",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VersionFloorRefusal"
 								}
 							}
 						}
