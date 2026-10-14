@@ -122,14 +122,16 @@ const evidenceFailure = (finding, executions, isObligation) => {
 };
 
 /**
- * Code that runs, for the Spec brief's trace (issue #1140): a workflow or an
- * action, or a script. Its defects sit in how a changed line meets an unchanged
- * one, so a hunk is not enough and the bar is the whole file, opened.
+ * Code that runs, for the Spec brief's trace (issue #1140, decision 4): anything
+ * under `.github/workflows/`, `.github/actions/` or `tools/`, and any `*.sh` or
+ * `*.mjs` file. The Spec brief names the same scope. Its defects sit in how a
+ * changed line meets an unchanged one, so a hunk is not enough and the bar is
+ * the whole file, opened.
  */
 const EXECUTABLE = [
   /^\.github\/(?:workflows|actions)\//,
-  /\.(?:sh|mjs|cjs)$/,
-  /^tools\/.*\.(?:js|ts)$/,
+  /^tools\//,
+  /\.(?:sh|mjs)$/,
 ];
 export const isExecutable = (file) => EXECUTABLE.some((re) => re.test(file));
 

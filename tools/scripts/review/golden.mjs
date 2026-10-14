@@ -212,7 +212,11 @@ export function assertGoldenSet(
           fail(`${w}: id must be a lowercase slug`);
         if (expectedIds.has(e.id)) fail(`${w}: duplicate expected id`);
         expectedIds.add(e.id);
-        if (!FINDING_AXES.includes(e.axis)) fail(`${w}: axis ${e.axis}`);
+        // One axis, or several when either axis may raise the defect and the
+        // one-axis drop decides which copy survives (ADR 0130 item 3).
+        const axes = Array.isArray(e.axis) ? e.axis : [e.axis];
+        if (axes.length === 0 || !axes.every((a) => FINDING_AXES.includes(a)))
+          fail(`${w}: axis ${e.axis}`);
         if (typeof e.source !== 'string') fail(`${w}: source pattern missing`);
         compile(e.source, w);
         if (typeof e.rule !== 'string') fail(`${w}: rule pattern missing`);
@@ -339,8 +343,11 @@ const namesTheRule = (expected, finding) =>
   (compile(expected.source).test(finding.source) &&
     compile(expected.rule).test(finding.rule));
 
+const axesOf = (expected) =>
+  Array.isArray(expected.axis) ? expected.axis : [expected.axis];
+
 const matches = (expected, finding) =>
-  finding.axis === expected.axis &&
+  axesOf(expected).includes(finding.axis) &&
   namesTheRule(expected, finding) &&
   expected.files.includes(finding.location?.file ?? '') &&
   atLeast(finding.severity, expected.minSeverity);
@@ -387,8 +394,8 @@ export const scoreCase = (goldenCase, normalized) => {
     used.add(hit.id);
     // Did the reviewer name the very rule the expectation pins? Only an
     // expectation literal enough to pin a `ruleId` can be strict (issue
-    // #724). The axis and the file are already equal — `matches` required
-    // them — so the rule id is all that is left of the fields two findings
+    // #724). The file is already equal and the axis one the expectation names
+    // — `matches` required both — so the rule id is all that is left of the fields two findings
     // must share to be one (`FINDING_MATCH_FIELDS`). This compared a
     // recomputed id until issue #940 put the start line in a minted id, which
     // no expectation can know.
@@ -798,7 +805,7 @@ const SPEC_FILE = 'tmp/code-review/spec.json';
 /**
  * Whether the replay hands a Spec-axis case the spec its original review saw
  * (ADR 0129 item 5). The step that writes `tmp/code-review/spec.json` must read
- * the case's `specSnapshot` and carry its title and body: written from `.spec`
+ * the case's `specText`, which `--show` resolves from its snapshot: written from `.spec`
  * alone, the Spec axis gets a reference with no text, which is how every replay
  * before issue #1140 ran. And the checkout that job starts from must keep full
  * history, or a seeded case's golden tag may not be in the clone.
@@ -810,13 +817,9 @@ export const replaySpecSnapshotFindings = (workflowText) => {
     return [`no step writes ${SPEC_FILE}, so no case reaches the Spec axis`];
   const findings = [];
   const { name, body } = steps[load];
-  if (
-    !body.includes('specSnapshot') ||
-    !/\btitle\b/.test(body) ||
-    !/\bbody\b/.test(body)
-  )
+  if (!body.includes('specText'))
     findings.push(
-      `"${name}" writes ${SPEC_FILE} without the case's specSnapshot title and body, so a Spec-axis case replays with no spec text (ADR 0129)`,
+      `"${name}" writes ${SPEC_FILE} without the case's specText, the pinned snapshot's title and body, so a Spec-axis case replays with no spec text (ADR 0129)`,
     );
   const checkout = steps
     .slice(0, load)
@@ -826,4 +829,22 @@ export const replaySpecSnapshotFindings = (workflowText) => {
       `"${checkout.name}" checks out without fetch-depth: 0, so a seeded case's golden tag may be missing from the clone (ADR 0129)`,
     );
   return findings;
+};
+
+/**
+ * A case as the replay needs it: the case, plus `specText` — the title and
+ * body of its pinned snapshot — when its spec is an issue. This is the one
+ * place a snapshot is read, so `--show` and the replay's spec.json cannot
+ * disagree about what the reviewer was handed (ADR 0129 item 5).
+ *
+ * @param {object} goldenCase one entry of `cases`
+ * @param {{ read?: (path: string) => string }} [io]
+ */
+export const caseForReplay = (
+  goldenCase,
+  { read = (path) => readFileSync(path, 'utf8') } = {},
+) => {
+  if (!goldenCase.specSnapshot) return goldenCase;
+  const { title, body } = JSON.parse(read(goldenCase.specSnapshot));
+  return { ...goldenCase, specText: { title, body } };
 };

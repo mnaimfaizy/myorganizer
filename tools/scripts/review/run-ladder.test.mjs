@@ -27,6 +27,7 @@ import {
   RUN_FAILURES,
   TIGHTENING_FACTS,
   fileCoverage,
+  isExecutable,
   isObligationFinding,
   judgeRun,
 } from './run-ladder.mjs';
@@ -1032,4 +1033,50 @@ test('the comment lists each changed file and what each axis did with it', () =>
     renderRunFacts(normalized(report, facts)).join('\n'),
     /changed files, most lines added first/,
   );
+});
+
+test('the render CLI prints the coverage table for a transcript-read report', () => {
+  // Run as a process, not imported: the CLI renders while the module is
+  // still evaluating, so a renderer declared below its entry point throws
+  // there and nowhere else.
+  const { report, facts } = real();
+  const worklist = {
+    selected: [],
+    changedFiles: [{ file: '.github/workflows/deploy.yml', added: 580 }],
+  };
+  const dir = mkdtempSync(join(tmpdir(), 'render-cli-'));
+  const path = join(dir, 'normalized.json');
+  writeFileSync(path, JSON.stringify(normalized(report, facts, { worklist })));
+  const run = spawnSync(
+    process.execPath,
+    [
+      new URL('./render-review-report.mjs', import.meta.url).pathname,
+      path,
+      '--no-hunks',
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /changed files, most lines added first/);
+});
+
+test('code that runs is exactly the scope the Spec brief names', () => {
+  // Issue #1140, decision 4: `.github/workflows/**`, `.github/actions/**`,
+  // `tools/**`, `*.sh`, `*.mjs`.
+  for (const file of [
+    '.github/workflows/deploy-staging.yml',
+    '.github/actions/code-reviewer/action.yml',
+    'tools/config/review-rules.json',
+    'tools/scripts/lib/staging-web-deploy.mjs',
+    'apps/backend/scripts/start.sh',
+    'libs/x/build.mjs',
+  ])
+    assert.ok(isExecutable(file), file);
+  for (const file of [
+    'docs/deploy.md',
+    '.github/CODEOWNERS',
+    'apps/backend/src/x.cjs',
+    'libs/x/src/index.ts',
+  ])
+    assert.ok(!isExecutable(file), file);
 });

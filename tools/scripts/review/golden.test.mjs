@@ -6,6 +6,7 @@ import {
   GoldenSetError,
   assertGoldenSet,
   caseRangeFindings,
+  caseForReplay,
   loadGoldenSet,
   renderScore,
   replayObligationCheckFindings,
@@ -1105,8 +1106,7 @@ test('a seeded head is reachable from its golden tag, and a missing tag is a fin
 const specSteps = ({
   load = [
     '        run: |',
-    '          SNAPSHOT="$(jq -r \'.specSnapshot // empty\' <<<"$CASE")"',
-    '          jq --argjson spec "$(jq .spec <<<"$CASE")" \'{spec: $spec, title, body}\' "$SNAPSHOT" > tmp/code-review/spec.json',
+    `          jq '{spec: .spec} + (.specText // {})' <<<"$CASE" > tmp/code-review/spec.json`,
   ],
   fetchDepth = '          fetch-depth: 0',
 } = {}) =>
@@ -1132,7 +1132,7 @@ test('the replay writes a pinned spec snapshot into spec.json and keeps full his
         ],
       }),
     )[0],
-    /writes tmp\/code-review\/spec\.json without the case's specSnapshot/,
+    /writes tmp\/code-review\/spec\.json without the case's specText/,
   );
   assert.match(
     replaySpecSnapshotFindings(specSteps({ load: ['        run: exit 0'] }))[0],
@@ -1152,4 +1152,54 @@ test('the real replay workflow writes the pinned spec snapshot', () => {
     'utf8',
   );
   assert.deepEqual(replaySpecSnapshotFindings(workflow), []);
+});
+
+test('an expectation may name more than one axis, and either copy of the defect scores', () => {
+  // ADR 0130 keeps the Spec copy of an overlapping pair on a tie, so a defect
+  // both axes can raise must not score a miss for which copy survived.
+  const either = {
+    ...goldenCase,
+    expected: [{ ...goldenCase.expected[0], axis: ['standards', 'spec'] }],
+  };
+  assert.doesNotThrow(() =>
+    assertGoldenSet({ schemaVersion: 4, cases: [either] }),
+  );
+  for (const axis of ['standards', 'spec'])
+    assert.equal(
+      scoreCase(either, { findings: [finding({ axis })] }).recall,
+      1,
+      axis,
+    );
+  // A single-axis expectation still holds the other axis out.
+  assert.equal(
+    scoreCase(goldenCase, { findings: [finding({ axis: 'spec' })] }).recall,
+    0,
+  );
+  assert.throws(
+    () =>
+      assertGoldenSet({
+        schemaVersion: 4,
+        cases: [
+          { ...either, expected: [{ ...either.expected[0], axis: ['vibes'] }] },
+        ],
+      }),
+    /axis/,
+  );
+});
+
+test('a case shown for replay carries its pinned spec text, and a spec-less case carries none', () => {
+  const read = (path) =>
+    path === SNAPSHOT
+      ? JSON.stringify({
+          ref: '#1138',
+          title: 'Old title',
+          body: 'Body as it was',
+          revisionEditedAt: 'x',
+        })
+      : assert.fail(`read ${path}`);
+  assert.deepEqual(caseForReplay(seededCase, { read }).specText, {
+    title: 'Old title',
+    body: 'Body as it was',
+  });
+  assert.equal(caseForReplay(goldenCase, { read }).specText, undefined);
 });

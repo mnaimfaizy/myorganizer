@@ -7,11 +7,13 @@
 // A finding's identity hashes its rule id, and the validator rejects an id the
 // catalogue does not carry. That makes three kinds of drift expensive:
 //
-//   1. The catalogue says a word the finding contract does not — an axis or a
-//      severity cap that matches nothing. A cap nobody can compare against
-//      passes everything, which is the silent no-op shape this repo keeps
-//      finding. The same applies to a `cites` path that no longer exists: a
-//      standards rule is only as good as the document behind it.
+//   1. The catalogue says a word the finding contract does not — an axis, or a
+//      severity cap or floor, that matches nothing. A cap or floor nobody can
+//      compare against passes everything, which is the silent no-op shape
+//      this repo keeps finding; so does a floor above its rule's cap, which
+//      no finding can satisfy (ADR 0130). The same applies to a `cites` path
+//      that no longer exists: a standards rule is only as good as the
+//      document behind it.
 //   2. The obligation family stops mirroring tools/config/review-obligations.json.
 //      An obligation whose answer exposes a defect is written up as an ordinary
 //      finding, and it has nothing to write it up as if the id is missing.

@@ -367,13 +367,13 @@
       "expected": [
         {
           "id": "fingerprint-reaches-public-log",
-          "axis": "standards",
+          "axis": ["standards", "spec"],
           "ruleId": "standard-operator-fingerprint-in-source",
-          "source": "0086|0056|AGENTS",
-          "rule": "fingerprint|host|log|connection|operator",
+          "source": "0086|0056|AGENTS|#1138",
+          "rule": "fingerprint|host|log|connection|operator|curl|print|WEB_ORIGIN|answers",
           "files": [".github/workflows/deploy-staging.yml"],
           "minSeverity": "should-fix",
-          "why": "curl -fsSL prints the bare host on a resolution or HTTP error, which GitHub's masking does not hide because it matches only the exact secret value; the seeded run reported it only as a Spec nit"
+          "why": "curl -fsSL prints the bare host on a resolution or HTTP error, which GitHub's masking does not hide because it matches only the exact secret value; the seeded run reported it only as a Spec nit. Either axis may raise it: under ADR 0130 the more severe copy of an overlapping pair survives, and the Spec copy on a tie, so a should-fix from either axis is a catch"
         }
       ],
       "minRecall": 1

@@ -76,7 +76,7 @@ outside it is rejected and takes the whole report with it.
 - `standard-doc-claim-drifted` — a document still claiming something this change made untrue
 - `standard-unasserted-claim` — an artifact (a House Explainer Page, a checker header) states an assertable fact it does not assert. Not the same as drift: see ADR 0085
 - `standard-secret-committed` — a secret, credential, or plaintext value committed or logged. Never below should-fix
-- `standard-operator-fingerprint-in-source` — an Operator Fingerprint (host, port, account, home path, sibling app, or the operator's other properties) written into the tracked tree or printed to a public log. This repository is public, so a workflow's log is public: a value a step can print, such as a host in a `curl` error, is published, and masking does not hide it unless the printed text is the exact secret value. Never below should-fix. Not the same as a secret: see ADR 0086
+- `standard-operator-fingerprint-in-source` — an Operator Fingerprint (host, port, account, home path, sibling app, or the operator's other properties) written into the tracked tree or printed to a public log. This repository is public, so a workflow's log is public: a value a step can print, such as one echoed in an error message, is published, and masking does not hide it unless the printed text is the exact secret value. Never below should-fix. Not the same as a secret: see ADR 0086
 - `standard-branch-or-commit-convention` — a branch name or commit message off convention
 - `standard-other` — FALLBACK. A documented standard none of the above names. Use it rather than
   dropping the finding, and say which document in `source` and which rule in `rule`.

@@ -37,10 +37,9 @@ wordings across eleven runs.
 
 Comparing the diff with the spec's sentences finds a requirement that is missing. It does not find
 one that is present and wrong. When the diff changes code that runs, trace each behavioural
-requirement through it instead. Code that runs means a workflow or an action under `.github/`, a
-script under `tools/`, or any `*.sh` or `*.mjs` file. PR #1139 changed a 580-line deploy workflow,
-and its review returned no findings without opening that file. A deeper review of the same commit
-found two logic defects in it, and a seeded copy hid a third that no test covers (issue #1140).
+requirement through it instead. Code that runs means anything under `.github/workflows/`,
+`.github/actions/` or `tools/`, and any `*.sh` or `*.mjs` file. A review that only compared
+sentences has approved such a change with logic defects in it (issue #1140).
 
 For each requirement the spec states as behaviour, do all four steps:
 
@@ -49,11 +48,10 @@ For each requirement the spec states as behaviour, do all four steps:
    read from your transcript.
 2. **Name the lines that decide the requirement.** If no line decides it, the requirement is missing.
 3. **Walk every way in.** Take each trigger that reaches those lines (a schedule, a manual dispatch,
-   a push) and each case the spec tells apart, such as "already uploaded" and "not answering". Follow
-   each one through to what it does.
+   a push) and each case the spec tells apart. Follow each one through to what it does.
 4. **Evaluate each line no test exercises with one concrete input.** Write down the values, and for
-   a command, what each argument means in its position. A predicate called with its operands in the
-   wrong order still passes every gate, and it inverts the rule it guards.
+   a command, what each argument means in its position, then say what the line does with them. A
+   line that reads plausibly can still do the opposite of its requirement and pass every gate.
 
 When the outcome contradicts the requirement, raise `spec-requirement-implemented-wrong` with the
 quoted requirement as evidence, located at the deciding lines. A requirement you traced and found

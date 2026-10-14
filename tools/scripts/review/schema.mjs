@@ -596,12 +596,13 @@ export const RunFactsSchema = z
       });
   });
 
+/** What one axis did with one changed file (issue #1140). */
+const FILE_COVERAGE = ['opened', 'diffed', 'neither'];
+
 /**
  * What a normalized report keeps of the facts file, beside the envelope
  * fields the facts overwrite.
  */
-const FILE_COVERAGE = ['opened', 'diffed', 'neither'];
-
 const RunFactsSummarySchema = z.strictObject({
   shape: z.enum(RUN_FACTS_SHAPES),
   shapeReason: nonEmpty.nullable(),
