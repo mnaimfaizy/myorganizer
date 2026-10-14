@@ -9,7 +9,7 @@ export interface OfflineNoticeProps {
 }
 
 const OFFLINE_COPY =
-  "You're offline. Vault changes are saved on this device and sync when you reconnect. Other changes need a connection.";
+  "You're offline. Vault changes are saved on this device and sync when you reconnect. Other changes may need a connection.";
 
 /**
  * Slim bar shown while the browser is offline. It is not dismissible and does

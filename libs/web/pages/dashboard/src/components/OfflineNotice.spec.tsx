@@ -3,7 +3,7 @@ import { act, render, screen, within } from '@testing-library/react';
 import { OfflineNotice } from './OfflineNotice';
 
 const OFFLINE_COPY =
-  "You're offline. Vault changes are saved on this device and sync when you reconnect. Other changes need a connection.";
+  "You're offline. Vault changes are saved on this device and sync when you reconnect. Other changes may need a connection.";
 
 describe('OfflineNotice', () => {
   let onlineSpy: jest.SpyInstance<boolean, []>;
