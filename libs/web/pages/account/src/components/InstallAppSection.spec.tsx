@@ -99,8 +99,12 @@ describe('InstallAppSection', () => {
       .getAllByRole('listitem')
       .map((item) => item.textContent);
     expect(steps).toHaveLength(2);
-    expect(steps[0]).toMatch(/^Tap the Share button\s+in Safari's toolbar\.$/);
-    expect(steps[1]).toBe('Choose Add to Home Screen.');
+    expect(steps[0]).toMatch(
+      /^Tap the Share button\s*\.\s*If it isn't in Safari's toolbar, tap\s*•••\s*the More button first\.$/,
+    );
+    expect(steps[1]).toBe(
+      "Choose Add to Home Screen. If it isn't listed, tap More first.",
+    );
     expect(rtl.within(section).getByText(IOS_SENTENCE)).toBeInTheDocument();
     expect(
       rtl.within(section).queryByRole('button', { name: 'Install app' }),

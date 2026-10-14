@@ -33,12 +33,19 @@ const SAFARI_STEPS = {
           <Share
             aria-hidden="true"
             className="inline h-4 w-4 align-text-bottom"
-          />{' '}
-          in Safari&apos;s toolbar.
+          />
+          . If it isn&apos;t in Safari&apos;s toolbar, tap{' '}
+          <span aria-hidden="true">•••</span>
+          <span className="sr-only">the More button</span> first.
         </>
       ),
     },
-    { id: 'add-to-home-screen', content: 'Choose Add to Home Screen.' },
+    {
+      id: 'add-to-home-screen',
+      content: (
+        <>Choose Add to Home Screen. If it isn&apos;t listed, tap More first.</>
+      ),
+    },
   ],
   'mac-safari': [
     { id: 'file-menu', content: "Open the File menu in Safari's menu bar." },

@@ -19,7 +19,7 @@ import {
  */
 
 const OFFLINE_COPY =
-  "You're offline. Changes can't be saved until you reconnect.";
+  "You're offline. Vault changes are saved on this device and sync when you reconnect. Other changes may need a connection.";
 
 const EMAIL = 'offline-notice-01@example.com';
 const LOGIN_FIXTURE = 'offline-e2e-01';
