@@ -2414,6 +2414,88 @@ describe('createVaultSyncQueue - transient failures and retry scheduling', () =>
     expect(retryScheduleCalls).toHaveLength(2);
     expect(retryScheduleCalls[1]?.attempt).toBe(0);
   });
+
+  test('a save made while the network is unreachable stays unsent, retries, and is sent once the network returns', async () => {
+    const handle = await setupHandle('user-1', []);
+    await handle.recordPushSuccess({ type: 'tasks', etag: 'etag-1' });
+
+    // The save itself resolves on the Local Vault write, offline or not.
+    const envelope: VaultBlobEnvelope<unknown> = {
+      records: [{ id: 'task-offline' }],
+      deletions: {},
+    };
+    await handle.saveEncryptedData({ type: 'tasks', value: envelope });
+
+    const api = createApiDouble();
+    let callCount = 0;
+    api.putVaultBlob.mockImplementation(async () => {
+      callCount++;
+      if (callCount === 1) {
+        // No HTTP status: the request never reached the server.
+        throw new Error('Network error');
+      }
+      return {
+        data: {
+          ok: true,
+          etag: 'etag-after-reconnect',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+          message: 'OK',
+        },
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        config: { headers: {} as any },
+      } as unknown as AxiosResponse<{
+        ok: boolean;
+        etag: string;
+        updatedAt: string;
+        message: string;
+      }>;
+    });
+
+    const retryScheduleCalls: Array<{ retry: () => void; attempt: number }> =
+      [];
+    const retrySchedule = jest.fn((retry: () => void, attempt: number) => {
+      retryScheduleCalls.push({ retry, attempt });
+    });
+
+    const queue = createVaultSyncQueue({
+      api,
+      prompt: jest.fn(),
+      schedule: () => undefined,
+      retrySchedule,
+    });
+
+    queue.vaultBlobChanged({ type: VaultBlobType.Tasks, handle });
+
+    // Offline: the send fails, the type stays unsent, and a retry is queued.
+    const offlineDrain = await queue.drain(handle);
+    expect(offlineDrain.failed).toHaveLength(1);
+    expect(queue.unsentTypes()).toContain(VaultBlobType.Tasks);
+    expect(retrySchedule).toHaveBeenCalledTimes(1);
+    expect(retryScheduleCalls[0]?.attempt).toBe(0);
+    expect(queue.status().retryScheduled).toBe(true);
+
+    // Reconnected: the queued retry sends the change and nothing is left unsent.
+    const scheduledRetry = retryScheduleCalls[0];
+    await scheduledRetry?.retry();
+    expect(api.putVaultBlob).toHaveBeenCalledTimes(2);
+
+    // Both attempts push the same Tasks change against the last pushed etag;
+    // the failed attempt did not advance it, so the retry carries the same ifMatch.
+    const sends = [0, 1].map(
+      (callIndex) => api.putVaultBlob.mock.calls[callIndex]?.[0],
+    );
+    expect(sends).toEqual([
+      expect.objectContaining({ type: VaultBlobType.Tasks, ifMatch: 'etag-1' }),
+      expect.objectContaining({ type: VaultBlobType.Tasks, ifMatch: 'etag-1' }),
+    ]);
+    expect(queue.unsentTypes()).toEqual([]);
+    expect(queue.status()).toEqual(
+      expect.objectContaining({ unsentTypes: [], retryScheduled: false }),
+    );
+  });
 });
 
 describe('createVaultSyncQueue - retryNow', () => {

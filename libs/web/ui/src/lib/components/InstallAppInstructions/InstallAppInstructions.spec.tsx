@@ -19,13 +19,19 @@ describe('InstallAppInstructions', () => {
     expect(screen.queryByRole('list')).toBeNull();
   });
 
-  it('should list the Share and Add to Home Screen steps when in ios mode', () => {
+  it('should list the Share and Add to Home Screen steps with their More-menu fallbacks when in ios mode', () => {
     render(<InstallAppInstructions mode="ios" onInstall={jest.fn()} />);
 
     const items = screen.getAllByRole('listitem');
     expect(items).toHaveLength(2);
-    expect(items[0].textContent).toMatch(/Share button/);
-    expect(items[1].textContent).toBe('Choose Add to Home Screen.');
+    // The sr-only "the More button" is the accessible text for the aria-hidden
+    // ••• glyph, so this pattern also asserts the screen-reader wording.
+    expect(items[0].textContent).toMatch(
+      /^Tap the Share button\s*\.\s*If it isn't in Safari's toolbar, tap\s*•••\s*the More button first\.$/,
+    );
+    expect(items[1].textContent).toBe(
+      "Choose Add to Home Screen. If it isn't listed, tap More first.",
+    );
   });
 
   it('should show the sign-in and vault unlock note with no install button and no onInstall call when in ios mode', () => {
