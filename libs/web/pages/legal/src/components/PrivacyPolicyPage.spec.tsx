@@ -161,13 +161,12 @@ describe('PrivacyPolicyPage', () => {
       expect(text).not.toMatch(/kept for 30 days/);
     });
 
-    it('should state revoking at Google makes MyOrganizer stop syncing, without claiming deletion within seven days', () => {
+    it("should state revoking MyOrganizer's access at Google stops syncing and deletes the same data within seven days unless the User reconnects", () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /revoke access at Google instead, MyOrganizer stops syncing your YouTube data/,
+        /If you revoke MyOrganizer's access at Google instead, MyOrganizer stops syncing and deletes the same data within seven days unless you reconnect\./,
       );
-      expect(text).not.toMatch(/within seven days/);
     });
 
     it('should state withdrawing the feature from an account deletes the same data as a disconnect, including watched marks and the revoke at Google', () => {

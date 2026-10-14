@@ -85,11 +85,13 @@ export function YouTubePrivacySection({
         . Disconnecting revokes MyOrganizer&apos;s access at Google and
         immediately deletes your stored tokens, followed channels, cached
         uploads, watched marks, and notification and digest settings. If you
-        revoke access at Google instead, MyOrganizer stops syncing your YouTube
-        data. The operator may also withdraw the feature from an account; doing
-        so deletes the same data as a disconnect, revoking MyOrganizer&apos;s
-        access at Google and deleting your stored tokens, followed channels,
-        cached uploads, watched marks, and notification and digest settings.
+        revoke MyOrganizer&apos;s access at Google instead, MyOrganizer stops
+        syncing and deletes the same data within seven days unless you
+        reconnect. The operator may also withdraw the feature from an account;
+        doing so deletes the same data as a disconnect, revoking
+        MyOrganizer&apos;s access at Google and deleting your stored tokens,
+        followed channels, cached uploads, watched marks, and notification and
+        digest settings.
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
         For detailed information about how long we keep your YouTube metadata

@@ -16,6 +16,8 @@ model YouTubeIntegration {
   lastChannelSyncStatus   String    @default("never")
   /// Error code from the latest Channel Sync; null on success. Read-time interruption is not persisted. See ADR 0096.
   lastChannelSyncError    String?
+  /// When this YouTube Connection became Revoked. Cleared on reconnect. A connection Revoked for seven days or more ends in a YouTube Disconnect. See ADR 0129.
+  revokedAt               DateTime?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 

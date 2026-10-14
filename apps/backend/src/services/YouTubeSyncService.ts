@@ -350,10 +350,19 @@ class YouTubeSyncService {
     if (!isRevokedTokenError(error)) {
       return false;
     }
-    await this.prisma.youTubeIntegration.update({
-      where: { userId },
-      data: { status: 'revoked' },
+    // ADR 0129: `revokedAt` records the first moment the Connection became
+    // Revoked. A repeat detection must not restart the seven-day clock, so the
+    // stamp is written only while it is still null.
+    const stamped = await this.prisma.youTubeIntegration.updateMany({
+      where: { userId, revokedAt: null },
+      data: { status: 'revoked', revokedAt: new Date() },
     });
+    if (stamped.count === 0) {
+      await this.prisma.youTubeIntegration.update({
+        where: { userId },
+        data: { status: 'revoked' },
+      });
+    }
     return true;
   }
 
@@ -399,6 +408,8 @@ class YouTubeSyncService {
         token_iv: `${encryptedAccess.iv}:${encryptedRefresh.iv}`,
         token_auth_tag: `${encryptedAccess.authTag}:${encryptedRefresh.authTag}`,
         status: 'connected',
+        // ADR 0129: a reconnect ends the Revoked period and its seven-day clock.
+        revokedAt: null,
       },
     });
 
@@ -429,8 +440,17 @@ class YouTubeSyncService {
     };
   }
 
-  /** Disconnect YouTube integration */
-  async disconnect(userId: string): Promise<YouTubeDisconnectResult> {
+  /**
+   * Disconnect YouTube integration.
+   *
+   * `expectRevokeFailure` is set by the scheduled sweep (ADR 0129) for a
+   * Connection already Revoked at Google: a failed revocation there is expected,
+   * so it is logged at debug instead of warn. The result is unchanged.
+   */
+  async disconnect(
+    userId: string,
+    options: { expectRevokeFailure?: boolean } = {},
+  ): Promise<YouTubeDisconnectResult> {
     const integration = await this.prisma.youTubeIntegration.findUnique({
       where: { userId },
     });
@@ -488,10 +508,17 @@ class YouTubeSyncService {
       await oauth2Client.revokeToken(refreshToken);
     } catch (error) {
       revokeFailed = true;
-      logger.warn(
-        'Failed to revoke token at Google (may already be revoked)',
-        error,
-      );
+      if (options.expectRevokeFailure) {
+        logger.debug(
+          'Revocation at Google skipped for a Revoked YouTube Connection (already revoked)',
+          error,
+        );
+      } else {
+        logger.warn(
+          'Failed to revoke token at Google (may already be revoked)',
+          error,
+        );
+      }
     }
 
     if (revokeFailed) {

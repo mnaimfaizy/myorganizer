@@ -62,7 +62,8 @@ a resume cursor, so neither job has to finish inside a single cron tick.
 #### Token Lifecycle
 
 - Access tokens expire after ~1 hour; the `googleapis` library auto-refreshes using the stored refresh token.
-- If a refresh token is revoked by the user via Google settings, the next sync attempt marks the integration as `disconnected` and notifies the user.
+- If a refresh token is revoked by the user via Google settings, the next sync attempt marks the YouTube Connection as `revoked`, records `revokedAt`, and the User is prompted to reconnect. Reconnecting clears `revokedAt`.
+- After its normal work, each cron sync pass (inside the same worker lease, bounded by `SWEEP_MAX_CANDIDATES_PER_RUN` and `SWEEP_TIME_BUDGET_MS`) performs a YouTube Disconnect on every connection Revoked for seven days or more and on every connection whose User no longer has YouTube Access (ADR 0129). A connection with a live Channel Sync or Upload Sync is left for the next pass; a failed revocation at Google is expected there and logged at debug. Revoked rows that predate `revokedAt` are stamped on the first pass after deploy.
 
 #### API Key for Cron Endpoint
 
@@ -87,17 +88,18 @@ a resume cursor, so neither job has to finish inside a single cron tick.
 
 Stores the user's OAuth connection to YouTube.
 
-| Column                    | Type                          | Notes                                    |
-| ------------------------- | ----------------------------- | ---------------------------------------- |
-| `id`                      | `String @id @default(cuid())` |                                          |
-| `userId`                  | `String @unique`              | FK → User                                |
-| `encrypted_access_token`  | `String`                      | AES-256-GCM encrypted                    |
-| `encrypted_refresh_token` | `String`                      | AES-256-GCM encrypted                    |
-| `token_iv`                | `String`                      | Initialization vector for AES            |
-| `token_auth_tag`          | `String`                      | GCM auth tag                             |
-| `status`                  | `String`                      | `connected` / `disconnected` / `revoked` |
-| `createdAt`               | `DateTime`                    |                                          |
-| `updatedAt`               | `DateTime`                    |                                          |
+| Column                    | Type                          | Notes                                                    |
+| ------------------------- | ----------------------------- | -------------------------------------------------------- |
+| `id`                      | `String @id @default(cuid())` |                                                          |
+| `userId`                  | `String @unique`              | FK → User                                                |
+| `encrypted_access_token`  | `String`                      | AES-256-GCM encrypted                                    |
+| `encrypted_refresh_token` | `String`                      | AES-256-GCM encrypted                                    |
+| `token_iv`                | `String`                      | Initialization vector for AES                            |
+| `token_auth_tag`          | `String`                      | GCM auth tag                                             |
+| `status`                  | `String`                      | `connected` / `disconnected` / `revoked`                 |
+| `revokedAt`               | `DateTime?`                   | When the connection became Revoked; cleared on reconnect |
+| `createdAt`               | `DateTime`                    |                                                          |
+| `updatedAt`               | `DateTime`                    |                                                          |
 
 ### `YouTubeSubscription`
 

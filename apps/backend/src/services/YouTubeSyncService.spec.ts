@@ -43,6 +43,7 @@ jest.mock('winston', () => ({
     error: jest.fn(),
     warn: jest.fn(),
     info: jest.fn(),
+    debug: jest.fn(),
   })),
   format: { json: jest.fn(() => ({})) },
   transports: { Console: jest.fn() },
@@ -232,6 +233,19 @@ describe('YouTubeSyncService', () => {
             status: 'connected',
             encrypted_access_token: 'encrypted_mock-access-token',
             encrypted_refresh_token: 'encrypted_mock-refresh-token',
+          }),
+        }),
+      );
+    });
+
+    it('should clear revokedAt in the upsert update branch so a reconnect ends the Revoked period', async () => {
+      await youtubeSyncService.handleOAuthCallback('user-1', 'auth-code');
+
+      expect(mockPrisma.youTubeIntegration.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({
+          update: expect.objectContaining({
+            status: 'connected',
+            revokedAt: null,
           }),
         }),
       );
@@ -491,6 +505,68 @@ describe('YouTubeSyncService', () => {
       expect(mockTransaction.youTubeIntegration.delete).toHaveBeenCalledWith({
         where: { userId: 'user-1' },
       });
+    });
+
+    it('D6: should still delete everything and log a failed Google revoke at debug when swept as Revoked', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        {
+          ...connectedIntegration,
+          status: 'revoked',
+        },
+      );
+      const { google } = require('googleapis');
+      (google.auth.OAuth2 as jest.Mock).mockImplementationOnce(() => ({
+        generateAuthUrl: jest.fn(),
+        getToken: jest.fn(),
+        setCredentials: jest.fn(),
+        revokeToken: jest.fn().mockRejectedValue(new Error('revoke rejected')),
+        on: jest.fn(),
+      }));
+
+      const result = await youtubeSyncService.disconnect('user-1', {
+        expectRevokeFailure: true,
+      });
+
+      expect(result).toEqual({
+        ok: true,
+        message:
+          'YouTube account disconnected locally. Remove Google access at your Google account permissions if needed.',
+        revokeFailed: true,
+        googlePermissionsUrl: GOOGLE_PERMISSIONS_URL,
+      });
+      expect(mockTransaction.youTubeVideo.deleteMany).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(mockTransaction.youTubeIntegration.delete).toHaveBeenCalledWith({
+        where: { userId: 'user-1' },
+      });
+      expect(mockLogger.warn).not.toHaveBeenCalled();
+      expect(mockLogger.debug).toHaveBeenCalledWith(
+        'Revocation at Google skipped for a Revoked YouTube Connection (already revoked)',
+        expect.any(Error),
+      );
+    });
+
+    it('D7: should keep warning when Google revoke fails and no expectRevokeFailure flag is passed', async () => {
+      (mockPrisma.youTubeIntegration.findUnique as jest.Mock).mockResolvedValue(
+        connectedIntegration,
+      );
+      const { google } = require('googleapis');
+      (google.auth.OAuth2 as jest.Mock).mockImplementationOnce(() => ({
+        generateAuthUrl: jest.fn(),
+        getToken: jest.fn(),
+        setCredentials: jest.fn(),
+        revokeToken: jest.fn().mockRejectedValue(new Error('revoke rejected')),
+        on: jest.fn(),
+      }));
+
+      const result = await youtubeSyncService.disconnect('user-1');
+
+      expect(result.ok).toBe(true);
+      expect(mockLogger.warn).toHaveBeenCalledWith(
+        'Failed to revoke token at Google (may already be revoked)',
+        expect.any(Error),
+      );
     });
   });
 
@@ -1212,6 +1288,9 @@ describe('YouTubeSyncService', () => {
 
       it('markRevokedIfTokenError should mark integration revoked on OAuth grant errors', async () => {
         const grantError = new Error(oauthGrantRevokedCode);
+        (
+          mockPrisma.youTubeIntegration.updateMany as jest.Mock
+        ).mockResolvedValueOnce({ count: 1 });
 
         const marked = await youtubeSyncService.markRevokedIfTokenError(
           'user-1',
@@ -1219,9 +1298,65 @@ describe('YouTubeSyncService', () => {
         );
 
         expect(marked).toBe(true);
-        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
-          where: { userId: 'user-1' },
-          data: { status: 'revoked' },
+        expect(mockPrisma.youTubeIntegration.updateMany).toHaveBeenCalledWith({
+          where: { userId: 'user-1', revokedAt: null },
+          data: { status: 'revoked', revokedAt: expect.any(Date) },
+        });
+        expect(mockPrisma.youTubeIntegration.update).not.toHaveBeenCalled();
+      });
+
+      describe('ADR 0129 revokedAt stamp', () => {
+        afterEach(() => {
+          jest.useRealTimers();
+        });
+
+        it('stamps revokedAt with the moment of the first revocation', async () => {
+          const firstRevokedAt = new Date('2026-10-01T09:00:00Z');
+          jest.useFakeTimers({ now: firstRevokedAt });
+          (
+            mockPrisma.youTubeIntegration.updateMany as jest.Mock
+          ).mockResolvedValueOnce({ count: 1 });
+
+          await youtubeSyncService.markRevokedIfTokenError(
+            'user-1',
+            new Error(oauthGrantRevokedCode),
+          );
+
+          expect(mockPrisma.youTubeIntegration.updateMany).toHaveBeenCalledWith(
+            {
+              where: { userId: 'user-1', revokedAt: null },
+              data: { status: 'revoked', revokedAt: firstRevokedAt },
+            },
+          );
+          expect(mockPrisma.youTubeIntegration.update).not.toHaveBeenCalled();
+        });
+
+        it('keeps the original revokedAt on a repeat detection by falling back to a status-only update', async () => {
+          (
+            mockPrisma.youTubeIntegration.updateMany as jest.Mock
+          ).mockResolvedValueOnce({ count: 0 });
+
+          const marked = await youtubeSyncService.markRevokedIfTokenError(
+            'user-1',
+            new Error(oauthGrantRevokedCode),
+          );
+
+          expect(marked).toBe(true);
+          expect(mockPrisma.youTubeIntegration.updateMany).toHaveBeenCalledWith(
+            {
+              where: { userId: 'user-1', revokedAt: null },
+              data: { status: 'revoked', revokedAt: expect.any(Date) },
+            },
+          );
+          expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledTimes(1);
+          expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+            where: { userId: 'user-1' },
+            data: { status: 'revoked' },
+          });
+          const [updateArgs] = (
+            mockPrisma.youTubeIntegration.update as jest.Mock
+          ).mock.calls[0];
+          expect(updateArgs.data).not.toHaveProperty('revokedAt');
         });
       });
 
@@ -1258,9 +1393,9 @@ describe('YouTubeSyncService', () => {
 
         expect(result.status).toBe('failed');
         expect(result.synced).toBe(0);
-        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
-          where: { userId: 'user-1' },
-          data: { status: 'revoked' },
+        expect(mockPrisma.youTubeIntegration.updateMany).toHaveBeenCalledWith({
+          where: { userId: 'user-1', revokedAt: null },
+          data: { status: 'revoked', revokedAt: expect.any(Date) },
         });
         expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
           expect.objectContaining({
@@ -1294,9 +1429,9 @@ describe('YouTubeSyncService', () => {
         const result = await youtubeSyncService.syncChannels('user-1');
 
         expect(result.status).toBe('failed');
-        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
-          where: { userId: 'user-1' },
-          data: { status: 'revoked' },
+        expect(mockPrisma.youTubeIntegration.updateMany).toHaveBeenCalledWith({
+          where: { userId: 'user-1', revokedAt: null },
+          data: { status: 'revoked', revokedAt: expect.any(Date) },
         });
       });
 
@@ -1320,13 +1455,14 @@ describe('YouTubeSyncService', () => {
 
         await youtubeSyncService.syncChannels('user-1');
 
-        const revokedUpdates = (
-          mockPrisma.youTubeIntegration.update as jest.Mock
-        ).mock.calls.filter(
+        const revokedWrites = [
+          ...(mockPrisma.youTubeIntegration.update as jest.Mock).mock.calls,
+          ...(mockPrisma.youTubeIntegration.updateMany as jest.Mock).mock.calls,
+        ].filter(
           ([args]: [{ data?: { status?: string } }]) =>
             args.data?.status === 'revoked',
         );
-        expect(revokedUpdates).toHaveLength(0);
+        expect(revokedWrites).toHaveLength(0);
       });
 
       it('syncUploads should mark integration revoked when video sync fails with OAuth grant errors', async () => {
@@ -1357,9 +1493,9 @@ describe('YouTubeSyncService', () => {
         const result = await youtubeSyncService.syncUploads('user-1');
 
         expect(result.status).toBe('failed');
-        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
-          where: { userId: 'user-1' },
-          data: { status: 'revoked' },
+        expect(mockPrisma.youTubeIntegration.updateMany).toHaveBeenCalledWith({
+          where: { userId: 'user-1', revokedAt: null },
+          data: { status: 'revoked', revokedAt: expect.any(Date) },
         });
         expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith(
           expect.objectContaining({
