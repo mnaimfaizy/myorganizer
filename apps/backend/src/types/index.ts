@@ -58,10 +58,23 @@ export type AdminAuditAction =
 /** Platform Admin Audit Log entry returned by list APIs. */
 export interface AdminAuditLogEntry {
   id: string;
-  actorUserId: string;
-  targetUserId: string;
+  /** Null once the acting User has been removed by User Deletion. */
+  actorUserId: string | null;
+  /** Null once the affected User has been removed by User Deletion. */
+  targetUserId: string | null;
   action: AdminAuditAction;
   createdAt: Date;
+}
+
+/** Why `DELETE /users/me` refused a User Deletion (403 or 409). */
+export interface UserDeletionRefusal {
+  message: string;
+}
+
+/** Body for `DELETE /users/me` (User Deletion). */
+export interface UserDeletionBody {
+  password: string;
+  confirmation: 'DELETE';
 }
 
 export class MyError extends Error {

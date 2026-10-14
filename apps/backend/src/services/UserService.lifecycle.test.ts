@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import jwt from 'jsonwebtoken';
 
 import {
   EmailAlreadyVerifiedError,
@@ -381,6 +382,34 @@ describe('UserService lifecycle', () => {
       expect(mockPrisma.adminAuditLog.findMany).toHaveBeenCalledWith(
         expect.objectContaining({ take: 1 }),
       );
+    });
+  });
+
+  describe('refreshToken', () => {
+    test('resolves null for a correctly signed refresh token whose User row is gone', async () => {
+      const previousSecret = process.env.REFRESH_JWT_SECRET;
+      process.env.REFRESH_JWT_SECRET = 'refresh-key-01';
+
+      try {
+        const refreshToken = jwt.sign(
+          { userId: 'user-deleted-1' },
+          'refresh-key-01',
+        );
+        mockPrisma.user.findUnique.mockResolvedValue(null);
+
+        await expect(
+          userService.refreshToken(refreshToken),
+        ).resolves.toBeNull();
+        expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+          where: { id: 'user-deleted-1' },
+        });
+      } finally {
+        if (previousSecret === undefined) {
+          delete process.env.REFRESH_JWT_SECRET;
+        } else {
+          process.env.REFRESH_JWT_SECRET = previousSecret;
+        }
+      }
     });
   });
 });

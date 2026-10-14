@@ -811,6 +811,46 @@ components:
       anyOf:
         - $ref: "#/components/schemas/VaultBackupHistoryPage"
         - $ref: "#/components/schemas/ErrorResponse"
+    ValidateErrorJSON:
+      properties:
+        message:
+          type: string
+          enum:
+            - Validation failed
+          nullable: false
+        details:
+          properties: {}
+          additionalProperties: {}
+          type: object
+      required:
+        - message
+        - details
+      type: object
+      additionalProperties: false
+    UserDeletionRefusal:
+      description: Why `DELETE /users/me` refused a User Deletion (403 or 409).
+      properties:
+        message:
+          type: string
+      required:
+        - message
+      type: object
+      additionalProperties: false
+    UserDeletionBody:
+      description: Body for `DELETE /users/me` (User Deletion).
+      properties:
+        password:
+          type: string
+        confirmation:
+          type: string
+          enum:
+            - DELETE
+          nullable: false
+      required:
+        - password
+        - confirmation
+      type: object
+      additionalProperties: false
     UserRole:
       type: string
       enum:
@@ -842,22 +882,6 @@ components:
         - lastName
         - role
         - disabled
-      type: object
-      additionalProperties: false
-    ValidateErrorJSON:
-      properties:
-        message:
-          type: string
-          enum:
-            - Validation failed
-          nullable: false
-        details:
-          properties: {}
-          additionalProperties: {}
-          type: object
-      required:
-        - message
-        - details
       type: object
       additionalProperties: false
     UserLoginBody:
@@ -985,8 +1009,12 @@ components:
           type: string
         actorUserId:
           type: string
+          nullable: true
+          description: Null once the acting User has been removed by User Deletion.
         targetUserId:
           type: string
+          nullable: true
+          description: Null once the affected User has been removed by User Deletion.
         action:
           $ref: "#/components/schemas/AdminAuditAction"
         createdAt:
@@ -1725,6 +1753,48 @@ paths:
           required: false
           schema:
             $ref: "#/components/schemas/VaultBackupEvent"
+  /users/me:
+    delete:
+      operationId: DeleteMe
+      responses:
+        "204":
+          description: User deleted
+        "403":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDeletionRefusal"
+        "409":
+          description: ""
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserDeletionRefusal"
+        "422":
+          description: Validation Failed
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ValidateErrorJSON"
+      description: >-
+        User Deletion: permanently and immediately deletes the signed-in User
+        and
+
+        everything they own. Requires the account password and the literal
+
+        confirmation `DELETE`. Sessions end because the User row is removed.
+      tags:
+        - Users
+      security:
+        - jwt: []
+      parameters: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UserDeletionBody"
   /auth/login:
     post:
       operationId: Login
