@@ -135,6 +135,7 @@
 				13B07F871A680F5B00A75B9A /* Sources */,
 				13B07F8C1A680F5B00A75B9A /* Frameworks */,
 				13B07F8E1A680F5B00A75B9A /* Resources */,
+				FD00000000000000000000D1 /* Allow local networking in Debug */,
 				00DD1BFF1BD5951E006B06BC /* Bundle React Native code and images */,
 				00EEFC60759A1932668264C0 /* [CP] Embed Pods Frameworks */,
 				E235C05ADACE081382539298 /* [CP] Copy Pods Resources */,
@@ -270,6 +271,22 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${PODS_ROOT}/Target Support Files/Pods-Mobile/Pods-Mobile-resources.sh\"\n";
 			showEnvVarsInLog = 0;
+		};
+		FD00000000000000000000D1 /* Allow local networking in Debug */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+				"$(TARGET_BUILD_DIR)/$(INFOPLIST_PATH)",
+			);
+			name = "Allow local networking in Debug";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\n# Plain-HTTP local networking reaches Metro and the development API from a\n# debug build. It is a Debug-only allowance: Info.plist does not carry it, so\n# a Release build ships without it (PRD #956). Debug adds it to the built\n# Info.plist here.\nif [ \"$CONFIGURATION\" != \"Debug\" ]; then\n  exit 0\nfi\n\nPLIST=\"$TARGET_BUILD_DIR/$INFOPLIST_PATH\"\n/usr/libexec/PlistBuddy -c \"Delete :NSAppTransportSecurity:NSAllowsLocalNetworking\" \"$PLIST\" 2>/dev/null || true\n/usr/libexec/PlistBuddy -c \"Add :NSAppTransportSecurity:NSAllowsLocalNetworking bool true\" \"$PLIST\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

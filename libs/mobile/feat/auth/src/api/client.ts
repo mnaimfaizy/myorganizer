@@ -1,6 +1,6 @@
 import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { Platform } from 'react-native';
+import { MOBILE_ENVIRONMENT } from '@myorganizer/mobile/core';
 import {
   clearRefreshToken,
   getRefreshToken,
@@ -13,10 +13,9 @@ import {
 } from './sessionRefresh';
 import type { AuthTokens } from './types';
 
-// On Android emulators, 10.0.2.2 routes to the host machine's localhost.
-// On iOS simulators and physical devices, localhost/127.0.0.1 works directly.
-const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-const BASE_PATH = `http://${DEV_HOST}:3000/api/v1`;
+// Debug builds reach the development machine and release builds reach
+// Production; the environment module decides which.
+const BASE_PATH = MOBILE_ENVIRONMENT.apiBasePath;
 
 type TokenRefreshCallback = (tokens: AuthTokens | null) => void;
 
