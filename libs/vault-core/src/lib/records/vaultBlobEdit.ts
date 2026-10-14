@@ -2,7 +2,7 @@ import type { IsoDateTimeString } from './contactRecords';
 import type { IdentifiedRecord } from './mergeVaultRecords';
 import {
   mergeDeletionLogs,
-  readEnvelopeExtras,
+  readEnvelopeUnknownFields,
   type VaultBlobEnvelope,
 } from './vaultBlobEnvelope';
 
@@ -55,7 +55,7 @@ export function putVaultRecord<TRecord extends IdentifiedRecord>(
       : records.map((entry, i) => (i === index ? record : entry));
 
   return {
-    ...readEnvelopeExtras(envelope),
+    ...readEnvelopeUnknownFields(envelope),
     records: next,
     deletions: envelope.deletions,
   };
@@ -81,7 +81,7 @@ export function deleteVaultRecord(
   );
 
   return {
-    ...readEnvelopeExtras(envelope),
+    ...readEnvelopeUnknownFields(envelope),
     records,
     deletions: mergeDeletionLogs(envelope.deletions, { [id]: deletedAt }),
   };

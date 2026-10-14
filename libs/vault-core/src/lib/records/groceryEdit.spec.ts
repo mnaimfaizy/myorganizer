@@ -2200,7 +2200,7 @@ describe('groceryEdit', () => {
     });
   });
 
-  describe('envelope extras', () => {
+  describe('envelope unknown fields', () => {
     it('createGroceryList keeps an unknown envelope key', () => {
       const envelope = {
         records: { catalog: [], lists: [] },
@@ -2221,6 +2221,52 @@ describe('groceryEdit', () => {
         (result as unknown as Record<string, unknown>).futureEnvelope,
       ).toBe('keep');
       expect(listCount(result)).toBe(1);
+    });
+
+    it('removeCheckedListLines keeps an unknown envelope key, removes the checked line, and logs its id', () => {
+      const T = '2026-01-01T00:00:00.000Z';
+      const deletedAt = '2026-01-03T00:00:00.000Z';
+      const envelope = {
+        records: {
+          catalog: [],
+          lists: [
+            {
+              id: 'list-1',
+              name: 'Weekly',
+              createdAt: T,
+              updatedAt: T,
+              lines: [
+                {
+                  id: 'line-checked',
+                  catalogItemId: 'cat-1',
+                  checked: true,
+                  createdAt: T,
+                  updatedAt: T,
+                },
+                {
+                  id: 'line-open',
+                  catalogItemId: 'cat-2',
+                  checked: false,
+                  createdAt: T,
+                  updatedAt: T,
+                },
+              ],
+            },
+          ],
+        },
+        deletions: {},
+        futureEnvelope: 'keep',
+      } as VaultBlobEnvelope<unknown>;
+
+      const result = removeCheckedListLines(envelope, 'list-1', deletedAt);
+
+      expect(
+        (result as unknown as Record<string, unknown>).futureEnvelope,
+      ).toBe('keep');
+      expect(listAt(result, 0).lines).toEqual([
+        expect.objectContaining({ id: 'line-open' }),
+      ]);
+      expect(result.deletions).toEqual({ 'line-checked': deletedAt });
     });
   });
 

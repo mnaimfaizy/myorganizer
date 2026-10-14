@@ -6,7 +6,7 @@ import { mergeSubscriptions } from './subscriptionRecordMerge';
 import { mergeTasks } from './taskMerge';
 import {
   readDeletionLog,
-  readEnvelopeExtras,
+  readEnvelopeUnknownFields,
   readVaultBlobRecords,
   type VaultBlobEnvelope,
 } from './vaultBlobEnvelope';
@@ -118,7 +118,7 @@ export function toVaultBlobEnvelope(
   payload: unknown,
 ): VaultBlobEnvelope<unknown> {
   return {
-    ...readEnvelopeExtras(payload),
+    ...readEnvelopeUnknownFields(payload),
     records: readVaultBlobRecords(payload),
     deletions: readDeletionLog(payload),
   };

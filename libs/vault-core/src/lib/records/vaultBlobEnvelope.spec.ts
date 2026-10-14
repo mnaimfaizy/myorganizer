@@ -1,6 +1,6 @@
 import {
   isVaultBlobEnvelope,
-  readEnvelopeExtras,
+  readEnvelopeUnknownFields,
   readVaultBlobRecords,
   readDeletionLog,
   mergeDeletionLogs,
@@ -31,7 +31,7 @@ describe('vaultBlobEnvelope', () => {
     });
   });
 
-  describe('readEnvelopeExtras', () => {
+  describe('readEnvelopeUnknownFields', () => {
     it('returns the envelope keys other than records and deletions', () => {
       const envelope = {
         records: [{ id: '1' }],
@@ -39,13 +39,17 @@ describe('vaultBlobEnvelope', () => {
         schemaHint: 'v2',
       };
 
-      expect(readEnvelopeExtras(envelope)).toEqual({ schemaHint: 'v2' });
+      expect(readEnvelopeUnknownFields(envelope)).toEqual({ schemaHint: 'v2' });
     });
 
-    it('returns no extras for a bare array or a bare groceries-style payload', () => {
-      expect(readEnvelopeExtras([{ id: '1' }])).toEqual({});
+    it('returns no unknown fields for a bare array or a bare groceries-style payload', () => {
+      expect(readEnvelopeUnknownFields([{ id: '1' }])).toEqual({});
       expect(
-        readEnvelopeExtras({ catalog: [], lists: [], extra: 'not envelope' }),
+        readEnvelopeUnknownFields({
+          catalog: [],
+          lists: [],
+          extra: 'not envelope',
+        }),
       ).toEqual({});
     });
   });

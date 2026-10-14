@@ -2,7 +2,7 @@ import {
   deleteVaultRecord,
   mergeDeletionLogs,
   readDeletionLog,
-  readEnvelopeExtras,
+  readEnvelopeUnknownFields,
   type DeletionLog,
   type GroceriesVaultPayload,
   type IdentifiedRecord,
@@ -37,16 +37,16 @@ export type VaultRecordStore = Pick<
  * page that is about to save. The unknown keys are kept so that a newer
  * client's envelope fields survive this save (ADR 0114 decision 3).
  */
-async function readStoredEnvelopeRest(
+async function readStoredLogAndUnknownFields(
   store: VaultRecordStore,
   type: VaultRecordType,
-): Promise<{ extras: Record<string, unknown>; deletions: DeletionLog }> {
+): Promise<{ unknownFields: Record<string, unknown>; deletions: DeletionLog }> {
   const stored = await store.loadDecryptedData<unknown>({
     type,
     defaultValue: null,
   });
   return {
-    extras: readEnvelopeExtras(stored),
+    unknownFields: readEnvelopeUnknownFields(stored),
     deletions: readDeletionLog(stored),
   };
 }
@@ -81,12 +81,15 @@ export async function saveVaultRecords<TRecord extends IdentifiedRecord>(
   records: readonly TRecord[],
   deletion?: VaultRecordDeletion,
 ): Promise<void> {
-  const { extras, deletions } = await readStoredEnvelopeRest(store, type);
+  const { unknownFields, deletions } = await readStoredLogAndUnknownFields(
+    store,
+    type,
+  );
   const envelope: VaultBlobEnvelope<unknown> =
     deletion === undefined
-      ? { ...extras, records, deletions }
+      ? { ...unknownFields, records, deletions }
       : deleteVaultRecord(
-          { ...extras, records: [...records], deletions },
+          { ...unknownFields, records: [...records], deletions },
           deletion.deletedId,
           deletion.deletedAt ?? new Date().toISOString(),
         );
@@ -135,7 +138,7 @@ export async function saveGroceriesPayload(
   payload: GroceriesVaultPayload,
   deletion?: GroceriesDeletion,
 ): Promise<void> {
-  const { extras, deletions } = await readStoredEnvelopeRest(
+  const { unknownFields, deletions } = await readStoredLogAndUnknownFields(
     store,
     'groceries',
   );
@@ -147,7 +150,7 @@ export async function saveGroceriesPayload(
     }
   }
   const envelope: VaultBlobEnvelope<GroceriesVaultPayload> = {
-    ...extras,
+    ...unknownFields,
     records: payload,
     deletions: mergeDeletionLogs(deletions, additions),
   };

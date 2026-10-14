@@ -1,6 +1,6 @@
 import {
   mergeDeletionLogs,
-  mergeEnvelopeExtras,
+  mergeEnvelopeUnknownFields,
   toEpoch,
   type VaultBlobEnvelope,
 } from './vaultBlobEnvelope';
@@ -85,7 +85,7 @@ export function mergeRecordsById<TRecord extends IdentifiedRecord>(
     records.push(record);
   }
 
-  return { ...mergeEnvelopeExtras(local, remote), records, deletions };
+  return { ...mergeEnvelopeUnknownFields(local, remote), records, deletions };
 }
 
 /**

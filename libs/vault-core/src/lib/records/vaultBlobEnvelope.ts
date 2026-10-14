@@ -59,17 +59,19 @@ const ENVELOPE_KEYS = {
  * decision 3). A bare payload written before ADR 0054 has none: its keys are
  * records, not envelope.
  */
-export function readEnvelopeExtras(payload: unknown): Record<string, unknown> {
+export function readEnvelopeUnknownFields(
+  payload: unknown,
+): Record<string, unknown> {
   return isVaultBlobEnvelope(payload)
     ? unknownFieldsOf(payload, ENVELOPE_KEYS)
     : {};
 }
 
 /**
- * Both copies' envelope extras, unioned. A key both carry keeps `local`'s
+ * Both copies' unknown envelope fields, unioned. A key both carry keeps `local`'s
  * value, as a merge keeps `local` on a tie.
  */
-export function mergeEnvelopeExtras(
+export function mergeEnvelopeUnknownFields(
   local: unknown,
   remote: unknown,
 ): Record<string, unknown> {

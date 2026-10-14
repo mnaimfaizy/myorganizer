@@ -214,7 +214,7 @@ describe('vaultBlobEdit', () => {
     });
   });
 
-  describe('envelope extras', () => {
+  describe('envelope unknown fields', () => {
     it('putVaultRecord keeps an unknown envelope key', () => {
       const envelope = {
         records: [{ id: '1', name: 'First' }],

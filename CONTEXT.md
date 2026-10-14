@@ -386,6 +386,10 @@ _Avoid_: vault id, vault fingerprint, meta hash, salt check, vault version
 The unit of Ciphertext the server stores and the client synchronises: one per Vault Blob Type per User, holding every record of that type together. It is the whole of `tasks`, not one Task. Two devices editing different records of the same type are still editing the same Vault Blob, which is why convergence cannot be decided by the Vault Blob alone.
 _Avoid_: vault record, encrypted blob, blob (unqualified), vault entry
 
+**Unknown Field**:
+A key in a decrypted Vault Blob that the reading client does not name: on a record, on a nested record (a Usage Location, a Catalog Item, a Grocery List, a List Line), on the groceries payload, or on the envelope beside `records` and the Deletion Log. Plaintext and client-only, like everything inside a Vault Blob; the server sees it only as Ciphertext. Every write carries it through untouched, so a lagging Mobile Release never erases a field a newer client added ([ADR 0114](docs/adr/0114-a-mobile-release-ships-in-1-0-what-it-cannot-learn-later.md) decision 3). A legacy key a reader retires (a Task's `todo`, a Usage Location's `changeType`) is known to that reader, not unknown.
+_Avoid_: extra field, extras, passthrough field, unrecognised key
+
 **Vault Push**:
 Sending one changed Vault Blob to the server. Distinct from Vault Reconcile: a push is the ordinary consequence of a single edit, carries no whole-Vault comparison, and asks the User nothing while it runs. Reconcile compares two whole Vaults and is the backstop for what push did not carry. On mobile, which keeps no Local Vault, a push is read-modify-write against the server: the edited envelope is sent under the ETag it was read at, and a newer server copy is merged into it per the pinned strategy before resending — a type pinned to prompt is refused rather than merged ([ADR 0107](docs/adr/0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md)).
 _Avoid_: vault sync (unqualified), upload, save to server, backup

@@ -9,7 +9,7 @@ describe('mergeRecordsById', () => {
   const changedAt = (record: TestRecord) => record.at;
 
   describe('unknown fields', () => {
-    it('unions envelope extras from both sides and keeps local on a shared key', () => {
+    it('unions unknown envelope fields from both sides and keeps local on a shared key', () => {
       const local = {
         records: [],
         deletions: {},

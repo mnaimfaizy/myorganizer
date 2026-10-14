@@ -9,7 +9,7 @@ import { mergeRecordsById } from './mergeVaultRecords';
 import { mergeUnknownFields } from './unknownFields';
 import {
   mergeDeletionLogs,
-  mergeEnvelopeExtras,
+  mergeEnvelopeUnknownFields,
   toEpoch,
   type DeletionLog,
   type VaultBlobEnvelope,
@@ -49,7 +49,7 @@ export function mergeGroceries(
   const catalogIds = new Set(catalog.map((item) => item.id));
 
   return {
-    ...mergeEnvelopeExtras(local, remote),
+    ...mergeEnvelopeUnknownFields(local, remote),
     records: {
       ...mergeUnknownFields(
         local.records,

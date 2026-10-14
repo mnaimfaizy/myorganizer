@@ -43,6 +43,23 @@ export function unknownFieldsOf(
 }
 
 /**
+ * The keys of `value` that `known` names, with their values as stored, in the
+ * order they were written: the inverse of `unknownFieldsOf`. A value that is
+ * not a plain object is returned as it is.
+ */
+export function knownFieldsOf(
+  value: unknown,
+  known: Readonly<Record<string, true>>,
+): unknown {
+  if (!isPlainObject(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) =>
+      Object.prototype.hasOwnProperty.call(known, key),
+    ),
+  );
+}
+
+/**
  * `fields` — the reader's validated rebuild of the known fields — over the
  * unknown fields of `raw`, the stored original.
  *

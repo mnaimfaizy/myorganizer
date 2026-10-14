@@ -4,6 +4,7 @@ import {
   GROCERIES_PAYLOAD_KEYS,
   GROCERY_LIST_KEYS,
   GROCERY_PREDEFINED_CATEGORIES,
+  knownFieldsOf,
   LIST_LINE_KEYS,
   readVaultBlobRecords,
   withUnknownFields,
@@ -260,20 +261,6 @@ function migrateLegacyToNewShape(legacyLists: any[]): {
   return { catalog, lists };
 }
 
-function pickKnown(
-  value: unknown,
-  known: Readonly<Record<string, true>>,
-): unknown {
-  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
-    return value;
-  }
-  return Object.fromEntries(
-    Object.entries(value).filter(([key]) =>
-      Object.prototype.hasOwnProperty.call(known, key),
-    ),
-  );
-}
-
 /**
  * A groceries payload reduced to the fields this build knows, at every level,
  * in the order they were written. What `changed` compares.
@@ -284,11 +271,11 @@ function knownGroceriesFields(payload: {
 }): unknown {
   return {
     catalog: Array.isArray(payload.catalog)
-      ? payload.catalog.map((item) => pickKnown(item, CATALOG_ITEM_KEYS))
+      ? payload.catalog.map((item) => knownFieldsOf(item, CATALOG_ITEM_KEYS))
       : payload.catalog,
     lists: Array.isArray(payload.lists)
       ? payload.lists.map((list) => {
-          const known = pickKnown(list, GROCERY_LIST_KEYS);
+          const known = knownFieldsOf(list, GROCERY_LIST_KEYS);
           if (
             typeof known !== 'object' ||
             known === null ||
@@ -299,7 +286,7 @@ function knownGroceriesFields(payload: {
           return {
             ...known,
             lines: (known as { lines: unknown[] }).lines.map((line) =>
-              pickKnown(line, LIST_LINE_KEYS),
+              knownFieldsOf(line, LIST_LINE_KEYS),
             ),
           };
         })

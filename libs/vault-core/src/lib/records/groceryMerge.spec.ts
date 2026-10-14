@@ -349,7 +349,7 @@ describe('mergeGroceries', () => {
   });
 
   describe('unknown fields', () => {
-    it('unions envelope and payload extras, keeping local on a shared key', () => {
+    it('unions envelope and payload unknown fields, keeping local on a shared key', () => {
       const local = {
         records: { catalog: [], lists: [], categories: ['local'] },
         deletions: {},
