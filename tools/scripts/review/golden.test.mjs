@@ -61,14 +61,17 @@ test('a well-formed set passes and the committed set loads', () => {
   assert.equal(assertGoldenSet(set), set);
   const committed = loadGoldenSet();
   assert.ok(committed.cases.length >= 3);
-  // Every case is attributed: it names the issue it came from and the pull
-  // request that introduced it.
+  // Every attributed case names the issue it came from and the pull request
+  // that introduced it; a seeded case names the commit it was planted on
+  // (ADR 0129).
   for (const c of committed.cases) {
     assert.match(c.incident, /#\d+/, c.id);
     // A clean case (issue #933) names a merged pull request that introduced
     // no defect, so "introduced by PR" does not apply to it the way it does
     // to every other case here.
-    if (!c.expectsNoBlocking)
+    if (c.origin === 'seeded')
+      assert.match(c.incident, /seeded on [0-9a-f]{7}/, c.id);
+    else if (!c.expectsNoBlocking)
       assert.match(c.incident, /introduced by PR #\d+/, c.id);
   }
   // A guard runs on a narrower trigger than a frontier case (ADR 0072), so
@@ -81,15 +84,17 @@ test('a well-formed set passes and the committed set loads', () => {
     committed.cases.some((c) => c.tier === 'frontier'),
     'the set has no frontier case left',
   );
-  // The set is eight pattern cases plus three clean-diff cases (issue #933):
+  // The set is thirteen pattern cases plus three clean-diff cases (issue #933):
   // the narrowed six, plus the two frontier cases issue #934 traced from
-  // attributed fixes (#745 and the second defect attributed to #77). Three
+  // attributed fixes (#745 and the second defect attributed to #77), plus the
+  // #1139 range and the four Seeded Cases planted on it (issue #1140). Three
   // more of that trace are parked, not retired; the fourth was folded into
   // the parked entry already holding its range. The loop below is what
   // asserts the property that matters — every parked entry keeps its id
   // reserved and carries a written condition for its return rather than a
   // reason it cannot be won — so the count above stays out of it.
-  assert.equal(committed.cases.length, 11);
+  assert.equal(committed.cases.length, 16);
+  assert.equal(committed.cases.filter((c) => c.origin === 'seeded').length, 4);
   assert.equal(committed.cases.filter((c) => c.expectsNoBlocking).length, 3);
   assert.ok(committed.parked?.length >= 1, 'the set has no parked case');
   for (const p of committed.parked) {
