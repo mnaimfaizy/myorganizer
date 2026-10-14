@@ -159,11 +159,11 @@ _Avoid_: email template, layout, wrapper, base template
 ## YouTube (focused watching)
 
 **YouTube Access**:
-A Platform Admin's permission for one User to use YouTube in MyOrganizer at all. It is granted to and withdrawn from a specific User, never claimed by the User and never transferable. Without it YouTube does not exist for that User. It comes before a YouTube Connection: Access is MyOrganizer letting the User in, the Connection is the User letting MyOrganizer read their account.
+A Platform Admin's permission for one User to use YouTube in MyOrganizer at all. It is granted to and withdrawn from a specific User, never claimed by the User and never transferable. Without it YouTube does not exist for that User. It comes before a YouTube Connection: Access is MyOrganizer letting the User in, the Connection is the User letting MyOrganizer read their account. Decided in ADR 0129; the product reaches it with #1147.
 _Avoid_: invitation, invite link, test user, beta access, allowlist
 
 **YouTube Connection**:
-The User's grant letting MyOrganizer read their YouTube account on their behalf. It is either live or **Revoked** — Google no longer honours it, and only the User reconnecting restores it. A Connection left Revoked for seven days ends in a YouTube Disconnect.
+The User's grant letting MyOrganizer read their YouTube account on their behalf. It is either live or **Revoked** — Google no longer honours it, and only the User reconnecting restores it. A Connection left Revoked for seven days ends in a YouTube Disconnect. The seven-day rule is decided in ADR 0129 and reached with #1151.
 _Avoid_: integration, YouTube account link, OAuth token
 
 **Followed Channel**:
@@ -183,7 +183,7 @@ The binary completion/seen state of a Cached Upload for a User. Reversible by th
 _Avoid_: Viewed, seen, played, completed
 
 **YouTube Disconnect**:
-The end of a User's YouTube Connection, by the User's own choice or because a Platform Admin withdrew their YouTube Access. Either way it is immediate and complete: Google is told to revoke the grant, and every Followed Channel, Cached Upload, Watched mark, and digest setting of that User is deleted in the same step. Nothing is kept for a later reconnect.
+The end of a User's YouTube Connection, by the User's own choice or because a Platform Admin withdrew their YouTube Access. Either way it is immediate and complete: Google is told to revoke the grant, and every Followed Channel, Cached Upload, Watched mark, and digest setting of that User is deleted in the same step. Nothing is kept for a later reconnect. Decided in ADR 0129; until #1145 ships, a disconnect still keeps Watched marks for 30 days.
 _Avoid_: unlink, soft disconnect, Watched Ledger, disconnect backup
 
 **New**:
