@@ -96,7 +96,7 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
    keytool -genkeypair -v -storetype PKCS12 -keystore <signing-dir>/release.jks -alias myorganiser-release -keyalg RSA -keysize 2048 -validity 10000
    ```
 
-2. **This key is the app's permanent signing identity.** There is no Play App Signing behind it. Android installs an update only when it is signed with the same key as the installed copy. If you lose the keystore or either password, no installed Mobile App can ever be updated in place: every User has to uninstall, losing the copy on their device, and install a new app. Store the keystore file and both passwords in the password manager straight away, and keep a second backup of the keystore outside the repository and away from this Mac.
+2. **This key is the app's permanent signing identity** ([ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)). There is no Play App Signing behind it. Android installs an update only when it is signed with the same key as the installed copy. If you lose the keystore or either password, no installed Mobile App can ever be updated in place: every User has to uninstall, losing the copy on their device, and install a new app. Store the keystore file and both passwords in the password manager straight away, and keep a second backup of the keystore outside the repository and away from this Mac.
 3. Point Gradle at it from your **user-level** Gradle properties file, `~/.gradle/gradle.properties`, never from `apps/mobile/android/gradle.properties`, which is tracked. Set one line per property, as `NAME=value`:
 
    | Property                             | Value                                            |
@@ -106,7 +106,7 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
    | `MYORGANISER_RELEASE_KEY_ALIAS`      | `myorganiser-release`                            |
    | `MYORGANISER_RELEASE_KEY_PASSWORD`   | The key password                                 |
 
-   `apps/mobile/android/app/build.gradle` signs the release build type with these and nothing else. A release build with any of them missing fails and names the missing properties; it never falls back to the debug key. Debug builds keep using the debug key.
+   `apps/mobile/android/app/build.gradle` signs the release build type with these and nothing else. A release build with any of them missing fails and names the missing properties, and so does one whose properties are set in the tracked file; it never falls back to the debug key. Debug builds keep using the debug key.
 
 ### iOS
 
