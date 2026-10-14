@@ -5,8 +5,9 @@
 //   node tools/scripts/check-review-golden-set.mjs
 //
 // Four things rot here and each is checked: the set's shape (ids, SHAs,
-// patterns, minimum recall), the commit ranges (both ends must exist and
-// the head must be reachable from main, or the replay reviews nothing),
+// patterns, minimum recall), the commit ranges (both ends must exist, an
+// attributed head must be reachable from main and a seeded head from its
+// golden/ tag, or the replay reviews nothing — ADR 0129),
 // and the replay workflow's triggers, which must be the ones ADR 0109 names —
 // a weekly schedule that asks which reviewer inputs moved, the golden-replay
 // Request Label, and dispatch — and never a push to a Pull Request, which
@@ -24,6 +25,9 @@
 // frontier three times and every other case once, a label or a dispatch runs
 // every case once, and the workflow asks for that matrix and keeps each
 // repetition's result apart (ADR 0116).
+// And a Spec-axis case replays with the spec its original review saw: the step
+// writing spec.json reads the case's specSnapshot, and that job's checkout
+// keeps full history so a seeded case's golden tag is in the clone (ADR 0129).
 //
 // One direction throughout: the set, the record and the ADRs are the
 // sources, and the workflow is what is held to them.
@@ -35,10 +39,12 @@ import { existsSync, readFileSync } from 'node:fs';
 import {
   GoldenSetError,
   REVIEW_GOLDEN_SET_PATH,
+  caseRangeFindings,
   loadGoldenSet,
   replayObligationCheckFindings,
   replayRepetitionFindings,
   replayRunFactsFindings,
+  replaySpecSnapshotFindings,
   replayTriggerFindings,
 } from './review/golden.mjs';
 import {
@@ -80,30 +86,7 @@ if (shallow) {
   const mainRef = git(['rev-parse', '--verify', '--quiet', 'origin/main'])
     ? 'origin/main'
     : 'main';
-  for (const c of set.cases) {
-    for (const [end, sha] of [
-      ['base', c.base],
-      ['head', c.head],
-    ]) {
-      if (!git(['cat-file', '-e', `${sha}^{commit}`]))
-        findings.push(
-          `${c.id}: ${end} ${sha.slice(0, 7)} is not in this clone`,
-        );
-    }
-    if (
-      git(['cat-file', '-e', `${c.head}^{commit}`]) &&
-      !git(['merge-base', '--is-ancestor', c.head, mainRef])
-    )
-      findings.push(
-        `${c.id}: head ${c.head.slice(0, 7)} is not reachable from ${mainRef}; a squash merge needs the squash commit and its parent`,
-      );
-    if (
-      git(['cat-file', '-e', `${c.base}^{commit}`]) &&
-      git(['cat-file', '-e', `${c.head}^{commit}`]) &&
-      !git(['merge-base', '--is-ancestor', c.base, c.head])
-    )
-      findings.push(`${c.id}: base is not an ancestor of head`);
-  }
+  findings.push(...caseRangeFindings(set.cases, { git, mainRef }));
 }
 
 const workflow = readFileSync(REPLAY_WORKFLOW, 'utf8');
@@ -114,6 +97,9 @@ for (const f of replayObligationCheckFindings(workflow))
   findings.push(`${REPLAY_WORKFLOW}: ${f}`);
 
 for (const f of replayRunFactsFindings(workflow))
+  findings.push(`${REPLAY_WORKFLOW}: ${f}`);
+
+for (const f of replaySpecSnapshotFindings(workflow))
   findings.push(`${REPLAY_WORKFLOW}: ${f}`);
 
 let records;

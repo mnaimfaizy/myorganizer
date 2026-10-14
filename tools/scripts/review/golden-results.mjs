@@ -348,19 +348,31 @@ export function groupRuns(records) {
  * (one a recall number, the other none) — collapsing them here would lose
  * nothing the raw `outcome` field on each record does not still say.
  */
-export function summarizeRun(group) {
-  const caught = group.records.filter(
-    (r) => r.outcome === 'caught' || r.outcome === 'clean-pass',
-  ).length;
-  const missed = group.records.filter(
-    (r) => r.outcome === 'missed' || r.outcome === 'clean-fail',
-  ).length;
+export function summarizeRun(group, { seeded = new Set() } = {}) {
+  const tally = (records) => {
+    const caught = records.filter(
+      (r) => r.outcome === 'caught' || r.outcome === 'clean-pass',
+    ).length;
+    const missed = records.filter(
+      (r) => r.outcome === 'missed' || r.outcome === 'clean-fail',
+    ).length;
+    return { caught, missed, scorable: caught + missed };
+  };
+  const { caught, missed, scorable } = tally(group.records);
   const voided = group.records.filter((r) => r.outcome === 'void').length;
-  const scorable = caught + missed;
-  const result =
-    voided === 0
+  // A Seeded Case shows the reviewer can catch a defect shape; an attributed
+  // one, that it would have caught a defect that shipped. The two are never
+  // pooled (ADR 0129 item 4). A run with no seeded case reads as it always has.
+  const seededRecords = group.records.filter((r) => seeded.has(r.case));
+  const counts =
+    seededRecords.length === 0
       ? `${caught} of ${scorable}`
-      : `${caught} of ${scorable} scorable, ${voided} void`;
+      : (() => {
+          const a = tally(group.records.filter((r) => !seeded.has(r.case)));
+          const z = tally(seededRecords);
+          return `attributed ${a.caught} of ${a.scorable} · seeded ${z.caught} of ${z.scorable}`;
+        })();
+  const result = voided === 0 ? counts : `${counts} scorable, ${voided} void`;
   return {
     caught,
     missed,
@@ -371,6 +383,13 @@ export function summarizeRun(group) {
   };
 }
 
+/** The ids of a raw golden set's Seeded Cases. Read without validating, so
+ * the ledger check stays installable-free like the rest of this module. */
+export const seededCaseIds = (set) =>
+  new Set(
+    (set?.cases ?? []).filter((c) => c.origin === 'seeded').map((c) => c.id),
+  );
+
 /** The markers `docs/review/golden-replay-results.md` wraps the generated
  * Runs section in. Historical rows above them are hand-written and untouched
  * — the generated section starts from the first recorded line. */
@@ -380,7 +399,7 @@ export const GENERATED_END = '<!-- GENERATED:golden-runs:END -->';
 /** Renders the generated Runs section from `records` — one row per replay
  * dispatch (grouped by `run_id`), newest last, matching the historical
  * table's own convention. */
-export function renderRunsTable(records) {
+export function renderRunsTable(records, { seeded = new Set() } = {}) {
   const groups = groupRuns(records);
   if (groups.length === 0) return '_No recorded runs yet._';
 
@@ -388,7 +407,7 @@ export function renderRunsTable(records) {
     '| Date | Run ID | Model | Cases | Result | Commit |\n' +
     '| --- | --- | --- | --- | --- | --- |';
   const rows = groups.map((g) => {
-    const s = summarizeRun(g);
+    const s = summarizeRun(g, { seeded });
     return `| ${g.date} | \`${g.runId}\` | \`${g.model}\` | ${s.total} | ${s.result} | \`${g.commit.slice(0, 7)}\` |`;
   });
   return [header, ...rows].join('\n');

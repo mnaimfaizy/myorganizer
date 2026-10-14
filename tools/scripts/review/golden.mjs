@@ -36,7 +36,7 @@
  * Everything here is pure; `score-golden-case.mjs` reads files and exits.
  */
 
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -98,7 +98,58 @@ const compile = (pattern, where) => {
   }
 };
 
-export function assertGoldenSet(set, source = 'golden set') {
+const ORIGINS = ['attributed', 'seeded'];
+const SEEDED_TAG = /^golden\/seeded-\d+-[a-z0-9][a-z0-9-]*$/;
+const ISSUE_REF = /^#\d+$/;
+
+/**
+ * An attributed case is a real range in which an incident merged; its head is
+ * reachable from main. A Seeded Case plants one defect on top of a real commit,
+ * and a `golden/seeded-*` tag keeps that commit alive (ADR 0129 item 1).
+ */
+const assertCaseOrigin = (c, where, fail) => {
+  if (!ORIGINS.includes(c.origin))
+    fail(`${where}: origin must be attributed or seeded`);
+  if (
+    c.origin === 'seeded' &&
+    (typeof c.tag !== 'string' || !SEEDED_TAG.test(c.tag))
+  )
+    fail(
+      `${where}: a seeded case must name its tag as golden/seeded-<issue>-<slug>`,
+    );
+  if (c.origin === 'attributed' && c.tag !== undefined)
+    fail(
+      `${where}: an attributed case's head is reachable from main and carries no tag`,
+    );
+};
+
+/**
+ * A case that measures the Spec axis reads the spec as the original review saw
+ * it, from a committed snapshot, never a live fetch: a later edit can hand the
+ * reviewer the answer (ADR 0129 item 5).
+ */
+const assertCaseSpec = (c, where, fail, exists) => {
+  const kind = c.spec?.kind;
+  if (kind !== 'none' && kind !== 'issue')
+    fail(`${where}: spec.kind must be none or issue`);
+  if (kind === 'none') {
+    if (c.specSnapshot !== undefined)
+      fail(`${where}: a case with no spec carries no specSnapshot`);
+    return;
+  }
+  if (typeof c.spec.ref !== 'string' || !ISSUE_REF.test(c.spec.ref))
+    fail(`${where}: spec.ref must be an issue reference like #123`);
+  if (typeof c.specSnapshot !== 'string' || !c.specSnapshot)
+    fail(`${where}: a case with an issue spec must pin specSnapshot`);
+  if (!exists(c.specSnapshot))
+    fail(`${where}: specSnapshot ${c.specSnapshot} does not exist`);
+};
+
+export function assertGoldenSet(
+  set,
+  source = 'golden set',
+  { exists = existsSync } = {},
+) {
   const fail = (msg) => {
     throw new GoldenSetError(`${source}: ${msg}`);
   };
@@ -128,6 +179,8 @@ export function assertGoldenSet(set, source = 'golden set') {
     if (!SHA.test(c.base) || !SHA.test(c.head))
       fail(`${where}: base and head must be full 40-hex SHAs`);
     if (c.base === c.head) fail(`${where}: base equals head`);
+    assertCaseOrigin(c, where, fail);
+    assertCaseSpec(c, where, fail, exists);
     if (c.expectsNoBlocking === true) {
       // A clean case measures false alarms, not recall: it has nothing to
       // recall, so the two fields recall is computed from are the ones a
@@ -686,5 +739,91 @@ export const replayRepetitionFindings = (workflowText, set, records = []) => {
         `the ${what} is not named for its repetition, so a case's repeated runs collide and all but one result is lost`,
       );
   }
+  return findings;
+};
+
+/**
+ * The commit-range findings for a set's cases, given a `git(args) => boolean`
+ * that reports a command's success. Both ends must be in the clone and the base
+ * an ancestor of the head, or the replay reviews nothing. An attributed head
+ * must be reachable from `mainRef`. A seeded head is held to its own
+ * `golden/seeded-*` tag instead, and a tag missing from the clone is a finding,
+ * because the commit it keeps alive is reachable from nothing else (ADR 0129).
+ */
+export const caseRangeFindings = (cases, { git, mainRef }) => {
+  const findings = [];
+  const has = (sha) => git(['cat-file', '-e', `${sha}^{commit}`]);
+  for (const c of cases) {
+    for (const [end, sha] of [
+      ['base', c.base],
+      ['head', c.head],
+    ]) {
+      if (!has(sha))
+        findings.push(
+          `${c.id}: ${end} ${sha.slice(0, 7)} is not in this clone`,
+        );
+    }
+    if (c.origin === 'seeded') {
+      const tagRef = `refs/tags/${c.tag}`;
+      if (!git(['rev-parse', '--verify', '--quiet', tagRef]))
+        findings.push(
+          `${c.id}: tag ${c.tag} is not in this clone; a golden tag is load-bearing, and deleting it breaks its case`,
+        );
+      else if (
+        has(c.head) &&
+        !git(['merge-base', '--is-ancestor', c.head, tagRef])
+      )
+        findings.push(
+          `${c.id}: head ${c.head.slice(0, 7)} is not reachable from ${tagRef}`,
+        );
+    } else if (
+      has(c.head) &&
+      !git(['merge-base', '--is-ancestor', c.head, mainRef])
+    )
+      findings.push(
+        `${c.id}: head ${c.head.slice(0, 7)} is not reachable from ${mainRef}; a squash merge needs the squash commit and its parent`,
+      );
+    if (
+      has(c.base) &&
+      has(c.head) &&
+      !git(['merge-base', '--is-ancestor', c.base, c.head])
+    )
+      findings.push(`${c.id}: base is not an ancestor of head`);
+  }
+  return findings;
+};
+
+const SPEC_FILE = 'tmp/code-review/spec.json';
+
+/**
+ * Whether the replay hands a Spec-axis case the spec its original review saw
+ * (ADR 0129 item 5). The step that writes `tmp/code-review/spec.json` must read
+ * the case's `specSnapshot` and carry its title and body: written from `.spec`
+ * alone, the Spec axis gets a reference with no text, which is how every replay
+ * before issue #1140 ran. And the checkout that job starts from must keep full
+ * history, or a seeded case's golden tag may not be in the clone.
+ */
+export const replaySpecSnapshotFindings = (workflowText) => {
+  const steps = workflowSteps(workflowText);
+  const load = steps.findIndex((s) => s.body.includes(SPEC_FILE));
+  if (load === -1)
+    return [`no step writes ${SPEC_FILE}, so no case reaches the Spec axis`];
+  const findings = [];
+  const { name, body } = steps[load];
+  if (
+    !body.includes('specSnapshot') ||
+    !/\btitle\b/.test(body) ||
+    !/\bbody\b/.test(body)
+  )
+    findings.push(
+      `"${name}" writes ${SPEC_FILE} without the case's specSnapshot title and body, so a Spec-axis case replays with no spec text (ADR 0129)`,
+    );
+  const checkout = steps
+    .slice(0, load)
+    .findLast((s) => /uses:\s*actions\/checkout@/.test(s.body));
+  if (checkout && !/^\s*fetch-depth:\s*0\s*$/m.test(checkout.body))
+    findings.push(
+      `"${checkout.name}" checks out without fetch-depth: 0, so a seeded case's golden tag may be missing from the clone (ADR 0129)`,
+    );
   return findings;
 };

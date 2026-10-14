@@ -5,11 +5,13 @@ import test from 'node:test';
 import {
   GoldenSetError,
   assertGoldenSet,
+  caseRangeFindings,
   loadGoldenSet,
   renderScore,
   replayObligationCheckFindings,
   replayRepetitionFindings,
   replayRunFactsFindings,
+  replaySpecSnapshotFindings,
   replayTriggerFindings,
   scoreCase,
 } from './golden.mjs';
@@ -21,6 +23,8 @@ const goldenCase = {
   id: 'enum-fanout',
   title: 'A blob type added without its fan-outs',
   incident: 'ADR 0053, #512',
+  origin: 'attributed',
+  spec: { kind: 'none', foundBy: 'none' },
   tier: 'frontier',
   base: sha('a'),
   head: sha('b'),
@@ -242,6 +246,8 @@ const cleanGoldenCase = {
   title: 'A known-good merged pull request',
   incident:
     'PR #900, clean: merged 2026-09-20; no later fix names it as root cause',
+  origin: 'attributed',
+  spec: { kind: 'none', foundBy: 'none' },
   tier: 'frontier',
   base: sha('c'),
   head: sha('d'),
@@ -946,4 +952,199 @@ test('a recorder that is not handed the normalized report is a finding', () => {
     )[0],
     /does not pass --normalized/,
   );
+});
+
+// Seeded Cases and pinned spec snapshots (ADR 0129, issue #1140).
+
+const SNAPSHOT =
+  'tools/config/review-golden-specs/1138-at-2026-10-13T06-36-54Z.json';
+const seededCase = {
+  ...goldenCase,
+  id: 'seeded-example',
+  origin: 'seeded',
+  tag: 'golden/seeded-1140-ancestor-args-swapped',
+  spec: { kind: 'issue', ref: '#1138', foundBy: 'branch' },
+  specSnapshot: SNAPSHOT,
+};
+const onlyThe = (path) => (p) => p === path;
+const check =
+  (c, exists = onlyThe(SNAPSHOT)) =>
+  () =>
+    assertGoldenSet({ schemaVersion: 4, cases: [c] }, 'golden set', { exists });
+
+test('a case declares whether it is attributed or seeded', () => {
+  assert.doesNotThrow(check(seededCase));
+  const { origin, ...noOrigin } = goldenCase;
+  assert.throws(check(noOrigin), /origin must be attributed or seeded/);
+  assert.throws(
+    check({ ...goldenCase, origin: 'synthetic' }),
+    /origin must be attributed or seeded/,
+  );
+});
+
+test('a seeded case names the golden tag that keeps its head alive, and only a seeded case does', () => {
+  const { tag, ...untagged } = seededCase;
+  assert.throws(
+    check(untagged),
+    /a seeded case must name its tag as golden\/seeded-<issue>-<slug>/,
+  );
+  assert.throws(
+    check({ ...seededCase, tag: 'seeded-1140-x' }),
+    /a seeded case must name its tag as golden\/seeded-<issue>-<slug>/,
+  );
+  assert.throws(
+    check({ ...goldenCase, tag: 'golden/seeded-1140-x' }),
+    /an attributed case's head is reachable from main and carries no tag/,
+  );
+});
+
+test('a case on the Spec axis pins a spec snapshot that exists, and a spec-less case pins none', () => {
+  assert.doesNotThrow(
+    check({ ...goldenCase, spec: seededCase.spec, specSnapshot: SNAPSHOT }),
+  );
+  assert.throws(
+    check({ ...goldenCase, spec: { kind: 'vibes', foundBy: 'none' } }),
+    /spec\.kind must be none or issue/,
+  );
+  assert.throws(
+    check({
+      ...goldenCase,
+      spec: { kind: 'issue', ref: '1138', foundBy: 'branch' },
+      specSnapshot: SNAPSHOT,
+    }),
+    /spec\.ref must be an issue reference like #123/,
+  );
+  // A live fetch at replay time would read edits the original review never saw.
+  assert.throws(
+    check({ ...goldenCase, spec: seededCase.spec }),
+    /a case with an issue spec must pin specSnapshot/,
+  );
+  assert.throws(
+    check(seededCase, () => false),
+    /specSnapshot .* does not exist/,
+  );
+  assert.throws(
+    check({ ...goldenCase, specSnapshot: SNAPSHOT }),
+    /a case with no spec carries no specSnapshot/,
+  );
+});
+
+test('a seeded head is reachable from its golden tag, and a missing tag is a finding', () => {
+  // A fake git: the commits that exist, and which commit reaches which.
+  const fakeGit =
+    ({ commits, refs = {}, reaches = [] }) =>
+    (args) => {
+      const [cmd, ...rest] = args;
+      if (cmd === 'cat-file')
+        return commits.includes(rest[1].replace('^{commit}', ''));
+      if (cmd === 'rev-parse') return rest.at(-1) in refs;
+      if (cmd === 'merge-base') {
+        const [, from, to] = rest;
+        const target = refs[to] ?? to;
+        return (
+          from === target ||
+          reaches.some(([a, b]) => a === from && b === target)
+        );
+      }
+      throw new Error(`unexpected git ${args.join(' ')}`);
+    };
+  const seeded = { ...seededCase, base: sha('a'), head: sha('e') };
+  const tagRef = `refs/tags/${seeded.tag}`;
+  const reachable = fakeGit({
+    commits: [sha('a'), sha('e')],
+    refs: { [tagRef]: sha('e'), main: sha('f') },
+    reaches: [[sha('a'), sha('e')]],
+  });
+  assert.deepEqual(
+    caseRangeFindings([seeded], { git: reachable, mainRef: 'main' }),
+    [],
+  );
+
+  const tagless = fakeGit({
+    commits: [sha('a'), sha('e')],
+    refs: { main: sha('f') },
+    reaches: [[sha('a'), sha('e')]],
+  });
+  assert.deepEqual(
+    caseRangeFindings([seeded], { git: tagless, mainRef: 'main' }),
+    [
+      `seeded-example: tag ${seeded.tag} is not in this clone; a golden tag is load-bearing, and deleting it breaks its case`,
+    ],
+  );
+
+  // An attributed case is still held to main, and a seeded head is not.
+  const attributed = { ...goldenCase, base: sha('a'), head: sha('e') };
+  assert.deepEqual(
+    caseRangeFindings([attributed], { git: reachable, mainRef: 'main' }),
+    [
+      `enum-fanout: head ${sha('e').slice(0, 7)} is not reachable from main; a squash merge needs the squash commit and its parent`,
+    ],
+  );
+  const elsewhere = fakeGit({
+    commits: [sha('a'), sha('e')],
+    refs: { [tagRef]: sha('9'), main: sha('f') },
+    reaches: [[sha('a'), sha('e')]],
+  });
+  assert.deepEqual(
+    caseRangeFindings([seeded], { git: elsewhere, mainRef: 'main' }),
+    [
+      `seeded-example: head ${sha('e').slice(0, 7)} is not reachable from ${tagRef}`,
+    ],
+  );
+});
+
+// ADR 0129 item 5: a Spec-axis case replays with the spec text its original
+// review saw, written from the committed snapshot, and the checkout keeps the
+// history that carries a seeded case's golden tag.
+
+const specSteps = ({
+  load = [
+    '        run: |',
+    '          SNAPSHOT="$(jq -r \'.specSnapshot // empty\' <<<"$CASE")"',
+    '          jq --argjson spec "$(jq .spec <<<"$CASE")" \'{spec: $spec, title, body}\' "$SNAPSHOT" > tmp/code-review/spec.json',
+  ],
+  fetchDepth = '          fetch-depth: 0',
+} = {}) =>
+  [
+    'jobs:',
+    '  replay:',
+    '    steps:',
+    '      - name: Check out',
+    '        uses: actions/checkout@v7',
+    '        with:',
+    fetchDepth,
+    '      - name: Load the case',
+    ...load,
+  ].join('\n');
+
+test('the replay writes a pinned spec snapshot into spec.json and keeps full history', () => {
+  assert.deepEqual(replaySpecSnapshotFindings(specSteps()), []);
+  assert.match(
+    replaySpecSnapshotFindings(
+      specSteps({
+        load: [
+          '        run: jq \'{spec: .spec}\' <<<"$CASE" > tmp/code-review/spec.json',
+        ],
+      }),
+    )[0],
+    /writes tmp\/code-review\/spec\.json without the case's specSnapshot/,
+  );
+  assert.match(
+    replaySpecSnapshotFindings(specSteps({ load: ['        run: exit 0'] }))[0],
+    /no step writes tmp\/code-review\/spec\.json/,
+  );
+  assert.match(
+    replaySpecSnapshotFindings(
+      specSteps({ fetchDepth: '          fetch-depth: 1' }),
+    )[0],
+    /"Check out" checks out without fetch-depth: 0, so a seeded case's golden tag may be missing/,
+  );
+});
+
+test('the real replay workflow writes the pinned spec snapshot', () => {
+  const workflow = readFileSync(
+    '.github/workflows/review-golden-replay.yml',
+    'utf8',
+  );
+  assert.deepEqual(replaySpecSnapshotFindings(workflow), []);
 });
