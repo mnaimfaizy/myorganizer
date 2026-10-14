@@ -1312,3 +1312,43 @@ test('the worklist names every file the diff added lines to, most lines first', 
     { file: 'tools/a.mjs', added: 2 },
   ]);
 });
+
+test('a deleted file and a deletion-only file add no lines and are not changed files', () => {
+  const addedLines = parseAddedLines(
+    diff(
+      'diff --git a/x.mjs b/x.mjs',
+      '--- a/x.mjs',
+      '+++ b/x.mjs',
+      '@@ -3,2 +2,0 @@',
+      '-gone',
+      '-gone too',
+      'diff --git a/old.mjs b/old.mjs',
+      'deleted file mode 100644',
+      '--- a/old.mjs',
+      '+++ /dev/null',
+      '@@ -1 +0,0 @@',
+      '-bye',
+      'diff --git a/kept.mjs b/kept.mjs',
+      '--- a/kept.mjs',
+      '+++ b/kept.mjs',
+      '@@ -1,0 +2,2 @@',
+      '+hello',
+      // Content that happens to read like a header is still content.
+      '+++ b/not-a-file.mjs',
+    ),
+  );
+  // A deleted file's `+++ /dev/null` header is not an added line of the file
+  // before it.
+  assert.deepEqual(addedLines.get('x.mjs') ?? [], []);
+  assert.deepEqual(
+    addedLines.get('kept.mjs').map((l) => l.text),
+    ['hello', '++ b/not-a-file.mjs'],
+  );
+  // There is nothing at head to open in either, so neither is listed (#1140).
+  const { changedFiles } = selectObligations({
+    catalogue: { schemaVersion: 1, obligations: [] },
+    addedLines,
+    head: 'abc',
+  });
+  assert.deepEqual(changedFiles, [{ file: 'kept.mjs', added: 2 }]);
+});
