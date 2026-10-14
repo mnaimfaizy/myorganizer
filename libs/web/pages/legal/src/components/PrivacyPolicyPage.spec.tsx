@@ -151,31 +151,34 @@ describe('PrivacyPolicyPage', () => {
       );
     });
 
-    it('should state disconnecting immediately deletes tokens, followed channels, cached uploads, watched marks, and digest settings', () => {
+    it('should state disconnecting deletes tokens, followed channels, cached uploads, and digest settings, and keeps watched marks for 30 days', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /immediately deletes your stored tokens, followed channels, cached uploads, watched marks, and digest settings/,
+        /Disconnecting revokes MyOrganizer's access at Google and deletes your stored tokens, followed channels, cached uploads, and digest settings/,
       );
+      expect(text).toMatch(
+        /watched marks are kept for 30 days unless you choose to delete them/,
+      );
+      expect(text).not.toMatch(/immediately deletes/);
     });
 
-    it('should state revoking at Google deletes the same data within seven days unless the User reconnects', () => {
+    it('should state revoking at Google makes MyOrganizer stop syncing, without claiming deletion within seven days', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
         /revoke access at Google instead, MyOrganizer stops syncing your YouTube data/,
       );
-      expect(text).toMatch(
-        /deletes the same data within seven days unless you reconnect/,
-      );
+      expect(text).not.toMatch(/within seven days/);
     });
 
-    it('should state the operator may withdraw the feature, which deletes the same data', () => {
+    it('should state the operator may also withdraw the feature from an account, without claiming it deletes the same data', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /The operator may also withdraw the feature from an account, which deletes the same data/,
+        /The operator may also withdraw the feature from an account/,
       );
+      expect(text).not.toMatch(/deletes the same data/);
     });
 
     it('should render link to YouTube Data Privacy page', () => {
