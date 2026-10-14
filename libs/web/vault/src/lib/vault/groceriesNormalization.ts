@@ -1,7 +1,12 @@
 import { randomId } from '@myorganizer/core';
 import {
+  CATALOG_ITEM_KEYS,
+  GROCERIES_PAYLOAD_KEYS,
+  GROCERY_LIST_KEYS,
   GROCERY_PREDEFINED_CATEGORIES,
+  LIST_LINE_KEYS,
   readVaultBlobRecords,
+  withUnknownFields,
   type GroceriesVaultPayload,
   type CatalogItem,
   type ListLine,
@@ -120,7 +125,7 @@ const GroceryListSchema = z
       for (const lineRaw of data.lines) {
         const result = ListLineSchema.safeParse(lineRaw);
         if (result.success && result.data !== null) {
-          lines.push(result.data);
+          lines.push(withUnknownFields(lineRaw, LIST_LINE_KEYS, result.data));
         }
       }
     }
@@ -255,6 +260,53 @@ function migrateLegacyToNewShape(legacyLists: any[]): {
   return { catalog, lists };
 }
 
+function pickKnown(
+  value: unknown,
+  known: Readonly<Record<string, true>>,
+): unknown {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return value;
+  }
+  return Object.fromEntries(
+    Object.entries(value).filter(([key]) =>
+      Object.prototype.hasOwnProperty.call(known, key),
+    ),
+  );
+}
+
+/**
+ * A groceries payload reduced to the fields this build knows, at every level,
+ * in the order they were written. What `changed` compares.
+ */
+function knownGroceriesFields(payload: {
+  catalog?: unknown;
+  lists?: unknown;
+}): unknown {
+  return {
+    catalog: Array.isArray(payload.catalog)
+      ? payload.catalog.map((item) => pickKnown(item, CATALOG_ITEM_KEYS))
+      : payload.catalog,
+    lists: Array.isArray(payload.lists)
+      ? payload.lists.map((list) => {
+          const known = pickKnown(list, GROCERY_LIST_KEYS);
+          if (
+            typeof known !== 'object' ||
+            known === null ||
+            !Array.isArray((known as { lines?: unknown }).lines)
+          ) {
+            return known;
+          }
+          return {
+            ...known,
+            lines: (known as { lines: unknown[] }).lines.map((line) =>
+              pickKnown(line, LIST_LINE_KEYS),
+            ),
+          };
+        })
+      : payload.lists,
+  };
+}
+
 export function normalizeGroceries(payload: unknown): NormalizeGroceriesResult {
   const raw = readVaultBlobRecords(payload);
 
@@ -281,7 +333,9 @@ export function normalizeGroceries(payload: unknown): NormalizeGroceriesResult {
       for (const itemRaw of payload.catalog) {
         const result = CatalogItemSchema.safeParse(itemRaw);
         if (result.success && result.data !== null) {
-          catalog.push(result.data);
+          catalog.push(
+            withUnknownFields(itemRaw, CATALOG_ITEM_KEYS, result.data),
+          );
         }
       }
     }
@@ -299,23 +353,38 @@ export function normalizeGroceries(payload: unknown): NormalizeGroceriesResult {
           const validLines = result.data.lines.filter((line) =>
             validCatalogIds.has(line.catalogItemId),
           );
-          lists.push({
-            ...result.data,
-            lines: validLines,
-          });
+          lists.push(
+            withUnknownFields(listRaw, GROCERY_LIST_KEYS, {
+              ...result.data,
+              lines: validLines,
+            }),
+          );
         }
       }
     }
 
+    // Compared on known fields only: an unknown field is carried through, not
+    // repaired, so it never makes the payload worth resaving.
     const changed =
       catalog.length !== (payload.catalog?.length || 0) ||
       lists.length !== (payload.lists?.length || 0) ||
-      JSON.stringify({ catalog, lists }) !== JSON.stringify(raw);
+      JSON.stringify(knownGroceriesFields({ catalog, lists })) !==
+        JSON.stringify(knownGroceriesFields(payload));
 
-    return { value: { catalog, lists }, changed };
+    // Unknown fields survive on the payload, on each Catalog Item, Grocery
+    // List and List Line (ADR 0114 decision 3).
+    return {
+      value: withUnknownFields(raw, GROCERIES_PAYLOAD_KEYS, { catalog, lists }),
+      changed,
+    };
   }
 
-  // Legacy shape: array of lists with embedded items
+  // Legacy shape: array of lists with embedded items. This is a migration to
+  // the catalog shape, not a write of it, so unknown fields are not carried
+  // (ADR 0114 decision 3 protects fields a newer client adds to the current
+  // shape). No Mobile Release and no current web build writes this shape; its
+  // keys are retired with it, like a Task's `todo` or a Usage Location's
+  // `changeType`.
   if (Array.isArray(raw)) {
     const { catalog, lists } = migrateLegacyToNewShape(raw);
     return {

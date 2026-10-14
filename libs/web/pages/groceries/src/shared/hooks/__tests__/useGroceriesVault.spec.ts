@@ -33,6 +33,7 @@ import type {
   GroceryList,
   ListLine,
 } from '@myorganizer/vault-core';
+import { randomId } from '@myorganizer/core';
 import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useGroceriesVault } from '../useGroceriesVault';
@@ -274,6 +275,73 @@ describe('useGroceriesVault', () => {
         expect(result.current.catalog).toHaveLength(1);
         const listAResult = result.current.lists.find((l) => l.id === 'listA');
         expect(listAResult?.lines).toHaveLength(0);
+      });
+    });
+
+    it('carries an unknown payload key through the save when adding to several lists', async () => {
+      const mockRandomId = randomId as jest.Mock;
+      let generated = 0;
+      mockRandomId.mockImplementation(() => `gen-${++generated}`);
+
+      const listA = makeList({ id: 'listA', name: 'A' });
+      const listB = makeList({ id: 'listB', name: 'B' });
+      const initialPayload = {
+        futurePayloadKey: { v: 2 },
+        catalog: [],
+        lists: [listA, listB],
+      };
+      const result = await setup(initialPayload);
+
+      await act(async () => {
+        await result.current.addItemToLists(['listA', 'listB'], {
+          name: 'Bread',
+          category: 'bakery',
+        });
+      });
+
+      const expectedRecords = {
+        futurePayloadKey: { v: 2 },
+        catalog: [
+          {
+            id: 'gen-1',
+            name: 'Bread',
+            category: 'bakery' as const,
+            createdAt: expect.any(String),
+            updatedAt: expect.any(String),
+          },
+        ],
+        lists: [
+          {
+            ...listA,
+            lines: [
+              {
+                id: 'gen-2',
+                catalogItemId: 'gen-1',
+                checked: false,
+                createdAt: expect.any(String),
+                updatedAt: expect.any(String),
+              },
+            ],
+          },
+          {
+            ...listB,
+            lines: [
+              {
+                id: 'gen-3',
+                catalogItemId: 'gen-1',
+                checked: false,
+                createdAt: expect.any(String),
+                updatedAt: expect.any(String),
+              },
+            ],
+          },
+        ],
+      };
+      await waitFor(() => {
+        expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          groceriesEncryptedSave(expectedRecords),
+        );
       });
     });
   });
@@ -693,6 +761,49 @@ describe('useGroceriesVault', () => {
         expect(result.current.lists).toEqual(initialPayload.lists);
       });
     });
+
+    it('carries an unknown payload key and an unknown Catalog Item field through the save', async () => {
+      const catalogItem = {
+        ...makeCatalogItem({
+          id: 'cat-1',
+          name: 'Milk',
+          category: 'dairy',
+        }),
+        futureItemField: { source: 'v2' },
+      };
+      const initialPayload = {
+        futurePayloadKey: { v: 2 },
+        catalog: [catalogItem],
+        lists: [],
+      };
+      const result = await setup(initialPayload);
+
+      await act(async () => {
+        await result.current.updateCatalogItem({
+          id: 'cat-1',
+          name: 'Organic Milk',
+          category: 'dairy',
+        });
+      });
+
+      const expectedRecords = {
+        futurePayloadKey: { v: 2 },
+        catalog: [
+          {
+            ...catalogItem,
+            name: 'Organic Milk',
+            updatedAt: expect.any(String),
+          },
+        ],
+        lists: [],
+      };
+      await waitFor(() => {
+        expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          groceriesEncryptedSave(expectedRecords),
+        );
+      });
+    });
   });
 
   describe('updateListLine', () => {
@@ -858,6 +969,60 @@ describe('useGroceriesVault', () => {
         );
         expect(result.current.catalog).toEqual(initialPayload.catalog);
         expect(result.current.lists).toEqual(initialPayload.lists);
+      });
+    });
+
+    it('carries an unknown payload key and an unknown List Line field through the save', async () => {
+      const catalogItem = makeCatalogItem({
+        id: 'cat-1',
+        name: 'Milk',
+        category: 'dairy',
+      });
+      const line = {
+        ...makeLine({
+          id: 'line-1',
+          catalogItemId: 'cat-1',
+          checked: true,
+          amount: '1 carton',
+        }),
+        futureLineField: 'kept',
+      };
+      const listA = makeList({ id: 'listA', name: 'A', lines: [line] });
+      const initialPayload = {
+        futurePayloadKey: { v: 2 },
+        catalog: [catalogItem],
+        lists: [listA],
+      };
+      const result = await setup(initialPayload);
+
+      await act(async () => {
+        await result.current.updateListLine('listA', {
+          id: 'line-1',
+          amount: '3 cartons',
+        });
+      });
+
+      const expectedRecords = {
+        futurePayloadKey: { v: 2 },
+        catalog: [catalogItem],
+        lists: [
+          {
+            ...listA,
+            lines: [
+              {
+                ...line,
+                amount: '3 cartons',
+                updatedAt: expect.any(String),
+              },
+            ],
+          },
+        ],
+      };
+      await waitFor(() => {
+        expect(mockSaveEncryptedData).toHaveBeenCalledTimes(1);
+        expect(mockSaveEncryptedData).toHaveBeenLastCalledWith(
+          groceriesEncryptedSave(expectedRecords),
+        );
       });
     });
   });

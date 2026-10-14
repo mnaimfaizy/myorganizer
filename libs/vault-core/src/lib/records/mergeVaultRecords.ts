@@ -1,5 +1,6 @@
 import {
   mergeDeletionLogs,
+  mergeEnvelopeExtras,
   toEpoch,
   type VaultBlobEnvelope,
 } from './vaultBlobEnvelope';
@@ -27,6 +28,9 @@ export interface IdentifiedRecord {
  *      nothing is ever dropped from the result.
  *   4. A record loses to a deletion at or after the instant it last changed;
  *      a record changed strictly after its deletion survives.
+ *   5. Envelope keys other than `records` and `deletions` are unioned, `local`
+ *      winning a key both carry (ADR 0114 decision 3). A winning record is
+ *      kept whole, so its own unknown fields survive too.
  *
  * Rule 4 resolves the equal case toward the deletion, and resolves a record
  * with no usable timestamp the same way. Both are the direction that cannot
@@ -81,7 +85,7 @@ export function mergeRecordsById<TRecord extends IdentifiedRecord>(
     records.push(record);
   }
 
-  return { records, deletions };
+  return { ...mergeEnvelopeExtras(local, remote), records, deletions };
 }
 
 /**

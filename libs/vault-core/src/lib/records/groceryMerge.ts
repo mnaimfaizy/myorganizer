@@ -1,12 +1,15 @@
-import type {
-  CatalogItem,
-  GroceryList,
-  GroceriesVaultPayload,
-  ListLine,
+import {
+  GROCERIES_PAYLOAD_KEYS,
+  type CatalogItem,
+  type GroceryList,
+  type GroceriesVaultPayload,
+  type ListLine,
 } from './grocery';
 import { mergeRecordsById } from './mergeVaultRecords';
+import { mergeUnknownFields } from './unknownFields';
 import {
   mergeDeletionLogs,
+  mergeEnvelopeExtras,
   toEpoch,
   type DeletionLog,
   type VaultBlobEnvelope,
@@ -23,6 +26,10 @@ import {
  * ([ADR 0113](../../../../../docs/adr/0113-groceries-converges-by-nested-record-and-a-destroyed-parent-stays-absent.md)).
  * Delete List Line is not an exception: a line changed after its deletion
  * survives.
+ *
+ * Unknown fields survive (ADR 0114 decision 3): a winning Catalog Item, List
+ * Line or Grocery List keeps its own, and unknown keys on the payload and on
+ * the envelope are unioned, `local` winning a key both carry.
  *
  * Pure: it reads the two envelopes it is given and nothing else.
  */
@@ -42,7 +49,13 @@ export function mergeGroceries(
   const catalogIds = new Set(catalog.map((item) => item.id));
 
   return {
+    ...mergeEnvelopeExtras(local, remote),
     records: {
+      ...mergeUnknownFields(
+        local.records,
+        remote.records,
+        GROCERIES_PAYLOAD_KEYS,
+      ),
       catalog,
       lists: mergeLists(
         localPayload.lists,
@@ -117,13 +130,9 @@ function mergeOneList(
     (line) => line.updatedAt ?? line.createdAt,
   ).records.filter((line) => catalogIds.has(line.catalogItemId));
 
-  return {
-    id,
-    name: nameFrom.name,
-    createdAt: nameFrom.createdAt,
-    updatedAt: nameFrom.updatedAt,
-    lines,
-  };
+  // The newer list wins whole, unknown fields included; only its lines are
+  // the merge of both sides.
+  return { ...nameFrom, id, lines };
 }
 
 /** The list whose `updatedAt` is newer. A tie, or a missing side, keeps local. */

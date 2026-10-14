@@ -1,4 +1,9 @@
 import type { IsoDateTimeString } from './contactRecords';
+import {
+  mergeUnknownFields,
+  unknownFieldsOf,
+  type KnownKeys,
+} from './unknownFields';
 
 /**
  * A Vault Blob's record of which of its records were deleted, and when.
@@ -39,6 +44,39 @@ export function isVaultBlobEnvelope(
     value !== null &&
     !Array.isArray(value) &&
     'records' in value
+  );
+}
+
+const ENVELOPE_KEYS = {
+  records: true,
+  deletions: true,
+} as const satisfies KnownKeys<VaultBlobEnvelope<unknown>>;
+
+/**
+ * Every top-level key of an envelope other than `records` and `deletions`,
+ * kept so that a writer which does not know them puts them back
+ * ([ADR 0114](../../../../../docs/adr/0114-a-mobile-release-ships-in-1-0-what-it-cannot-learn-later.md)
+ * decision 3). A bare payload written before ADR 0054 has none: its keys are
+ * records, not envelope.
+ */
+export function readEnvelopeExtras(payload: unknown): Record<string, unknown> {
+  return isVaultBlobEnvelope(payload)
+    ? unknownFieldsOf(payload, ENVELOPE_KEYS)
+    : {};
+}
+
+/**
+ * Both copies' envelope extras, unioned. A key both carry keeps `local`'s
+ * value, as a merge keeps `local` on a tie.
+ */
+export function mergeEnvelopeExtras(
+  local: unknown,
+  remote: unknown,
+): Record<string, unknown> {
+  return mergeUnknownFields(
+    isVaultBlobEnvelope(local) ? local : undefined,
+    isVaultBlobEnvelope(remote) ? remote : undefined,
+    ENVELOPE_KEYS,
   );
 }
 

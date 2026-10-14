@@ -1,4 +1,9 @@
 import { normalizeGroceries } from './groceriesNormalization';
+import {
+  expectSavedEnvelope,
+  storeHolding,
+} from './unknownFieldsRoundTrip.testutil';
+import { saveGroceriesPayload } from './vaultRecordWrite';
 import type { GroceriesVaultPayload } from '@myorganizer/vault-core';
 
 describe('normalizeGroceries', () => {
@@ -896,6 +901,91 @@ describe('normalizeGroceries', () => {
       });
       expect(resultFromNullEnvelope.value).toEqual(resultFromNull.value);
       expect(resultFromNullEnvelope.changed).toBe(resultFromNull.changed);
+    });
+  });
+
+  describe('unknown fields (ADR 0114 decision 3)', () => {
+    const timestamp = '2026-01-01T00:00:00.000Z';
+
+    // Keys are written in the order the normalizer emits them: `changed`
+    // compares the known fields as JSON, so key order is part of the fixture.
+    const catalogItem = {
+      id: 'cat-1',
+      name: 'Oat milk',
+      category: 'dairy',
+      price: 4.5,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      shelfLife: 'long',
+    };
+    const groceryList = {
+      id: 'list-1',
+      name: 'Weekly',
+      lines: [
+        {
+          id: 'line-1',
+          catalogItemId: 'cat-1',
+          checked: false,
+          amount: '2',
+          createdAt: timestamp,
+          updatedAt: timestamp,
+          aisle: '3',
+        },
+      ],
+      createdAt: timestamp,
+      updatedAt: timestamp,
+      store: 'Coles',
+    };
+
+    it('keeps unknown fields on Catalog Items, Grocery Lists, List Lines, the payload and the envelope through normalize-then-save', async () => {
+      const stored = {
+        records: {
+          catalog: [catalogItem],
+          lists: [groceryList],
+          futurePayloadKey: { version: 2 },
+        },
+        deletions: {},
+        futureEnvelopeKey: 'kept',
+      };
+      const { store, saveEncryptedData } = storeHolding(stored);
+
+      const { value } = normalizeGroceries(stored);
+      await saveGroceriesPayload(store, value);
+
+      expectSavedEnvelope(saveEncryptedData, {
+        type: 'groceries',
+        value: {
+          futureEnvelopeKey: 'kept',
+          records: {
+            catalog: [catalogItem],
+            lists: [groceryList],
+            futurePayloadKey: { version: 2 },
+          },
+          deletions: {},
+        },
+      });
+    });
+
+    it('does not mark changed when the only differences from the known shape are unknown fields', () => {
+      const payload = {
+        catalog: [catalogItem],
+        lists: [groceryList],
+        futurePayloadKey: { version: 2 },
+      };
+      const result = normalizeGroceries(payload);
+      expect(result.value).toEqual(payload);
+      expect(result.changed).toBe(false);
+    });
+
+    it('still repairs an invalid known field and keeps the unknown field beside it', () => {
+      const result = normalizeGroceries({
+        catalog: [{ ...catalogItem, category: 'bogus' }],
+        lists: [],
+      });
+      expect(result.value.catalog).toEqual([
+        { ...catalogItem, category: 'other' },
+      ]);
+      expect(result.changed).toBe(true);
     });
   });
 });

@@ -1,5 +1,10 @@
 import { randomId } from '@myorganizer/core';
-import { readVaultBlobRecords, type Task } from '@myorganizer/vault-core';
+import {
+  readVaultBlobRecords,
+  TASK_KEYS,
+  withUnknownFields,
+  type Task,
+} from '@myorganizer/vault-core';
 
 type NormalizeResult<T> = {
   value: T;
@@ -17,6 +22,13 @@ const VALID_STATUSES = new Set<string>([
 const VALID_PRIORITIES = new Set<string>(['low', 'medium', 'high']);
 
 const VALID_CONTEXTS = new Set<string>(['personal', 'work']);
+
+/**
+ * A Task's known keys as this reader consumes them: its type's fields plus
+ * `todo`, the title field of the legacy todo-shaped records, which is retired
+ * rather than carried as an unknown field.
+ */
+const TASK_READ_KEYS = { ...TASK_KEYS, todo: true } as const;
 
 function toTrimmedString(value: unknown): string | null {
   return typeof value === 'string' ? value.trim() : null;
@@ -137,7 +149,10 @@ export function normalizeTasks(payload: unknown): NormalizeResult<Task[]> {
     if (task.id !== raw['id']) changed = true;
     if (task.title !== raw['title']) changed = true;
 
-    normalized.push(task);
+    // Fields this build does not know ride along untouched, so a resave never
+    // erases what a newer client wrote (ADR 0114 decision 3). They never mark
+    // the result changed: there is nothing here to repair.
+    normalized.push(withUnknownFields(raw, TASK_READ_KEYS, task));
   }
 
   return { value: normalized, changed };

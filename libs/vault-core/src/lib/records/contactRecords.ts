@@ -1,3 +1,5 @@
+import type { KnownKeys } from './unknownFields';
+
 export const AddressStatusEnum = {
   Current: 'current',
   Old: 'old',
@@ -97,3 +99,57 @@ export type MobileNumberRecord = {
   /** When this Mobile Number last changed. See `AddressRecord.updatedAt`. */
   updatedAt?: IsoDateTimeString;
 };
+
+/**
+ * Every Usage Location key a reader understands, pinned to the type: a field added to
+ * `UsageLocationRecord` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const USAGE_LOCATION_KEYS = {
+  id: true,
+  organisationName: true,
+  organisationType: true,
+  updateMethod: true,
+  changed: true,
+  link: true,
+  priority: true,
+  createdAt: true,
+  changedAt: true,
+} as const satisfies KnownKeys<UsageLocationRecord>;
+
+/**
+ * Every Address key a reader understands, pinned to the type: a field added to
+ * `AddressRecord` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const ADDRESS_KEYS = {
+  id: true,
+  label: true,
+  address: true,
+  propertyNumber: true,
+  street: true,
+  suburb: true,
+  state: true,
+  zipCode: true,
+  country: true,
+  status: true,
+  usageLocations: true,
+  createdAt: true,
+  updatedAt: true,
+} as const satisfies KnownKeys<AddressRecord>;
+
+/**
+ * Every Mobile Number key a reader understands, pinned to the type: a field added to
+ * `MobileNumberRecord` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const MOBILE_NUMBER_KEYS = {
+  id: true,
+  label: true,
+  mobileNumber: true,
+  countryCode: true,
+  phoneNumber: true,
+  usageLocations: true,
+  createdAt: true,
+  updatedAt: true,
+} as const satisfies KnownKeys<MobileNumberRecord>;

@@ -2200,6 +2200,30 @@ describe('groceryEdit', () => {
     });
   });
 
+  describe('envelope extras', () => {
+    it('createGroceryList keeps an unknown envelope key', () => {
+      const envelope = {
+        records: { catalog: [], lists: [] },
+        deletions: {},
+        futureEnvelope: 'keep',
+      } as VaultBlobEnvelope<unknown>;
+      const newList: GroceryList = {
+        id: 'list-1',
+        name: 'Bread Run',
+        lines: [],
+        createdAt: '2026-01-02T00:00:00.000Z',
+        updatedAt: '2026-01-02T00:00:00.000Z',
+      };
+
+      const result = createGroceryList(envelope, newList);
+
+      expect(
+        (result as unknown as Record<string, unknown>).futureEnvelope,
+      ).toBe('keep');
+      expect(listCount(result)).toBe(1);
+    });
+  });
+
   describe('renameGroceryList', () => {
     it('changes only the list name and updatedAt', () => {
       const envelope: VaultBlobEnvelope<unknown> = {

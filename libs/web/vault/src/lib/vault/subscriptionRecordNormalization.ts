@@ -15,6 +15,8 @@ import {
   type SubscriptionRenewalType,
   type SubscriptionStatus,
   type SubscriptionTier,
+  SUBSCRIPTION_KEYS,
+  withUnknownFields,
 } from '@myorganizer/vault-core';
 
 type NormalizeResult<T> = {
@@ -161,7 +163,9 @@ export function normalizeSubscriptions(
     if (next.link !== raw.link) changed = true;
     if (next.updatedAt !== raw.updatedAt) changed = true;
 
-    normalized.push(next);
+    // Unknown fields ride along and never mark the result changed (ADR 0114
+    // decision 3).
+    normalized.push(withUnknownFields(raw, SUBSCRIPTION_KEYS, next));
   }
 
   return { value: normalized, changed };

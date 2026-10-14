@@ -213,4 +213,40 @@ describe('vaultBlobEdit', () => {
       expect((result.records as Task[])[0]).toEqual(remoteTask);
     });
   });
+
+  describe('envelope extras', () => {
+    it('putVaultRecord keeps an unknown envelope key', () => {
+      const envelope = {
+        records: [{ id: '1', name: 'First' }],
+        deletions: {},
+        futureEnvelope: 'keep',
+      } as VaultBlobEnvelope<unknown>;
+
+      const result = putVaultRecord(envelope, { id: '2', name: 'Second' });
+
+      expect(
+        (result as unknown as Record<string, unknown>).futureEnvelope,
+      ).toBe('keep');
+      expect(result.records as unknown[]).toHaveLength(2);
+    });
+
+    it('deleteVaultRecord keeps an unknown envelope key', () => {
+      const envelope = {
+        records: [{ id: '1' }, { id: '2' }],
+        deletions: {},
+        futureEnvelope: 'keep',
+      } as VaultBlobEnvelope<unknown>;
+
+      const result = deleteVaultRecord(
+        envelope,
+        '1',
+        '2026-01-03T00:00:00.000Z',
+      );
+
+      expect(
+        (result as unknown as Record<string, unknown>).futureEnvelope,
+      ).toBe('keep');
+      expect(result.records).toEqual([{ id: '2' }]);
+    });
+  });
 });

@@ -8,6 +8,83 @@ interface TestRecord extends IdentifiedRecord {
 describe('mergeRecordsById', () => {
   const changedAt = (record: TestRecord) => record.at;
 
+  describe('unknown fields', () => {
+    it('unions envelope extras from both sides and keeps local on a shared key', () => {
+      const local = {
+        records: [],
+        deletions: {},
+        sharedKey: 'local',
+        localOnly: 1,
+      } as VaultBlobEnvelope<TestRecord[]>;
+      const remote = {
+        records: [],
+        deletions: {},
+        sharedKey: 'remote',
+        remoteOnly: 2,
+      } as VaultBlobEnvelope<TestRecord[]>;
+
+      const result = mergeRecordsById(local, remote, changedAt);
+
+      expect(result).toMatchObject({
+        sharedKey: 'local',
+        localOnly: 1,
+        remoteOnly: 2,
+      });
+    });
+
+    it('keeps the unknown fields of a newer remote record that wins whole', () => {
+      const local: VaultBlobEnvelope<TestRecord[]> = {
+        records: [{ id: '1', at: '2026-01-01T00:00:00.000Z' }],
+        deletions: {},
+      };
+      const remote: VaultBlobEnvelope<TestRecord[]> = {
+        records: [
+          {
+            id: '1',
+            at: '2026-01-02T00:00:00.000Z',
+            futureField: 'remote',
+          } as TestRecord,
+        ],
+        deletions: {},
+      };
+
+      const result = mergeRecordsById(local, remote, changedAt);
+
+      expect(result.records).toEqual([
+        { id: '1', at: '2026-01-02T00:00:00.000Z', futureField: 'remote' },
+      ]);
+    });
+
+    it('keeps the local record and its unknown fields when changedAt ties', () => {
+      const local: VaultBlobEnvelope<TestRecord[]> = {
+        records: [
+          {
+            id: '1',
+            at: '2026-01-01T00:00:00.000Z',
+            futureField: 'local',
+          } as TestRecord,
+        ],
+        deletions: {},
+      };
+      const remote: VaultBlobEnvelope<TestRecord[]> = {
+        records: [
+          {
+            id: '1',
+            at: '2026-01-01T00:00:00.000Z',
+            futureField: 'remote',
+          } as TestRecord,
+        ],
+        deletions: {},
+      };
+
+      const result = mergeRecordsById(local, remote, changedAt);
+
+      expect(result.records).toEqual([
+        { id: '1', at: '2026-01-01T00:00:00.000Z', futureField: 'local' },
+      ]);
+    });
+  });
+
   describe('union by id', () => {
     it('keeps a record only in local', () => {
       const local: VaultBlobEnvelope<TestRecord[]> = {

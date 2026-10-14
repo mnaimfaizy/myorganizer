@@ -6,6 +6,7 @@ import { mergeSubscriptions } from './subscriptionRecordMerge';
 import { mergeTasks } from './taskMerge';
 import {
   readDeletionLog,
+  readEnvelopeExtras,
   readVaultBlobRecords,
   type VaultBlobEnvelope,
 } from './vaultBlobEnvelope';
@@ -110,12 +111,14 @@ export const VAULT_BLOB_CONVERGE_STRATEGIES = {
  * Both halves of a decrypted payload, whichever shape it was written in.
  *
  * A payload written before ADR 0054 is bare records and reads as an envelope
- * with an empty Deletion Log.
+ * with an empty Deletion Log. Envelope keys this build does not know are kept
+ * (ADR 0114 decision 3).
  */
 export function toVaultBlobEnvelope(
   payload: unknown,
 ): VaultBlobEnvelope<unknown> {
   return {
+    ...readEnvelopeExtras(payload),
     records: readVaultBlobRecords(payload),
     deletions: readDeletionLog(payload),
   };

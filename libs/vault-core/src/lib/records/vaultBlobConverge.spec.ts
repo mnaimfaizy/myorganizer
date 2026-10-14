@@ -103,6 +103,24 @@ describe('vaultBlobConverge', () => {
   });
 
   describe('toVaultBlobEnvelope', () => {
+    it('keeps an unknown envelope key alongside records and deletions', () => {
+      const payload = {
+        records: [{ id: '1', name: 'Task 1' }],
+        deletions: { '2': '2026-01-02T00:00:00.000Z' },
+        futureEnvelopeKey: { version: 2 },
+      };
+
+      const result = toVaultBlobEnvelope(payload);
+
+      expect(
+        (result as unknown as Record<string, unknown>).futureEnvelopeKey,
+      ).toEqual({
+        version: 2,
+      });
+      expect(result.records).toBe(payload.records);
+      expect(result.deletions).toEqual({ '2': '2026-01-02T00:00:00.000Z' });
+    });
+
     it('wraps a bare array with empty deletions', () => {
       const array = [{ id: '1', name: 'Task 1' }];
       const result = toVaultBlobEnvelope(array);
