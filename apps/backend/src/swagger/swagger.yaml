@@ -397,6 +397,16 @@ components:
           nullable: true
       type: object
       additionalProperties: false
+    YouTubeAccessResponse:
+      properties:
+        granted:
+          type: boolean
+          description: Whether a Platform Admin has granted the signed-in User YouTube
+            Access (ADR 0129).
+      required:
+        - granted
+      type: object
+      additionalProperties: false
     YouTubeAvailabilityResponse:
       properties:
         available:
@@ -929,6 +939,20 @@ components:
         - confirm_password
       type: object
       additionalProperties: false
+    YouTubeAccessUsageResponse:
+      description: Platform Admin read of the YouTube Access lifetime ceiling (ADR 0129).
+      properties:
+        everGranted:
+          type: number
+          format: double
+        ceiling:
+          type: number
+          format: double
+      required:
+        - everGranted
+        - ceiling
+      type: object
+      additionalProperties: false
     AdminUserIdentity:
       description: Identity-only User projection for Platform Admin directory APIs.
       properties:
@@ -950,6 +974,10 @@ components:
           type: boolean
         emailVerified:
           type: boolean
+        youtubeAccess:
+          type: boolean
+          description: Whether a Platform Admin currently grants this User YouTube Access
+            (ADR 0129).
       required:
         - id
         - name
@@ -959,8 +987,26 @@ components:
         - role
         - disabled
         - emailVerified
+        - youtubeAccess
       type: object
       additionalProperties: false
+    YouTubeDisconnectOutcome:
+      type: string
+      enum:
+        - completed
+        - pending
+        - not_connected
+      description: Outcome of the YouTube Disconnect that a withdrawal triggers (ADR 0129).
+    WithdrawYouTubeAccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/AdminUserIdentity"
+        - properties:
+            youtubeDisconnect:
+              $ref: "#/components/schemas/YouTubeDisconnectOutcome"
+          required:
+            - youtubeDisconnect
+          type: object
+      description: Identity after a YouTube Access withdrawal, with the disconnect outcome.
     AdminAuditAction:
       type: string
       enum:
@@ -970,6 +1016,8 @@ components:
         - resend_verification
         - promote
         - demote
+        - youtube_access_grant
+        - youtube_access_withdraw
     AdminAuditLogEntry:
       description: Platform Admin Audit Log entry returned by list APIs.
       properties:
@@ -1033,7 +1081,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/callback:
     post:
@@ -1057,7 +1106,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
       requestBody:
         required: true
@@ -1086,7 +1136,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/disconnect:
     delete:
@@ -1106,7 +1157,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/subscriptions:
     get:
@@ -1126,7 +1178,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/subscriptions/sync:
     put:
@@ -1145,7 +1198,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/uploads/sync:
     put:
@@ -1163,7 +1217,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/sync-status:
     get:
@@ -1181,7 +1236,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/subscriptions/{subscriptionId}:
     patch:
@@ -1204,7 +1260,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters:
         - in: path
           name: subscriptionId
@@ -1238,7 +1295,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters:
         - description: "Sort order: latest | oldest | az"
           in: query
@@ -1301,7 +1359,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters:
         - in: path
           name: videoId
@@ -1332,7 +1391,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/notification-settings:
     get:
@@ -1350,7 +1410,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
     patch:
       operationId: UpdateNotificationSettings
@@ -1367,7 +1428,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
       requestBody:
         required: true
@@ -1375,6 +1437,26 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/NotificationSettingsBody"
+  /youtube/access:
+    get:
+      operationId: GetAccess
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YouTubeAccessResponse"
+      description: >-
+        Whether the signed-in User has YouTube Access (ADR 0129). Reachable
+        without
+
+        the access scope, so the web can hide YouTube from Users without it.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
   /youtube/availability:
     get:
       operationId: GetAvailability
@@ -2048,6 +2130,24 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ConfirmResetPasswordBody"
+  /admin/youtube-access:
+    get:
+      operationId: GetYouTubeAccessUsage
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YouTubeAccessUsageResponse"
+      description: Users ever granted YouTube Access, and the configured ceiling.
+        Platform Admin only.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters: []
   /admin/users:
     get:
       operationId: ListUsers
@@ -2333,6 +2433,90 @@ paths:
       description: |-
         Demote a Platform Admin to a normal User.
         Rejects demotion of the last Platform Admin.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/youtube-access/grant:
+    post:
+      operationId: GrantYouTubeAccess
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserIdentity"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "409":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: |-
+        Grant YouTube Access to a User (ADR 0129). Refused with 409 when the
+        lifetime ceiling is reached and this User was never granted before.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/youtube-access/withdraw:
+    post:
+      operationId: WithdrawYouTubeAccess
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawYouTubeAccessResponse"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+      description: >-
+        Withdraw YouTube Access from a User. A connected User is disconnected
+        from
+
+        YouTube in the same operation; a live Sync Run leaves the disconnect
+        pending.
       tags:
         - Platform Admin
       security:

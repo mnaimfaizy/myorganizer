@@ -5,6 +5,7 @@ import {
   LastPlatformAdminError,
   UserNotFoundError,
   VerificationCooldownError,
+  YouTubeAccessCeilingReachedError,
 } from '../errors/AdminLifecycleErrors';
 import userService from './UserService';
 
@@ -22,6 +23,7 @@ type MockPrismaClient = {
     findMany: AsyncMock;
   };
   $transaction: AsyncMock;
+  $executeRaw: AsyncMock;
 };
 
 jest.mock('../prisma', () => {
@@ -38,6 +40,7 @@ jest.mock('../prisma', () => {
     $transaction: jest.fn(async (fn: (tx: typeof __mockPrisma) => unknown) =>
       fn(__mockPrisma),
     ),
+    $executeRaw: jest.fn(),
   };
 
   return {
@@ -272,6 +275,180 @@ describe('UserService lifecycle', () => {
 
       expect(mockPrisma.user.update).not.toHaveBeenCalled();
       expect(mockPrisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('YouTube Access', () => {
+    const ORIGINAL_CEILING = process.env.YOUTUBE_ACCESS_CEILING;
+    const FIRST_GRANTED_AT = new Date('2025-01-01T00:00:00.000Z');
+
+    // The grant reads first-granted time inside the transaction with a
+    // select of that single column; every other identity read gets the row.
+    function mockGrantLookup(firstGrantedAt: Date | null) {
+      mockPrisma.user.findUnique.mockImplementation(
+        ({ select }: { select?: unknown }) => {
+          if (
+            select &&
+            'youtube_access_first_granted_at' in (select as object)
+          ) {
+            return Promise.resolve({
+              youtube_access_first_granted_at: firstGrantedAt,
+            });
+          }
+          return Promise.resolve(identityUser);
+        },
+      );
+    }
+
+    beforeEach(() => {
+      process.env.YOUTUBE_ACCESS_CEILING = '2';
+    });
+
+    afterEach(() => {
+      if (ORIGINAL_CEILING === undefined) {
+        delete process.env.YOUTUBE_ACCESS_CEILING;
+      } else {
+        process.env.YOUTUBE_ACCESS_CEILING = ORIGINAL_CEILING;
+      }
+    });
+
+    test('grant sets access and first-granted time and writes one grant audit row', async () => {
+      mockGrantLookup(null);
+      mockPrisma.user.count.mockResolvedValue(0);
+      const granted = { ...identityUser, youtube_access: true };
+      mockPrisma.user.update.mockResolvedValue(granted);
+      mockPrisma.adminAuditLog.create.mockResolvedValue({});
+
+      const result = await userService.grantYouTubeAccess(ACTOR_ID, TARGET_ID);
+
+      expect(result).toEqual(granted);
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: TARGET_ID },
+        data: {
+          youtube_access: true,
+          youtube_access_first_granted_at: expect.any(Date),
+        },
+        select: expect.objectContaining({ youtube_access: true }),
+      });
+      expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith({
+        data: {
+          actor_user_id: ACTOR_ID,
+          target_user_id: TARGET_ID,
+          action: 'youtube_access_grant',
+        },
+      });
+    });
+
+    test('grant takes the last free place when one place is still left', async () => {
+      mockGrantLookup(null);
+      mockPrisma.user.count.mockResolvedValue(1);
+      mockPrisma.user.update.mockResolvedValue({
+        ...identityUser,
+        youtube_access: true,
+      });
+      mockPrisma.adminAuditLog.create.mockResolvedValue({});
+
+      await userService.grantYouTubeAccess(ACTOR_ID, TARGET_ID);
+
+      expect(mockPrisma.user.count).toHaveBeenCalledWith({
+        where: { youtube_access_first_granted_at: { not: null } },
+      });
+      expect(mockPrisma.user.update).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledTimes(1);
+    });
+
+    test('re-grant of a previously granted User succeeds at the ceiling and keeps the original first-granted time', async () => {
+      mockGrantLookup(FIRST_GRANTED_AT);
+      mockPrisma.user.count.mockResolvedValue(2);
+      mockPrisma.user.update.mockResolvedValue({
+        ...identityUser,
+        youtube_access: true,
+      });
+      mockPrisma.adminAuditLog.create.mockResolvedValue({});
+
+      await userService.grantYouTubeAccess(ACTOR_ID, TARGET_ID);
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: TARGET_ID },
+        data: {
+          youtube_access: true,
+          youtube_access_first_granted_at: FIRST_GRANTED_AT,
+        },
+        select: expect.objectContaining({ youtube_access: true }),
+      });
+      expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledTimes(1);
+    });
+
+    test('grant of a never-granted User at the ceiling throws and writes nothing', async () => {
+      mockGrantLookup(null);
+      mockPrisma.user.count.mockResolvedValue(2);
+
+      await expect(
+        userService.grantYouTubeAccess(ACTOR_ID, TARGET_ID),
+      ).rejects.toThrow(YouTubeAccessCeilingReachedError);
+
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+
+    test('withdraw clears access without clearing first-granted and writes one withdraw audit row', async () => {
+      mockIdentityLookup();
+      mockPrisma.user.update.mockResolvedValue({
+        ...identityUser,
+        youtube_access: false,
+      });
+      mockPrisma.adminAuditLog.create.mockResolvedValue({});
+
+      await userService.withdrawYouTubeAccessGrant(ACTOR_ID, TARGET_ID);
+
+      expect(mockPrisma.user.update).toHaveBeenCalledWith({
+        where: { id: TARGET_ID },
+        data: { youtube_access: false },
+        select: expect.objectContaining({ youtube_access: true }),
+      });
+      expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith({
+        data: {
+          actor_user_id: ACTOR_ID,
+          target_user_id: TARGET_ID,
+          action: 'youtube_access_withdraw',
+        },
+      });
+    });
+
+    test('grant of a missing User throws UserNotFoundError and writes nothing', async () => {
+      mockIdentityLookup(null);
+
+      await expect(
+        userService.grantYouTubeAccess(ACTOR_ID, TARGET_ID),
+      ).rejects.toThrow(UserNotFoundError);
+
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+
+    test('withdraw of a missing User throws UserNotFoundError and writes nothing', async () => {
+      mockIdentityLookup(null);
+
+      await expect(
+        userService.withdrawYouTubeAccessGrant(ACTOR_ID, TARGET_ID),
+      ).rejects.toThrow(UserNotFoundError);
+
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.adminAuditLog.create).not.toHaveBeenCalled();
+    });
+
+    test('usage returns the ever-granted count against the configured ceiling', async () => {
+      process.env.YOUTUBE_ACCESS_CEILING = '7';
+      mockPrisma.user.count.mockResolvedValue(3);
+
+      const usage = await userService.getYouTubeAccessUsage();
+
+      expect(usage).toEqual({ everGranted: 3, ceiling: 7 });
+      expect(mockPrisma.user.count).toHaveBeenCalledWith({
+        where: { youtube_access_first_granted_at: { not: null } },
+      });
     });
   });
 

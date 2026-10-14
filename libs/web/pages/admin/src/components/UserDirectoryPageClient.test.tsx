@@ -47,6 +47,7 @@ const sampleUsers: AdminUserIdentity[] = [
     role: 'platform_admin',
     disabled: false,
     emailVerified: true,
+    youtubeAccess: false,
   },
   {
     id: 'u-2',
@@ -58,6 +59,7 @@ const sampleUsers: AdminUserIdentity[] = [
     role: 'user',
     disabled: true,
     emailVerified: false,
+    youtubeAccess: false,
   },
 ];
 

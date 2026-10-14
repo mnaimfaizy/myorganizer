@@ -161,6 +161,9 @@ export function youtubeSyncClaimableWhere(
 }
 
 const DISABLED_VIDEO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
+/** Returned by disconnect when the User has no YouTube Connection. */
+export const NO_YOUTUBE_INTEGRATION_MESSAGE = 'No YouTube integration found.';
+
 export const GOOGLE_PERMISSIONS_URL =
   'https://myaccount.google.com/permissions';
 
@@ -432,7 +435,7 @@ class YouTubeSyncService {
       where: { userId },
     });
     if (!integration) {
-      return { ok: false, message: 'No YouTube integration found.' };
+      return { ok: false, message: NO_YOUTUBE_INTEGRATION_MESSAGE };
     }
 
     if (isAnyYouTubeSyncLive(integration)) {

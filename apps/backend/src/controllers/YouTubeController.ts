@@ -15,7 +15,7 @@ import {
   Tags,
 } from 'tsoa';
 import { isYouTubeAvailable } from '../config/youtube';
-import { requireUserId } from '../guards/AuthGuard';
+import { getAuthenticatedUser, requireUserId } from '../guards/AuthGuard';
 import youTubeDigestService from '../services/YouTubeDigestService';
 import youTubeSyncWorkerService from '../services/YouTubeSyncWorkerService';
 import youtubeSyncService, {
@@ -41,6 +41,11 @@ interface StatusResponse {
 
 interface YouTubeAvailabilityResponse {
   available: boolean;
+}
+
+interface YouTubeAccessResponse {
+  /** Whether a Platform Admin has granted the signed-in User YouTube Access (ADR 0129). */
+  granted: boolean;
 }
 
 interface SubscriptionResponse {
@@ -258,7 +263,7 @@ export class YouTubeController extends Controller {
    * Returns the Google OAuth consent URL for linking YouTube.
    */
   @Get('/auth-url')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getAuthUrl(
     @Request() req: ExRequest,
   ): Promise<AuthUrlResponse | YouTubeErrorResponse> {
@@ -271,7 +276,7 @@ export class YouTubeController extends Controller {
    * OAuth callback — exchanges the authorization code for tokens.
    */
   @Post('/callback')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async handleCallback(
     @Request() req: ExRequest,
     @Body() body: { code: string },
@@ -291,7 +296,7 @@ export class YouTubeController extends Controller {
    * Returns the user's YouTube integration status.
    */
   @Get('/status')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getConnectionStatus(
     @Request() req: ExRequest,
   ): Promise<StatusResponse | YouTubeErrorResponse> {
@@ -309,7 +314,7 @@ export class YouTubeController extends Controller {
    * Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
    */
   @Delete('/disconnect')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async disconnect(
     @Request() req: ExRequest,
   ): Promise<DisconnectResponse> {
@@ -325,7 +330,7 @@ export class YouTubeController extends Controller {
    * Returns the user's synced YouTube channel subscriptions.
    */
   @Get('/subscriptions')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getSubscriptions(
     @Request() req: ExRequest,
   ): Promise<SubscriptionResponse[] | YouTubeErrorResponse> {
@@ -346,7 +351,7 @@ export class YouTubeController extends Controller {
    * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
    */
   @Put('/subscriptions/sync')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async syncSubscriptions(
     @Request() req: ExRequest,
   ): Promise<ChannelSyncResponse | YouTubeErrorResponse> {
@@ -358,7 +363,7 @@ export class YouTubeController extends Controller {
    * Upload Sync: fetches Cached Uploads for every Enabled Channel.
    */
   @Put('/uploads/sync')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async syncUploads(
     @Request() req: ExRequest,
   ): Promise<SyncResponse | YouTubeErrorResponse> {
@@ -368,7 +373,7 @@ export class YouTubeController extends Controller {
 
   /** Returns the latest cached-video sync outcome and retry time. */
   @Get('/sync-status')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getSyncStatus(
     @Request() req: ExRequest,
   ): Promise<SyncStatusResponse | YouTubeErrorResponse> {
@@ -380,7 +385,7 @@ export class YouTubeController extends Controller {
    * Toggles a subscription's enabled state.
    */
   @Patch('/subscriptions/{subscriptionId}')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async toggleSubscription(
     @Request() req: ExRequest,
     @Path() subscriptionId: string,
@@ -404,7 +409,7 @@ export class YouTubeController extends Controller {
    * @param kind  Library slice by runtime: short | long | all (default all)
    */
   @Get('/videos')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getVideos(
     @Request() req: ExRequest,
     @Query() sort?: 'latest' | 'oldest' | 'az',
@@ -442,7 +447,7 @@ export class YouTubeController extends Controller {
 
   /** Marks a Cached Upload as Watched or New. */
   @Patch('/videos/{videoId}/watched')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async setVideoWatched(
     @Request() req: ExRequest,
     @Path() videoId: string,
@@ -465,7 +470,7 @@ export class YouTubeController extends Controller {
    * Returns videos grouped by channel for the carousel view.
    */
   @Get('/videos/carousel')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getVideosCarousel(
     @Request() req: ExRequest,
   ): Promise<ChannelCarouselResponse[] | YouTubeErrorResponse> {
@@ -493,7 +498,7 @@ export class YouTubeController extends Controller {
    * Returns the user's YouTube notification preferences.
    */
   @Get('/notification-settings')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getNotificationSettings(
     @Request() req: ExRequest,
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
@@ -506,7 +511,7 @@ export class YouTubeController extends Controller {
    * Updates the user's YouTube notification preferences.
    */
   @Patch('/notification-settings')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async updateNotificationSettings(
     @Request() req: ExRequest,
     @Body() body: NotificationSettingsBody,
@@ -527,6 +532,19 @@ export class YouTubeController extends Controller {
             : 'Invalid notification settings.',
       };
     }
+  }
+
+  /**
+   * Whether the signed-in User has YouTube Access (ADR 0129). Reachable without
+   * the access scope, so the web can hide YouTube from Users without it.
+   */
+  @Get('/access')
+  @Security('jwt')
+  public async getAccess(
+    @Request() req: ExRequest,
+  ): Promise<YouTubeAccessResponse> {
+    const user = getAuthenticatedUser(req);
+    return { granted: user.youtube_access === true };
   }
 
   /**

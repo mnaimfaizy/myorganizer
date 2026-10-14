@@ -105,6 +105,8 @@ export class YouTubeSyncWorkerService {
       const batch = await this.prisma.youTubeIntegration.findMany({
         where: {
           status: 'connected',
+          // ADR 0129: Users without YouTube Access are skipped.
+          user: { youtube_access: true },
           ...(result.cursor ? { userId: { gt: result.cursor } } : {}),
         },
         orderBy: { userId: 'asc' },

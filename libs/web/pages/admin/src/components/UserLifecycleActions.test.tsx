@@ -41,6 +41,7 @@ const activeUser: AdminUserIdentity = {
   role: 'user',
   disabled: false,
   emailVerified: false,
+  youtubeAccess: false,
 };
 
 const disabledUser: AdminUserIdentity = {
@@ -59,6 +60,7 @@ const platformAdmin: AdminUserIdentity = {
   role: 'platform_admin',
   disabled: false,
   emailVerified: true,
+  youtubeAccess: false,
 };
 
 function createAxiosError(message: string, status: number) {

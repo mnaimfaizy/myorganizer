@@ -44,3 +44,14 @@ export class VerificationSendFailedError extends Error {
     this.name = 'VerificationSendFailedError';
   }
 }
+
+export class YouTubeAccessCeilingReachedError extends Error {
+  status = 409;
+
+  constructor(everGranted: number, ceiling: number) {
+    super(
+      `YouTube Access ceiling reached: ${everGranted} of ${ceiling} places used. Raise YOUTUBE_ACCESS_CEILING to grant more.`,
+    );
+    this.name = 'YouTubeAccessCeilingReachedError';
+  }
+}

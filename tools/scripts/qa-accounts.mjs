@@ -101,6 +101,9 @@ async function seedAccount({ prisma, mint, bcrypt, account }) {
         name: `${account.firstName} ${account.lastName}`,
         email_verification_timestamp: new Date(),
         blacklisted_tokens: [],
+        // ADR 0129: QA Accounts use YouTube without a manual grant.
+        youtube_access: true,
+        youtube_access_first_granted_at: new Date(),
       },
     });
     notes.push('user created');
@@ -122,6 +125,11 @@ async function seedAccount({ prisma, mint, bcrypt, account }) {
             email_verification_token: null,
           }),
           ...(drift.includes('disabled') && { disabled: false }),
+          ...(drift.includes('youtube_access') && {
+            youtube_access: true,
+            youtube_access_first_granted_at:
+              user.youtube_access_first_granted_at ?? new Date(),
+          }),
         },
       });
       notes.push(`user ${drift.join(', ')} put back`);

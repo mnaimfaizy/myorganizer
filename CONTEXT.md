@@ -159,7 +159,7 @@ _Avoid_: email template, layout, wrapper, base template
 ## YouTube (focused watching)
 
 **YouTube Access**:
-A Platform Admin's permission for one User to use YouTube in MyOrganizer at all. It is granted to and withdrawn from a specific User, never claimed by the User and never transferable. Without it YouTube does not exist for that User. It comes before a YouTube Connection: Access is MyOrganizer letting the User in, the Connection is the User letting MyOrganizer read their account. Decided in ADR 0129; the product reaches it with #1147.
+A Platform Admin's permission for one User to use YouTube in MyOrganizer at all. It is granted to and withdrawn from a specific User, never claimed by the User and never transferable. Without it YouTube does not exist for that User. It comes before a YouTube Connection: Access is MyOrganizer letting the User in, the Connection is the User letting MyOrganizer read their account. Decided in ADR 0129.
 _Avoid_: invitation, invite link, test user, beta access, allowlist
 
 **YouTube Connection**:

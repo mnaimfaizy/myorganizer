@@ -16,6 +16,13 @@ function forbidden(message = 'Forbidden') {
   return err;
 }
 
+/** Same body as the global YOUTUBE_AVAILABLE gate (ADR 0129). */
+function notFound(message = 'Not Found') {
+  const err = new Error(message) as Error & { status?: number };
+  err.status = 404;
+  return err;
+}
+
 function getBearerToken(request: express.Request): string | undefined {
   const header = request.headers.authorization;
   if (typeof header !== 'string') return undefined;
@@ -101,6 +108,13 @@ export function expressAuthentication(
       }
     }
 
+    // ADR 0129: a User without YouTube Access sees YouTube routes as absent.
+    if (scopes?.includes('youtube_access')) {
+      if ((user as { youtube_access?: boolean }).youtube_access !== true) {
+        throw notFound();
+      }
+    }
+
     // Ensure downstream authZ can consistently rely on request.user.
     (request as any).user = user;
 
@@ -116,7 +130,8 @@ export function expressAuthentication(
       typeof err === 'object' &&
       'status' in err &&
       ((err as { status?: unknown }).status === 401 ||
-        (err as { status?: unknown }).status === 403)
+        (err as { status?: unknown }).status === 403 ||
+        (err as { status?: unknown }).status === 404)
     ) {
       throw err;
     }

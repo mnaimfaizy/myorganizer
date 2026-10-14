@@ -60,7 +60,21 @@ describe('toAdminUserIdentity', () => {
       role: 'user',
       disabled: false,
       emailVerified: true,
+      youtubeAccess: false,
     });
+  });
+
+  test('youtubeAccess mirrors youtube_access = true', () => {
+    const result = toAdminUserIdentity({
+      id: 'u3',
+      name: 'Carol',
+      first_name: 'Carol',
+      last_name: 'User',
+      email: 'carol@example.com',
+      youtube_access: true,
+    });
+
+    expect(result.youtubeAccess).toBe(true);
   });
 
   test('emailVerified is false when email_verification_timestamp is absent', () => {

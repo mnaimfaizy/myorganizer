@@ -74,6 +74,7 @@ a resume cursor, so neither job has to finish inside a single cron tick.
 | Variable                       | Purpose                                                                                                                                                                                                                         |
 | ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `YOUTUBE_AVAILABLE`            | Backend switch (ADR 0091). Unset/`false`: every YouTube route 404s except the cron endpoints (succeed, do nothing) and `GET /youtube/availability` (reports it)                                                                 |
+| `YOUTUBE_ACCESS_CEILING`       | Lifetime number of Users who may ever be granted YouTube Access (ADR 0129). Default `25`. A grant to a never-granted User is refused with 409 once reached; re-granting is free                                                 |
 | `GOOGLE_CLIENT_ID`             | Google OAuth 2.0 client ID                                                                                                                                                                                                      |
 | `GOOGLE_CLIENT_SECRET`         | Google OAuth 2.0 client secret                                                                                                                                                                                                  |
 | `GOOGLE_REDIRECT_URI`          | OAuth callback URL (e.g. `https://api.example.com/api/v1/youtube/callback`). In production, with the switch on, the backend refuses to start unless this is `https`, is not `localhost`, and shares `APP_FRONTEND_URL`'s origin |
@@ -151,6 +152,19 @@ Cached video metadata from synced channels.
 ## API Endpoints
 
 All under `/api/v1/youtube`, JWT-secured unless noted.
+
+**YouTube Access (ADR 0129).** Every JWT-secured route below also requires the
+signed-in User to hold YouTube Access; without it the route answers
+`404 { "message": "Not Found" }`, the same body the `YOUTUBE_AVAILABLE` switch
+produces (the switch is checked first). `GET /youtube/access` returns
+`{ granted }` for the signed-in User and is reachable without access. The
+availability report, digest unsubscribe and cron routes are outside the
+per-User check, and the sync and digest workers skip Users without access.
+A Platform Admin grants and withdraws access with
+`POST /admin/users/{userId}/youtube-access/grant|withdraw` (each writes an
+Admin Audit Log entry; withdraw performs a YouTube Disconnect and reports
+`youtubeDisconnect: completed | pending | not_connected`) and reads
+`GET /admin/youtube-access` (`{ everGranted, ceiling }`).
 
 | Method   | Path                     | Description                                                                                                                                                                                                                                                                                                                                                                                        |
 | -------- | ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

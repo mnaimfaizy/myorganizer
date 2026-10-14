@@ -211,6 +211,8 @@ describe('YouTubeDigestService', () => {
         .calls[0][0];
       expect(call.where.userId).toBeUndefined();
       expect(call.where.status).toBe('connected');
+      // Users without YouTube Access are filtered at the query, not per row.
+      expect(call.where.user).toEqual({ youtube_access: true });
       expect(result.done).toBe(true);
       expect(result.cursor).toBeNull();
     });
@@ -230,6 +232,7 @@ describe('YouTubeDigestService', () => {
       const call = (mockPrisma.youTubeIntegration.findMany as jest.Mock).mock
         .calls[0][0];
       expect(call.where.userId).toEqual({ gt: 'user-5' });
+      expect(call.where.user).toEqual({ youtube_access: true });
     });
 
     it('should stop at maxUsers and hand the cursor to the next tick', async () => {

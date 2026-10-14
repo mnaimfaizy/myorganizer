@@ -53,16 +53,14 @@ describe('TermsOfServicePage', () => {
       expect(text).toMatch(/never has access to the unencrypted contents/i);
     });
 
-    it('should state the YouTube feature is offered only to people the operator personally knows, uses YouTube API Services, and is read-only', () => {
+    it('should state the YouTube feature is available only to accounts the operator has enabled, uses YouTube API Services, and is read-only', () => {
       const { container } = render(<TermsOfServicePage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /which the operator offers only to people they personally know/,
+        /optional YouTube feature, which is available only to accounts the operator has enabled/,
       );
       expect(text).toMatch(/It uses YouTube API Services and is read-only/);
-      expect(text).not.toMatch(
-        /available only to accounts the operator has enabled/,
-      );
+      expect(text).not.toMatch(/personally know/);
     });
 
     it('should bind the User to the YouTube Terms of Service through a link', () => {

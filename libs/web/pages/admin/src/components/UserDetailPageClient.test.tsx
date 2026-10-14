@@ -46,6 +46,7 @@ const userWithPhone: AdminUserIdentity = {
   role: 'user',
   disabled: true,
   emailVerified: false,
+  youtubeAccess: false,
 };
 
 const userWithoutPhone: AdminUserIdentity = {
@@ -57,6 +58,7 @@ const userWithoutPhone: AdminUserIdentity = {
   role: 'platform_admin',
   disabled: false,
   emailVerified: true,
+  youtubeAccess: false,
 };
 
 const SENSITIVE_PATTERNS = [

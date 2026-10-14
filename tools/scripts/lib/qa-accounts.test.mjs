@@ -62,12 +62,12 @@ describe('localDatabaseRefusal', () => {
   });
 
   it('refuses a host that only starts like a local one', () => {
-    assert.notEqual(
+    assert.match(
       localDatabaseRefusal({
         databaseUrl: 'postgresql://localhost.example.com/app',
         nodeEnv: 'development',
       }),
-      null,
+      /"localhost\.example\.com" is not this machine/,
     );
   });
 
@@ -228,10 +228,29 @@ describe('qaUserDrift', () => {
     email_verification_timestamp: new Date(),
     email_verification_token: null,
     disabled: false,
+    youtube_access: true,
+    youtube_access_first_granted_at: new Date(),
   };
 
   it('finds nothing to write on a User still on the fixture', () => {
     assert.deepEqual(qaUserDrift({ user: seeded, passwordMatches: true }), []);
+  });
+
+  it('names youtube_access when a User lacks access or a first-granted date', () => {
+    assert.deepEqual(
+      qaUserDrift({
+        user: { ...seeded, youtube_access: false },
+        passwordMatches: true,
+      }),
+      ['youtube_access'],
+    );
+    assert.deepEqual(
+      qaUserDrift({
+        user: { ...seeded, youtube_access_first_granted_at: null },
+        passwordMatches: true,
+      }),
+      ['youtube_access'],
+    );
   });
 
   it('names each thing that moved', () => {

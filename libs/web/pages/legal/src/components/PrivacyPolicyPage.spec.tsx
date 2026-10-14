@@ -44,14 +44,14 @@ describe('PrivacyPolicyPage', () => {
   });
 
   describe('YouTube Integration disclosure', () => {
-    it('should state the operator offers the feature only to people they personally know and that it is not offered to the public', () => {
+    it('should state the feature is available only to accounts the operator has enabled, and is not offered to the public', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/offers it only to people they personally know/);
-      expect(text).toMatch(/is not offered to the public/);
-      expect(text).not.toMatch(
-        /available only to accounts the operator has enabled/,
+      expect(text).toMatch(
+        /is available only to accounts the operator has enabled in MyOrganizer; without that, YouTube is not available to your account/,
       );
+      expect(text).toMatch(/is not offered to the public/);
+      expect(text).not.toMatch(/personally know/);
     });
 
     it('should state the feature uses YouTube API Services', () => {
@@ -170,13 +170,12 @@ describe('PrivacyPolicyPage', () => {
       expect(text).not.toMatch(/within seven days/);
     });
 
-    it('should state the operator may also withdraw the feature from an account, without claiming it deletes the same data', () => {
+    it('should state withdrawing the feature from an account deletes the same data as a disconnect, including watched marks and the revoke at Google', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /The operator may also withdraw the feature from an account/,
+        /The operator may also withdraw the feature from an account; doing so deletes the same data as a disconnect, revoking MyOrganizer's access at Google and deleting your stored tokens, followed channels, cached uploads, watched marks, and notification and digest settings\./,
       );
-      expect(text).not.toMatch(/deletes the same data/);
     });
 
     it('should render link to YouTube Data Privacy page', () => {

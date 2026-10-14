@@ -130,6 +130,26 @@ describe('YouTubeSyncWorkerService', () => {
       expect(result.done).toBe(true);
       expect(mockLeases.release).toHaveBeenCalledWith(mockLease);
     });
+
+    it('should only query connected integrations whose User has YouTube Access', async () => {
+      const mockLease = {
+        name: 'youtube-sync',
+        owner: 'owner-1',
+        cursor: null,
+      };
+      (mockLeases.acquire as jest.Mock).mockResolvedValue(mockLease);
+
+      await service.runSyncWorker();
+
+      // The access filter lives in the query, so a User without access is
+      // never handed to syncVideosForUser.
+      const call = (workerMockPrisma.youTubeIntegration.findMany as jest.Mock)
+        .mock.calls[0][0];
+      expect(call.where).toEqual({
+        status: 'connected',
+        user: { youtube_access: true },
+      });
+    });
   });
 
   describe('sync behavior', () => {
