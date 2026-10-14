@@ -816,6 +816,9 @@ jobs:
       - name: Release pipeline page checker contracts
         run: corepack yarn deploy:pages:test
 
+      - name: Brand logo generator contracts
+        run: corepack yarn brand:logos:test
+
       - name: Host Apply engine contracts
         run: corepack yarn host-apply:test
 

@@ -2,7 +2,7 @@
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="apps/myorganizer/public/images/logo-shield-dark.svg" />
     <source media="(prefers-color-scheme: light)" srcset="apps/myorganizer/public/images/logo-shield.svg" />
-    <img src="apps/myorganizer/public/images/logo-shield.svg" alt="MyOrganizer logo" width="220" />
+    <img src="apps/myorganizer/public/images/logo-shield.svg" alt="MyOrganiser logo" width="220" />
   </picture>
 </p>
 
