@@ -80,6 +80,7 @@ The on-demand command catalogue for the root [Agent Guide](../../AGENTS.md#comma
 ## Web app manifest and icons
 
 - Web app icon generation: `yarn web:app-icons:generate` (rebuilds the installable icons in `apps/myorganizer/public/icons/` from the AppLogo shield in `libs/web/ui/src/lib/components/AppLogo/AppLogo.tsx` and the design-token build; fails if it cannot find a shield path, check path, or colour it reads). The icons change only when someone runs this: no gate compares the committed icons with the current shield or tokens, so re-run it and commit the output after either changes. See [ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md).
+- Brand logo generation: `yarn brand:logos:generate` (rebuilds the README logos `logo-shield.svg` / `logo-shield-dark.svg` and the email logo `logo-email.svg` in `apps/myorganizer/public/images/` from the same AppLogo shield and the design-token build, with the wordmark "MyOrganiser"; fails if it cannot find a path, colour, or font stack it reads). Follow it with `yarn nx run email-shell:build-logo`, which rasterises the email logo, and commit every output together. The logos change only when someone runs this: no gate compares the committed files with the current shield or tokens. The wordmark is SVG text, so its letterforms come from the fonts the renderer has. Its tests: `yarn brand:logos:test`. See [ADR 0034](../adr/0034-emails-share-one-shell-and-are-built-to-degrade.md).
 
 ## Mobile
 
