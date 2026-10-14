@@ -44,56 +44,138 @@ describe('PrivacyPolicyPage', () => {
   });
 
   describe('YouTube Integration disclosure', () => {
-    it('should disclose the youtube.readonly scope', () => {
+    it('should state the feature is available only to accounts the operator has enabled and is not offered to the public', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(
+        /available only to accounts the operator has enabled/,
+      );
+      expect(text).toMatch(/not offered to the public/);
+    });
+
+    it('should state the feature uses YouTube API Services', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(/uses YouTube API Services/);
+    });
+
+    it('should disclose the youtube.readonly scope and describe it as read-only access', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(/youtube\.readonly/);
+      expect(text).toMatch(/read-only access to your YouTube subscriptions/);
     });
 
-    it('should describe youtube.readonly as read-only access', () => {
-      const { container } = render(<PrivacyPolicyPage />);
-      const text = container.textContent || '';
-      expect(text).toMatch(/read-only access/i);
+    it('should link "Google Privacy Policy" to policies.google.com/privacy', () => {
+      render(<PrivacyPolicyPage />);
+      const link = screen.getByRole('link', { name: /Google Privacy Policy/i });
+      expect(link).toHaveAttribute(
+        'href',
+        'https://policies.google.com/privacy',
+      );
     });
 
-    it('should disclose that OAuth tokens are encrypted at rest', () => {
+    it('should disclose the stored channel, video, and watched metadata', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/YouTube OAuth tokens are encrypted at rest/i);
-    });
-
-    it('should disclose stored metadata categories', () => {
-      const { container } = render(<PrivacyPolicyPage />);
-      const text = container.textContent || '';
-      expect(text).toMatch(/video ID/i);
-      expect(text).toMatch(/title/i);
-      expect(text).toMatch(/thumbnail/i);
-      expect(text).toMatch(/publish date/i);
-      expect(text).toMatch(/duration/i);
+      expect(text).toMatch(/channel ID, title, and thumbnail/);
+      expect(text).toMatch(
+        /video ID, title, thumbnail, publish date, and duration/,
+      );
+      expect(text).toMatch(/which uploads you have marked as watched/);
     });
 
     it('should disclose that video files are never stored', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/never store the video files themselves/i);
+      expect(text).toMatch(/We never store the video files themselves/);
     });
 
-    it('should describe revocation via dashboard YouTube page', () => {
+    it('should state the metadata is not part of the end-to-end encrypted Vault', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/disconnecting YouTube from the YouTube page/i);
+      expect(text).toMatch(/is not part of the end-to-end encrypted Vault/);
     });
 
-    it('should describe revocation via Google Account access settings', () => {
+    it('should state OAuth tokens are encrypted at rest with AES-256-GCM', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/revoking MyOrganizer's access.*Google Account/i);
+      expect(text).toMatch(
+        /Your YouTube OAuth tokens are encrypted at rest on our servers with AES-256-GCM/,
+      );
     });
 
-    it('should describe the effect of revocation', () => {
+    it('should state the data is not sold, not used for advertising, and not used to train AI/ML models', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/stops syncing your YouTube data/i);
+      expect(text).toMatch(/We do not sell it/);
+      expect(text).toMatch(/we do not use it for advertising/);
+      expect(text).toMatch(
+        /we do not use it to train artificial intelligence or machine learning models/,
+      );
+    });
+
+    it('should say the data is stored with the hosting provider, digests go through the email delivery provider, and it is not shared with anyone else', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(/stored with our hosting provider/);
+      expect(text).toMatch(/sent through our email delivery provider/);
+      expect(text).toMatch(/It is not shared with anyone else/);
+    });
+
+    it('should link "Google API Services User Data Policy" and mention Limited Use', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const link = screen.getByRole('link', {
+        name: /Google API Services User Data Policy/i,
+      });
+      expect(link).toHaveAttribute(
+        'href',
+        'https://developers.google.com/terms/api-services-user-data-policy',
+      );
+      const text = container.textContent || '';
+      expect(text).toMatch(/including the Limited Use requirements/);
+    });
+
+    it('should describe revocation via the dashboard YouTube page and link "Google security settings"', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(
+        /disconnecting YouTube from the YouTube page in your dashboard/,
+      );
+      const link = screen.getByRole('link', {
+        name: /Google security settings/i,
+      });
+      expect(link).toHaveAttribute(
+        'href',
+        'https://security.google.com/settings/security/permissions',
+      );
+    });
+
+    it('should state disconnecting immediately deletes tokens, followed channels, cached uploads, watched marks, and digest settings', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(
+        /immediately deletes your stored tokens, followed channels, cached uploads, watched marks, and digest settings/,
+      );
+    });
+
+    it('should state revoking at Google deletes the same data within seven days unless the User reconnects', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(
+        /revoke access at Google instead, MyOrganizer stops syncing your YouTube data/,
+      );
+      expect(text).toMatch(
+        /deletes the same data within seven days unless you reconnect/,
+      );
+    });
+
+    it('should state the operator may withdraw the feature, which deletes the same data', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(
+        /The operator may also withdraw the feature from an account, which deletes the same data/,
+      );
     });
 
     it('should render link to YouTube Data Privacy page', () => {
@@ -102,6 +184,42 @@ describe('PrivacyPolicyPage', () => {
         name: /YouTube Data Privacy page/i,
       });
       expect(link).toHaveAttribute('href', '/youtube/data-privacy');
+    });
+
+    it('should no longer render the earlier Google user data headings', () => {
+      render(<PrivacyPolicyPage />);
+      expect(
+        screen.queryByRole('heading', { name: /How We Use Google User Data/i }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole('heading', {
+          name: /Sharing and Disclosure of Google User Data/i,
+        }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole('heading', { name: /How We Protect Your Data/i }),
+      ).toBeNull();
+    });
+  });
+
+  describe('Your Rights section', () => {
+    it('should state account deletion is done on request by contacting the operator', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).toMatch(/Deleting your account is done on request for now/);
+      expect(text).toMatch(/contact us using the information below/);
+    });
+
+    it('should not claim the User can delete their account at any time or delete Vault data from account settings', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      const rightsSection = screen
+        .getByRole('heading', { name: /Your Rights/i, level: 2 })
+        .closest('section');
+      expect(rightsSection).not.toBeNull();
+      expect(rightsSection?.textContent || '').toMatch(/delete your account/i);
+      expect(rightsSection?.textContent || '').not.toMatch(/at any time/i);
+      expect(text).not.toMatch(/from your account settings/i);
     });
   });
 

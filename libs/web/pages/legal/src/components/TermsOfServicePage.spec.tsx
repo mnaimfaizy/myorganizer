@@ -53,12 +53,23 @@ describe('TermsOfServicePage', () => {
       expect(text).toMatch(/never has access to the unencrypted contents/i);
     });
 
-    it('should mention optional YouTube OAuth integration as read-only', () => {
+    it('should state the YouTube feature is available only to enabled accounts, uses YouTube API Services, and is read-only', () => {
       const { container } = render(<TermsOfServicePage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/optional integrations.*third-party/i);
-      expect(text).toMatch(/YouTube.*Google OAuth/i);
-      expect(text).toMatch(/read-only/i);
+      expect(text).toMatch(
+        /available only to accounts the operator has enabled/,
+      );
+      expect(text).toMatch(/It uses YouTube API Services and is read-only/);
+    });
+
+    it('should bind the User to the YouTube Terms of Service through a link', () => {
+      const { container } = render(<TermsOfServicePage />);
+      const link = screen.getByRole('link', {
+        name: /YouTube Terms of Service/i,
+      });
+      expect(link).toHaveAttribute('href', 'https://www.youtube.com/t/terms');
+      const text = container.textContent || '';
+      expect(text).toMatch(/agree to be bound by the YouTube Terms of Service/);
     });
   });
 

@@ -1,6 +1,7 @@
 import { Button, Card, CardContent } from '@myorganizer/web-ui';
 import Link from 'next/link';
 import { OperatorContact } from './OperatorContact';
+import { YouTubePrivacySection } from './YouTubePrivacySection';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -22,44 +23,7 @@ export default function PrivacyPolicyPage() {
             </p>
           </section>
 
-          <section className="mt-6">
-            <h2 className="text-base font-semibold">YouTube Integration</h2>
-            <p className="mt-3 text-sm text-muted-foreground">
-              MyOrganizer can optionally connect to your YouTube account through
-              Google OAuth. This connection requests the{' '}
-              <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
-                youtube.readonly
-              </code>{' '}
-              scope, which gives MyOrganizer read-only access to your YouTube
-              subscriptions and videos — with no ability to write, delete, or
-              modify anything on YouTube.
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              <strong>What we store:</strong> We store only metadata for each
-              video from channels you enable — video ID, title, thumbnail,
-              publish date, and duration. We never store the video files
-              themselves. Your YouTube OAuth tokens are encrypted at rest on our
-              servers.
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              <strong>Revocation:</strong> You can end this connection at any
-              time by disconnecting YouTube from the YouTube page in your
-              dashboard, or by revoking MyOrganizer's access directly from your
-              Google Account's third-party access settings. Once revoked,
-              MyOrganizer stops syncing your YouTube data.
-            </p>
-            <p className="mt-3 text-sm text-muted-foreground">
-              For detailed information about how long we keep your YouTube
-              metadata and how to request deletion, see our{' '}
-              <Link
-                href="/youtube/data-privacy"
-                className="font-medium underline hover:text-foreground"
-              >
-                YouTube Data Privacy page
-              </Link>
-              .
-            </p>
-          </section>
+          <YouTubePrivacySection />
 
           <section className="mt-6">
             <h2 className="text-base font-semibold">Account Data</h2>
@@ -85,10 +49,11 @@ export default function PrivacyPolicyPage() {
             <h2 className="text-base font-semibold">Your Rights</h2>
             <p className="mt-3 text-sm text-muted-foreground">
               You have the right to access, update, and delete your account and
-              associated data at any time. You can export or delete your Vault
-              data from your account settings. To request a complete copy of
-              your data or to request deletion, contact us using the information
-              below.
+              associated data. You can export your Vault data, and remove a
+              device's copy of it, from the Vault page. Deleting your account is
+              done on request for now: contact us using the information below
+              and we will delete your account and everything stored with it. To
+              request a complete copy of your data, contact us the same way.
             </p>
           </section>
 

@@ -1,5 +1,7 @@
 # YouTube disconnect preserves Watched by default
 
+> **Partly superseded by [ADR 0129](./0129-youtube-is-a-personal-use-feature-granted-per-user.md).** A YouTube Disconnect now deletes Watched marks immediately; the Watched Ledger is removed. The refusal to disconnect while a Sync Run is live stands.
+
 ## Status
 
 accepted

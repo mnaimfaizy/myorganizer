@@ -29,11 +29,19 @@ export default function TermsOfServicePage() {
               contents.
             </p>
             <p className="text-sm text-muted-foreground">
-              MyOrganizer may offer optional integrations with third-party
-              services, such as connecting your YouTube account via Google
-              OAuth. These integrations are read-only and are used only to
-              retrieve and display information as described in the
-              documentation.
+              MyOrganizer has an optional YouTube feature, available only to
+              accounts the operator has enabled. It uses YouTube API Services
+              and is read-only: it retrieves and displays your subscriptions and
+              their uploads. By using it you agree to be bound by the{' '}
+              <a
+                href="https://www.youtube.com/t/terms"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-medium underline hover:text-foreground"
+              >
+                YouTube Terms of Service
+              </a>
+              .
             </p>
           </section>
 

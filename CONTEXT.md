@@ -158,8 +158,12 @@ _Avoid_: email template, layout, wrapper, base template
 
 ## YouTube (focused watching)
 
+**YouTube Access**:
+A Platform Admin's permission for one User to use YouTube in MyOrganizer at all. It is granted to and withdrawn from a specific User, never claimed by the User and never transferable. Without it YouTube does not exist for that User. It comes before a YouTube Connection: Access is MyOrganizer letting the User in, the Connection is the User letting MyOrganizer read their account.
+_Avoid_: invitation, invite link, test user, beta access, allowlist
+
 **YouTube Connection**:
-The User's grant letting MyOrganizer read their YouTube account on their behalf. It is either live or **Revoked** — Google no longer honours it, and only the User reconnecting restores it.
+The User's grant letting MyOrganizer read their YouTube account on their behalf. It is either live or **Revoked** — Google no longer honours it, and only the User reconnecting restores it. A Connection left Revoked for seven days ends in a YouTube Disconnect.
 _Avoid_: integration, YouTube account link, OAuth token
 
 **Followed Channel**:
@@ -178,9 +182,9 @@ _Avoid_: Video (as the domain name alone), synced video, YouTube video row
 The binary completion/seen state of a Cached Upload for a User. Reversible by the User; not a viewing-analytics history.
 _Avoid_: Viewed, seen, played, completed
 
-**Watched Ledger**:
-The User's preserved Watched video ids that outlive a YouTube disconnect so reconnecting can restore Watched on matching Cached Uploads. Unused entries expire after the same 30-day window as disabled-channel retention; applied entries are removed when reapplied. Optional wipe on disconnect clears or never writes it.
-_Avoid_: watch history, watched archive, viewed ledger, disconnect backup
+**YouTube Disconnect**:
+The end of a User's YouTube Connection, by the User's own choice or because a Platform Admin withdrew their YouTube Access. Either way it is immediate and complete: Google is told to revoke the grant, and every Followed Channel, Cached Upload, Watched mark, and digest setting of that User is deleted in the same step. Nothing is kept for a later reconnect.
+_Avoid_: unlink, soft disconnect, Watched Ledger, disconnect backup
 
 **New**:
 A Cached Upload that is not Watched.
