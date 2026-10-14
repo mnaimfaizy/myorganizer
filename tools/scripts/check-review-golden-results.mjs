@@ -35,6 +35,7 @@ import {
   GoldenResultError,
   parseResultsFile,
   renderRunsTable,
+  seededCaseIds,
 } from './review/golden-results.mjs';
 import {
   STANDING_END,
@@ -83,7 +84,9 @@ const sections = [
     source: RECORD,
     start: GENERATED_START,
     end: GENERATED_END,
-    expected: unformatted(renderRunsTable(records)),
+    expected: unformatted(
+      renderRunsTable(records, { seeded: seededCaseIds(set) }),
+    ),
   },
   {
     name: 'standing',

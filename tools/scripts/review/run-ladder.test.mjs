@@ -26,7 +26,10 @@ import { renderRunFacts } from './render-review-report.mjs';
 import {
   RUN_FAILURES,
   TIGHTENING_FACTS,
+  fileCoverage,
+  isExecutable,
   isObligationFinding,
+  judgeRun,
 } from './run-ladder.mjs';
 import {
   NormalizedReportSchema,
@@ -777,7 +780,7 @@ test('the comment says the evidence was not executed, and still shows the findin
 
 // --- the vocabularies and the CLI -------------------------------------------
 
-test('the ladder names three failures and four tightening facts', () => {
+test('the ladder names three failures and five tightening facts', () => {
   assert.deepEqual(RUN_FAILURES, [
     'brief-not-read',
     'finding-not-returned',
@@ -788,6 +791,7 @@ test('the ladder names three failures and four tightening facts', () => {
     'dispatch-off-template',
     'transcript-unreadable',
     'reply-unparseable',
+    'spec-axis-left-executable-file-unopened',
   ]);
 });
 
@@ -883,4 +887,196 @@ test('--worklist names the obligation findings, and a path that does not exist i
 
   writeFileSync(worklist, 'not json');
   assert.equal(validate(withIt, facts, ['--worklist', worklist]).run.status, 2);
+});
+
+// --- which changed files each axis opened (issue #1140) ----------------------
+
+const coverageFacts = ({
+  specOpened = [],
+  specDiffed = [],
+  standardsDiffed = [],
+} = {}) => ({
+  axes: {
+    standards: {
+      dispatched: true,
+      briefRead: true,
+      onTemplate: true,
+      toolCalls: 3,
+      opened: [],
+      diffed: standardsDiffed,
+    },
+    spec: {
+      dispatched: true,
+      briefRead: true,
+      onTemplate: true,
+      toolCalls: 3,
+      opened: specOpened,
+      diffed: specDiffed,
+    },
+  },
+  indexOpened: true,
+  unattributedDispatches: 0,
+  repliesParsed: true,
+  executions: [],
+  returned: [],
+});
+const changed = {
+  selected: [],
+  changedFiles: [
+    { file: '.github/workflows/deploy.yml', added: 580 },
+    { file: 'tools/scripts/deploy/lib.mjs', added: 300 },
+    { file: 'docs/deploy.md', added: 40 },
+  ],
+};
+
+test('each changed file is opened, diffed, or neither on each axis, most lines first', () => {
+  const coverage = fileCoverage(
+    coverageFacts({
+      specOpened: ['tools/scripts/deploy/lib.mjs'],
+      standardsDiffed: ['.github'],
+    }),
+    changed,
+  );
+  assert.deepEqual(coverage, [
+    {
+      file: '.github/workflows/deploy.yml',
+      added: 580,
+      standards: 'diffed',
+      spec: 'neither',
+    },
+    {
+      file: 'tools/scripts/deploy/lib.mjs',
+      added: 300,
+      standards: 'neither',
+      spec: 'opened',
+    },
+    {
+      file: 'docs/deploy.md',
+      added: 40,
+      standards: 'neither',
+      spec: 'neither',
+    },
+  ]);
+  // No worklist, or one written before it named changed files: nothing to say.
+  assert.equal(fileCoverage(coverageFacts(), null), null);
+  assert.equal(fileCoverage(coverageFacts(), { selected: [] }), null);
+});
+
+test('a Spec axis that left a changed workflow or script unopened tightens the tier', () => {
+  const judge = (facts, specKind = 'issue') =>
+    judgeRun({
+      facts,
+      readable: true,
+      findings: [],
+      specKind,
+      worklist: changed,
+    }).tightenedBy;
+  // The #1139 shape: the 580-line workflow neither opened nor read whole.
+  assert.deepEqual(
+    judge(coverageFacts({ specOpened: ['tools/scripts/deploy/lib.mjs'] })),
+    ['spec-axis-left-executable-file-unopened'],
+  );
+  // A diff by path is not enough: the defect sat in unchanged lines around a hunk.
+  assert.deepEqual(
+    judge(
+      coverageFacts({
+        specOpened: ['tools/scripts/deploy/lib.mjs'],
+        specDiffed: ['.github/workflows/deploy.yml'],
+      }),
+    ),
+    ['spec-axis-left-executable-file-unopened'],
+  );
+  // Every executable file opened; an unopened doc does not count.
+  assert.deepEqual(
+    judge(
+      coverageFacts({
+        specOpened: [
+          '.github/workflows/deploy.yml',
+          'tools/scripts/deploy/lib.mjs',
+        ],
+      }),
+    ),
+    [],
+  );
+  // No Spec axis, no Spec coverage to judge.
+  assert.deepEqual(judge(coverageFacts(), 'none'), []);
+});
+
+test('the comment lists each changed file and what each axis did with it', () => {
+  const { report, facts } = real();
+  const worklist = {
+    selected: [],
+    changedFiles: [
+      { file: '.github/workflows/deploy.yml', added: 580 },
+      { file: 'docs/deploy.md', added: 40 },
+    ],
+  };
+  const out = normalized({ ...report, tier: 'review:human' }, facts, {
+    worklist,
+  });
+  assert.deepEqual(out.runFacts.coverage, fileCoverage(facts, worklist));
+  // In the recorded run both sub-agents diffed `.github` and `docs` by path.
+  // A diff is not an open, so the workflow's Spec cell is still flagged.
+  const text = renderRunFacts(out).join('\n');
+  assert.match(
+    text,
+    /changed files, most lines added first \(read from the transcript\):/,
+  );
+  assert.match(
+    text,
+    /\| `\.github\/workflows\/deploy\.yml` \| 580 \| diffed \| \*\*diffed\*\* \|/,
+  );
+  assert.match(text, /\| `docs\/deploy\.md` \| 40 \| diffed \| neither \|/);
+  assert.match(text, /`spec-axis-left-executable-file-unopened`/);
+  // Without a changed-file list there is no table, rather than an empty one.
+  assert.doesNotMatch(
+    renderRunFacts(normalized(report, facts)).join('\n'),
+    /changed files, most lines added first/,
+  );
+});
+
+test('the render CLI prints the coverage table for a transcript-read report', () => {
+  // Run as a process, not imported: the CLI renders while the module is
+  // still evaluating, so a renderer declared below its entry point throws
+  // there and nowhere else.
+  const { report, facts } = real();
+  const worklist = {
+    selected: [],
+    changedFiles: [{ file: '.github/workflows/deploy.yml', added: 580 }],
+  };
+  const dir = mkdtempSync(join(tmpdir(), 'render-cli-'));
+  const path = join(dir, 'normalized.json');
+  writeFileSync(path, JSON.stringify(normalized(report, facts, { worklist })));
+  const run = spawnSync(
+    process.execPath,
+    [
+      new URL('./render-review-report.mjs', import.meta.url).pathname,
+      path,
+      '--no-hunks',
+    ],
+    { encoding: 'utf8' },
+  );
+  assert.equal(run.status, 0, run.stderr);
+  assert.match(run.stdout, /changed files, most lines added first/);
+});
+
+test('code that runs is exactly the scope the Spec brief names', () => {
+  // Issue #1140, decision 4: `.github/workflows/**`, `.github/actions/**`,
+  // `tools/**`, `*.sh`, `*.mjs`.
+  for (const file of [
+    '.github/workflows/deploy-staging.yml',
+    '.github/actions/code-reviewer/action.yml',
+    'tools/config/review-rules.json',
+    'tools/scripts/lib/staging-web-deploy.mjs',
+    'apps/backend/scripts/start.sh',
+    'libs/x/build.mjs',
+  ])
+    assert.ok(isExecutable(file), file);
+  for (const file of [
+    'docs/deploy.md',
+    '.github/CODEOWNERS',
+    'apps/backend/src/x.cjs',
+    'libs/x/src/index.ts',
+  ])
+    assert.ok(!isExecutable(file), file);
 });

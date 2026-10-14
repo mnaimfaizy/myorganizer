@@ -272,7 +272,11 @@ jobs:
           echo "base=$(jq -r .base <<<"$CASE")" >> "$GITHUB_OUTPUT"
           echo "head=$(jq -r .head <<<"$CASE")" >> "$GITHUB_OUTPUT"
           mkdir -p tmp/code-review
-          jq '{spec: .spec}' <<<"$CASE" > tmp/code-review/spec.json
+          # A Spec-axis case reads the spec its original review saw, which
+          # --show resolves from the committed specSnapshot as specText, never
+          # a live fetch: a later edit to the issue can hand the reviewer the
+          # answer (ADR 0130 item 5). A spec-less case has no specText.
+          jq '{spec: .spec} + (.specText // {})' <<<"$CASE" > tmp/code-review/spec.json
           echo "replaying $(jq -r .incident <<<"$CASE"): $(jq -r .base <<<"$CASE" | cut -c1-7)...$(jq -r .head <<<"$CASE" | cut -c1-7)"
 
       # The reviewer reads the case, not the pull request (ADR 0102). Run

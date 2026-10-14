@@ -90,6 +90,27 @@ test('an axis or a severity cap the finding contract does not know is named', ()
   );
 });
 
+test('a severity floor the finding contract does not know, or one above its cap, is named', () => {
+  // ADR 0131 item 2: the floor mirrors the cap, and fails silent the same way.
+  assert.match(
+    compare({ rules: [rule({ minSeverity: 'serious' })] })[0],
+    /minSeverity "serious" is not a severity, so the floor can never fire/,
+  );
+  // A floor more severe than the cap leaves no severity a finding can carry.
+  assert.match(
+    compare({
+      rules: [rule({ minSeverity: 'blocking', maxSeverity: 'should-fix' })],
+    })[0],
+    /minSeverity "blocking" is above maxSeverity "should-fix", so no finding can satisfy both/,
+  );
+  assert.deepEqual(
+    compare({
+      rules: [rule({ minSeverity: 'should-fix', maxSeverity: 'should-fix' })],
+    }),
+    [],
+  );
+});
+
 test('a cited document that is gone is a finding, not a shrug', () => {
   assert.match(
     compare({ exists: () => false })[0],

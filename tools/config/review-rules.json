@@ -240,13 +240,15 @@
       "family": "standard",
       "title": "A secret, credential, or plaintext value is committed or logged",
       "axes": ["standards"],
+      "minSeverity": "should-fix",
       "cites": "AGENTS.md"
     },
     {
       "id": "standard-operator-fingerprint-in-source",
       "family": "standard",
-      "title": "An Operator Fingerprint is written into the tracked tree",
+      "title": "An Operator Fingerprint is written into the tracked tree or printed to a public log",
       "axes": ["standards"],
+      "minSeverity": "should-fix",
       "cites": "docs/adr/0086-a-public-tree-hides-an-operator-not-a-product.md"
     },
     {
