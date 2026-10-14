@@ -81,7 +81,7 @@ const git = (...args) => spawnSync('git', args, { stdio: 'ignore' }).status;
 /** False when git does not know `descendant`: unknown is not "newer". */
 const isAncestor = (ancestor, descendant) =>
   git('cat-file', '-e', `${descendant}^{commit}`) === 0 &&
-  git('merge-base', '--is-ancestor', ancestor, descendant) === 0;
+  git('merge-base', '--is-ancestor', descendant, ancestor) === 0;
 
 const [, , command, ...rest] = process.argv;
 
