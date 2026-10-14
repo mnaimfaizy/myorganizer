@@ -467,6 +467,11 @@ jobs:
           API_ORIGIN: ${{ secrets.API_ORIGIN }}
         run: node tools/scripts/staging-web-deploy.mjs same-site "$WEB_ORIGIN" "$API_ORIGIN"
 
+      - name: Check the Staging web address answers
+        env:
+          WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
+        run: curl -fsSL "$WEB_ORIGIN/login" -o /dev/null
+
       - name: Package web app (cPanel)
         env:
           # Public GIS client for Vault Cloud Backup, as in Production's web
