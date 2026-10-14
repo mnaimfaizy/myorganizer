@@ -15,15 +15,11 @@ import {
   type UsageLocationRecord,
   type VaultBlobEnvelope,
 } from '@myorganizer/vault-core/portable';
-import { readUsageLocations } from './contactModel';
+import type { VaultBlobEdit } from '@myorganizer/mobile/feat-vault';
+import { findVisibleContact } from './contactModel';
 import type { SubscriptionEditValues } from './SubscriptionEditSheet';
 import { findVisibleSubscription } from './subscriptionModel';
 import { findVisibleTask, type DecryptedTask } from './taskModel';
-
-/** What a screen hands the push path: one envelope in, the edited one out. */
-export type RecordEdit = (
-  envelope: VaultBlobEnvelope<unknown>,
-) => VaultBlobEnvelope<unknown>;
 
 /** The Task as `envelope` holds it, or the one on screen when it holds none. */
 export function storedTask(
@@ -44,7 +40,7 @@ export function subscriptionEdit(
   fallback: SubscriptionRecord,
   values: SubscriptionEditValues,
   now: string,
-): RecordEdit {
+): VaultBlobEdit {
   return (envelope) => {
     const current =
       (findVisibleSubscription(
@@ -80,18 +76,6 @@ export type ToggleableContact = Record<string, unknown> & {
   usageLocations?: unknown;
 };
 
-/** The record carrying `id` in a decrypted records array, or `null`. */
-function storedContact(records: unknown, id: string): ToggleableContact | null {
-  if (!Array.isArray(records)) return null;
-  const found: unknown = records.find(
-    (entry) =>
-      typeof entry === 'object' &&
-      entry !== null &&
-      (entry as { id?: unknown }).id === id,
-  );
-  return (found as ToggleableContact | undefined) ?? null;
-}
-
 /**
  * Sets one Usage Location's notified state on an Address or Mobile Number.
  * Sibling Usage Locations are carried as stored.
@@ -101,12 +85,31 @@ export function usageLocationToggleEdit(
   locationId: string,
   notified: boolean,
   now: string,
-): RecordEdit {
+): VaultBlobEdit {
   return (envelope) => {
-    const current = storedContact(envelope.records, fallback.id) ?? fallback;
-    const usageLocations = readUsageLocations(current).map((entry) => {
-      if (entry.id !== locationId) return entry;
-      const updated = { ...entry, changed: notified };
+    const current =
+      (findVisibleContact(
+        envelope.records,
+        fallback.id,
+      ) as ToggleableContact | null) ?? fallback;
+    // Mapped over the stored array, not a parsed view of it: every entry this
+    // edit does not target — one with no usable id, or a shape a newer client
+    // wrote — is carried exactly as stored.
+    const stored = Array.isArray(current.usageLocations)
+      ? (current.usageLocations as unknown[])
+      : [];
+    const usageLocations = stored.map((entry) => {
+      if (
+        typeof entry !== 'object' ||
+        entry === null ||
+        (entry as { id?: unknown }).id !== locationId
+      ) {
+        return entry;
+      }
+      const updated: Record<string, unknown> = {
+        ...(entry as Record<string, unknown>),
+        changed: notified,
+      };
       if (notified) {
         updated.changedAt = now;
       } else {

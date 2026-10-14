@@ -55,6 +55,21 @@ export function readVisibleMobileNumbers(
   return records.filter(hasUsableId) as DecryptedMobileNumber[];
 }
 
+/** The one Address or Mobile Number with `id`, or `null` — for an edit that
+ * applies to either. See `findVisibleAddress`. */
+export function findVisibleContact(
+  records: unknown,
+  id: string,
+): (Record<string, unknown> & { id: string }) | null {
+  if (!Array.isArray(records)) return null;
+  const found: unknown = records.find(
+    (entry) => hasUsableId(entry) && entry.id === id,
+  );
+  return (
+    (found as (Record<string, unknown> & { id: string }) | undefined) ?? null
+  );
+}
+
 /** The one Address with `id`, or `null` when the payload holds none —
  * deleted on another device while this screen was open. */
 export function findVisibleAddress(

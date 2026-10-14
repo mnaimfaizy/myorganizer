@@ -391,7 +391,9 @@ export function TasksScreen(): React.JSX.Element {
   const restore = useCallback(
     (task: DecryptedTask): void => {
       // Only `updatedAt` moves, because the restore is a real edit of its
-      // own and not a silent no-op.
+      // own and not a silent no-op. Deliberately the Task as it stood when
+      // done or archived, not the envelope's copy: an undo puts back that
+      // moment, Unknown Fields it had included.
       void push(task.id, (envelope) =>
         putVaultRecord(envelope, {
           ...(task as Task),

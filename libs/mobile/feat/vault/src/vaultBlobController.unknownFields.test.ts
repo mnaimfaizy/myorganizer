@@ -20,6 +20,7 @@ jest.mock('./crypto', () => {
 import { VaultBlobType, type VaultApi } from '@myorganizer/app-api-client';
 import {
   putVaultRecord,
+  renameGroceryList,
   setListLineAmount,
   setListLineChecked,
   type VaultBlobEnvelope,
@@ -348,6 +349,111 @@ describe('mobile push of Groceries keeps unknown fields through a trip edit', ()
       });
     },
   );
+
+  it('keeps every unknown field on the records a trip edit does not touch, when two edits target different lists and lines', async () => {
+    const twoLists = (): Payload => ({
+      records: {
+        catalog: [
+          {
+            id: 'c1',
+            name: 'Milk',
+            category: 'dairy',
+            createdAt: STAMP,
+            updatedAt: STAMP,
+            noteCatalog1: 'kept catalog item 1',
+          },
+          {
+            id: 'c2',
+            name: 'Bread',
+            category: 'bakery',
+            createdAt: STAMP,
+            updatedAt: STAMP,
+            noteCatalog2: 'kept catalog item 2',
+          },
+        ],
+        lists: [
+          {
+            id: 'l1',
+            name: 'Weekly',
+            createdAt: STAMP,
+            updatedAt: STAMP,
+            noteList1: 'kept list 1',
+            lines: [
+              {
+                id: 'ln1',
+                catalogItemId: 'c1',
+                checked: false,
+                createdAt: STAMP,
+                updatedAt: STAMP,
+                noteLine1: 'kept line 1',
+              },
+              {
+                id: 'ln2',
+                catalogItemId: 'c2',
+                checked: false,
+                createdAt: STAMP,
+                updatedAt: STAMP,
+                noteLine2: 'kept line 2',
+              },
+            ],
+          },
+          {
+            id: 'l2',
+            name: 'Monthly',
+            createdAt: STAMP,
+            updatedAt: STAMP,
+            noteList2: 'kept list 2',
+            lines: [],
+          },
+        ],
+        notePayload: 'kept payload',
+      },
+      deletions: {},
+      envelopeNote: 'kept envelope',
+    });
+    const initial = twoLists();
+    const { server, controller } = setup(initial, VaultBlobType.Groceries);
+    await controller.reload();
+
+    await expect(
+      controller.apply((envelope) =>
+        setListLineChecked(envelope, 'l1', 'ln2', true, LATER),
+      ),
+    ).resolves.toBe(true);
+    await expect(
+      controller.apply((envelope) =>
+        renameGroceryList(envelope, 'l2', 'Monthly renamed', LATER),
+      ),
+    ).resolves.toBe(true);
+
+    const body = server.lastBody();
+    const payload = body.records as Record<string, unknown>;
+    const initialPayload = initial.records as Record<string, unknown>;
+    const initialLists = initialPayload['lists'] as Array<
+      Record<string, unknown>
+    >;
+    const initialLines = initialLists[0]?.['lines'] as Array<
+      Record<string, unknown>
+    >;
+    expect(body.envelopeNote).toBe('kept envelope');
+    expect(payload['notePayload']).toBe('kept payload');
+    expect(payload['catalog']).toEqual(initialPayload['catalog']);
+    expect(payload['lists']).toEqual([
+      {
+        ...initialLists[0],
+        updatedAt: LATER,
+        lines: [
+          initialLines[0],
+          { ...initialLines[1], checked: true, updatedAt: LATER },
+        ],
+      },
+      {
+        ...initialLists[1],
+        name: 'Monthly renamed',
+        updatedAt: LATER,
+      },
+    ]);
+  });
 });
 
 describe('mobile push keeps unknown fields through the conflict and retry paths', () => {

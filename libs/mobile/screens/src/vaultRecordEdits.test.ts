@@ -375,5 +375,27 @@ describe('vaultRecordEdits', () => {
         changedAt: AT,
       });
     });
+
+    it('carries an entry with no id, and one with an empty id, exactly as stored and in place', () => {
+      const legacy = { organisationName: 'Legacy', futureShape: true };
+      const blankId = { id: '', organisationName: 'Blank', changed: false };
+      const env = envelope([
+        address('addr-1', [location('loc-1'), legacy, blankId]),
+      ]);
+      const fallback = address('addr-1', []);
+
+      const target = byId(
+        usageLocationToggleEdit(fallback, 'loc-1', true, AT)(env),
+        'addr-1',
+      );
+
+      const entries = locationsOf(target);
+      expect(entries).toHaveLength(3);
+      expect(entries[0]).toEqual(
+        location('loc-1', { changed: true, changedAt: AT }),
+      );
+      expect(entries[1]).toEqual(legacy);
+      expect(entries[2]).toEqual(blankId);
+    });
   });
 });

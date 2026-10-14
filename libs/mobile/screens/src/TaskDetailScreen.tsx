@@ -65,6 +65,7 @@ import {
   type TaskRemovalKind,
 } from './taskModel';
 import { describeVaultLoadError } from './vaultLoadError';
+import { storedTask } from './vaultRecordEdits';
 
 /** Every field the detail screen saves on its own. */
 type TaskField =
@@ -266,13 +267,9 @@ export function TaskDetailScreen(): React.JSX.Element {
       // a field changed after a refused delete or archive gives that up. Its
       // notice goes with it: nothing is left that could send it later.
       if (removalPhase === 'refused') setRemoval(null);
-      const fallback = task as Task;
-      const edit: VaultBlobEdit = (envelope) => {
-        const current =
-          (findVisibleTask(envelope.records, taskId) as Task | null) ??
-          fallback;
-        return putVaultRecord(envelope, change(current));
-      };
+      const shown = task;
+      const edit: VaultBlobEdit = (envelope) =>
+        putVaultRecord(envelope, change(storedTask(envelope, shown)));
       if (writing) queued.current.push({ field, edit });
       else send(field, edit);
     },
@@ -404,8 +401,7 @@ export function TaskDetailScreen(): React.JSX.Element {
     if (task === null) return;
     remove('archive', (envelope) =>
       putVaultRecord(envelope, {
-        ...((findVisibleTask(envelope.records, task.id) as Task | null) ??
-          (task as Task)),
+        ...storedTask(envelope, task),
         archived: true,
         updatedAt: stamp(),
       }),
