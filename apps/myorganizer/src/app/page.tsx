@@ -17,7 +17,6 @@ const jsonLd = {
     'End-to-end encrypted vault',
     'Task management',
     'Address book',
-    'YouTube subscription sync',
     'Cross-device sync',
   ],
 };

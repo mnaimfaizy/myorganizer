@@ -203,25 +203,22 @@ Each redirect URI must be added to the **Authorized redirect URIs** list in the 
 | Consent Screen Status | **In production** (any Google user can authorize)   |
 | User Type             | External                                            |
 | Redirect URI          | `https://yourdomain.com/dashboard/youtube/callback` |
-| App Verification      | Required for sensitive scopes (see below)           |
+| App Verification      | Not sought: a personal-use app (see below)          |
 
 ### Publishing to Production
 
-When you're ready to go live:
+Production YouTube is a personal-use feature, granted per User by a Platform Admin ([ADR 0129](../adr/0129-youtube-is-a-personal-use-feature-granted-per-user.md)). The production project is published and left unverified.
 
 1. Go to **Google Auth platform** > **Audience**.
 2. Change the publishing status from **Testing** to **In production**.
-3. Google will require app verification since `youtube.readonly` is a **sensitive scope**.
-4. You'll need to:
-   - Provide a link to your app's privacy policy
-   - Provide a link to your terms of service (optional but recommended)
-   - Describe how the app uses the requested data
-   - Submit for verification review (can take several days to weeks)
-5. Until verified, users will see an "unverified app" warning screen.
+3. Do not submit for verification. Google lists personal-use apps, for the developer and fewer than 100 users, as not needing it.
+4. Each person sees an "unverified app" warning once and chooses to continue.
 
-> **Testing mode is not an option for production.** Google expires refresh tokens issued in Testing after 7 days, so every YouTube Connection goes Revoked weekly, and the app is capped at 100 test users. Keep YouTube unavailable in production until the production project is verified.
+> **The 100-account limit is permanent.** Google counts every account that has ever consented on an unverified project, for the life of the project, and never resets it. MyOrganizer caps YouTube Access well below that.
 
-> **Keep production YouTube unavailable until verification finishes.** The availability switch and production redirect-URI startup check landed in #846, and the web-side hiding landed in #847. Leave `YOUTUBE_AVAILABLE` unset or `false` until the production Cloud project work in #848 is complete. See [ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md).
+> **Testing mode is not an option for production.** Google expires every authorization made in Testing seven days after consent, so every YouTube Connection goes Revoked weekly.
+
+> **MyOrganizer is the only gate.** Google no longer checks who connects on a published project, so a User can connect only if a Platform Admin has granted them YouTube Access. Keep `YOUTUBE_AVAILABLE` unset or `false` in production until that gate has shipped (PRD #1143).
 
 ---
 
@@ -250,14 +247,14 @@ client has both redirect URIs and JavaScript origins
 
 ## Troubleshooting
 
-| Issue                                           | Solution                                                                                                                                                                      |
-| ----------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `redirect_uri_mismatch` error                   | The `GOOGLE_REDIRECT_URI` in `.env` doesn't match what's configured in Google Cloud Console. Check for trailing slashes, protocol (http vs https), and port.                  |
-| "Access blocked: This app's request is invalid" | The OAuth consent screen is not configured, or the app has been suspended.                                                                                                    |
-| "Error 403: access_denied"                      | The user is not in the test users list (when app is in Testing mode).                                                                                                         |
-| "This app isn't verified" warning               | Expected in Testing mode. Click **Advanced** > **Go to MyOrganizer (unsafe)**. For production, submit for verification.                                                       |
-| No refresh token received                       | Google only returns a refresh token on the **first** authorization. The app uses `prompt: 'consent'` to force it every time. If tokens are missing, disconnect and reconnect. |
-| `YOUTUBE_TOKEN_ENCRYPTION_KEY` errors           | Ensure the key is exactly 64 hex characters (32 bytes). Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`                             |
+| Issue                                           | Solution                                                                                                                                                                          |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `redirect_uri_mismatch` error                   | The `GOOGLE_REDIRECT_URI` in `.env` doesn't match what's configured in Google Cloud Console. Check for trailing slashes, protocol (http vs https), and port.                      |
+| "Access blocked: This app's request is invalid" | The OAuth consent screen is not configured, or the app has been suspended.                                                                                                        |
+| "Error 403: access_denied"                      | The user is not in the test users list (when app is in Testing mode).                                                                                                             |
+| "This app isn't verified" warning               | Expected in Testing mode. Click **Advanced** > **Go to MyOrganizer (unsafe)**. In production it is shown once per person, because the project is unverified by design (ADR 0129). |
+| No refresh token received                       | Google only returns a refresh token on the **first** authorization. The app uses `prompt: 'consent'` to force it every time. If tokens are missing, disconnect and reconnect.     |
+| `YOUTUBE_TOKEN_ENCRYPTION_KEY` errors           | Ensure the key is exactly 64 hex characters (32 bytes). Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`                                 |
 
 ---
 

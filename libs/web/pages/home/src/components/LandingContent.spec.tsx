@@ -33,7 +33,6 @@ jest.mock('lucide-react', () => ({
   RefreshCw: () => <div data-testid="icon-refresh-cw" />,
   ShieldCheck: () => <div data-testid="icon-shield-check" />,
   Smartphone: () => <div data-testid="icon-smartphone" />,
-  Youtube: () => <div data-testid="icon-youtube" />,
 }));
 
 jest.mock('@myorganizer/web-ui', () => ({
@@ -120,5 +119,12 @@ describe('LandingContent', () => {
     expect(pricingLink).toBeInTheDocument();
     expect(pricingLink).toHaveAttribute('href', '#');
     expect(supportLink).toHaveAttribute('href', '#');
+  });
+
+  it('renders no YouTube mention and still shows the Google Drive integration', () => {
+    const { container } = render(<LandingContent />);
+
+    expect(container.textContent || '').not.toMatch(/youtube/i);
+    expect(screen.getByText('Google Drive')).toBeInTheDocument();
   });
 });
