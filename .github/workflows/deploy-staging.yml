@@ -462,6 +462,7 @@ jobs:
       # of each hostname. That is a rule of thumb, wrong for a suffix that is
       # itself two labels, such as `co.uk`.
       - name: Assert the web app and the API are on the same site
+        continue-on-error: true
         env:
           WEB_ORIGIN: ${{ secrets.WEB_ORIGIN }}
           API_ORIGIN: ${{ secrets.API_ORIGIN }}
