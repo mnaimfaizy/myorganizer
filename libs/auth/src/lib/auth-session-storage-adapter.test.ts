@@ -263,4 +263,132 @@ describe('createBrowserAuthSessionStorageAdapter', () => {
       expect(retrieved).toEqual(largeUser);
     });
   });
+
+  describe('onSignedOutElsewhere', () => {
+    const USER_KEY = 'myorganizer_user';
+    const TOKEN_KEY = 'myorganizer_access_token';
+    let stop: (() => void) | undefined;
+
+    function watch(listener: () => void): void {
+      stop = adapter.onSignedOutElsewhere?.(listener);
+    }
+
+    function dispatchStorage(init: StorageEventInit): void {
+      window.dispatchEvent(new StorageEvent('storage', init));
+    }
+
+    afterEach(() => {
+      stop?.();
+      stop = undefined;
+    });
+
+    it('notifies when another window removes the user from localStorage', () => {
+      const listener = jest.fn();
+      watch(listener);
+
+      dispatchStorage({
+        key: USER_KEY,
+        oldValue: JSON.stringify(mockUser),
+        newValue: null,
+        storageArea: localStorage,
+      });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith();
+    });
+
+    it('notifies when another window clears localStorage entirely', () => {
+      const listener = jest.fn();
+      watch(listener);
+
+      dispatchStorage({ key: null, newValue: null, storageArea: localStorage });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+    });
+
+    it.each<[string, StorageEventInit]>([
+      [
+        'the user being written',
+        { key: USER_KEY, newValue: JSON.stringify(mockUser) },
+      ],
+      ['the access token being removed', { key: TOKEN_KEY, newValue: null }],
+      ['an unrelated key being removed', { key: 'theme', newValue: null }],
+    ])('ignores %s', (_label, init) => {
+      const listener = jest.fn();
+      watch(listener);
+
+      dispatchStorage({ ...init, storageArea: localStorage });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('ignores the user key changing in sessionStorage', () => {
+      const listener = jest.fn();
+      watch(listener);
+
+      dispatchStorage({
+        key: USER_KEY,
+        newValue: null,
+        storageArea: sessionStorage,
+      });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('ignores a removal that a new sign-in has already replaced', () => {
+      const listener = jest.fn();
+      watch(listener);
+      adapter.setCurrentUser(mockUser);
+
+      dispatchStorage({
+        key: USER_KEY,
+        newValue: null,
+        storageArea: localStorage,
+      });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('stops notifying after cleanup', () => {
+      const listener = jest.fn();
+      watch(listener);
+
+      stop?.();
+      dispatchStorage({
+        key: USER_KEY,
+        newValue: null,
+        storageArea: localStorage,
+      });
+
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('is a no-op where the global cannot listen for events', () => {
+      const addEventListener = window.addEventListener;
+      const listener = jest.fn();
+      // React Native sets `global.window = global`, so `window` exists there
+      // and has no `addEventListener`.
+      Object.defineProperty(window, 'addEventListener', {
+        configurable: true,
+        value: undefined,
+      });
+
+      try {
+        expect(() => watch(listener)).not.toThrow();
+        expect(() => stop?.()).not.toThrow();
+      } finally {
+        Object.defineProperty(window, 'addEventListener', {
+          configurable: true,
+          value: addEventListener,
+        });
+      }
+
+      dispatchStorage({
+        key: USER_KEY,
+        newValue: null,
+        storageArea: localStorage,
+      });
+      expect(listener).not.toHaveBeenCalled();
+    });
+  });
 });

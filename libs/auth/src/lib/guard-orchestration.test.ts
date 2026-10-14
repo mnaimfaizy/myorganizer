@@ -1,4 +1,11 @@
+jest.mock('@myorganizer/app-api-client');
+jest.mock('@myorganizer/core');
+
 import type { AuthSessionModule } from './auth-session-module';
+import { createAuthSessionModule } from './auth-session-module';
+import type { AuthSessionStorageAdapter } from './auth-session-storage-adapter';
+import type { AuthSessionTransportAdapter } from './auth-session-transport-adapter';
+import type { AuthUser } from './auth-session-types';
 import {
   resolveInboundGuard,
   resolveOutboundGuard,
@@ -22,6 +29,7 @@ describe('guard-orchestration', () => {
       getCurrentUser: jest.fn(),
       getAuthAxios: jest.fn(),
       getAuthApi: jest.fn(),
+      onSessionEnded: jest.fn(),
     };
   });
 
@@ -196,6 +204,108 @@ describe('guard-orchestration', () => {
       const result = await resolveOutboundGuard(mockSession);
 
       expect(result.kind).toBe('allow');
+    });
+  });
+
+  // The module is real here and only its two adapters are faked, so these pin
+  // what a guard actually gets for a Session whose local state is inconsistent
+  // (issue #1134): an access token this tab kept after another window signed
+  // out and removed the shared user.
+  describe('resolveOutboundGuard over local state the server may reject', () => {
+    const user: AuthUser = {
+      id: 'user-1',
+      email: 'test@example.com',
+      name: 'Test User',
+      firstName: 'Test',
+      lastName: 'User',
+      role: 'user',
+      disabled: false,
+    };
+
+    function createInMemoryStorage(initial: {
+      token?: string;
+      user?: AuthUser;
+    }): AuthSessionStorageAdapter {
+      let token = initial.token;
+      let current = initial.user;
+      return {
+        getAccessToken: () => token,
+        setAccessToken: (next) => {
+          token = next ?? undefined;
+        },
+        getCurrentUser: () => current,
+        setCurrentUser: (next) => {
+          current = next ?? undefined;
+        },
+        clearSession: () => {
+          token = undefined;
+          current = undefined;
+        },
+      };
+    }
+
+    function createSession(
+      storage: AuthSessionStorageAdapter,
+      refreshToken: jest.Mock,
+    ): AuthSessionModule {
+      const transport: jest.Mocked<AuthSessionTransportAdapter> = {
+        getAuthAxios: jest.fn(),
+        getAuthApi: jest.fn().mockReturnValue({ refreshToken }),
+      };
+      return createAuthSessionModule({ storage, transport });
+    }
+
+    it('redirects to login, clears the session and signals once when the refresh is rejected with 401', async () => {
+      const storage = createInMemoryStorage({ token: 'stale-tab-token' });
+      const refreshToken = jest.fn().mockRejectedValue(
+        Object.assign(new Error('Unauthorized'), {
+          response: { status: 401 },
+        }),
+      );
+      const session = createSession(storage, refreshToken);
+      const listener = jest.fn();
+      session.onSessionEnded(listener);
+
+      const result = await resolveOutboundGuard(session);
+
+      expect(result).toEqual({ kind: 'redirect_login' });
+      expect(refreshToken).toHaveBeenCalledTimes(1);
+      expect(refreshToken).toHaveBeenCalledWith({ refreshTokenBody: {} });
+      expect(storage.getAccessToken()).toBeUndefined();
+      expect(storage.getCurrentUser()).toBeUndefined();
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith({ reason: 'refresh_rejected' });
+    });
+
+    it('allows and leaves the user present when the refresh succeeds', async () => {
+      const storage = createInMemoryStorage({ token: 'stale-tab-token' });
+      const refreshToken = jest.fn().mockResolvedValue({
+        data: { token: 'fresh-token', expires_in: 600000, user },
+      });
+      const session = createSession(storage, refreshToken);
+      const listener = jest.fn();
+      session.onSessionEnded(listener);
+
+      const result = await resolveOutboundGuard(session);
+
+      expect(result).toEqual({ kind: 'allow' });
+      expect(refreshToken).toHaveBeenCalledTimes(1);
+      expect(storage.getAccessToken()).toBe('fresh-token');
+      expect(storage.getCurrentUser()).toEqual(user);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('allows a token with its user on the fast path, without a refresh', async () => {
+      const storage = createInMemoryStorage({ token: 'tab-token', user });
+      const refreshToken = jest.fn();
+      const session = createSession(storage, refreshToken);
+
+      const result = await resolveOutboundGuard(session);
+
+      expect(result).toEqual({ kind: 'allow' });
+      expect(refreshToken).not.toHaveBeenCalled();
+      expect(storage.getAccessToken()).toBe('tab-token');
+      expect(storage.getCurrentUser()).toEqual(user);
     });
   });
 });

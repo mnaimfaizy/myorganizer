@@ -27,7 +27,7 @@ const MAC_SAFARI_16_UA =
 const STANDALONE_QUERY = '(display-mode: standalone)';
 const DISMISSED_KEY = 'myorganizer.install-card.dismissed.v1';
 const IOS_SENTENCE =
-  "You'll sign in and unlock your vault again inside the installed app.";
+  "You'll sign in and unlock your vault again inside the installed MyOrganiser.";
 
 let runningInstalled = false;
 let loadedRtl: Rtl | null = null;
@@ -118,7 +118,7 @@ describe('InstallAppCard', () => {
 
       expect(rtl.within(card).getByText(IOS_SENTENCE)).toBeInTheDocument();
       expect(
-        rtl.within(card).queryByRole('button', { name: 'Install app' }),
+        rtl.within(card).queryByRole('button', { name: 'Install MyOrganiser' }),
       ).not.toBeInTheDocument();
     });
   });
@@ -145,7 +145,7 @@ describe('InstallAppCard', () => {
 
       expect(rtl.within(card).getByText(IOS_SENTENCE)).toBeInTheDocument();
       expect(
-        rtl.within(card).queryByRole('button', { name: 'Install app' }),
+        rtl.within(card).queryByRole('button', { name: 'Install MyOrganiser' }),
       ).not.toBeInTheDocument();
     });
 
@@ -161,7 +161,7 @@ describe('InstallAppCard', () => {
   });
 
   describe('on Chromium', () => {
-    it('should show an Install app button once the browser offers the install prompt', async () => {
+    it('should show an Install MyOrganiser button once the browser offers the install prompt', async () => {
       setUserAgent(DESKTOP_CHROME_UA);
       const rtl = await mountCard();
       expect(
@@ -172,18 +172,18 @@ describe('InstallAppCard', () => {
 
       const card = rtl.screen.getByTestId('install-app-card');
       expect(
-        rtl.within(card).getByRole('button', { name: 'Install app' }),
+        rtl.within(card).getByRole('button', { name: 'Install MyOrganiser' }),
       ).toBeInTheDocument();
     });
 
-    it('should call the held install prompt once when Install app is clicked', async () => {
+    it('should call the held install prompt once when Install MyOrganiser is clicked', async () => {
       setUserAgent(DESKTOP_CHROME_UA);
       const rtl = await mountCard();
       const prompt = dispatchInstallPrompt(rtl);
 
       await rtl.act(async () => {
         rtl.fireEvent.click(
-          rtl.screen.getByRole('button', { name: 'Install app' }),
+          rtl.screen.getByRole('button', { name: 'Install MyOrganiser' }),
         );
       });
 
@@ -197,7 +197,7 @@ describe('InstallAppCard', () => {
 
       await rtl.act(async () => {
         rtl.fireEvent.click(
-          rtl.screen.getByRole('button', { name: 'Install app' }),
+          rtl.screen.getByRole('button', { name: 'Install MyOrganiser' }),
         );
       });
 
@@ -282,7 +282,7 @@ describe('InstallAppCard', () => {
   });
 
   describe('copy', () => {
-    it('should never mention PWA in the iOS steps or the Install app prompt', async () => {
+    it('should never mention PWA in the iOS steps or the Install MyOrganiser prompt', async () => {
       setUserAgent(IPHONE_SAFARI_UA);
       const rtl = await mountCard();
       const card = rtl.screen.getByTestId('install-app-card');
@@ -291,7 +291,7 @@ describe('InstallAppCard', () => {
       dispatchInstallPrompt(rtl);
 
       expect(
-        rtl.screen.getByRole('button', { name: 'Install app' }),
+        rtl.screen.getByRole('button', { name: 'Install MyOrganiser' }),
       ).toBeInTheDocument();
       expect(card.textContent).not.toMatch(/PWA/i);
     });
