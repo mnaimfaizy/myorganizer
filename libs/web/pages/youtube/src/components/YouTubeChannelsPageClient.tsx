@@ -141,34 +141,31 @@ function ConnectedChannelsDashboard({
     }
   }, []);
 
-  const handleConfirmDisconnect = useCallback(
-    async (deleteWatchedMarks: boolean) => {
-      setDisconnectError(null);
-      try {
-        const result = await disconnect({ deleteWatchedMarks });
-        setDisconnectDialogOpen(false);
-        await refreshStatus();
-        if (result.revokeFailed && result.googlePermissionsUrl) {
-          onDisconnectNotice({
-            message: result.message,
-            googlePermissionsUrl: result.googlePermissionsUrl,
-          });
-        } else {
-          onDisconnectNotice(null);
-        }
-      } catch (err: unknown) {
-        const message =
-          err instanceof YouTubeRequestError && err.code === 'sync_run_live'
-            ? err.message
-            : err instanceof Error
-              ? err.message
-              : 'Disconnect failed';
-        setDisconnectError(message);
-        throw err instanceof Error ? err : new Error(message);
+  const handleConfirmDisconnect = useCallback(async () => {
+    setDisconnectError(null);
+    try {
+      const result = await disconnect();
+      setDisconnectDialogOpen(false);
+      await refreshStatus();
+      if (result.revokeFailed && result.googlePermissionsUrl) {
+        onDisconnectNotice({
+          message: result.message,
+          googlePermissionsUrl: result.googlePermissionsUrl,
+        });
+      } else {
+        onDisconnectNotice(null);
       }
-    },
-    [disconnect, onDisconnectNotice, refreshStatus],
-  );
+    } catch (err: unknown) {
+      const message =
+        err instanceof YouTubeRequestError && err.code === 'sync_run_live'
+          ? err.message
+          : err instanceof Error
+            ? err.message
+            : 'Disconnect failed';
+      setDisconnectError(message);
+      throw err instanceof Error ? err : new Error(message);
+    }
+  }, [disconnect, onDisconnectNotice, refreshStatus]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">

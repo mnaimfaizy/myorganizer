@@ -161,8 +161,6 @@ export function youtubeSyncClaimableWhere(
 }
 
 const DISABLED_VIDEO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
-/** Watched Ledger TTL — aligned with disabled-channel retention (ADR 0092). */
-const WATCHED_LEDGER_TTL_MS = DISABLED_VIDEO_RETENTION_MS;
 export const GOOGLE_PERMISSIONS_URL =
   'https://myaccount.google.com/permissions';
 
@@ -429,10 +427,7 @@ class YouTubeSyncService {
   }
 
   /** Disconnect YouTube integration */
-  async disconnect(
-    userId: string,
-    options: { deleteWatchedMarks?: boolean } = {},
-  ): Promise<YouTubeDisconnectResult> {
+  async disconnect(userId: string): Promise<YouTubeDisconnectResult> {
     const integration = await this.prisma.youTubeIntegration.findUnique({
       where: { userId },
     });
@@ -448,8 +443,6 @@ class YouTubeSyncService {
       };
     }
 
-    const deleteWatchedMarks = options.deleteWatchedMarks === true;
-
     try {
       await this.prisma.$transaction(async (transaction) => {
         await transaction.$queryRaw`
@@ -460,27 +453,6 @@ class YouTubeSyncService {
         });
         if (!current || isAnyYouTubeSyncLive(current)) {
           throw new YouTubeSyncBecameLiveError();
-        }
-
-        if (deleteWatchedMarks) {
-          await transaction.youTubeWatchedLedger.deleteMany({
-            where: { userId },
-          });
-        } else {
-          const watchedVideos = await transaction.youTubeVideo.findMany({
-            where: { userId, watched: true },
-            select: { videoId: true },
-          });
-          if (watchedVideos.length > 0) {
-            await transaction.youTubeWatchedLedger.createMany({
-              data: watchedVideos.map((video) => ({
-                userId,
-                videoId: video.videoId,
-              })),
-              skipDuplicates: true,
-            });
-          }
-          await this.purgeExpiredWatchedLedgerRows(transaction, userId);
         }
 
         await transaction.youTubeVideo.deleteMany({ where: { userId } });
@@ -1507,12 +1479,6 @@ class YouTubeSyncService {
                 },
               },
       });
-
-      await this.reapplyWatchedFromLedger(
-        transaction,
-        userId,
-        snapshot.map((video) => video.videoId),
-      );
     });
 
     return snapshot.length;
@@ -1598,44 +1564,6 @@ class YouTubeSyncService {
     await this.prisma.youTubeVideo.deleteMany({
       where: { userId, channelId: { in: channelIds } },
     });
-  }
-
-  private purgeExpiredWatchedLedgerRows(
-    transaction: Prisma.TransactionClient,
-    userId: string,
-  ) {
-    return transaction.youTubeWatchedLedger.deleteMany({
-      where: {
-        userId,
-        createdAt: { lt: new Date(Date.now() - WATCHED_LEDGER_TTL_MS) },
-      },
-    });
-  }
-
-  private async reapplyWatchedFromLedger(
-    transaction: Prisma.TransactionClient,
-    userId: string,
-    videoIds: string[],
-  ): Promise<void> {
-    if (videoIds.length > 0) {
-      const ledgerRows = await transaction.youTubeWatchedLedger.findMany({
-        where: { userId, videoId: { in: videoIds } },
-        select: { videoId: true },
-      });
-
-      if (ledgerRows.length > 0) {
-        const reapplyIds = ledgerRows.map((row) => row.videoId);
-        await transaction.youTubeVideo.updateMany({
-          where: { userId, videoId: { in: reapplyIds } },
-          data: { watched: true },
-        });
-        await transaction.youTubeWatchedLedger.deleteMany({
-          where: { userId, videoId: { in: reapplyIds } },
-        });
-      }
-    }
-
-    await this.purgeExpiredWatchedLedgerRows(transaction, userId);
   }
 
   /**

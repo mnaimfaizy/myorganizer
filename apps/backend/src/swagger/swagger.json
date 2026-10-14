@@ -101,16 +101,6 @@
 					}
 				]
 			},
-			"DisconnectRequest": {
-				"properties": {
-					"deleteWatchedMarks": {
-						"type": "boolean",
-						"description": "When true, do not preserve Watched — clear/skip ledger. Default false."
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
-			},
 			"SubscriptionResponse": {
 				"properties": {
 					"id": {
@@ -1602,7 +1592,7 @@
 						}
 					}
 				},
-				"description": "Disconnects the user's YouTube account after revoking the token.\nOptionally wipes Watched marks via the request body; preserves them by default.",
+				"description": "Disconnects the user's YouTube account after revoking the token.\nDeletes all YouTube data, including Watched marks; nothing is kept for a reconnect.",
 				"tags": [
 					"YouTube"
 				],
@@ -1611,17 +1601,7 @@
 						"jwt": []
 					}
 				],
-				"parameters": [],
-				"requestBody": {
-					"required": false,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/DisconnectRequest"
-							}
-						}
-					}
-				}
+				"parameters": []
 			}
 		},
 		"/youtube/subscriptions": {

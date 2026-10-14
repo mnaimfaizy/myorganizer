@@ -81,12 +81,11 @@ export function YouTubePrivacySection({
         >
           Google security settings
         </a>
-        . Disconnecting revokes MyOrganizer&apos;s access at Google and deletes
-        your stored tokens, followed channels, cached uploads, and digest
-        settings; watched marks are kept for 30 days unless you choose to delete
-        them, as described on the YouTube Data Privacy page. If you revoke
-        access at Google instead, MyOrganizer stops syncing your YouTube data.
-        The operator may also withdraw the feature from an account.
+        . Disconnecting revokes MyOrganizer&apos;s access at Google and
+        immediately deletes your stored tokens, followed channels, cached
+        uploads, watched marks, and notification and digest settings. If you
+        revoke access at Google instead, MyOrganizer stops syncing your YouTube
+        data. The operator may also withdraw the feature from an account.
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
         For detailed information about how long we keep your YouTube metadata

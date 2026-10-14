@@ -34,7 +34,6 @@ model User {
   youtube_integration           YouTubeIntegration?
   youtube_subscriptions         YouTubeSubscription[]
   youtube_videos                YouTubeVideo[]
-  youtube_watched_ledger        YouTubeWatchedLedger[]
   youtube_notification_settings YouTubeNotificationSettings?
   youtube_digest_deliveries     YouTubeDigestDelivery[]
 

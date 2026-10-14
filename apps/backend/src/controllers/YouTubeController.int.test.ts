@@ -399,12 +399,10 @@ describe('YouTubeController (HTTP integration)', () => {
 
     expect(res.status).toBe(409);
     expect(res.body).toEqual(liveRefuse);
-    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
-      deleteWatchedMarks: undefined,
-    });
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1');
   });
 
-  test('threads deleteWatchedMarks: true through disconnect on success', async () => {
+  test('ignores a deleteWatchedMarks body field and disconnects with only the userId', async () => {
     const youtubeSyncService =
       require('../services/YouTubeSyncService').default;
 
@@ -421,12 +419,11 @@ describe('YouTubeController (HTTP integration)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(success);
-    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
-      deleteWatchedMarks: true,
-    });
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1');
+    expect(youtubeSyncService.disconnect.mock.calls[0]).toHaveLength(1);
   });
 
-  test('passes deleteWatchedMarks: undefined when disconnect body is omitted', async () => {
+  test('calls disconnect with only the userId when no body is sent', async () => {
     const youtubeSyncService =
       require('../services/YouTubeSyncService').default;
 
@@ -442,9 +439,8 @@ describe('YouTubeController (HTTP integration)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(success);
-    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
-      deleteWatchedMarks: undefined,
-    });
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1');
+    expect(youtubeSyncService.disconnect.mock.calls[0]).toHaveLength(1);
   });
 
   test('passes through revokeFailed and googlePermissionsUrl on successful disconnect', async () => {
@@ -465,9 +461,7 @@ describe('YouTubeController (HTTP integration)', () => {
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual(revokeFailedSuccess);
-    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1', {
-      deleteWatchedMarks: undefined,
-    });
+    expect(youtubeSyncService.disconnect).toHaveBeenCalledWith('user-1');
   });
 
   test('GET /youtube/availability returns true when switch is on', async () => {

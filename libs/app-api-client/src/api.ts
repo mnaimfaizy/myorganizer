@@ -127,12 +127,6 @@ export interface CronSyncResponse {
     'failed': number;
     'done': boolean;
 }
-export interface DisconnectRequest {
-    /**
-     * When true, do not preserve Watched — clear/skip ledger. Default false.
-     */
-    'deleteWatchedMarks'?: boolean;
-}
 export interface DisconnectResponse {
     'googlePermissionsUrl'?: string;
     'revokeFailed'?: boolean;
@@ -3057,12 +3051,11 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-         * @param {DisconnectRequest} [disconnectRequest] 
+         * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect: async (disconnectRequest?: DisconnectRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        disconnect: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/disconnect`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3079,13 +3072,11 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-            localVarHeaderParameter['Content-Type'] = 'application/json';
             localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(disconnectRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -3674,13 +3665,12 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-         * @param {DisconnectRequest} [disconnectRequest] 
+         * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async disconnect(disconnectRequest?: DisconnectRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DisconnectResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(disconnectRequest, options);
+        async disconnect(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DisconnectResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.disconnect']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
@@ -3889,13 +3879,12 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.cronSync(options).then((request) => request(axios, basePath));
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-         * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
+         * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<DisconnectResponse> {
-            return localVarFp.disconnect(requestParameters.disconnectRequest, options).then((request) => request(axios, basePath));
+        disconnect(options?: RawAxiosRequestConfig): AxiosPromise<DisconnectResponse> {
+            return localVarFp.disconnect(options).then((request) => request(axios, basePath));
         },
         /**
          * Returns the Google OAuth consent URL for linking YouTube.
@@ -4027,13 +4016,6 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
 };
 
 /**
- * Request parameters for disconnect operation in YouTubeApi.
- */
-export interface YouTubeApiDisconnectRequest {
-    readonly disconnectRequest?: DisconnectRequest
-}
-
-/**
  * Request parameters for getVideos operation in YouTubeApi.
  */
 export interface YouTubeApiGetVideosRequest {
@@ -4127,13 +4109,12 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
-     * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-     * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
+     * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).disconnect(requestParameters.disconnectRequest, options).then((request) => request(this.axios, this.basePath));
+    public disconnect(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).disconnect(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**

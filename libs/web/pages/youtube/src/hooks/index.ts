@@ -382,17 +382,11 @@ export function useYouTubeConnect() {
     window.location.href = data.url;
   }, []);
 
-  const disconnect = useCallback(
-    async (options?: { deleteWatchedMarks?: boolean }) => {
-      return apiFetch<YouTubeDisconnectResponse>('/disconnect', {
-        method: 'DELETE',
-        body: JSON.stringify({
-          deleteWatchedMarks: options?.deleteWatchedMarks === true,
-        }),
-      });
-    },
-    [],
-  );
+  const disconnect = useCallback(async () => {
+    return apiFetch<YouTubeDisconnectResponse>('/disconnect', {
+      method: 'DELETE',
+    });
+  }, []);
 
   return { connect, disconnect };
 }

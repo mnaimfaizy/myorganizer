@@ -429,27 +429,23 @@ describe('YouTubeChannelsPageClient', () => {
       expect(disconnect).not.toHaveBeenCalled();
     });
 
-    it('calls disconnect with deleteWatchedMarks false when confirmed without checkbox', async () => {
-      const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
-      renderConnected(disconnect);
+    it('offers no Watched marks checkbox and says Watched marks are deleted and will not return on reconnect', () => {
+      renderConnected();
       const dialog = openDisconnectDialog();
 
-      await act(async () => {
-        fireEvent.click(
-          within(dialog).getByRole('button', { name: 'Disconnect' }),
-        );
-      });
-
-      expect(disconnect).toHaveBeenCalledTimes(1);
-      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: false });
+      expect(within(dialog).queryByRole('checkbox')).not.toBeInTheDocument();
+      expect(
+        screen.queryByLabelText('Also delete my Watched marks'),
+      ).not.toBeInTheDocument();
+      expect(dialog).toHaveTextContent(
+        /Watched marks are deleted and will not return if you reconnect/,
+      );
     });
 
-    it('calls disconnect with deleteWatchedMarks true when wipe checkbox is checked', async () => {
+    it('calls disconnect with no arguments when confirmed', async () => {
       const disconnect = jest.fn().mockResolvedValue({ revokeFailed: false });
       renderConnected(disconnect);
       const dialog = openDisconnectDialog();
-
-      fireEvent.click(screen.getByLabelText('Also delete my Watched marks'));
 
       await act(async () => {
         fireEvent.click(
@@ -458,7 +454,7 @@ describe('YouTubeChannelsPageClient', () => {
       });
 
       expect(disconnect).toHaveBeenCalledTimes(1);
-      expect(disconnect).toHaveBeenCalledWith({ deleteWatchedMarks: true });
+      expect(disconnect).toHaveBeenCalledWith();
     });
 
     it('describes destroyed stores in the disconnect dialog', () => {

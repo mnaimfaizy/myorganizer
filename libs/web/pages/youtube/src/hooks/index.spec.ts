@@ -198,7 +198,7 @@ describe('useYouTubeConnect / apiFetch error paths', () => {
   });
 
   describe('happy disconnect', () => {
-    it('H7: DELETE /youtube/disconnect with deleteWatchedMarks true', async () => {
+    it('H7: DELETE /youtube/disconnect with no request body and returns the parsed response', async () => {
       fetchMock.mockImplementation(() =>
         Promise.resolve(
           mockResponse({
@@ -209,16 +209,14 @@ describe('useYouTubeConnect / apiFetch error paths', () => {
       );
 
       const disconnect = renderDisconnect();
-      const body = await disconnect({ deleteWatchedMarks: true });
+      const body = await disconnect();
 
       expect(body).toEqual({ ok: true, message: 'disconnected' });
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, init] = fetchMock.mock.calls[0];
       expect(String(url)).toBe('http://api.test/youtube/disconnect');
       expect(init?.method).toBe('DELETE');
-      expect(JSON.parse(String(init?.body))).toEqual({
-        deleteWatchedMarks: true,
-      });
+      expect(init?.body).toBeUndefined();
     });
   });
 });

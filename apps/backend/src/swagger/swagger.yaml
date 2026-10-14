@@ -67,14 +67,6 @@ components:
             - message
             - ok
           type: object
-    DisconnectRequest:
-      properties:
-        deleteWatchedMarks:
-          type: boolean
-          description: When true, do not preserve Watched — clear/skip ledger. Default
-            false.
-      type: object
-      additionalProperties: false
     SubscriptionResponse:
       properties:
         id:
@@ -1109,19 +1101,13 @@ paths:
       description: >-
         Disconnects the user's YouTube account after revoking the token.
 
-        Optionally wipes Watched marks via the request body; preserves them by
-        default.
+        Deletes all YouTube data, including Watched marks; nothing is kept for a
+        reconnect.
       tags:
         - YouTube
       security:
         - jwt: []
       parameters: []
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DisconnectRequest"
   /youtube/subscriptions:
     get:
       operationId: GetSubscriptions

@@ -48,6 +48,14 @@ describe('YouTubeConnectPrompt', () => {
       ).toBeInTheDocument();
     });
 
+    it('should render the disconnect bullet that deletes Watched marks and no 30-day Watched retention', () => {
+      render(<YouTubeConnectPrompt />);
+      expect(
+        screen.getByText(/Disconnect deletes .*Watched marks/),
+      ).toBeInTheDocument();
+      expect(screen.queryByText(/kept for 30 days/)).not.toBeInTheDocument();
+    });
+
     it('should render the privacy data link', () => {
       render(<YouTubeConnectPrompt />);
       const privacyLink = screen.getByRole('link', {
