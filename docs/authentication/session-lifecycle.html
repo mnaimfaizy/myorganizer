@@ -12708,27 +12708,57 @@
       "start": "        const res = await fetch(`${apiBase}/auth/verify/email`, {",
       "end": "          method: 'PATCH',"
     },
-    "auth-session-module.ts:95-102": {
+    "auth-session-transport-adapter.ts:136-141": {
+      "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
+      "start": "          storage.clearSession();",
+      "end": "            sessionEnded?.emit({ reason: 'refresh_rejected' });"
+    },
+    "auth-session-module.ts:159-163": {
+      "file": "libs/auth/src/lib/auth-session-module.ts",
+      "start": "      } catch (err) {",
+      "end": "        }"
+    },
+    "auth-session-storage-adapter.ts:125": {
+      "file": "libs/auth/src/lib/auth-session-storage-adapter.ts",
+      "start": "    onSignedOutElsewhere(listener: () => void): () => void {",
+      "end": "    onSignedOutElsewhere(listener: () => void): () => void {"
+    },
+    "auth-session-module.ts:321": {
+      "file": "libs/auth/src/lib/auth-session-module.ts",
+      "start": "    onSessionEnded(listener: SessionEndedListener): () => void {",
+      "end": "    onSessionEnded(listener: SessionEndedListener): () => void {"
+    },
+    "DashboardGuard.tsx:45": {
+      "file": "libs/web/pages/dashboard/src/components/DashboardGuard.tsx",
+      "start": "    return onSessionEnded(() => {",
+      "end": "    return onSessionEnded(() => {"
+    },
+    "AdminGuard.tsx:57": {
+      "file": "libs/web/pages/admin/src/components/AdminGuard.tsx",
+      "start": "    return onSessionEnded(() => {",
+      "end": "    return onSessionEnded(() => {"
+    },
+    "auth-session-module.ts:131-141": {
       "file": "libs/auth/src/lib/auth-session-module.ts",
       "start": "    getSnapshot(): SessionSnapshot {",
       "end": "      return { status: 'guest' };"
     },
-    "auth-session-transport-adapter.ts:100": {
+    "auth-session-transport-adapter.ts:106": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "        if (originalRequest._retry) {",
       "end": "        if (originalRequest._retry) {"
     },
-    "auth-session-transport-adapter.ts:119": {
+    "auth-session-transport-adapter.ts:125": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "          if (!refreshInFlight) {",
       "end": "          if (!refreshInFlight) {"
     },
-    "auth-session-transport-adapter.ts:61-64": {
+    "auth-session-transport-adapter.ts:67-70": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "      url.includes('/auth/login') ||",
       "end": "      url.includes('/auth/verify/resend')"
     },
-    "auth-session-transport-adapter.ts:88-144": {
+    "auth-session-transport-adapter.ts:94-160": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "    instance.interceptors.response.use(",
       "end": "        return instance(originalRequest);"
@@ -14211,7 +14241,7 @@ data:  { password: hash, reset_password_token: null }
                 <span class="card-title">The client's three-state session</span>
                 <p class="card-body">
                   <code>getSnapshot</code> returns one of three
-                  (<code>auth-session-module.ts:95-102</code>):
+                  (<code>auth-session-module.ts:131-141</code>):
                 </p>
                 <div style="display: flex; flex-direction: column; gap: 6px">
                   <div
@@ -14233,7 +14263,7 @@ data:  { password: hash, reset_password_token: null }
                       "
                       >authenticated</strong
                     >
-                    user + access token
+                    access token and user, both
                   </div>
                   <div
                     style="
@@ -14254,8 +14284,8 @@ data:  { password: hash, reset_password_token: null }
                       "
                       >restorable</strong
                     >
-                    user survived localStorage, token didn't — the cookie is
-                    worth trying
+                    only one half survived (user without token, or token
+                    without user) — the cookie is worth trying
                   </div>
                   <div
                     style="
@@ -14279,6 +14309,13 @@ data:  { password: hash, reset_password_token: null }
                     neither
                   </div>
                 </div>
+                <p class="card-body">
+                  Token-without-user happens because, with &ldquo;Remember
+                  me&rdquo; off, the token sits in per-window
+                  <code>sessionStorage</code> while the user sits in shared
+                  <code>localStorage</code>, so a logout in another window
+                  removes only the user (#1134).
+                </p>
                 <p class="card-body">
                   Two guards consume it (<code>guard-orchestration.ts</code>):
                   inbound keeps signed-in users off <code>/login</code>,
@@ -14361,14 +14398,32 @@ data:  { password: hash, reset_password_token: null }
                 </div>
                 <p class="card-body">
                   Single-flight via <code>refreshInFlight</code>
-                  (<code>auth-session-transport-adapter.ts:119</code>), exactly
+                  (<code>auth-session-transport-adapter.ts:125</code>), exactly
                   one retry via <code>_retry</code>
-                  (<code>auth-session-transport-adapter.ts:100</code>), and an
+                  (<code>auth-session-transport-adapter.ts:106</code>), and an
                   exclusion list
-                  (<code>auth-session-transport-adapter.ts:61-64</code>) so a
+                  (<code>auth-session-transport-adapter.ts:67-70</code>) so a
                   401 from <code>/auth/login</code> never starts a refresh loop.
+                  When the server itself refuses the refresh with 401 or 403,
+                  the interceptor clears the stored session and emits a
+                  session-ended signal, reason <code>refresh_rejected</code>
+                  (<code>auth-session-transport-adapter.ts:136-141</code>);
+                  <code>restoreSession</code> does the same
+                  (<code>auth-session-module.ts:159-163</code>). A refresh with
+                  no server answer still clears the session but emits nothing.
+                  A logout in another window arrives as a
+                  <code>storage</code> event, ending this window's session with
+                  reason <code>signed_out_elsewhere</code>
+                  (<code>onSignedOutElsewhere</code>,
+                  <code>auth-session-storage-adapter.ts:125</code>;
+                  <code>onSessionEnded</code>,
+                  <code>auth-session-module.ts:321</code>).
+                  <code>DashboardGuard.tsx:45</code> and
+                  <code>AdminGuard.tsx:57</code> subscribe once the user is let
+                  in, and on the signal stop rendering and
+                  <code>router.replace('/login')</code>.
                   <span class="text-muted"
-                    >auth-session-transport-adapter.ts:88-144</span
+                    >auth-session-transport-adapter.ts:94-160</span
                   >
                 </p>
               </div>
@@ -14574,8 +14629,8 @@ data:  { password: hash, reset_password_token: null }
           id: 'expiry', kicker: 'Scene 6 · ten minutes later', title: 'Two concurrent 401s collapse into one refresh',
           settles: 'Why a burst of stale requests does not stampede.', state: 'authenticated',
           body: 'The access token expires silently; the next two requests both get 401. The interceptor de-duplicates them through a single in-flight promise, retries each original request exactly once, and never refreshes for a 401 that came from an excluded auth path.',
-          code: 'refreshInFlight ??= refresh()   // :119 single-flight\nif (config._retry) throw err    // :100 one retry only\nEXCLUDED = [/auth/login, …]     // :61-64',
-          refs: ['auth-session-transport-adapter.ts:88-144'],
+          code: 'refreshInFlight ??= refresh()   // :125 single-flight\nif (config._retry) throw err    // :106 one retry only\nEXCLUDED = [/auth/login, …]     // :67-70',
+          refs: ['auth-session-transport-adapter.ts:94-160'],
           flow: [{ t: '401 ×2' }, { t: '1 × /auth/refresh', good: true }, { t: 'replay both' }],
           tokens: [
             tok('access', 'access #1', 30, 42, 'expired', 'exp reached — no revocation involved, just time'),
