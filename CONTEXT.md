@@ -591,8 +591,12 @@ The collection of Golden Cases in `tools/config/review-golden-set.json`, replaye
 _Avoid_: golden data, fixture set, regression suite, test suite (for this sense)
 
 **Golden Case**:
-One entry in the Golden Set: a real commit range from this repository's history in which a documented incident merged, together with the pattern an acceptable Finding about it must match — an expectation, not a Finding itself, since recall is judged by matching rather than by identity. Standards are always today's — a case asks whether the current reviewer would catch the defect, not whether the rule existed when the incident merged.
+One entry in the Golden Set: a commit range together with the pattern an acceptable Finding about it must match — an expectation, not a Finding itself, since recall is judged by matching rather than by identity. Most are attributed: a real range from this repository's history in which a documented incident merged. The rest are Seeded Cases. The reviewer is always today's and the standards are always the case head's — a case asks whether the current reviewer, reading the tree as it stood, would catch the defect ([ADR 0102](docs/adr/0102-a-golden-replay-reviews-the-case-tree-with-the-pull-requests-harness.md)). A case that measures the Spec axis reads the spec as the original review saw it, never as it was later edited.
 _Avoid_: test case (for this sense), fixture, incident (alone), golden test
+
+**Seeded Case**:
+A Golden Case whose defect was planted on purpose on top of a real commit, rather than traced to a Pull Request that merged it. It measures whether the reviewer can catch a defect shape, never whether it missed one in real history, so its recall is never pooled with attributed recall.
+_Avoid_: synthetic case, fake defect, mutation (for this sense), injected bug
 
 **Frontier**:
 The Golden Case tier for a case the reviewer misses — the reason to run the replay at all, and where a case stands when five or fewer of its last ten scored runs were catches. It replays weekly when a reviewer input moved, three times a case, and on request ([ADR 0072](docs/adr/0072-a-golden-case-earns-its-replay-frequency.md), [ADR 0109](docs/adr/0109-a-golden-replay-runs-on-a-schedule-and-on-request.md), [ADR 0116](docs/adr/0116-a-golden-case-stands-on-its-catch-rate-over-its-last-ten-scored-runs.md)). A third sense of "tier," distinct from a Gate Tier (chosen before code exists) and a Review Tier (the merge policy a diff earns).
@@ -785,7 +789,7 @@ A fact MyOrganizer publishes by existing — its domains, its app store identity
 _Avoid_: public config, non-secret, branding
 
 **Operator Fingerprint**:
-A fact about where and by whom MyOrganizer is run — host, port, account name, home paths, sibling apps on the account, and the operator's other properties. Never enters the tracked tree. Not a secret: a secret is defeated by a secret store, a Fingerprint only by not writing it down.
+A fact about where and by whom MyOrganizer is run — host, port, account name, home paths, sibling apps on the account, and the operator's other properties. Never enters the tracked tree, and never reaches a public log: on a public repository a workflow's log is published, so a value a step can print is written down. Not a secret: a secret is defeated by a secret store, a Fingerprint only by not writing it down.
 _Avoid_: secret, credential, private config, infra detail
 
 ## Documentation
