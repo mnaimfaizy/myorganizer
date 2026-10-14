@@ -44,13 +44,14 @@ describe('PrivacyPolicyPage', () => {
   });
 
   describe('YouTube Integration disclosure', () => {
-    it('should state the feature is available only to accounts the operator has enabled and is not offered to the public', () => {
+    it('should state the operator offers the feature only to people they personally know and that it is not offered to the public', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(
+      expect(text).toMatch(/offers it only to people they personally know/);
+      expect(text).toMatch(/is not offered to the public/);
+      expect(text).not.toMatch(
         /available only to accounts the operator has enabled/,
       );
-      expect(text).toMatch(/not offered to the public/);
     });
 
     it('should state the feature uses YouTube API Services', () => {

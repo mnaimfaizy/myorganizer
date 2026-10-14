@@ -182,9 +182,13 @@ _Avoid_: Video (as the domain name alone), synced video, YouTube video row
 The binary completion/seen state of a Cached Upload for a User. Reversible by the User; not a viewing-analytics history.
 _Avoid_: Viewed, seen, played, completed
 
+**Watched Ledger**:
+The User's preserved Watched video ids that outlive a YouTube disconnect so reconnecting can restore Watched on matching Cached Uploads. Unused entries expire after the same 30-day window as disabled-channel retention; applied entries are removed when reapplied. Optional wipe on disconnect clears or never writes it. Removed by ADR 0129; the term goes when #1145 ships.
+_Avoid_: watch history, watched archive, viewed ledger, disconnect backup
+
 **YouTube Disconnect**:
 The end of a User's YouTube Connection, by the User's own choice or because a Platform Admin withdrew their YouTube Access. Either way it is immediate and complete: Google is told to revoke the grant, and every Followed Channel, Cached Upload, Watched mark, and digest setting of that User is deleted in the same step. Nothing is kept for a later reconnect. Decided in ADR 0129; until #1145 ships, a disconnect still keeps Watched marks for 30 days.
-_Avoid_: unlink, soft disconnect, Watched Ledger, disconnect backup
+_Avoid_: unlink, soft disconnect, disconnect backup
 
 **New**:
 A Cached Upload that is not Watched.

@@ -16,8 +16,8 @@ export function YouTubePrivacySection({
       <Heading className="text-base font-semibold">YouTube Integration</Heading>
       <p className="mt-3 text-sm text-muted-foreground">
         MyOrganizer has an optional YouTube feature. It is a private feature run
-        personally by the operator: it is available only to accounts the
-        operator has enabled, and it is not offered to the public.
+        personally by the operator, who offers it only to people they personally
+        know; it is not offered to the public.
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
         The feature uses YouTube API Services. If your account has it and you

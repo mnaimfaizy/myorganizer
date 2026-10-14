@@ -36,9 +36,9 @@ export function TermsOfServiceContent({
           has access to the unencrypted contents.
         </p>
         <p className="text-sm text-muted-foreground">
-          MyOrganizer has an optional YouTube feature, available only to
-          accounts the operator has enabled. It uses YouTube API Services and is
-          read-only: it retrieves and displays your subscriptions and their
+          MyOrganizer has an optional YouTube feature, which the operator offers
+          only to people they personally know. It uses YouTube API Services and
+          is read-only: it retrieves and displays your subscriptions and their
           uploads. By using it you agree to be bound by the{' '}
           <a
             href="https://www.youtube.com/t/terms"
