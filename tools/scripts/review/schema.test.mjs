@@ -842,7 +842,7 @@ test('a smell-baseline finding cannot block even with cited evidence', () => {
 });
 
 test('a fingerprint or secret finding cannot be reported below should-fix', () => {
-  // The catalogue's floor, the mirror of its cap (ADR 0130 item 2). The
+  // The catalogue's floor, the mirror of its cap (ADR 0131 item 2). The
   // seeded run of issue #1140 reported a hostname reaching a public log as a
   // nit; the floor rejects that report rather than raising its severity.
   const fingerprint = {

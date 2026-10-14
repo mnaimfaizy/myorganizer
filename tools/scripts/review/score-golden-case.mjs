@@ -12,7 +12,7 @@
 // `--list` prints the case ids (the replay workflow's matrix), optionally
 // narrowed to one tier (ADR 0072); `--show` prints the facts the reviewer
 // prompt needs for one case as JSON, with its pinned spec text as `specText`
-// when its spec is an issue (ADR 0129).
+// when its spec is an issue (ADR 0130).
 //
 // Exit 0 = the case passed: recall at or above its minimum for a pattern
 // case, or no Blocking finding for a clean case (issue #933). Exit 1 = it

@@ -11,7 +11,7 @@
 //      severity cap or floor, that matches nothing. A cap or floor nobody can
 //      compare against passes everything, which is the silent no-op shape
 //      this repo keeps finding; so does a floor above its rule's cap, which
-//      no finding can satisfy (ADR 0130). The same applies to a `cites` path
+//      no finding can satisfy (ADR 0131). The same applies to a `cites` path
 //      that no longer exists: a standards rule is only as good as the
 //      document behind it.
 //   2. The obligation family stops mirroring tools/config/review-obligations.json.

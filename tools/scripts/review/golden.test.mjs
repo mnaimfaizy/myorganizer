@@ -64,7 +64,7 @@ test('a well-formed set passes and the committed set loads', () => {
   assert.ok(committed.cases.length >= 3);
   // Every attributed case names the issue it came from and the pull request
   // that introduced it; a seeded case names the commit it was planted on
-  // (ADR 0129).
+  // (ADR 0130).
   for (const c of committed.cases) {
     assert.match(c.incident, /#\d+/, c.id);
     // A clean case (issue #933) names a merged pull request that introduced
@@ -960,7 +960,7 @@ test('a recorder that is not handed the normalized report is a finding', () => {
   );
 });
 
-// Seeded Cases and pinned spec snapshots (ADR 0129, issue #1140).
+// Seeded Cases and pinned spec snapshots (ADR 0130, issue #1140).
 
 const SNAPSHOT =
   'tools/config/review-golden-specs/1138-at-2026-10-13T06-36-54Z.json';
@@ -1099,7 +1099,7 @@ test('a seeded head is reachable from its golden tag, and a missing tag is a fin
   );
 });
 
-// ADR 0129 item 5: a Spec-axis case replays with the spec text its original
+// ADR 0130 item 5: a Spec-axis case replays with the spec text its original
 // review saw, written from the committed snapshot, and the checkout keeps the
 // history that carries a seeded case's golden tag.
 
@@ -1155,7 +1155,7 @@ test('the real replay workflow writes the pinned spec snapshot', () => {
 });
 
 test('an expectation may name more than one axis, and either copy of the defect scores', () => {
-  // ADR 0130 keeps the Spec copy of an overlapping pair on a tie, so a defect
+  // ADR 0131 keeps the Spec copy of an overlapping pair on a tie, so a defect
   // both axes can raise must not score a miss for which copy survived.
   const either = {
     ...goldenCase,

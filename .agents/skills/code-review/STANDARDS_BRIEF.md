@@ -168,7 +168,7 @@ One axis per defect: when one defect is both a standards violation and a spec mi
 the Spec axis only. You cannot see the other axis's findings, so this is not your call to make:
 report everything you find under your own axis. When it assembles the report, the main agent keeps
 the more severe copy of a doubled finding, and the Spec copy on a tie. PR #819 raised one wrong
-citation anchor on both axes, so the author answered the same defect twice (ADR 0130).
+citation anchor on both axes, so the author answered the same defect twice (ADR 0131).
 
 Rules the validator enforces — a report that breaks one is rejected whole:
 - "ruleId" must be one of the ids in the rule catalogue, and it must be one the
@@ -178,7 +178,7 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 - inferred caps at should-fix. Smell-baseline findings are inferred, and every
   `smell-*` rule caps at should-fix on its own.
 - a rule may also set a floor: a finding under a rule your catalogue marks "Never below
-  should-fix" is rejected at any lower severity (ADR 0130).
+  should-fix" is rejected at any lower severity (ADR 0131).
 - a Spec finding with executed or cited evidence whose `source` is an accepted ADR
   (`docs/adr/NNNN-….md`), anchored as the blocking rule above requires, is blocking:
   the diff leaves a decided requirement unmet, and

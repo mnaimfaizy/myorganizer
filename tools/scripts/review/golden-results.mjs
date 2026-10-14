@@ -362,7 +362,7 @@ export function summarizeRun(group, { seeded = new Set() } = {}) {
   const voided = group.records.filter((r) => r.outcome === 'void').length;
   // A Seeded Case shows the reviewer can catch a defect shape; an attributed
   // one, that it would have caught a defect that shipped. The two are never
-  // pooled (ADR 0129 item 4). A run with no seeded case reads as it always has.
+  // pooled (ADR 0130 item 4). A run with no seeded case reads as it always has.
   const seededRecords = group.records.filter((r) => seeded.has(r.case));
   const counts =
     seededRecords.length === 0

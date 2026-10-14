@@ -275,7 +275,7 @@ jobs:
           # A Spec-axis case reads the spec its original review saw, which
           # --show resolves from the committed specSnapshot as specText, never
           # a live fetch: a later edit to the issue can hand the reviewer the
-          # answer (ADR 0129 item 5). A spec-less case has no specText.
+          # answer (ADR 0130 item 5). A spec-less case has no specText.
           jq '{spec: .spec} + (.specText // {})' <<<"$CASE" > tmp/code-review/spec.json
           echo "replaying $(jq -r .incident <<<"$CASE"): $(jq -r .base <<<"$CASE" | cut -c1-7)...$(jq -r .head <<<"$CASE" | cut -c1-7)"
 

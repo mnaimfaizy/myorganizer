@@ -496,7 +496,7 @@ test('cannot tell is recorded as null, never as false', () => {
     });
 });
 
-// ADR 0129 item 4: a Seeded Case shows the reviewer can catch a defect shape,
+// ADR 0130 item 4: a Seeded Case shows the reviewer can catch a defect shape,
 // an attributed one that it would have caught a defect that shipped. The run
 // tally never pools the two.
 

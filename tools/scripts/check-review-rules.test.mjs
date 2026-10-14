@@ -91,7 +91,7 @@ test('an axis or a severity cap the finding contract does not know is named', ()
 });
 
 test('a severity floor the finding contract does not know, or one above its cap, is named', () => {
-  // ADR 0130 item 2: the floor mirrors the cap, and fails silent the same way.
+  // ADR 0131 item 2: the floor mirrors the cap, and fails silent the same way.
   assert.match(
     compare({ rules: [rule({ minSeverity: 'serious' })] })[0],
     /minSeverity "serious" is not a severity, so the floor can never fire/,

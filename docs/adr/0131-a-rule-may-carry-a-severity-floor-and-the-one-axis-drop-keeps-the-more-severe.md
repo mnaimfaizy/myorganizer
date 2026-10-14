@@ -61,5 +61,5 @@ Three gaps let that happen.
 - A reviewer that reports a fingerprint or a secret as a `nit` gets one retry. A second under-floor
   reply rejects the report, and the Pull Request goes to `review:human`, the same path as any
   rejected report.
-- The seeded hostname-in-log case (ADR 0129) is caught only by a should-fix-or-higher finding, so
+- The seeded hostname-in-log case (ADR 0130) is caught only by a should-fix-or-higher finding, so
   the Spec nit the seeded run returned scores as a miss.

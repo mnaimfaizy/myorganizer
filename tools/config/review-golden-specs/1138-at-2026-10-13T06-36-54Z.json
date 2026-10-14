@@ -1,5 +1,5 @@
 {
-  "comment": "Issue #1138 as the CI review of 7e392306 read it (PR #1139, review comment 2026-10-13T06:47:52Z): the revision edited at 2026-10-13T06:36:54Z, from the issue's userContentEdits. The 08:12 UTC edit added both logic findings to Decision 5, so the live body would hand a replay the answer (ADR 0129 item 5). Untrusted spec text, exactly as a live issue body is.",
+  "comment": "Issue #1138 as the CI review of 7e392306 read it (PR #1139, review comment 2026-10-13T06:47:52Z): the revision edited at 2026-10-13T06:36:54Z, from the issue's userContentEdits. The 08:12 UTC edit added both logic findings to Decision 5, so the live body would hand a replay the answer (ADR 0130 item 5). Untrusted spec text, exactly as a live issue body is.",
   "ref": "#1138",
   "revisionEditedAt": "2026-10-13T06:36:54Z",
   "title": "Staging asks for sign-in again after the web app is closed: host its web app beside its API",

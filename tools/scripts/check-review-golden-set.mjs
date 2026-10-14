@@ -7,7 +7,7 @@
 // Four things rot here and each is checked: the set's shape (ids, SHAs,
 // patterns, minimum recall), the commit ranges (both ends must exist, an
 // attributed head must be reachable from main and a seeded head from its
-// golden/ tag, or the replay reviews nothing — ADR 0129),
+// golden/ tag, or the replay reviews nothing — ADR 0130),
 // and the replay workflow's triggers, which must be the ones ADR 0109 names —
 // a weekly schedule that asks which reviewer inputs moved, the golden-replay
 // Request Label, and dispatch — and never a push to a Pull Request, which
@@ -27,7 +27,7 @@
 // repetition's result apart (ADR 0116).
 // And a Spec-axis case replays with the spec its original review saw: the step
 // writing spec.json reads the case's specSnapshot, and that job's checkout
-// keeps full history so a seeded case's golden tag is in the clone (ADR 0129).
+// keeps full history so a seeded case's golden tag is in the clone (ADR 0130).
 //
 // One direction throughout: the set, the record and the ADRs are the
 // sources, and the workflow is what is held to them.

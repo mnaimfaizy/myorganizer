@@ -274,7 +274,7 @@ Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 004
   finding whose `location.file` and line range overlap a Spec finding's, keep the more severe of the
   two and drop the other; on equal severity, keep the Spec one. Never keep the less severe copy:
   the rule stops one defect being answered twice, and it must not trade a should-fix for a nit
-  ([ADR 0130](../../../docs/adr/0130-a-rule-may-carry-a-severity-floor-and-the-one-axis-drop-keeps-the-more-severe.md)).
+  ([ADR 0131](../../../docs/adr/0131-a-rule-may-carry-a-severity-floor-and-the-one-axis-drop-keeps-the-more-severe.md)).
   The kept finding still goes in field for field. This is the one point in the process where both
   axes' findings are in the same hands, which is why the rule is applied here and not asked of
   either sub-agent (PR #819).
