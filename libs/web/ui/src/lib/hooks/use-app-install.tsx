@@ -19,6 +19,9 @@ const STANDALONE_QUERY = '(display-mode: standalone)';
 let deferredPrompt: BeforeInstallPromptEvent | null = null;
 let promptInFlight = false;
 let captureStarted = false;
+// True once the User cancelled the browser's prompt in this page session. It is
+// cleared when a new prompt is captured or the app is installed (#1129).
+let installDismissed = false;
 const installListeners = new Set<() => void>();
 
 function emitInstallChange(): void {
@@ -101,14 +104,24 @@ function getServerInstallSnapshot(): AppInstallMode {
   return 'unavailable';
 }
 
+function getDismissedSnapshot(): boolean {
+  return installDismissed;
+}
+
+function getServerDismissedSnapshot(): boolean {
+  return false;
+}
+
 function handleBeforeInstallPrompt(event: Event): void {
   event.preventDefault();
   deferredPrompt = event as BeforeInstallPromptEvent;
+  installDismissed = false;
   emitInstallChange();
 }
 
 function handleAppInstalled(): void {
   deferredPrompt = null;
+  installDismissed = false;
   emitInstallChange();
 }
 
@@ -137,7 +150,10 @@ async function installApp(): Promise<void> {
   promptInFlight = true;
   try {
     await event.prompt();
-    await event.userChoice;
+    const choice = await event.userChoice;
+    if (choice.outcome === 'dismissed') {
+      installDismissed = true;
+    }
   } catch {
     // The browser refused or abandoned the prompt. The event can prompt only
     // once, so it is spent whichever way this ends.
@@ -151,10 +167,13 @@ async function installApp(): Promise<void> {
 /**
  * How this browser can install the app right now, and a way to start the
  * install. `mode` is `'unavailable'` when the app is already installed, or
- * when the browser offers no install path.
+ * when the browser offers no install path. `dismissed` is true when the User
+ * cancelled the browser's install prompt in this page session; an accepted
+ * prompt never sets it.
  */
 export function useAppInstall(): {
   mode: AppInstallMode;
+  dismissed: boolean;
   install: () => Promise<void>;
 } {
   const mode = React.useSyncExternalStore(
@@ -162,7 +181,12 @@ export function useAppInstall(): {
     getInstallSnapshot,
     getServerInstallSnapshot,
   );
-  return { mode, install: installApp };
+  const dismissed = React.useSyncExternalStore(
+    subscribeInstall,
+    getDismissedSnapshot,
+    getServerDismissedSnapshot,
+  );
+  return { mode, dismissed, install: installApp };
 }
 
 // Runs at module load, not on mount. The browser's beforeinstallprompt can

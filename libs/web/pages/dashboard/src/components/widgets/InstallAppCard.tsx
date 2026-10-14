@@ -17,6 +17,8 @@ export function InstallAppCard() {
   const { mode, install } = useAppInstall();
   const { dismissed, dismiss } = useInstallCardDismissed();
 
+  // A cancelled prompt also hides the card until the next load. This is
+  // deliberate (#1129); the Account section keeps the way back in.
   if (mode === 'unavailable' || dismissed) {
     return null;
   }

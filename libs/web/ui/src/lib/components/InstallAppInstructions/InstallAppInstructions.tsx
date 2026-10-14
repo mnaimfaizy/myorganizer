@@ -33,12 +33,19 @@ const SAFARI_STEPS = {
           <Share
             aria-hidden="true"
             className="inline h-4 w-4 align-text-bottom"
-          />{' '}
-          in Safari&apos;s toolbar.
+          />
+          . If it isn&apos;t in Safari&apos;s toolbar, tap{' '}
+          <span aria-hidden="true">•••</span>
+          <span className="sr-only">the More button</span> first.
         </>
       ),
     },
-    { id: 'add-to-home-screen', content: 'Choose Add to Home Screen.' },
+    {
+      id: 'add-to-home-screen',
+      content: (
+        <>Choose Add to Home Screen. If it isn&apos;t listed, tap More first.</>
+      ),
+    },
   ],
   'mac-safari': [
     { id: 'file-menu', content: "Open the File menu in Safari's menu bar." },
@@ -50,6 +57,7 @@ const InstallAppInstructions = React.forwardRef<
   HTMLDivElement,
   InstallAppInstructionsProps
 >(({ mode, onInstall, className }, ref) => {
+  // Product copy stays in this primitive, not props, by design (#1125).
   if (mode === 'prompt') {
     return (
       <div ref={ref} className={cn('space-y-4', className)}>
@@ -57,7 +65,7 @@ const InstallAppInstructions = React.forwardRef<
           Install MyOrganiser on this device for quicker access, in its own
           window.
         </p>
-        <Button onClick={onInstall}>Install app</Button>
+        <Button onClick={onInstall}>Install MyOrganiser</Button>
       </div>
     );
   }
@@ -71,7 +79,7 @@ const InstallAppInstructions = React.forwardRef<
       </ol>
       <p className="text-xs text-muted-foreground">
         You&apos;ll sign in and unlock your vault again inside the installed
-        app.
+        MyOrganiser.
       </p>
     </div>
   );

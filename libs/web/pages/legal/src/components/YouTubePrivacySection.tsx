@@ -1,9 +1,19 @@
 import Link from 'next/link';
 
-export function YouTubePrivacySection() {
+export interface YouTubePrivacySectionProps {
+  /** Heading level of the host document: h2 on the standalone page, h3 inside a dialog. */
+  headingLevel?: 'h2' | 'h3';
+  /** Set to '_blank' inside the Sign up dialog so in-document links keep the form mounted. */
+  linkTarget?: '_blank';
+}
+
+export function YouTubePrivacySection({
+  headingLevel: Heading = 'h2',
+  linkTarget,
+}: YouTubePrivacySectionProps) {
   return (
     <section className="mt-6">
-      <h2 className="text-base font-semibold">YouTube Integration</h2>
+      <Heading className="text-base font-semibold">YouTube Integration</Heading>
       <p className="mt-3 text-sm text-muted-foreground">
         MyOrganizer has an optional YouTube feature. It is a private feature run
         personally by the operator: it is available only to accounts the
@@ -83,6 +93,8 @@ export function YouTubePrivacySection() {
         and how to request deletion, see our{' '}
         <Link
           href="/youtube/data-privacy"
+          target={linkTarget}
+          rel={linkTarget ? 'noopener noreferrer' : undefined}
           className="font-medium underline hover:text-foreground"
         >
           YouTube Data Privacy page

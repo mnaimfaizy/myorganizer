@@ -1,3 +1,4 @@
+import { LegalOperatorProvider } from '@myorganizer/web-pages/legal';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
@@ -10,5 +11,12 @@ export default function SignUpLayout({
 }: {
   children: React.ReactNode;
 }) {
-  return children;
+  return (
+    <LegalOperatorProvider
+      name={process.env.OPERATOR_NAME}
+      email={process.env.OPERATOR_CONTACT_EMAIL}
+    >
+      {children}
+    </LegalOperatorProvider>
+  );
 }

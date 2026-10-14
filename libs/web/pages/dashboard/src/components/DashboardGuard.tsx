@@ -1,6 +1,10 @@
 'use client';
 
-import { authSession, resolveOutboundGuard } from '@myorganizer/auth';
+import {
+  authSession,
+  onSessionEnded,
+  resolveOutboundGuard,
+} from '@myorganizer/auth';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 
@@ -31,6 +35,18 @@ export default function DashboardGuard(props: DashboardGuardProps) {
       cancelled = true;
     };
   }, [router]);
+
+  // The initial decision above runs once. Once children are rendered, a Session
+  // ended by a refused refresh or by another window signing out must stop the
+  // shell rendering before the router navigates away.
+  useEffect(() => {
+    if (!ready) return undefined;
+
+    return onSessionEnded(() => {
+      setReady(false);
+      router.replace('/login');
+    });
+  }, [ready, router]);
 
   if (!ready) return null;
 

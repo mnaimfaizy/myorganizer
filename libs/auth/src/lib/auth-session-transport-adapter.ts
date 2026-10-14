@@ -8,6 +8,10 @@ import {
   buildRefreshTokenRequest,
   shouldSendCredentials,
 } from './refresh-client-contract';
+import {
+  isRefreshRejectedByServer,
+  type SessionEndedSignal,
+} from './session-ended-signal';
 
 export interface AuthSessionTransportAdapter {
   getAuthAxios(): AxiosInstance;
@@ -51,7 +55,9 @@ function setAuthorizationHeader(
 
 export function createAuthSessionTransportAdapter(
   storage: AuthSessionStorageAdapter,
+  options: { sessionEnded?: SessionEndedSignal } = {},
 ): AuthSessionTransportAdapter {
+  const { sessionEnded } = options;
   let sharedAxios: AxiosInstance | null = null;
   let refreshInFlight: Promise<AuthSessionData> | null = null;
 
@@ -122,8 +128,18 @@ export function createAuthSessionTransportAdapter(
           refreshed = await refreshInFlight;
           refreshInFlight = null;
         } catch (refreshErr) {
+          // Every request that waited on one refresh lands here with the same
+          // error; only the one that still finds it in flight reports it, so
+          // a burst of 401s ends the Session once.
+          const firstToSeeFailure = refreshInFlight !== null;
           refreshInFlight = null;
           storage.clearSession();
+          // Signalled only for a refusal by the server. A refresh that never
+          // got an answer still clears above, as it always has (#1082), but
+          // it does not announce that the Session ended.
+          if (firstToSeeFailure && isRefreshRejectedByServer(refreshErr)) {
+            sessionEnded?.emit({ reason: 'refresh_rejected' });
+          }
           return Promise.reject(refreshErr);
         }
 

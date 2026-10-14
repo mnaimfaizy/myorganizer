@@ -216,9 +216,10 @@ describe('useAppInstall', () => {
       });
 
       expect(result.current.mode).toBe('unavailable');
+      expect(result.current.dismissed).toBe(false);
     });
 
-    it('should call the held prompt once and report unavailable when the user dismisses it', async () => {
+    it('should call the held prompt once and report unavailable and dismissed when the user dismisses it', async () => {
       await loadFreshModules();
       const event = createPromptEvent({
         userChoice: Promise.resolve({ outcome: 'dismissed', platform: 'web' }),
@@ -232,6 +233,7 @@ describe('useAppInstall', () => {
 
       expect(event.prompt).toHaveBeenCalledTimes(1);
       expect(result.current.mode).toBe('unavailable');
+      expect(result.current.dismissed).toBe(true);
     });
 
     it('should resolve without throwing and leave the mode unchanged when install is called with no held prompt', async () => {
@@ -448,6 +450,54 @@ describe('useAppInstall', () => {
       const { result } = renderHook(() => hook.useAppInstall());
 
       expect(result.current.mode).toBe('unavailable');
+    });
+  });
+
+  describe('dismissal', () => {
+    async function dismissHeldPrompt() {
+      await loadFreshModules();
+      dispatchWindowEvent(
+        createPromptEvent({
+          userChoice: Promise.resolve({
+            outcome: 'dismissed',
+            platform: 'web',
+          }),
+        }),
+      );
+      const consumer = renderHook(() => hook.useAppInstall());
+      await reactLib.act(async () => {
+        await consumer.result.current.install();
+      });
+      return consumer;
+    }
+
+    it('should clear the dismissal and offer the prompt again when a new beforeinstallprompt fires', async () => {
+      const { result } = await dismissHeldPrompt();
+      expect(result.current.dismissed).toBe(true);
+
+      dispatchWindowEvent(createPromptEvent());
+
+      expect(result.current.dismissed).toBe(false);
+      expect(result.current.mode).toBe('prompt');
+    });
+
+    it('should clear the dismissal when the browser reports appinstalled', async () => {
+      const { result } = await dismissHeldPrompt();
+      expect(result.current.dismissed).toBe(true);
+
+      dispatchWindowEvent(new Event('appinstalled'));
+
+      expect(result.current.dismissed).toBe(false);
+      expect(result.current.mode).toBe('unavailable');
+    });
+
+    it('should report the dismissal to a consumer mounted after the prompt was dismissed', async () => {
+      await dismissHeldPrompt();
+
+      const late = renderHook(() => hook.useAppInstall());
+
+      expect(late.result.current.dismissed).toBe(true);
+      expect(late.result.current.mode).toBe('unavailable');
     });
   });
 

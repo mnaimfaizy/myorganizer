@@ -3,6 +3,7 @@
 import {
   authSession,
   getCurrentUser,
+  onSessionEnded,
   resolveOutboundGuard,
 } from '@myorganizer/auth';
 import { useRouter } from 'next/navigation';
@@ -46,6 +47,18 @@ export default function AdminGuard({ children }: AdminGuardProps) {
       cancelled = true;
     };
   }, [router]);
+
+  // The initial decision above runs once. Once children are rendered, a Session
+  // ended by a refused refresh or by another window signing out must stop the
+  // shell rendering before the router navigates away.
+  useEffect(() => {
+    if (!ready) return undefined;
+
+    return onSessionEnded(() => {
+      setReady(false);
+      router.replace('/login');
+    });
+  }, [ready, router]);
 
   if (!ready) return null;
 

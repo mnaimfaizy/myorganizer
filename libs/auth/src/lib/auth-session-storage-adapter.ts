@@ -8,6 +8,14 @@ export interface AuthSessionStorageAdapter {
   getCurrentUser(): AuthUser | undefined;
   setCurrentUser(user: AuthUser | null): void;
   clearSession(): void;
+  /**
+   * Watch for another window of the same browser signing out, and return the
+   * function that stops watching.
+   *
+   * Optional because only a storage shared between windows can observe it: an
+   * adapter with a single owner (a native app, an in-memory fake) omits it.
+   */
+  onSignedOutElsewhere?(listener: () => void): () => void;
 }
 
 const ACCESS_TOKEN_KEY = 'myorganizer_access_token';
@@ -16,6 +24,20 @@ const TOKEN_STORAGE_KEY = 'myorganizer_token_storage';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';
+}
+
+/**
+ * Whether this runtime can deliver `storage` events.
+ *
+ * Checks the capability itself rather than `typeof window`: React Native sets
+ * `global.window = global`, so `window` exists there and cannot listen.
+ */
+function canListenForStorageEvents(): boolean {
+  return (
+    isBrowser() &&
+    typeof window.addEventListener === 'function' &&
+    typeof window.removeEventListener === 'function'
+  );
 }
 
 function getPreferredTokenStorageMode(): TokenStorageMode {
@@ -98,6 +120,30 @@ export function createBrowserAuthSessionStorageAdapter(): AuthSessionStorageAdap
     clearSession() {
       this.setAccessToken(null);
       this.setCurrentUser(null);
+    },
+
+    onSignedOutElsewhere(listener: () => void): () => void {
+      if (!canListenForStorageEvents()) {
+        return () => undefined;
+      }
+
+      // The browser delivers `storage` only to the *other* windows of an
+      // origin, so this never fires for a removal this window made itself.
+      const handleStorage = (event: StorageEvent) => {
+        if (event.storageArea !== window.localStorage) return;
+        // A null key is `localStorage.clear()`, which removes the user too.
+        if (event.key !== USER_KEY && event.key !== null) return;
+        if (event.newValue !== null) return;
+        // Read the store, not the event: a sign-in that followed the removal
+        // has already put a user back, and that Session is not one to end.
+        if (window.localStorage.getItem(USER_KEY) !== null) return;
+        listener();
+      };
+
+      window.addEventListener('storage', handleStorage);
+      return () => {
+        window.removeEventListener('storage', handleStorage);
+      };
     },
   };
 }

@@ -23,7 +23,8 @@ const MAC_SAFARI_17_UA =
 const STANDALONE_QUERY = '(display-mode: standalone)';
 const DISMISSED_KEY = 'myorganizer.install-card.dismissed.v1';
 const IOS_SENTENCE =
-  "You'll sign in and unlock your vault again inside the installed app.";
+  "You'll sign in and unlock your vault again inside the installed MyOrganiser.";
+const REVERT_HINT = "To install, reload this page, or use your browser's menu.";
 
 let runningInstalled = false;
 let loadedRtl: Rtl | null = null;
@@ -54,13 +55,16 @@ async function mountSection(): Promise<Rtl> {
   return rtl;
 }
 
-function dispatchInstallPrompt(rtl: Rtl): jest.Mock<Promise<void>, []> {
+function dispatchInstallPrompt(
+  rtl: Rtl,
+  outcome: 'accepted' | 'dismissed' = 'dismissed',
+): jest.Mock<Promise<void>, []> {
   const prompt = jest.fn<Promise<void>, []>().mockResolvedValue(undefined);
   const event = Object.assign(
     new Event('beforeinstallprompt', { cancelable: true }),
     {
       prompt,
-      userChoice: Promise.resolve({ outcome: 'dismissed', platform: 'web' }),
+      userChoice: Promise.resolve({ outcome, platform: 'web' }),
     },
   );
   rtl.act(() => {
@@ -84,14 +88,14 @@ describe('InstallAppSection', () => {
     localStorage.clear();
   });
 
-  it('should show the Install the app section with the iOS steps and vault sign-in note on iOS Safari', async () => {
+  it('should show the Install MyOrganiser section with the iOS steps and vault sign-in note on iOS Safari', async () => {
     setUserAgent(IPHONE_SAFARI_UA);
 
     const rtl = await mountSection();
 
     const section = rtl.screen.getByTestId('install-app-section');
     expect(
-      rtl.within(section).getByText('Install the app'),
+      rtl.within(section).getByText('Install MyOrganiser'),
     ).toBeInTheDocument();
 
     const steps = rtl
@@ -99,11 +103,17 @@ describe('InstallAppSection', () => {
       .getAllByRole('listitem')
       .map((item) => item.textContent);
     expect(steps).toHaveLength(2);
-    expect(steps[0]).toMatch(/^Tap the Share button\s+in Safari's toolbar\.$/);
-    expect(steps[1]).toBe('Choose Add to Home Screen.');
+    expect(steps[0]).toMatch(
+      /^Tap the Share button\s*\.\s*If it isn't in Safari's toolbar, tap\s*•••\s*the More button first\.$/,
+    );
+    expect(steps[1]).toBe(
+      "Choose Add to Home Screen. If it isn't listed, tap More first.",
+    );
     expect(rtl.within(section).getByText(IOS_SENTENCE)).toBeInTheDocument();
     expect(
-      rtl.within(section).queryByRole('button', { name: 'Install app' }),
+      rtl
+        .within(section)
+        .queryByRole('button', { name: 'Install MyOrganiser' }),
     ).not.toBeInTheDocument();
   });
 
@@ -114,7 +124,7 @@ describe('InstallAppSection', () => {
 
     const section = rtl.screen.getByTestId('install-app-section');
     expect(
-      rtl.within(section).getByText('Install the app'),
+      rtl.within(section).getByText('Install MyOrganiser'),
     ).toBeInTheDocument();
 
     const steps = rtl
@@ -127,11 +137,13 @@ describe('InstallAppSection', () => {
     ]);
     expect(rtl.within(section).getByText(IOS_SENTENCE)).toBeInTheDocument();
     expect(
-      rtl.within(section).queryByRole('button', { name: 'Install app' }),
+      rtl
+        .within(section)
+        .queryByRole('button', { name: 'Install MyOrganiser' }),
     ).not.toBeInTheDocument();
   });
 
-  it('should show an Install app button on Chromium once the install prompt is held', async () => {
+  it('should show an Install MyOrganiser button on Chromium once the install prompt is held', async () => {
     setUserAgent(DESKTOP_CHROME_UA);
     const rtl = await mountSection();
     expect(
@@ -142,18 +154,18 @@ describe('InstallAppSection', () => {
 
     const section = rtl.screen.getByTestId('install-app-section');
     expect(
-      rtl.within(section).getByRole('button', { name: 'Install app' }),
+      rtl.within(section).getByRole('button', { name: 'Install MyOrganiser' }),
     ).toBeInTheDocument();
   });
 
-  it('should call the held install prompt once when Install app is clicked', async () => {
+  it('should call the held install prompt once when Install MyOrganiser is clicked', async () => {
     setUserAgent(DESKTOP_CHROME_UA);
     const rtl = await mountSection();
     const prompt = dispatchInstallPrompt(rtl);
 
     await rtl.act(async () => {
       rtl.fireEvent.click(
-        rtl.screen.getByRole('button', { name: 'Install app' }),
+        rtl.screen.getByRole('button', { name: 'Install MyOrganiser' }),
       );
     });
 
@@ -189,5 +201,50 @@ describe('InstallAppSection', () => {
 
     const section = rtl.screen.getByTestId('install-app-section');
     expect(rtl.within(section).getByText(IOS_SENTENCE)).toBeInTheDocument();
+  });
+
+  it('should keep the section with the reload hint and no install button once the prompt is dismissed', async () => {
+    setUserAgent(DESKTOP_CHROME_UA);
+    const rtl = await mountSection();
+    dispatchInstallPrompt(rtl, 'dismissed');
+
+    await rtl.act(async () => {
+      rtl.fireEvent.click(
+        rtl.screen.getByRole('button', { name: 'Install MyOrganiser' }),
+      );
+    });
+
+    await rtl.waitFor(() => {
+      const section = rtl.screen.getByTestId('install-app-section');
+      expect(rtl.within(section).getByText(REVERT_HINT)).toBeInTheDocument();
+    });
+    const section = rtl.screen.getByTestId('install-app-section');
+    expect(
+      rtl.within(section).getByText('Install MyOrganiser'),
+    ).toBeInTheDocument();
+    expect(
+      rtl
+        .within(section)
+        .queryByRole('button', { name: 'Install MyOrganiser' }),
+    ).not.toBeInTheDocument();
+  });
+
+  it('should remove the section once the install prompt is accepted', async () => {
+    setUserAgent(DESKTOP_CHROME_UA);
+    const rtl = await mountSection();
+    dispatchInstallPrompt(rtl, 'accepted');
+    expect(rtl.screen.getByTestId('install-app-section')).toBeInTheDocument();
+
+    await rtl.act(async () => {
+      rtl.fireEvent.click(
+        rtl.screen.getByRole('button', { name: 'Install MyOrganiser' }),
+      );
+    });
+
+    await rtl.waitFor(() => {
+      expect(
+        rtl.screen.queryByTestId('install-app-section'),
+      ).not.toBeInTheDocument();
+    });
   });
 });
