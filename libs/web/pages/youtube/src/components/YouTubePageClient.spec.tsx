@@ -118,6 +118,12 @@ jest.mock('../hooks', () => {
     useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
     useVideoQueue: () => mockUseVideoQueue(),
     useChannelUploads: () => mockUseChannelUploads(),
+    useYouTubeAcknowledgement: () => ({
+      acknowledged: true,
+      loading: false,
+      error: null,
+      accept: jest.fn(),
+    }),
     YouTubeRequestError,
     isRetryCooldownActive: (retryAt?: string | null) =>
       Boolean(retryAt && Date.parse(retryAt) > Date.now()),

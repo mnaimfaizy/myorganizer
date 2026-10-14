@@ -16,6 +16,7 @@ type MockPrismaClient = {
   user: {
     findUnique: AsyncMock;
     update: AsyncMock;
+    updateMany: AsyncMock;
     count: CountMock;
   };
   adminAuditLog: {
@@ -31,6 +32,7 @@ jest.mock('../prisma', () => {
     user: {
       findUnique: jest.fn(),
       update: jest.fn(),
+      updateMany: jest.fn(),
       count: jest.fn(),
     },
     adminAuditLog: {
@@ -330,6 +332,9 @@ describe('UserService lifecycle', () => {
         },
         select: expect.objectContaining({ youtube_access: true }),
       });
+      expect(
+        (mockPrisma.user.update.mock.calls[0][0] as { data: object }).data,
+      ).not.toHaveProperty('youtube_acknowledged_at');
       expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith({
         data: {
@@ -407,6 +412,9 @@ describe('UserService lifecycle', () => {
         data: { youtube_access: false },
         select: expect.objectContaining({ youtube_access: true }),
       });
+      expect(
+        (mockPrisma.user.update.mock.calls[0][0] as { data: object }).data,
+      ).not.toHaveProperty('youtube_acknowledged_at');
       expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledTimes(1);
       expect(mockPrisma.adminAuditLog.create).toHaveBeenCalledWith({
         data: {
@@ -449,6 +457,68 @@ describe('UserService lifecycle', () => {
       expect(mockPrisma.user.count).toHaveBeenCalledWith({
         where: { youtube_access_first_granted_at: { not: null } },
       });
+    });
+  });
+
+  describe('YouTube acknowledgement (ADR 0129)', () => {
+    const FIRST_ACKNOWLEDGED_AT = new Date('2026-10-01T09:30:00.000Z');
+
+    test('getYouTubeAcknowledgedAt returns the stored time', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue({
+        youtube_acknowledged_at: FIRST_ACKNOWLEDGED_AT,
+      });
+
+      const acknowledgedAt =
+        await userService.getYouTubeAcknowledgedAt(TARGET_ID);
+
+      expect(acknowledgedAt).toEqual(FIRST_ACKNOWLEDGED_AT);
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: TARGET_ID },
+        select: { youtube_acknowledged_at: true },
+      });
+    });
+
+    test('acknowledgeYouTube stores the time when none is stored and returns the stored value', async () => {
+      // The write lands, then the stored time is read back.
+      mockPrisma.user.findUnique.mockResolvedValue({
+        youtube_acknowledged_at: FIRST_ACKNOWLEDGED_AT,
+      });
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 1 });
+
+      const acknowledgedAt = await userService.acknowledgeYouTube(TARGET_ID);
+
+      expect(acknowledgedAt).toEqual(FIRST_ACKNOWLEDGED_AT);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: TARGET_ID, youtube_acknowledged_at: null },
+        data: { youtube_acknowledged_at: expect.any(Date) },
+      });
+    });
+
+    test('acknowledgeYouTube guards the write with a null where clause and returns the stored time', async () => {
+      // The null guard in the where clause makes the database skip the write
+      // (count 0); the stored time is what comes back.
+      mockPrisma.user.findUnique.mockResolvedValue({
+        youtube_acknowledged_at: FIRST_ACKNOWLEDGED_AT,
+      });
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+      const acknowledgedAt = await userService.acknowledgeYouTube(TARGET_ID);
+
+      expect(acknowledgedAt).toEqual(FIRST_ACKNOWLEDGED_AT);
+      expect(mockPrisma.user.updateMany).toHaveBeenCalledWith({
+        where: { id: TARGET_ID, youtube_acknowledged_at: null },
+        data: { youtube_acknowledged_at: expect.any(Date) },
+      });
+    });
+
+    test('acknowledgeYouTube returns null when the User is missing', async () => {
+      mockPrisma.user.findUnique.mockResolvedValue(null);
+      mockPrisma.user.updateMany.mockResolvedValue({ count: 0 });
+
+      await expect(
+        userService.acknowledgeYouTube(TARGET_ID),
+      ).resolves.toBeNull();
     });
   });
 

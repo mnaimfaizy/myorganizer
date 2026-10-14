@@ -6,12 +6,15 @@ components:
   requestBodies: {}
   responses: {}
   schemas:
-    AuthUrlResponse:
+    YouTubeAcknowledgementResponse:
       properties:
-        url:
+        acknowledgedAt:
           type: string
+          nullable: true
+          description: ISO time the User accepted the one-time acknowledgement, or null
+            (ADR 0129).
       required:
-        - url
+        - acknowledgedAt
       type: object
       additionalProperties: false
     YouTubeErrorResponse:
@@ -21,6 +24,28 @@ components:
       required:
         - message
       type: object
+    AuthUrlResponse:
+      properties:
+        url:
+          type: string
+      required:
+        - url
+      type: object
+      additionalProperties: false
+    AcknowledgementRequiredResponse:
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum:
+            - acknowledgement_required
+          nullable: false
+      required:
+        - message
+        - code
+      type: object
+      additionalProperties: false
     StatusResponse:
       properties:
         connected:
@@ -1065,6 +1090,49 @@ info:
     name: Elastic-2.0
   contact: {}
 paths:
+  /youtube/acknowledgement:
+    get:
+      operationId: GetAcknowledgement
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YouTubeAcknowledgementResponse"
+      description: >-
+        Returns the one-time YouTube acknowledgement state for the signed-in
+        User
+
+        (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+      tags:
+        - YouTube
+      security:
+        - jwt:
+            - youtube_access
+      parameters: []
+    post:
+      operationId: AcceptAcknowledgement
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/YouTubeAcknowledgementResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+      description: >-
+        Records the signed-in User's one-time YouTube acknowledgement (ADR
+        0129).
+
+        The first accepted time is kept: calling again returns it unchanged.
+      tags:
+        - YouTube
+      security:
+        - jwt:
+            - youtube_access
+      parameters: []
   /youtube/auth-url:
     get:
       operationId: GetAuthUrl
@@ -1076,8 +1144,19 @@ paths:
               schema:
                 anyOf:
                   - $ref: "#/components/schemas/AuthUrlResponse"
+                  - $ref: "#/components/schemas/AcknowledgementRequiredResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
-      description: Returns the Google OAuth consent URL for linking YouTube.
+        "409":
+          description: The YouTube acknowledgement has not been accepted yet.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcknowledgementRequiredResponse"
+      description: >-
+        Returns the Google OAuth consent URL for linking YouTube. Refused with
+        409
+
+        until the User has stored the one-time acknowledgement (ADR 0129).
       tags:
         - YouTube
       security:

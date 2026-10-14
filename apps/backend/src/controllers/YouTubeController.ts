@@ -10,12 +10,14 @@ import {
   Put,
   Query,
   Request,
+  Response,
   Route,
   Security,
   Tags,
 } from 'tsoa';
 import { isYouTubeAvailable } from '../config/youtube';
 import { getAuthenticatedUser, requireUserId } from '../guards/AuthGuard';
+import userService from '../services/UserService';
 import youTubeDigestService from '../services/YouTubeDigestService';
 import youTubeSyncWorkerService from '../services/YouTubeSyncWorkerService';
 import youtubeSyncService, {
@@ -32,6 +34,16 @@ type YouTubeErrorResponse = { message: string };
 
 interface AuthUrlResponse {
   url: string;
+}
+
+interface YouTubeAcknowledgementResponse {
+  /** ISO time the User accepted the one-time acknowledgement, or null (ADR 0129). */
+  acknowledgedAt: string | null;
+}
+
+interface AcknowledgementRequiredResponse {
+  message: string;
+  code: 'acknowledgement_required';
 }
 
 interface StatusResponse {
@@ -260,14 +272,61 @@ function toSyncResponse(result: YouTubeRefreshResult): SyncResponse {
 @Route('/youtube')
 export class YouTubeController extends Controller {
   /**
-   * Returns the Google OAuth consent URL for linking YouTube.
+   * Returns the one-time YouTube acknowledgement state for the signed-in User
+   * (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+   */
+  @Get('/acknowledgement')
+  @Security('jwt', ['youtube_access'])
+  public async getAcknowledgement(
+    @Request() req: ExRequest,
+  ): Promise<YouTubeAcknowledgementResponse> {
+    const userId = requireUserId(req);
+    const acknowledgedAt = await userService.getYouTubeAcknowledgedAt(userId);
+    return { acknowledgedAt: acknowledgedAt?.toISOString() ?? null };
+  }
+
+  /**
+   * Records the signed-in User's one-time YouTube acknowledgement (ADR 0129).
+   * The first accepted time is kept: calling again returns it unchanged.
+   */
+  @Post('/acknowledgement')
+  @Security('jwt', ['youtube_access'])
+  public async acceptAcknowledgement(
+    @Request() req: ExRequest,
+  ): Promise<YouTubeAcknowledgementResponse | YouTubeErrorResponse> {
+    const userId = requireUserId(req);
+    const acknowledgedAt = await userService.acknowledgeYouTube(userId);
+    if (acknowledgedAt === null) {
+      this.setStatus(404);
+      return { message: 'User not found' };
+    }
+    return { acknowledgedAt: acknowledgedAt.toISOString() };
+  }
+
+  /**
+   * Returns the Google OAuth consent URL for linking YouTube. Refused with 409
+   * until the User has stored the one-time acknowledgement (ADR 0129).
    */
   @Get('/auth-url')
   @Security('jwt', ['youtube_access'])
+  @Response<AcknowledgementRequiredResponse>(
+    409,
+    'The YouTube acknowledgement has not been accepted yet.',
+  )
   public async getAuthUrl(
     @Request() req: ExRequest,
-  ): Promise<AuthUrlResponse | YouTubeErrorResponse> {
+  ): Promise<
+    AuthUrlResponse | AcknowledgementRequiredResponse | YouTubeErrorResponse
+  > {
     const userId = requireUserId(req);
+    const acknowledgedAt = await userService.getYouTubeAcknowledgedAt(userId);
+    if (acknowledgedAt === null) {
+      this.setStatus(409);
+      return {
+        message: 'Accept the YouTube acknowledgement before connecting.',
+        code: 'acknowledgement_required',
+      };
+    }
     const url = youtubeSyncService.getAuthUrl(userId);
     return { url };
   }

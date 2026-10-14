@@ -23,6 +23,24 @@ import type { RequestArgs } from './base';
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS, BaseAPI, RequiredError, operationServerMap } from './base';
 
+export interface AcceptAcknowledgement200Response {
+    /**
+     * ISO time the User accepted the one-time acknowledgement, or null (ADR 0129).
+     */
+    'acknowledgedAt': string | null;
+    'message': string;
+}
+export interface AcknowledgementRequiredResponse {
+    'message': string;
+    'code': AcknowledgementRequiredResponseCodeEnum;
+}
+
+export const AcknowledgementRequiredResponseCodeEnum = {
+    AcknowledgementRequired: 'acknowledgement_required',
+} as const;
+
+export type AcknowledgementRequiredResponseCodeEnum = typeof AcknowledgementRequiredResponseCodeEnum[keyof typeof AcknowledgementRequiredResponseCodeEnum];
+
 
 export const AdminAuditAction = {
     Disable: 'disable',
@@ -206,7 +224,15 @@ export interface FilteredUserInterface {
 export interface GetAuthUrl200Response {
     'url': string;
     'message': string;
+    'code': GetAuthUrl200ResponseCodeEnum;
 }
+
+export const GetAuthUrl200ResponseCodeEnum = {
+    AcknowledgementRequired: 'acknowledgement_required',
+} as const;
+
+export type GetAuthUrl200ResponseCodeEnum = typeof GetAuthUrl200ResponseCodeEnum[keyof typeof GetAuthUrl200ResponseCodeEnum];
+
 export interface GetConnectionStatus200Response {
     'connected': boolean;
     'status': string;
@@ -758,6 +784,12 @@ export interface YouTubeAccessResponse {
 export interface YouTubeAccessUsageResponse {
     'everGranted': number;
     'ceiling': number;
+}
+export interface YouTubeAcknowledgementResponse {
+    /**
+     * ISO time the User accepted the one-time acknowledgement, or null (ADR 0129).
+     */
+    'acknowledgedAt': string | null;
 }
 export interface YouTubeAvailabilityResponse {
     'available': boolean;
@@ -3251,6 +3283,39 @@ export class VaultBackupsApi extends BaseAPI {
 export const YouTubeApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
+         * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        acceptAcknowledgement: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/acknowledgement`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3381,7 +3446,40 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
-         * Returns the Google OAuth consent URL for linking YouTube.
+         * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAcknowledgement: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/acknowledgement`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -3940,6 +4038,17 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = YouTubeApiAxiosParamCreator(configuration)
     return {
         /**
+         * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async acceptAcknowledgement(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AcceptAcknowledgement200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.acceptAcknowledgement(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.acceptAcknowledgement']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3984,7 +4093,18 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Returns the Google OAuth consent URL for linking YouTube.
+         * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getAcknowledgement(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<YouTubeAcknowledgementResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getAcknowledgement(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getAcknowledgement']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4171,6 +4291,14 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
     const localVarFp = YouTubeApiFp(configuration)
     return {
         /**
+         * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        acceptAcknowledgement(options?: RawAxiosRequestConfig): AxiosPromise<AcceptAcknowledgement200Response> {
+            return localVarFp.acceptAcknowledgement(options).then((request) => request(axios, basePath));
+        },
+        /**
          * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4203,7 +4331,15 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.getAccess(options).then((request) => request(axios, basePath));
         },
         /**
-         * Returns the Google OAuth consent URL for linking YouTube.
+         * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAcknowledgement(options?: RawAxiosRequestConfig): AxiosPromise<YouTubeAcknowledgementResponse> {
+            return localVarFp.getAcknowledgement(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4407,6 +4543,15 @@ export interface YouTubeApiUpdateNotificationSettingsRequest {
  */
 export class YouTubeApi extends BaseAPI {
     /**
+     * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public acceptAcknowledgement(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).acceptAcknowledgement(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4443,7 +4588,16 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
-     * Returns the Google OAuth consent URL for linking YouTube.
+     * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getAcknowledgement(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getAcknowledgement(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */

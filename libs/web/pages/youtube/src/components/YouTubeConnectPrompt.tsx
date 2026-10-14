@@ -1,7 +1,21 @@
 'use client';
 
-import { Button } from '@myorganizer/web-ui';
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Button,
+  Checkbox,
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@myorganizer/web-ui';
 import Link from 'next/link';
+import { useCallback, useState } from 'react';
+import { useForm, useWatch } from 'react-hook-form';
+import { z } from 'zod';
+import { useYouTubeAcknowledgement } from '../hooks';
 import { YOUTUBE_DATA_PRIVACY_BULLETS } from '../lib/dataPrivacyCopy';
 
 interface YouTubeConnectPromptProps {
@@ -22,6 +36,148 @@ interface YouTubeConnectPromptProps {
    * If not provided and onConnect is absent, defaults to "/dashboard/youtube".
    */
   fallbackHref?: string;
+}
+
+/**
+ * What the User agrees to before a first connect (ADR 0129). Plain copy, in the
+ * terms CONTEXT.md uses: YouTube Disconnect, Vault, Cached Upload, Watched.
+ */
+const ACKNOWLEDGEMENT_POINTS = [
+  'MyOrganizer reads your YouTube subscriptions and the channel and upload details for the channels you enable. It only reads from YouTube, and it never stores video files.',
+  'That data is stored outside your Vault and is not end-to-end encrypted. Your YouTube access tokens are encrypted at rest.',
+  'Google will show an "unverified app" warning when you connect. MyOrganizer is run personally and has not been through Google\'s app verification.',
+  'If you disconnect YouTube, or the operator withdraws your YouTube access, everything is deleted straight away: your followed channels, cached uploads, Watched marks, digest settings and tokens. Nothing is kept for a later reconnect.',
+  'YouTube in MyOrganizer is run personally by its operator, who can switch it off.',
+] as const;
+
+const acknowledgementSchema = z.object({
+  accepted: z.literal(true, {
+    error: 'Tick the box to agree before connecting',
+  }),
+});
+
+type AcknowledgementFormValues = z.infer<typeof acknowledgementSchema>;
+
+interface YouTubeConnectPromptActionProps {
+  onConnect: () => void;
+}
+
+/**
+ * The connect action. It owns the acknowledgement lookup, so the Shorts
+ * fallback (which renders no action) makes no acknowledgement request.
+ *
+ * Until the stored acknowledgement is known, Connect is disabled so a User who
+ * has already accepted does not see the checkbox flash. A User who has not
+ * accepted (or whose lookup failed; the server enforces it anyway) ticks the
+ * box, and submitting stores the acknowledgement before connecting.
+ */
+function YouTubeConnectPromptAction({
+  onConnect,
+}: YouTubeConnectPromptActionProps) {
+  const { acknowledged, loading, accept } = useYouTubeAcknowledgement();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const form = useForm<AcknowledgementFormValues>({
+    resolver: zodResolver(acknowledgementSchema),
+  });
+  const { isSubmitting } = form.formState;
+  const accepted = useWatch({ control: form.control, name: 'accepted' });
+
+  const handleAcceptedChange = useCallback(
+    (checked: boolean | 'indeterminate') => {
+      if (checked === true) {
+        form.setValue('accepted', true);
+      } else {
+        form.resetField('accepted');
+      }
+    },
+    [form],
+  );
+
+  const handleAccept = useCallback(async () => {
+    setSubmitError(null);
+    try {
+      await accept();
+    } catch {
+      setSubmitError('Could not save your acknowledgement. Please try again.');
+      return;
+    }
+    onConnect();
+  }, [accept, onConnect]);
+
+  const submitErrorAlert = submitError ? (
+    <p role="alert" className="text-sm text-destructive">
+      {submitError}
+    </p>
+  ) : null;
+
+  if (loading || acknowledged === true) {
+    return (
+      <>
+        <Button onClick={onConnect} disabled={loading}>
+          Connect YouTube
+        </Button>
+        {submitErrorAlert}
+      </>
+    );
+  }
+
+  return (
+    <>
+      <Form {...form}>
+        <form
+          onSubmit={form.handleSubmit(handleAccept)}
+          className="flex w-full max-w-md flex-col gap-4"
+        >
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground">Before you connect</p>
+            <ul className="list-disc list-inside space-y-1 text-left">
+              {ACKNOWLEDGEMENT_POINTS.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
+          </div>
+          <FormField
+            control={form.control}
+            name="accepted"
+            render={({ field }) => (
+              <FormItem className="flex items-start gap-2 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value === true}
+                    onCheckedChange={handleAcceptedChange}
+                    disabled={isSubmitting}
+                    ref={field.ref}
+                  />
+                </FormControl>
+                <FormLabel className="cursor-pointer text-sm font-normal leading-relaxed">
+                  I agree to the{' '}
+                  <Link href="/privacy" className="underline">
+                    Privacy Policy
+                  </Link>{' '}
+                  and to{' '}
+                  <a
+                    href="https://www.youtube.com/t/terms"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="underline"
+                  >
+                    YouTube&apos;s Terms of Service
+                  </a>
+                  .
+                </FormLabel>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="submit" disabled={!accepted || isSubmitting}>
+            Connect YouTube
+          </Button>
+        </form>
+      </Form>
+      {submitErrorAlert}
+    </>
+  );
 }
 
 /**
@@ -70,7 +226,7 @@ export function YouTubeConnectPrompt({
       </Link>
       {statusMessage && <p className="text-sm text-warning">{statusMessage}</p>}
       {onConnect ? (
-        <Button onClick={onConnect}>Connect YouTube</Button>
+        <YouTubeConnectPromptAction onConnect={onConnect} />
       ) : (
         <Button asChild>
           <Link href={fallbackHref}>Back to Videos</Link>

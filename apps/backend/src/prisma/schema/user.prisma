@@ -34,6 +34,8 @@ model User {
   youtube_access                  Boolean   @default(false)
   /// When YouTube Access was first ever granted. Set once on the first grant and never cleared; the lifetime ceiling counts Users where this is not null.
   youtube_access_first_granted_at DateTime?
+  /// When the User accepted the one-time YouTube acknowledgement before a first connect (ADR 0129). Set once and never cleared: kept across YouTube Disconnects and across a withdrawal and re-grant of YouTube Access.
+  youtube_acknowledged_at         DateTime?
 
   encrypted_vault               EncryptedVault?
   vault_backup_records          VaultBackupRecord[]

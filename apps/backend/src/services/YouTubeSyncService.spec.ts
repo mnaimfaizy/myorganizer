@@ -86,6 +86,10 @@ jest.mock('../prisma', () => {
       findUnique: jest.fn(),
       delete: jest.fn().mockResolvedValue({}),
     },
+    user: {
+      update: jest.fn(),
+      updateMany: jest.fn(),
+    },
     $queryRaw: jest.fn().mockResolvedValue([]),
   };
 
@@ -124,6 +128,10 @@ jest.mock('../prisma', () => {
     },
     youTubeDigestDelivery: {
       deleteMany: jest.fn().mockResolvedValue({ count: 0 }),
+    },
+    user: {
+      update: jest.fn(),
+      updateMany: jest.fn(),
     },
     youTubeNotificationSettings: {
       upsert: jest.fn().mockResolvedValue({ intervalDays: 7, enabled: true }),
@@ -304,6 +312,11 @@ describe('YouTubeSyncService', () => {
         message: 'YouTube account disconnected.',
       });
       expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      // The User's acknowledgement lives on the User row; a YouTube Disconnect never writes it.
+      expect(mockTransaction.user.update).not.toHaveBeenCalled();
+      expect(mockTransaction.user.updateMany).not.toHaveBeenCalled();
+      expect(mockPrisma.user.update).not.toHaveBeenCalled();
+      expect(mockPrisma.user.updateMany).not.toHaveBeenCalled();
       // Watched marks live on youTubeVideo rows; disconnect neither reads nor keeps them.
       expect(mockTransaction.youTubeVideo.findMany).not.toHaveBeenCalled();
       expect(mockTransaction.youTubeVideo.deleteMany).toHaveBeenCalledWith({

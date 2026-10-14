@@ -381,6 +381,33 @@ class UserService {
   }
 
   /**
+   * When the User accepted the one-time YouTube acknowledgement (ADR 0129), or
+   * null when they have not. Read from the database on every call.
+   */
+  async getYouTubeAcknowledgedAt(userId: string): Promise<Date | null> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { youtube_acknowledged_at: true },
+    });
+    return row?.youtube_acknowledged_at ?? null;
+  }
+
+  /**
+   * Stores the one-time YouTube acknowledgement (ADR 0129). The write is
+   * conditional on nothing being stored yet, so accepting again never moves the
+   * time. Only the acknowledgement column is written: YouTube Disconnect and
+   * YouTube Access withdrawal or re-grant never clear it.
+   * Returns the stored time, or null when no such User exists.
+   */
+  async acknowledgeYouTube(userId: string): Promise<Date | null> {
+    await this.prisma.user.updateMany({
+      where: { id: userId, youtube_acknowledged_at: null },
+      data: { youtube_acknowledged_at: new Date() },
+    });
+    return this.getYouTubeAcknowledgedAt(userId);
+  }
+
+  /**
    * Admin-triggered verification email resend.
    * Reuses public cooldown / already-verified semantics.
    */

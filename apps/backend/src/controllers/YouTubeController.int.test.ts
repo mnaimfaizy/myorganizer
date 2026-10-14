@@ -32,6 +32,7 @@ jest.mock('../utils/passport', () => ({
 }));
 
 const CRON_SECRET = 'test-youtube-cron-secret';
+const ACKNOWLEDGED_AT = new Date('2026-10-01T09:30:00.000Z');
 
 // The real expressAuthentication runs (so the youtube_access scope is really
 // enforced). Only its boundaries are stubbed: the JWT decode and the User lookup.
@@ -57,6 +58,8 @@ jest.mock('../services/UserService', () => ({
   __esModule: true,
   default: {
     getById: jest.fn(),
+    getYouTubeAcknowledgedAt: jest.fn(),
+    acknowledgeYouTube: jest.fn(),
   },
 }));
 
@@ -152,6 +155,12 @@ function signInAs(youtube_access: boolean) {
   });
 }
 
+/** Sets the stored YouTube acknowledgement that the controller reads for user-1. */
+function setAcknowledgedAt(acknowledgedAt: Date | null) {
+  const userService = require('../services/UserService').default;
+  userService.getYouTubeAcknowledgedAt.mockResolvedValue(acknowledgedAt);
+}
+
 describe('YouTubeController (HTTP integration)', () => {
   const originalCronSecret = process.env.YOUTUBE_CRON_SECRET;
   const originalYouTubeAvailable = process.env.YOUTUBE_AVAILABLE;
@@ -166,6 +175,7 @@ describe('YouTubeController (HTTP integration)', () => {
     process.env.YOUTUBE_AVAILABLE = 'true';
     jest.resetAllMocks();
     signInAs(true);
+    setAcknowledgedAt(ACKNOWLEDGED_AT);
   });
 
   afterEach(() => {
@@ -209,6 +219,97 @@ describe('YouTubeController (HTTP integration)', () => {
       url: 'https://accounts.google.com/o/oauth2/auth?state=user-1',
     });
     expect(youtubeSyncService.getAuthUrl).toHaveBeenCalledWith('user-1');
+  });
+
+  test('GET /youtube/auth-url is refused with 409 and no URL until the acknowledgement is stored', async () => {
+    const youtubeSyncService =
+      require('../services/YouTubeSyncService').default;
+    setAcknowledgedAt(null);
+
+    const res = await request(app)
+      .get('/youtube/auth-url')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(409);
+    expect(res.body).toEqual({
+      message: 'Accept the YouTube acknowledgement before connecting.',
+      code: 'acknowledgement_required',
+    });
+    expect(youtubeSyncService.getAuthUrl).not.toHaveBeenCalled();
+  });
+
+  test('GET /youtube/acknowledgement returns a null acknowledgedAt before the User accepts', async () => {
+    const userService = require('../services/UserService').default;
+    setAcknowledgedAt(null);
+
+    const res = await request(app)
+      .get('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({ acknowledgedAt: null });
+    expect(userService.getYouTubeAcknowledgedAt).toHaveBeenCalledWith('user-1');
+  });
+
+  test('GET /youtube/acknowledgement returns the stored time as an ISO string once accepted', async () => {
+    setAcknowledgedAt(ACKNOWLEDGED_AT);
+
+    const res = await request(app)
+      .get('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      acknowledgedAt: ACKNOWLEDGED_AT.toISOString(),
+    });
+  });
+
+  test('POST /youtube/acknowledgement stores the acknowledgement and returns its time', async () => {
+    const userService = require('../services/UserService').default;
+    userService.acknowledgeYouTube.mockResolvedValue(ACKNOWLEDGED_AT);
+
+    const res = await request(app)
+      .post('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual({
+      acknowledgedAt: ACKNOWLEDGED_AT.toISOString(),
+    });
+    expect(userService.acknowledgeYouTube).toHaveBeenCalledWith('user-1');
+  });
+
+  test("POST /youtube/acknowledgement relays the service's stored time on repeat calls", async () => {
+    const userService = require('../services/UserService').default;
+    // The service keeps the first accepted time, so every call reports it.
+    userService.acknowledgeYouTube.mockResolvedValue(ACKNOWLEDGED_AT);
+
+    const first = await request(app)
+      .post('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+    const second = await request(app)
+      .post('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    expect(second.body).toEqual(first.body);
+    expect(second.body).toEqual({
+      acknowledgedAt: ACKNOWLEDGED_AT.toISOString(),
+    });
+    expect(userService.acknowledgeYouTube).toHaveBeenCalledTimes(2);
+  });
+
+  test('POST /youtube/acknowledgement returns 404 when the User is missing', async () => {
+    const userService = require('../services/UserService').default;
+    userService.acknowledgeYouTube.mockResolvedValue(null);
+
+    const res = await request(app)
+      .post('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+
+    expect(res.status).toBe(404);
+    expect(res.body).toEqual({ message: 'User not found' });
   });
 
   test('requires X-Cron-Secret for POST /youtube/cron/sync', async () => {
@@ -610,6 +711,24 @@ describe('YouTube availability switch — off', () => {
     }
   });
 
+  test('GET and POST /youtube/acknowledgement return 404 when switch is off', async () => {
+    const userService = require('../services/UserService').default;
+
+    const getRes = await request(app)
+      .get('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+    const postRes = await request(app)
+      .post('/youtube/acknowledgement')
+      .set('Authorization', 'Bearer test');
+
+    expect(getRes.status).toBe(404);
+    expect(getRes.body).toEqual({ message: 'Not Found' });
+    expect(postRes.status).toBe(404);
+    expect(postRes.body).toEqual({ message: 'Not Found' });
+    expect(userService.getYouTubeAcknowledgedAt).not.toHaveBeenCalled();
+    expect(userService.acknowledgeYouTube).not.toHaveBeenCalled();
+  });
+
   test('GET /youtube/auth-url returns 404 when switch is off', async () => {
     const youtubeSyncService =
       require('../services/YouTubeSyncService').default;
@@ -861,6 +980,8 @@ describe('YouTube Access — per-User gate', () => {
     ['get', '/youtube/videos/carousel'],
     ['get', '/youtube/notification-settings'],
     ['patch', '/youtube/notification-settings'],
+    ['get', '/youtube/acknowledgement'],
+    ['post', '/youtube/acknowledgement'],
   ];
 
   /** Total calls across every YouTubeSyncService mock; a gated route must add none. */
@@ -908,6 +1029,9 @@ describe('YouTube Access — per-User gate', () => {
       expect(res.status).toBe(404);
       expect(res.body).toEqual({ message: 'Not Found' });
       expect(youTubeSyncServiceCallCount()).toBe(0);
+      const userService = require('../services/UserService').default;
+      expect(userService.getYouTubeAcknowledgedAt).not.toHaveBeenCalled();
+      expect(userService.acknowledgeYouTube).not.toHaveBeenCalled();
     },
   );
 
