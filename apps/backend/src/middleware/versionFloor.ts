@@ -20,7 +20,7 @@ export function createVersionFloorMiddleware(
 
   if (floor.kind === 'invalid') {
     console.error(
-      `MOBILE_VERSION_FLOOR "${floor.raw}" is not a Mobile Release version (X.Y.Z). Every Mobile App request will be refused with 426 until it is fixed.`,
+      `MOBILE_VERSION_FLOOR "${floor.raw}" is not a Mobile Release version (X.Y.Z). The Version Floor is OFF until it is fixed: no Mobile App is refused.`,
     );
   }
 

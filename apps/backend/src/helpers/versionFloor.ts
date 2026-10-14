@@ -29,7 +29,7 @@ export type VersionFloorDecision =
 const MOBILE_RELEASE_VERSION = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 
 // `mobile/<X.Y.Z> (<android|ios>)`, for example `mobile/1.0.0 (ios)`.
-const CLIENT_HEADER = /^mobile\/(\S+) \((android|ios)\)$/;
+const CLIENT_HEADER_PATTERN = /^mobile\/(\S+) \((android|ios)\)$/;
 
 const TRAILING_PLATFORM = /\((android|ios)\)$/;
 
@@ -50,7 +50,10 @@ function parseStrictVersion(raw: string): [number, number, number] | undefined {
   return parts;
 }
 
-/** Unset or blank is off. A value that is not X.Y.Z is invalid, never off. */
+/**
+ * Unset or blank is off. A value that is not X.Y.Z is reported as invalid,
+ * not off, so the middleware can log it; decideVersionFloor then passes.
+ */
 export function parseVersionFloor(raw: string | undefined): VersionFloorConfig {
   const trimmed = (raw ?? '').trim();
   if (!trimmed) return { kind: 'off' };
@@ -66,7 +69,7 @@ export function parseVersionFloor(raw: string | undefined): VersionFloorConfig {
 export function parseClientHeader(raw: string | undefined): ClientHeader {
   if (raw === undefined) return { kind: 'absent' };
 
-  const match = CLIENT_HEADER.exec(raw);
+  const match = CLIENT_HEADER_PATTERN.exec(raw);
   if (match) {
     const [, version, platform] = match;
     if (parseStrictVersion(version)) {
@@ -114,7 +117,8 @@ function refuse(
     kind: 'refuse',
     body: {
       code: 'below_version_floor',
-      message: 'Update the MyOrganizer Mobile App to continue.',
+      message:
+        'This version of the app is no longer supported. Update it to continue.',
       versionFloor,
       platform,
     },
@@ -122,19 +126,18 @@ function refuse(
 }
 
 /**
- * Off passes everything. The web app (no header) always passes. A malformed
- * header is refused. An invalid floor refuses every Mobile App request and
- * never blocks the web app. Otherwise the Mobile Release must be at or above
- * the floor.
+ * Off passes everything, and so does an invalid floor: an operator typo must
+ * not show every User an update screen that no update can clear. The web app
+ * (no header) always passes. A malformed header is refused (only the Mobile
+ * App sends it). Otherwise the Mobile Release must be at or above the floor.
  */
 export function decideVersionFloor(
   floor: VersionFloorConfig,
   client: ClientHeader,
 ): VersionFloorDecision {
-  if (floor.kind === 'off') return PASS;
+  if (floor.kind !== 'floor') return PASS;
   if (client.kind === 'absent') return PASS;
 
-  if (floor.kind === 'invalid') return refuse(floor.raw, client.platform);
   if (client.kind === 'malformed')
     return refuse(floor.version, client.platform);
 

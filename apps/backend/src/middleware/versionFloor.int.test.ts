@@ -168,6 +168,7 @@ describe('Version Floor HTTP wiring (integration)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ marker: 'vault-meta' });
+      expect(vaultService.getVaultMeta).toHaveBeenCalledWith('user-1');
     });
 
     test('a blank floor is off and passes the same request', async () => {
@@ -184,6 +185,7 @@ describe('Version Floor HTTP wiring (integration)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ marker: 'vault-meta' });
+      expect(vaultService.getVaultMeta).toHaveBeenCalledWith('user-1');
     });
   });
 
@@ -225,6 +227,7 @@ describe('Version Floor HTTP wiring (integration)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ marker: 'vault-meta' });
+      expect(vaultService.getVaultMeta).toHaveBeenCalledWith('user-1');
     });
 
     test('compares semver numerically, so 1.10.0 passes a 1.2.0 floor', async () => {
@@ -241,6 +244,7 @@ describe('Version Floor HTTP wiring (integration)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ marker: 'vault-meta' });
+      expect(vaultService.getVaultMeta).toHaveBeenCalledWith('user-1');
     });
 
     test('passes the web app, which sends no X-Client header', async () => {
@@ -256,6 +260,7 @@ describe('Version Floor HTTP wiring (integration)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ marker: 'vault-meta' });
+      expect(vaultService.getVaultMeta).toHaveBeenCalledWith('user-1');
     });
 
     test.each([
@@ -329,27 +334,31 @@ describe('Version Floor HTTP wiring (integration)', () => {
 
       expect(response.status).toBe(200);
       expect(response.body).toEqual({ marker: 'vault-meta' });
+      expect(vaultService.getVaultMeta).toHaveBeenCalledWith('user-1');
     });
 
     test.each([
-      ['mobile/1.0.0 (ios)', 'ios'],
-      ['mobile/9.9.9 (android)', 'android'],
+      ['mobile/1.0.0 (ios)'],
+      ['mobile/9.9.9 (android)'],
+      ['mobile/abc (android)'],
     ])(
-      'refuses %j at any version with 426 carrying the raw invalid floor',
-      async (header, platform) => {
-        const { app } = makeApp({ MOBILE_VERSION_FLOOR: 'v1.0.0' });
+      'passes %j and reaches the route: an invalid floor turns the check fully off',
+      async (header) => {
+        const { app, vaultService, userService } = makeApp({
+          MOBILE_VERSION_FLOOR: 'v1.0.0',
+        });
+        arrangeAuthenticatedUser(userService);
+        arrangeVaultMeta(vaultService);
 
         const response = await request(app)
           .get('/vault')
+          .set('Authorization', `Bearer ${validToken()}`)
           .set('X-Client', header);
 
-        expect(response.status).toBe(426);
-        expect(response.body).toEqual({
-          code: 'below_version_floor',
-          message: expect.any(String),
-          versionFloor: 'v1.0.0',
-          platform,
-        });
+        expect(response.status).toBe(200);
+        expect(response.body).toEqual({ marker: 'vault-meta' });
+        expect(vaultService.getVaultMeta).toHaveBeenCalledWith('user-1');
+        expect(vaultService.getVaultMeta).toHaveBeenCalledTimes(1);
       },
     );
 
