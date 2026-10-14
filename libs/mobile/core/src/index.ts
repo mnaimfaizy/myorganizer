@@ -41,15 +41,9 @@ export {
   rememberScrollOffset,
 } from './lock/resumePoint';
 export { readAppVersion, type AppVersion } from './appInfo/appVersion';
-export {
-  PRODUCTION_API_ORIGIN,
-  PRODUCTION_WEB_APP_ORIGIN,
-  localDevelopmentHost,
-  resolveBackendTarget,
-  resolveEnvironment,
-  type BackendTarget,
-  type EnvironmentInputs,
-  type MobileEnvironment,
+export type {
+  BackendTarget,
+  MobileEnvironment,
 } from './environment/environment';
 export { MOBILE_ENVIRONMENT } from './environment/mobileEnvironment';
 export {
@@ -60,8 +54,6 @@ export {
 export {
   guardBackendOrigin,
   isBackendOriginUnchanged,
-  withLocalDataOwner,
-  type BackendOriginGuardOutcome,
   type BackendOriginRecord,
   type BackendOriginStore,
 } from './localData/backendOriginGuard';

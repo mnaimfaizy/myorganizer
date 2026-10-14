@@ -8,18 +8,18 @@ The web and backend path is [CI_CD_AND_RELEASE_PROCESS.md](CI_CD_AND_RELEASE_PRO
 
 ## Decisions at a glance
 
-| Decision                | Choice                                                                                                                                     | Why                                                                                                                  |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
-| Publisher               | **Individual** account on both stores                                                                                                      | No registered company. Your legal name is the seller name. No D-U-N-S number is needed.                              |
-| Territory               | **Australia only** for v1                                                                                                                  | Removes the EU trader (DSA) declaration and the French encryption declaration. Adding countries is a checkbox later. |
-| Store name              | **MyOrganiser**                                                                                                                            | Australian spelling, matching the domain and `app.myorganiser`. Repository rename is #954.                           |
-| Identifier              | `app.myorganiser` on both platforms                                                                                                        | [ADR 0086](../adr/0086-a-public-tree-hides-an-operator-not-a-product.md), #807. **Permanent once uploaded to Play.** |
-| Versioning              | Independent `mobile-vX.Y.Z`                                                                                                                | A Mobile Release is not live when approved, and old ones stay installed.                                             |
-| Where builds happen     | **Your Mac**, with keys outside the repo                                                                                                   | Nothing to leak in a public repo while learning. CI builds come later.                                               |
-| Build targets           | Debug talks to your laptop (or to Production with `MYORGANISER_MOBILE_BACKEND=production` at Metro start); release talks to **Production** | Closed testers keep real data. No Staging variant in v1.                                                             |
-| Crash reporting         | **None** in v1                                                                                                                             | Store-provided crash data is enough. A third-party reporter risks carrying vault plaintext off the device.           |
-| Over-the-air JS updates | **None**                                                                                                                                   | Every change goes through store review. It also keeps crypto and key handling out of anything but a reviewed binary. |
-| Account deletion        | In-app **User Deletion**, plus a public web page                                                                                           | Both stores require it.                                                                                              |
+| Decision                | Choice                                                      | Why                                                                                                                  |
+| ----------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| Publisher               | **Individual** account on both stores                       | No registered company. Your legal name is the seller name. No D-U-N-S number is needed.                              |
+| Territory               | **Australia only** for v1                                   | Removes the EU trader (DSA) declaration and the French encryption declaration. Adding countries is a checkbox later. |
+| Store name              | **MyOrganiser**                                             | Australian spelling, matching the domain and `app.myorganiser`. Repository rename is #954.                           |
+| Identifier              | `app.myorganiser` on both platforms                         | [ADR 0086](../adr/0086-a-public-tree-hides-an-operator-not-a-product.md), #807. **Permanent once uploaded to Play.** |
+| Versioning              | Independent `mobile-vX.Y.Z`                                 | A Mobile Release is not live when approved, and old ones stay installed.                                             |
+| Where builds happen     | **Your Mac**, with keys outside the repo                    | Nothing to leak in a public repo while learning. CI builds come later.                                               |
+| Build targets           | Debug talks to your laptop; release talks to **Production** | Closed testers keep real data. No Staging variant in v1.                                                             |
+| Crash reporting         | **None** in v1                                              | Store-provided crash data is enough. A third-party reporter risks carrying vault plaintext off the device.           |
+| Over-the-air JS updates | **None**                                                    | Every change goes through store review. It also keeps crypto and key handling out of anything but a reviewed binary. |
+| Account deletion        | In-app **User Deletion**, plus a public web page            | Both stores require it.                                                                                              |
 
 ## Costs
 

@@ -84,11 +84,16 @@ export default function App(): React.JSX.Element {
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <BackendOriginGate>
-          <AuthProvider onLogout={handleLogout}>
-            <UserVaultBoundary>
-              <ThemedApp />
-            </UserVaultBoundary>
-          </AuthProvider>
+          {(guard) => (
+            <AuthProvider
+              onLogout={handleLogout}
+              restoreOnLaunch={guard === 'ready'}
+            >
+              <UserVaultBoundary>
+                <ThemedApp />
+              </UserVaultBoundary>
+            </AuthProvider>
+          )}
         </BackendOriginGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>

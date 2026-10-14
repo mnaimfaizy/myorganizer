@@ -311,6 +311,22 @@ conflict. Read synchronously, which is what lets the app resolve its colour mode
 frame.
 _Avoid_: preference, user setting, local storage, app config, profile setting
 
+**User Local Data**:
+What a User leaves on one installation of the Mobile App that belongs to them rather than to the
+installation: the Refresh Token, the Biometric Unlock item holding their Master Key, and the resume
+point. Client-only, and never Ciphertext: the Master Key in that item is plaintext key material the OS
+keystore guards, and nothing in User Local Data is ever sent to the server. One function clears it,
+and Logout and the Data Guard both go through it. Device Settings are not User Local Data and are
+never cleared with it.
+_Avoid_: cache, session data, user data, app data
+
+**Data Guard**:
+The Mobile App's rule that User Local Data belongs to the backend origin it came from. The app
+records that origin, and a launch that finds a different one — only a debug build can, through the
+bundle-time switch that points it at Production — clears that User Local Data before its first
+request. A record it cannot find counts as a different origin.
+_Avoid_: origin check, environment guard, backend switch
+
 **Privacy Cover**:
 The opaque panel the Mobile App draws over itself whenever it is not the frontmost app, so that the
 app switcher, a screen recording, or a glance over a shoulder shows the app's own mark instead of a

@@ -2,9 +2,9 @@
 //
 // Everything a User leaves on this device that belongs to them rather than to
 // the installation: the Refresh Token, the Biometric Unlock Master Key item
-// (ADR 0108 decision 3), and the resume point. Logout, a backend origin change
-// (backendOriginGuard.ts), and User Deletion all end here, so none of them can
-// forget an item the others remember.
+// (ADR 0108 decision 3), and the resume point. Logout and a backend origin
+// change (backendOriginGuard.ts) both end here, so neither can forget an item
+// the other remembers; User Deletion (#970) is meant to as well.
 //
 // Device Settings are not here on purpose. They belong to the installation
 // (deviceSettings.ts), so no path through this function can reach them.

@@ -66,11 +66,20 @@ interface AuthProviderProps {
    * not depend on. The app shell supplies it.
    */
   onLogout?: (userId: string) => void | Promise<void>;
+  /**
+   * Whether to restore the Session from the stored Refresh Token on mount.
+   * Defaults to true. False starts signed out without sending anything: the
+   * app shell passes it when the backend origin guard could not clear a
+   * Refresh Token another backend issued, so that token never leaves the
+   * device. The next sign-in replaces it.
+   */
+  restoreOnLaunch?: boolean;
   children: ReactNode;
 }
 
 export function AuthProvider({
   onLogout,
+  restoreOnLaunch = true,
   children,
 }: AuthProviderProps): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -126,8 +135,14 @@ export function AuthProvider({
   }, [clearSession]);
 
   useEffect(() => {
-    void restore();
-  }, [restore]);
+    if (restoreOnLaunch) {
+      void restore();
+    } else {
+      setStatus('unauthenticated');
+    }
+    // The flag is fixed for this provider's life: BackendOriginGate decides it
+    // before the provider mounts.
+  }, [restore, restoreOnLaunch]);
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
