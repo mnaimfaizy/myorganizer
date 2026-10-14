@@ -320,6 +320,27 @@ describe('ShortsPageClient — locked and unlocked branches', () => {
       expect(screen.queryByTestId('player-panel')).not.toBeInTheDocument();
       expect(screen.queryByTestId('shorts-list')).not.toBeInTheDocument();
     });
+
+    it.each([
+      ['explicitly false', { available: false, loading: false, error: null }],
+      ['still loading', { available: null, loading: true, error: null }],
+    ])(
+      'makes no connection, Shorts or budget hook call when availability is %s',
+      (_label, availability) => {
+        (useYouTubeAvailability as jest.Mock).mockReturnValue(availability);
+
+        render(<ShortsPageClient />);
+
+        expect(
+          screen.getByRole('heading', {
+            name: /YouTube is not available right now/i,
+          }),
+        ).toBeInTheDocument();
+        expect(useYouTubeStatus).not.toHaveBeenCalled();
+        expect(useYouTubeShorts).not.toHaveBeenCalled();
+        expect(useShortsBudget).not.toHaveBeenCalled();
+      },
+    );
   });
 
   describe('gates — entry warning and connection', () => {

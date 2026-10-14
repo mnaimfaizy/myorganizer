@@ -20,6 +20,17 @@ import { YouTubeUnavailableNotice } from './YouTubeUnavailableNotice';
 
 export function YouTubeChannelsPageClient() {
   const { available } = useYouTubeAvailability();
+
+  // Availability gate — fail closed. The connection and data hooks live below
+  // it, so a User without YouTube Access makes no YouTube request at all.
+  if (available !== true) {
+    return <YouTubeUnavailableNotice />;
+  }
+
+  return <YouTubeChannelsConnectionState />;
+}
+
+function YouTubeChannelsConnectionState() {
   const { connected, status, refresh: refreshStatus } = useYouTubeStatus();
   const { connect } = useYouTubeConnect();
   const [disconnectNotice, setDisconnectNotice] = useState<{
@@ -41,10 +52,6 @@ export function YouTubeChannelsPageClient() {
         </a>
       </div>
     );
-
-  if (available !== true) {
-    return <YouTubeUnavailableNotice />;
-  }
 
   if (status === 'loading') {
     return (

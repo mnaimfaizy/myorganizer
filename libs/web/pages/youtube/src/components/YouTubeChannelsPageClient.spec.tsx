@@ -562,4 +562,30 @@ describe('YouTubeChannelsPageClient', () => {
       });
     });
   });
+
+  describe('YouTube availability gate', () => {
+    it.each([
+      ['explicitly false', { available: false, loading: false, error: null }],
+      ['still loading', { available: null, loading: true, error: null }],
+    ])(
+      'shows the unavailable notice and makes no connection or data hook call when availability is %s',
+      (_label, availability) => {
+        mockUseYouTubeAvailability.mockReturnValue(availability);
+
+        render(<YouTubeChannelsPageClient />);
+
+        expect(
+          screen.getByRole('heading', {
+            name: /YouTube is not available right now/i,
+          }),
+        ).toBeInTheDocument();
+        [
+          mockUseYouTubeStatus,
+          mockUseYouTubeConnect,
+          mockUseYouTubeSubscriptions,
+          mockUseYouTubeSyncStatus,
+        ].forEach((hook) => expect(hook).not.toHaveBeenCalled());
+      },
+    );
+  });
 });
