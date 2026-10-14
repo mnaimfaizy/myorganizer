@@ -6,6 +6,7 @@ import { createAuthSessionModule } from './auth-session-module';
 import type { AuthSessionStorageAdapter } from './auth-session-storage-adapter';
 import type { AuthSessionTransportAdapter } from './auth-session-transport-adapter';
 import type { AuthUser } from './auth-session-types';
+import { createSessionEndedSignal } from './session-ended-signal';
 
 describe('createAuthSessionModule', () => {
   let mockStorage: jest.Mocked<AuthSessionStorageAdapter>;
@@ -21,6 +22,12 @@ describe('createAuthSessionModule', () => {
     role: 'user',
     disabled: false,
   };
+
+  function httpError(status: number): Error & { response: { status: number } } {
+    return Object.assign(new Error(`Request failed with status ${status}`), {
+      response: { status },
+    });
+  }
 
   const mockSessionData = {
     token: 'access-token-123',
@@ -57,12 +64,22 @@ describe('createAuthSessionModule', () => {
   });
 
   describe('getSnapshot', () => {
-    it('returns authenticated when token exists', () => {
+    it('returns authenticated when token and user both exist', () => {
       mockStorage.getAccessToken.mockReturnValue('token-123');
+      mockStorage.getCurrentUser.mockReturnValue(mockUser);
 
       const snapshot = module.getSnapshot();
 
       expect(snapshot).toEqual({ status: 'authenticated' });
+    });
+
+    it('returns restorable when a token exists but the user is gone', () => {
+      mockStorage.getAccessToken.mockReturnValue('token-123');
+      mockStorage.getCurrentUser.mockReturnValue(undefined);
+
+      const snapshot = module.getSnapshot();
+
+      expect(snapshot).toEqual({ status: 'restorable' });
     });
 
     it('returns restorable when user exists but no token', () => {
@@ -85,13 +102,103 @@ describe('createAuthSessionModule', () => {
   });
 
   describe('restoreSession', () => {
-    it('returns authenticated when token already exists', async () => {
+    it('returns authenticated without refreshing when token and user both exist', async () => {
       mockStorage.getAccessToken.mockReturnValue('token-123');
+      mockStorage.getCurrentUser.mockReturnValue(mockUser);
+      const listener = jest.fn();
+      module.onSessionEnded(listener);
 
       const result = await module.restoreSession();
 
       expect(result).toEqual({ kind: 'authenticated' });
+      expect(mockTransport.getAuthApi().refreshToken).not.toHaveBeenCalled();
+      expect(mockStorage.clearSession).not.toHaveBeenCalled();
+      expect(listener).not.toHaveBeenCalled();
     });
+
+    it('refreshes a token that has no user and returns authenticated with the user stored', async () => {
+      mockStorage.getAccessToken.mockReturnValue('stale-tab-token');
+      mockStorage.getCurrentUser.mockReturnValue(undefined);
+      const refreshToken = mockTransport.getAuthApi().refreshToken as jest.Mock;
+      refreshToken.mockResolvedValue({ data: mockSessionData });
+      const listener = jest.fn();
+      module.onSessionEnded(listener);
+
+      const result = await module.restoreSession();
+
+      expect(result).toEqual({ kind: 'authenticated' });
+      expect(refreshToken).toHaveBeenCalledTimes(1);
+      expect(refreshToken).toHaveBeenCalledWith({ refreshTokenBody: {} });
+      expect(mockStorage.setAccessToken).toHaveBeenCalledWith(
+        mockSessionData.token,
+      );
+      expect(mockStorage.setCurrentUser).toHaveBeenCalledTimes(1);
+      expect(mockStorage.setCurrentUser).toHaveBeenCalledWith(mockUser);
+      expect(mockStorage.clearSession).not.toHaveBeenCalled();
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it.each([401, 403])(
+      'clears a token that has no user and signals session ended when refresh is rejected with %i',
+      async (status) => {
+        mockStorage.getAccessToken.mockReturnValue('stale-tab-token');
+        mockStorage.getCurrentUser.mockReturnValue(undefined);
+        const refreshToken = mockTransport.getAuthApi()
+          .refreshToken as jest.Mock;
+        refreshToken.mockRejectedValue(httpError(status));
+        const listener = jest.fn();
+        module.onSessionEnded(listener);
+
+        const result = await module.restoreSession();
+
+        expect(result).toEqual({ kind: 'session_cleared' });
+        expect(refreshToken).toHaveBeenCalledTimes(1);
+        expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(listener).toHaveBeenCalledWith({ reason: 'refresh_rejected' });
+      },
+    );
+
+    it('signals session ended when a user without a token is refused a refresh', async () => {
+      mockStorage.getAccessToken.mockReturnValue(undefined);
+      mockStorage.getCurrentUser.mockReturnValue(mockUser);
+      (mockTransport.getAuthApi().refreshToken as jest.Mock).mockRejectedValue(
+        httpError(401),
+      );
+      const listener = jest.fn();
+      module.onSessionEnded(listener);
+
+      const result = await module.restoreSession();
+
+      expect(result).toEqual({ kind: 'session_cleared' });
+      expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith({ reason: 'refresh_rejected' });
+    });
+
+    it.each([
+      ['a network failure with no response', new Error('Network Error')],
+      ['a server error', httpError(500)],
+    ])(
+      'does not signal session ended when refresh fails with %s',
+      async (_label, failure) => {
+        mockStorage.getAccessToken.mockReturnValue('stale-tab-token');
+        mockStorage.getCurrentUser.mockReturnValue(undefined);
+        (
+          mockTransport.getAuthApi().refreshToken as jest.Mock
+        ).mockRejectedValue(failure);
+        const listener = jest.fn();
+        module.onSessionEnded(listener);
+
+        const result = await module.restoreSession();
+
+        // Unchanged restore-path behaviour: any failed refresh clears. Only
+        // the signal is reserved for a refusal by the server (#1082).
+        expect(result).toEqual({ kind: 'session_cleared' });
+        expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+        expect(listener).not.toHaveBeenCalled();
+      },
+    );
 
     it('returns session_cleared when no token and no user', async () => {
       mockStorage.getAccessToken.mockReturnValue(undefined);
@@ -391,6 +498,28 @@ describe('createAuthSessionModule', () => {
 
       expect(result.ok).toBe(false);
     });
+
+    it('refreshAccessToken reports a refused refresh without ending the session', async () => {
+      const sessionEnded = createSessionEndedSignal();
+      module = createAuthSessionModule({
+        storage: mockStorage,
+        transport: mockTransport,
+        sessionEnded,
+      });
+      const listener = jest.fn();
+      const unsubscribe = module.onSessionEnded(listener);
+      const mockAuthApi = mockTransport.getAuthApi();
+      (mockAuthApi.refreshToken as jest.Mock).mockRejectedValue(httpError(401));
+
+      const result = await module.refreshAccessToken();
+
+      expect(result.ok).toBe(false);
+      expect(mockStorage.clearSession).not.toHaveBeenCalled();
+      expect(mockStorage.setAccessToken).not.toHaveBeenCalled();
+      expect(mockStorage.setCurrentUser).not.toHaveBeenCalled();
+      expect(listener).not.toHaveBeenCalled();
+      unsubscribe();
+    });
   });
 
   describe('resendVerificationEmail', () => {
@@ -514,6 +643,117 @@ describe('createAuthSessionModule', () => {
       });
 
       expect(result.ok).toBe(false);
+    });
+  });
+
+  describe('onSessionEnded', () => {
+    it('stops notifying a listener once it unsubscribes', async () => {
+      mockStorage.getAccessToken.mockReturnValue('stale-tab-token');
+      mockStorage.getCurrentUser.mockReturnValue(undefined);
+      (mockTransport.getAuthApi().refreshToken as jest.Mock).mockRejectedValue(
+        httpError(401),
+      );
+      const kept = jest.fn();
+      const dropped = jest.fn();
+      module.onSessionEnded(kept);
+      const unsubscribe = module.onSessionEnded(dropped);
+
+      unsubscribe();
+      await module.restoreSession();
+
+      expect(kept).toHaveBeenCalledTimes(1);
+      expect(kept).toHaveBeenCalledWith({ reason: 'refresh_rejected' });
+      expect(dropped).not.toHaveBeenCalled();
+    });
+
+    it('does not fire for an explicit signOut by this window', async () => {
+      mockStorage.getCurrentUser.mockReturnValue(mockUser);
+      (mockTransport.getAuthApi().logout as jest.Mock).mockResolvedValue({});
+      const listener = jest.fn();
+      module.onSessionEnded(listener);
+
+      await module.signOut();
+
+      expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('notifies subscribers when the injected signal emits refresh_rejected', () => {
+      const sessionEnded = createSessionEndedSignal();
+      module = createAuthSessionModule({
+        storage: mockStorage,
+        transport: mockTransport,
+        sessionEnded,
+      });
+      const listener = jest.fn();
+      module.onSessionEnded(listener);
+
+      sessionEnded.emit({ reason: 'refresh_rejected' });
+
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(listener).toHaveBeenCalledWith({ reason: 'refresh_rejected' });
+    });
+
+    describe('when another window signs out', () => {
+      let signedOutElsewhere: () => void;
+      let stopWatching: jest.Mock<void, []>;
+      let watch: jest.Mock<() => void, [() => void]>;
+
+      beforeEach(() => {
+        stopWatching = jest.fn();
+        watch = jest.fn((listener: () => void) => {
+          signedOutElsewhere = listener;
+          return stopWatching;
+        });
+        mockStorage.onSignedOutElsewhere = watch;
+      });
+
+      it('does not watch storage until something subscribes', () => {
+        expect(watch).not.toHaveBeenCalled();
+
+        module.onSessionEnded(jest.fn());
+        module.onSessionEnded(jest.fn());
+
+        expect(watch).toHaveBeenCalledTimes(1);
+        expect(watch).toHaveBeenCalledWith(expect.any(Function));
+      });
+
+      it('clears this window and signals session ended', () => {
+        const listener = jest.fn();
+        module.onSessionEnded(listener);
+
+        signedOutElsewhere();
+
+        expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+        expect(listener).toHaveBeenCalledTimes(1);
+        expect(listener).toHaveBeenCalledWith({
+          reason: 'signed_out_elsewhere',
+        });
+      });
+
+      it('stops watching storage when the last listener unsubscribes', () => {
+        const first = module.onSessionEnded(jest.fn());
+        const second = module.onSessionEnded(jest.fn());
+
+        first();
+        expect(stopWatching).not.toHaveBeenCalled();
+
+        second();
+        second();
+        expect(stopWatching).toHaveBeenCalledTimes(1);
+
+        module.onSessionEnded(jest.fn());
+        expect(watch).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it('subscribes on a storage adapter that cannot watch other windows', () => {
+      const listener = jest.fn();
+
+      const unsubscribe = module.onSessionEnded(listener);
+
+      expect(() => unsubscribe()).not.toThrow();
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 

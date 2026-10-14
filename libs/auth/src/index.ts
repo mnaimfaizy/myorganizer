@@ -4,3 +4,8 @@ export * from './lib/auth-error-mapping';
 export * from './lib/auth-session-types';
 export * from './lib/auth-session-module';
 export * from './lib/guard-orchestration';
+export type {
+  SessionEndedEvent,
+  SessionEndedListener,
+  SessionEndedReason,
+} from './lib/session-ended-signal';

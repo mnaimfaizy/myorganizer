@@ -57,6 +57,7 @@ const InstallAppInstructions = React.forwardRef<
   HTMLDivElement,
   InstallAppInstructionsProps
 >(({ mode, onInstall, className }, ref) => {
+  // Product copy stays in this primitive, not props, by design (#1125).
   if (mode === 'prompt') {
     return (
       <div ref={ref} className={cn('space-y-4', className)}>
@@ -64,7 +65,7 @@ const InstallAppInstructions = React.forwardRef<
           Install MyOrganiser on this device for quicker access, in its own
           window.
         </p>
-        <Button onClick={onInstall}>Install app</Button>
+        <Button onClick={onInstall}>Install MyOrganiser</Button>
       </div>
     );
   }
@@ -78,7 +79,7 @@ const InstallAppInstructions = React.forwardRef<
       </ol>
       <p className="text-xs text-muted-foreground">
         You&apos;ll sign in and unlock your vault again inside the installed
-        app.
+        MyOrganiser.
       </p>
     </div>
   );

@@ -75,11 +75,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
     email: currentUser?.email ?? '',
     avatar: '',
   };
-  const { state } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
   const youtubeNavVisible = useYouTubeNavVisible();
 
   const navMain = allNavItems.filter(
     (item) => item.url !== '/dashboard/youtube' || youtubeNavVisible,
+  );
+
+  // Phone width renders the sidebar as a drawer, which must close once a
+  // destination is chosen. Closing on pathname change would miss a tap on the
+  // link to the page already open, so this closes on any anchor click instead:
+  // one capture handler covers every link in the content, sub-items included,
+  // and keyboard activation of a link also dispatches a click. The header has
+  // no links: the user menu closes the drawer itself. Desktop never touches
+  // the drawer state.
+  const handleNavigate = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!isMobile) return;
+      if (event.target instanceof Element && event.target.closest('a[href]')) {
+        setOpenMobile(false);
+      }
+    },
+    [isMobile, setOpenMobile],
   );
 
   return (
@@ -93,7 +110,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         </div>
         <NavUser user={user} />
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent onClickCapture={handleNavigate}>
         <NavMain items={navMain} />
       </SidebarContent>
       <SidebarRail />

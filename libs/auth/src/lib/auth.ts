@@ -10,6 +10,10 @@ import type { AuthSessionStorageAdapter } from './auth-session-storage-adapter';
 import { createBrowserAuthSessionStorageAdapter } from './auth-session-storage-adapter';
 import { createAuthSessionTransportAdapter } from './auth-session-transport-adapter';
 import type { AuthOperationResult, AuthUser } from './auth-session-types';
+import {
+  createSessionEndedSignal,
+  type SessionEndedListener,
+} from './session-ended-signal';
 
 export type { AuthUser } from './auth-session-types';
 export type ResetPasswordResponse = {
@@ -23,12 +27,24 @@ export type AuthSession = {
 };
 
 const defaultStorage = createBrowserAuthSessionStorageAdapter();
-const defaultTransport = createAuthSessionTransportAdapter(defaultStorage);
+const defaultSessionEnded = createSessionEndedSignal();
+const defaultTransport = createAuthSessionTransportAdapter(defaultStorage, {
+  sessionEnded: defaultSessionEnded,
+});
 
 export const authSession: AuthSessionModule = createAuthSessionModule({
   storage: defaultStorage,
   transport: defaultTransport,
+  sessionEnded: defaultSessionEnded,
 });
+
+/**
+ * Subscribe to the default Session ending without this window asking for it
+ * (see `AuthSessionModule.onSessionEnded`). Returns the unsubscribe function.
+ */
+export function onSessionEnded(listener: SessionEndedListener): () => void {
+  return authSession.onSessionEnded(listener);
+}
 
 export function getAccessToken(): string | undefined {
   return defaultStorage.getAccessToken();

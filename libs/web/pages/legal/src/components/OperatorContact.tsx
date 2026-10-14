@@ -1,41 +1,20 @@
-export function OperatorContact() {
-  const operatorName = process.env.OPERATOR_NAME;
-  const operatorContactEmail = process.env.OPERATOR_CONTACT_EMAIL;
+import { OperatorContactView } from './OperatorContactView';
 
-  // Trim and check for truthiness
-  const trimmedName = operatorName?.trim();
-  const trimmedEmail = operatorContactEmail?.trim();
+export interface OperatorContactProps {
+  /** Heading level: h2 on the standalone pages, h3 inside a dialog. */
+  headingLevel?: 'h2' | 'h3';
+}
 
-  // If neither is set, render nothing
-  if (!trimmedName && !trimmedEmail) {
-    return null;
-  }
-
+/**
+ * Server-side Operator & Contact section for the standalone legal pages. Reads
+ * the operator env vars; the dialog gets the same values via LegalOperatorProvider.
+ */
+export function OperatorContact({ headingLevel }: OperatorContactProps) {
   return (
-    <section className="mt-6">
-      <h2 className="text-base font-semibold">Operator & Contact</h2>
-      {trimmedName && (
-        <p className="mt-3 text-sm text-muted-foreground">
-          <strong>Operator:</strong> {trimmedName}
-        </p>
-      )}
-      {trimmedEmail && (
-        <p
-          className={
-            trimmedName
-              ? 'mt-2 text-sm text-muted-foreground'
-              : 'mt-3 text-sm text-muted-foreground'
-          }
-        >
-          <strong>Contact:</strong>{' '}
-          <a
-            href={`mailto:${trimmedEmail}`}
-            className="font-medium underline hover:text-foreground"
-          >
-            {trimmedEmail}
-          </a>
-        </p>
-      )}
-    </section>
+    <OperatorContactView
+      name={process.env.OPERATOR_NAME}
+      email={process.env.OPERATOR_CONTACT_EMAIL}
+      headingLevel={headingLevel}
+    />
   );
 }

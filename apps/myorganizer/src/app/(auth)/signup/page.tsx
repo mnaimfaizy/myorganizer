@@ -2,6 +2,7 @@
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { register } from '@myorganizer/auth';
+import { LegalDocumentDialog } from '@myorganizer/web-pages/legal';
 import {
   Button,
   Checkbox,
@@ -309,10 +310,13 @@ export default function SignUpPage() {
                 <div className="leading-none">
                   <FormLabel className="text-sm font-normal">
                     I agree to all the{' '}
-                    <AuthTextLink href="/terms">Terms</AuthTextLink> and{' '}
-                    <AuthTextLink href="/privacy">
+                    <LegalDocumentDialog kind="terms">
+                      Terms
+                    </LegalDocumentDialog>{' '}
+                    and{' '}
+                    <LegalDocumentDialog kind="privacy">
                       Privacy Policies
-                    </AuthTextLink>
+                    </LegalDocumentDialog>
                   </FormLabel>
                   <FormMessage />
                 </div>

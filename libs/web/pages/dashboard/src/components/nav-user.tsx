@@ -40,28 +40,29 @@ export function NavUser({
   };
 }) {
   const router = useRouter();
-  const { isMobile } = useSidebar();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  // Radix closes the menu itself after a select unless the select is
+  // defaultPrevented, so the handlers below must not call preventDefault.
+  // At phone width the sidebar is a drawer that must close too.
+  const closeMobileSidebar = useCallback(() => {
+    if (isMobile) setOpenMobile(false);
+  }, [isMobile, setOpenMobile]);
 
   const handleLogout = useCallback(async () => {
     await logout();
     router.push('/login');
   }, [router]);
 
-  const handleAccountSelect = useCallback(
-    (event: Event) => {
-      event.preventDefault();
-      router.push('/dashboard/account');
-    },
-    [router],
-  );
+  const handleAccountSelect = useCallback(() => {
+    router.push('/dashboard/account');
+    closeMobileSidebar();
+  }, [router, closeMobileSidebar]);
 
-  const handleLogoutSelect = useCallback(
-    (event: Event) => {
-      event.preventDefault();
-      void handleLogout();
-    },
-    [handleLogout],
-  );
+  const handleLogoutSelect = useCallback(() => {
+    void handleLogout();
+    closeMobileSidebar();
+  }, [handleLogout, closeMobileSidebar]);
 
   const initials = user.name
     .split(' ')

@@ -113,7 +113,7 @@ describe('TermsOfServicePage', () => {
       const { container } = render(<TermsOfServicePage />);
       const text = container.textContent || '';
       expect(text).toMatch(/Acme Ops/);
-      expect(text).not.toMatch(/mailto:/);
+      expect(container.querySelector('a[href^="mailto:"]')).toBeNull();
     });
 
     it('should render contact email when only OPERATOR_CONTACT_EMAIL is set (no OPERATOR_NAME)', () => {
@@ -138,6 +138,13 @@ describe('TermsOfServicePage', () => {
       const text = container.textContent || '';
       expect(text).not.toMatch(/Operator & Contact/i);
     });
+
+    it('should not render Operator section when OPERATOR_NAME is whitespace only', () => {
+      process.env.OPERATOR_NAME = '   ';
+      const { container } = render(<TermsOfServicePage />);
+      const text = container.textContent || '';
+      expect(text).not.toMatch(/Operator & Contact/i);
+    });
   });
 
   describe('Cross-links', () => {
@@ -151,6 +158,21 @@ describe('TermsOfServicePage', () => {
       render(<TermsOfServicePage />);
       const privacyLink = screen.getByRole('link', { name: /Privacy Policy/i });
       expect(privacyLink).toHaveAttribute('href', '/privacy');
+    });
+  });
+
+  describe('Back control', () => {
+    it('should place the Back link before the single h1', () => {
+      render(<TermsOfServicePage />);
+      const backLink = screen.getByRole('link', { name: 'Back' });
+      const heading = screen.getByRole('heading', { level: 1 });
+
+      expect(backLink).toHaveAttribute('href', '/');
+      expect(
+        backLink.compareDocumentPosition(heading) &
+          Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1);
     });
   });
 });

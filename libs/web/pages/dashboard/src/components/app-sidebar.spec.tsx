@@ -13,44 +13,64 @@ jest.mock('@myorganizer/web-ui', () => ({
   Sidebar: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="sidebar">{children}</div>
   ),
-  SidebarHeader: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-header">{children}</div>
+  // Stubs forward props; the capture-phase drawer close sits on the content.
+  SidebarHeader: (props: React.ComponentProps<'div'>) => (
+    <div data-testid="sidebar-header" {...props} />
   ),
-  SidebarContent: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="sidebar-content">{children}</div>
+  SidebarContent: (props: React.ComponentProps<'div'>) => (
+    <div data-testid="sidebar-content" {...props} />
   ),
   SidebarRail: () => <div data-testid="sidebar-rail" />,
   AppLogo: () => <div data-testid="app-logo" />,
 }));
 
 jest.mock('./nav-main', () => ({
-  NavMain: jest.fn(({ items }: { items: { title: string }[] }) => (
+  NavMain: jest.fn(({ items }: { items: { title: string; url: string }[] }) => (
     <div data-testid="nav-main" data-items={items.length}>
-      {items.map((item: { title: string }) => (
-        <div
+      {items.map((item: { title: string; url: string }) => (
+        <a
           key={item.title}
+          href={item.url}
           data-testid={`nav-item-${item.title.toLowerCase()}`}
         >
           {item.title}
-        </div>
+        </a>
       ))}
     </div>
   )),
 }));
 
 jest.mock('./nav-user', () => ({
-  NavUser: jest.fn(({ user }) => <div data-testid="nav-user">{user.name}</div>),
+  NavUser: jest.fn(({ user }) => (
+    <button type="button" data-testid="nav-user">
+      {user.name}
+    </button>
+  )),
 }));
 
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { getCurrentUser } from '@myorganizer/auth';
 import { useSidebar } from '@myorganizer/web-ui';
 import { useYouTubeNavVisible } from '../hooks/useYouTubeNavVisible';
 import { AppSidebar } from './app-sidebar';
 import { NavMain } from './nav-main';
 import { NavUser } from './nav-user';
+
+function stubSidebar(isMobile: boolean) {
+  const sidebar = {
+    state: 'expanded',
+    open: true,
+    isMobile,
+    openMobile: false,
+    setOpen: jest.fn(),
+    setOpenMobile: jest.fn(),
+    toggleSidebar: jest.fn(),
+  };
+  (useSidebar as jest.Mock).mockReturnValue(sidebar);
+  return sidebar;
+}
 
 describe('AppSidebar', () => {
   beforeEach(() => {
@@ -60,9 +80,7 @@ describe('AppSidebar', () => {
       name: 'Test User',
       email: 'test@example.com',
     });
-    (useSidebar as jest.Mock).mockReturnValue({
-      state: 'expanded',
-    });
+    stubSidebar(false);
   });
 
   describe('YouTube nav visibility', () => {
@@ -145,6 +163,47 @@ describe('AppSidebar', () => {
       const navUserCall = (NavUser as jest.Mock).mock.calls[0][0];
       expect(navUserCall.user.name).toBe('');
       expect(navUserCall.user.email).toBe('');
+    });
+  });
+
+  describe('drawer closes after navigation on phone width', () => {
+    it('should close the mobile drawer when a top-level nav link is chosen', () => {
+      const sidebar = stubSidebar(true);
+
+      render(<AppSidebar />);
+      fireEvent.click(screen.getByRole('link', { name: 'Tasks' }));
+
+      expect(sidebar.setOpenMobile).toHaveBeenCalledWith(false);
+      expect(sidebar.setOpen).not.toHaveBeenCalled();
+    });
+
+    it('should close the mobile drawer for a link to the page already open', () => {
+      // AppSidebar reads no pathname, so closing cannot depend on a route change.
+      const sidebar = stubSidebar(true);
+
+      render(<AppSidebar />);
+      fireEvent.click(screen.getByRole('link', { name: 'Home' }));
+
+      expect(sidebar.setOpenMobile).toHaveBeenCalledWith(false);
+    });
+
+    it('should leave the mobile drawer open when a non-link control is chosen', () => {
+      const sidebar = stubSidebar(true);
+
+      render(<AppSidebar />);
+      fireEvent.click(screen.getByRole('button', { name: 'Test User' }));
+
+      expect(sidebar.setOpenMobile).not.toHaveBeenCalled();
+    });
+
+    it('should not touch drawer state on desktop when a nav link is chosen', () => {
+      const sidebar = stubSidebar(false);
+
+      render(<AppSidebar />);
+      fireEvent.click(screen.getByRole('link', { name: 'Tasks' }));
+
+      expect(sidebar.setOpenMobile).not.toHaveBeenCalled();
+      expect(sidebar.setOpen).not.toHaveBeenCalled();
     });
   });
 });

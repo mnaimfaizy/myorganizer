@@ -12,11 +12,16 @@ import {
   type AuthSessionTransportAdapter,
 } from './auth-session-transport-adapter';
 import type { AuthSessionStorageAdapter } from './auth-session-storage-adapter';
+import {
+  createSessionEndedSignal,
+  type SessionEndedListener,
+} from './session-ended-signal';
 
 describe('createAuthSessionTransportAdapter', () => {
   let mockStorage: jest.Mocked<AuthSessionStorageAdapter>;
   let adapter: AuthSessionTransportAdapter;
   let mockAxiosInstance: jest.Mocked<AxiosInstance>;
+  let sessionEndedListener: jest.Mock<void, Parameters<SessionEndedListener>>;
 
   const mockUser = {
     id: 'user-1',
@@ -52,7 +57,11 @@ describe('createAuthSessionTransportAdapter', () => {
     (getApiBaseUrl as jest.Mock).mockReturnValue('http://api.test');
     (axios.create as jest.Mock).mockReturnValue(mockAxiosInstance);
 
-    adapter = createAuthSessionTransportAdapter(mockStorage);
+    const sessionEnded = createSessionEndedSignal();
+    sessionEndedListener = jest.fn();
+    sessionEnded.subscribe(sessionEndedListener);
+
+    adapter = createAuthSessionTransportAdapter(mockStorage, { sessionEnded });
   });
 
   describe('getAuthAxios', () => {
@@ -576,6 +585,127 @@ describe('createAuthSessionTransportAdapter', () => {
       expect(replayCall.headers.Authorization).toBe('Bearer new-token');
       expect(replayCall.headers['If-None-Match']).toBe('"abc123"');
       expect(replayCall.headers['Content-Type']).toBe('application/json');
+    });
+
+    describe('session-ended signal', () => {
+      type RejectedRequest = { url: string; method: string; _retry: boolean };
+
+      function unauthorized(url: string): Error & {
+        response: { status: number };
+        config: RejectedRequest;
+      } {
+        return Object.assign(new Error('Unauthorized'), {
+          response: { status: 401 },
+          config: { url, method: 'GET', _retry: false },
+        });
+      }
+
+      function refreshFailsWith(failure: Error): jest.Mock {
+        const refreshToken = jest.fn().mockRejectedValue(failure);
+        (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+          refreshToken,
+        }));
+        return refreshToken;
+      }
+
+      it.each([401, 403])(
+        'clears the session and fires when the refresh is rejected with %i',
+        async (status) => {
+          const refreshError = Object.assign(new Error('Refresh rejected'), {
+            response: { status },
+          });
+          const refreshToken = refreshFailsWith(refreshError);
+
+          await expect(onRejected(unauthorized('/todos'))).rejects.toBe(
+            refreshError,
+          );
+
+          expect(refreshToken).toHaveBeenCalledTimes(1);
+          expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+          expect(sessionEndedListener).toHaveBeenCalledTimes(1);
+          expect(sessionEndedListener).toHaveBeenCalledWith({
+            reason: 'refresh_rejected',
+          });
+          expect(mockAxiosInstance).not.toHaveBeenCalled();
+        },
+      );
+
+      it('has already cleared the session when the signal fires', async () => {
+        refreshFailsWith(
+          Object.assign(new Error('Refresh rejected'), {
+            response: { status: 401 },
+          }),
+        );
+        let clearedWhenSignalled: number | undefined;
+        sessionEndedListener.mockImplementation(() => {
+          clearedWhenSignalled = mockStorage.clearSession.mock.calls.length;
+        });
+
+        await expect(onRejected(unauthorized('/todos'))).rejects.toThrow(
+          'Refresh rejected',
+        );
+
+        expect(clearedWhenSignalled).toBe(1);
+      });
+
+      it.each([
+        ['a network failure with no response', new Error('Network Error')],
+        [
+          'a server error',
+          Object.assign(new Error('Bad gateway'), {
+            response: { status: 502 },
+          }),
+        ],
+      ])(
+        'does not fire when the refresh fails with %s',
+        async (_l, failure) => {
+          refreshFailsWith(failure);
+
+          await expect(onRejected(unauthorized('/todos'))).rejects.toBe(
+            failure,
+          );
+
+          // Clearing on any failed refresh is the existing behaviour (#1082
+          // tracks it); only the signal is withheld.
+          expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+          expect(sessionEndedListener).not.toHaveBeenCalled();
+        },
+      );
+
+      it('fires once when concurrent requests share one rejected refresh', async () => {
+        const refreshError = Object.assign(new Error('Refresh rejected'), {
+          response: { status: 401 },
+        });
+        const refreshToken = refreshFailsWith(refreshError);
+
+        const results = await Promise.allSettled([
+          onRejected(unauthorized('/todos')),
+          onRejected(unauthorized('/notes')),
+        ]);
+
+        expect(results).toEqual([
+          { status: 'rejected', reason: refreshError },
+          { status: 'rejected', reason: refreshError },
+        ]);
+        expect(refreshToken).toHaveBeenCalledTimes(1);
+        expect(sessionEndedListener).toHaveBeenCalledTimes(1);
+        expect(sessionEndedListener).toHaveBeenCalledWith({
+          reason: 'refresh_rejected',
+        });
+      });
+
+      it('does not fire when the refresh succeeds', async () => {
+        (AuthenticationApi as jest.Mock).mockImplementationOnce(() => ({
+          refreshToken: jest.fn().mockResolvedValue({
+            data: { token: 'new-token', expires_in: 3600, user: mockUser },
+          }),
+        }));
+
+        await onRejected(unauthorized('/todos'));
+
+        expect(mockStorage.clearSession).not.toHaveBeenCalled();
+        expect(sessionEndedListener).not.toHaveBeenCalled();
+      });
     });
   });
 

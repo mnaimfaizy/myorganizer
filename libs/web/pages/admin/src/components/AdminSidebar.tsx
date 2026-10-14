@@ -63,7 +63,7 @@ type AdminSidebarProps = React.ComponentProps<typeof Sidebar>;
 export function AdminSidebar({ ...props }: AdminSidebarProps) {
   const currentUser = getCurrentUser();
   const router = useRouter();
-  const { state, isMobile } = useSidebar();
+  const { state, isMobile, setOpenMobile } = useSidebar();
 
   const userName = currentUser?.name ?? '';
   const userEmail = currentUser?.email ?? '';
@@ -79,12 +79,28 @@ export function AdminSidebar({ ...props }: AdminSidebarProps) {
     router.push('/login');
   }, [router]);
 
-  const handleLogoutSelect = React.useCallback(
-    (event: Event) => {
-      event.preventDefault();
-      void handleLogout();
+  // Radix closes the menu itself after a select unless the select is
+  // defaultPrevented, so the logout select must not call preventDefault.
+  // At phone width the sidebar is a drawer that must close too.
+  const handleLogoutSelect = React.useCallback(() => {
+    void handleLogout();
+    if (isMobile) setOpenMobile(false);
+  }, [handleLogout, isMobile, setOpenMobile]);
+
+  // Phone width renders the sidebar as a drawer, which must close once a
+  // destination is chosen. Closing on pathname change would miss a tap on the
+  // link to the page already open, so this closes on any anchor click instead:
+  // one capture handler covers every admin link in the content. The header has
+  // no links: the user menu closes the drawer itself. Desktop never touches
+  // the drawer state.
+  const handleNavigate = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (!isMobile) return;
+      if (event.target instanceof Element && event.target.closest('a[href]')) {
+        setOpenMobile(false);
+      }
     },
-    [handleLogout],
+    [isMobile, setOpenMobile],
   );
 
   return (
@@ -150,7 +166,7 @@ export function AdminSidebar({ ...props }: AdminSidebarProps) {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent onClickCapture={handleNavigate}>
         <SidebarGroup>
           <SidebarGroupLabel>Admin</SidebarGroupLabel>
           <SidebarMenu>
