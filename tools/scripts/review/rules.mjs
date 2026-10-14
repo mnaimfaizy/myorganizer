@@ -120,6 +120,8 @@ export function assertRuleCatalogue(cat, source = RULES_DISPLAY_PATH) {
       if (typeof axis !== 'string' || !axis) fail(`${where}: bad axis`);
     if (r.maxSeverity !== undefined && typeof r.maxSeverity !== 'string')
       fail(`${where}: maxSeverity must be a severity word`);
+    if (r.minSeverity !== undefined && typeof r.minSeverity !== 'string')
+      fail(`${where}: minSeverity must be a severity word`);
     // A smell is inferred by construction, so its cap is not a per-entry
     // choice; leaving it off one of the twelve would quietly let that smell
     // block, which is the asymmetry ADR 0071 item 1 rules out.

@@ -293,6 +293,21 @@ export const FindingInputSchema = z
         );
       }
     }
+    // The cap's mirror (ADR 0130 item 2). Like the cap it rejects and never
+    // adjusts: severity stays the sub-agent's call, and the catalogue bounds it.
+    if (rule?.minSeverity) {
+      const floor = SEVERITY_RANK[rule.minSeverity];
+      if (floor === undefined) {
+        issue(
+          `${RULES_DISPLAY_PATH}: ${f.ruleId} floors at "${rule.minSeverity}", which is not a severity`,
+          ['severity'],
+        );
+      } else if (SEVERITY_RANK[f.severity] > floor) {
+        issue(`a "${rule.title}" finding is never below ${rule.minSeverity}`, [
+          'severity',
+        ]);
+      }
+    }
 
     // A Spec finding that shows the diff leaving an accepted ADR decision unmet is
     // blocking, not the reviewer's judgement call (ADR 0111). The decision was

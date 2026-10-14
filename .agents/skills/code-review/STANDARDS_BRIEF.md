@@ -75,8 +75,8 @@ outside it is rejected and takes the whole report with it.
 - `standard-ui-composition` — a component breaking the composition or accessibility guidelines
 - `standard-doc-claim-drifted` — a document still claiming something this change made untrue
 - `standard-unasserted-claim` — an artifact (a House Explainer Page, a checker header) states an assertable fact it does not assert. Not the same as drift: see ADR 0085
-- `standard-secret-committed` — a secret, credential, or plaintext value committed or logged
-- `standard-operator-fingerprint-in-source` — an Operator Fingerprint (host, port, account, home path, sibling app, or the operator's other properties) written into the tracked tree. Not the same as a secret: see ADR 0086
+- `standard-secret-committed` — a secret, credential, or plaintext value committed or logged. Never below should-fix
+- `standard-operator-fingerprint-in-source` — an Operator Fingerprint (host, port, account, home path, sibling app, or the operator's other properties) written into the tracked tree or printed to a public log. This repository is public, so a workflow's log is public: a value a step can print, such as a host in a `curl` error, is published, and masking does not hide it unless the printed text is the exact secret value. Never below should-fix. Not the same as a secret: see ADR 0086
 - `standard-branch-or-commit-convention` — a branch name or commit message off convention
 - `standard-other` — FALLBACK. A documented standard none of the above names. Use it rather than
   dropping the finding, and say which document in `source` and which rule in `rule`.
@@ -166,9 +166,9 @@ A finding is:
 
 One axis per defect: when one defect is both a standards violation and a spec miss, it is reported on
 the Spec axis only. You cannot see the other axis's findings, so this is not your call to make:
-report everything you find under your own axis. The main agent drops the Standards copy of a
-doubled finding when it assembles the report. PR #819 raised one wrong citation anchor on both
-axes, so the author answered the same defect twice.
+report everything you find under your own axis. When it assembles the report, the main agent keeps
+the more severe copy of a doubled finding, and the Spec copy on a tie. PR #819 raised one wrong
+citation anchor on both axes, so the author answered the same defect twice (ADR 0130).
 
 Rules the validator enforces — a report that breaks one is rejected whole:
 - "ruleId" must be one of the ids in the rule catalogue, and it must be one the
@@ -177,6 +177,8 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 - blocking needs executed or cited evidence, and either a location or a quoted spec line.
 - inferred caps at should-fix. Smell-baseline findings are inferred, and every
   `smell-*` rule caps at should-fix on its own.
+- a rule may also set a floor: a finding under a rule your catalogue marks "Never below
+  should-fix" is rejected at any lower severity (ADR 0130).
 - a Spec finding with executed or cited evidence whose `source` is an accepted ADR
   (`docs/adr/NNNN-….md`), anchored as the blocking rule above requires, is blocking:
   the diff leaves a decided requirement unmet, and

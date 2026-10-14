@@ -841,6 +841,42 @@ test('a smell-baseline finding cannot block even with cited evidence', () => {
   );
 });
 
+test('a fingerprint or secret finding cannot be reported below should-fix', () => {
+  // The catalogue's floor, the mirror of its cap (ADR 0130 item 2). The
+  // seeded run of issue #1140 reported a hostname reaching a public log as a
+  // nit; the floor rejects that report rather than raising its severity.
+  const fingerprint = {
+    ruleId: 'standard-operator-fingerprint-in-source',
+    source: 'docs/adr/0086-a-public-tree-hides-an-operator-not-a-product.md',
+    rule: 'Logs must not dump environment or connection strings',
+  };
+  rejects(
+    envelope({ findings: [cited({ ...fingerprint, severity: 'nit' })] }),
+    /findings\.0\.severity: an? .*Operator Fingerprint.* finding is never below should-fix/,
+  );
+  rejects(
+    envelope({
+      findings: [
+        cited({
+          ruleId: 'standard-secret-committed',
+          source: 'AGENTS.md',
+          rule: 'Do not commit secrets or production credentials',
+          severity: 'nit',
+        }),
+      ],
+    }),
+    /findings\.0\.severity: .*secret.* finding is never below should-fix/,
+  );
+  // At the floor and above it, the finding stands.
+  for (const severity of ['should-fix', 'blocking']) {
+    assert.doesNotThrow(() =>
+      normalizeReport(
+        envelope({ findings: [cited({ ...fingerprint, severity })] }),
+      ),
+    );
+  }
+});
+
 test('the renderer refuses a raw report that skipped the validator', () => {
   assert.throws(
     () => renderReport(envelope({ findings: [cited()] })),

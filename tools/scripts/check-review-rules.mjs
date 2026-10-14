@@ -137,6 +137,20 @@ export const compareRuleCatalogue = ({
       findings.push(
         `${rule.id}: maxSeverity "${rule.maxSeverity}" is not a severity, so the cap can never fire`,
       );
+    if (rule.minSeverity && !FINDING_SEVERITIES.includes(rule.minSeverity))
+      findings.push(
+        `${rule.id}: minSeverity "${rule.minSeverity}" is not a severity, so the floor can never fire`,
+      );
+    else if (
+      rule.minSeverity &&
+      FINDING_SEVERITIES.includes(rule.maxSeverity) &&
+      // FINDING_SEVERITIES runs most severe first.
+      FINDING_SEVERITIES.indexOf(rule.minSeverity) <
+        FINDING_SEVERITIES.indexOf(rule.maxSeverity)
+    )
+      findings.push(
+        `${rule.id}: minSeverity "${rule.minSeverity}" is above maxSeverity "${rule.maxSeverity}", so no finding can satisfy both`,
+      );
     if (rule.cites && !exists(rule.cites))
       findings.push(`${rule.id}: cites ${rule.cites}, which does not exist`);
   }
@@ -265,9 +279,10 @@ export const main = (argv = process.argv.slice(2)) => {
   if (argv.includes('--print')) {
     for (const rule of catalogue.rules) {
       const cap = rule.maxSeverity ? ` ≤${rule.maxSeverity}` : '';
+      const floor = rule.minSeverity ? ` ≥${rule.minSeverity}` : '';
       const fallback = rule.fallback ? ' (fallback)' : '';
       console.log(
-        `  ${rule.id}  [${rule.axes.join('|')}]${cap}${fallback} — ${rule.title}`,
+        `  ${rule.id}  [${rule.axes.join('|')}]${floor}${cap}${fallback} — ${rule.title}`,
       );
     }
   }
