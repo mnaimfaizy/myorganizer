@@ -394,8 +394,11 @@ class UserService {
    * User Deletion: immediate and irreversible removal of the User row. Every
    * owned relation cascades; Admin Audit Log actor/target are set to null.
    * Sessions end because the User row is gone. The password is re-verified
-   * here, and the YouTube integration is disconnected first (ADR 0092: refused
-   * while a Sync Run is live). Confirmation mail failure never fails the call.
+   * here, and the YouTube Connection goes first through YouTube Disconnect
+   * (ADR 0129), which revokes the grant at Google outside any transaction and
+   * is refused while a Sync Run is live (ADR 0092). Every refusal other than
+   * that one — including "never connected" — lets the deletion proceed.
+   * Confirmation mail failure never fails the call.
    */
   async deleteUser(
     userId: string,
@@ -420,9 +423,8 @@ class UserService {
     const displayName =
       user.name?.trim() || `${user.first_name} ${user.last_name}`;
 
-    await this.prisma.$transaction(async (tx) => {
-      await tx.user.delete({ where: { id: userId } });
-    });
+    // One DELETE: the cascades and the audit-log SET NULL run inside it.
+    await this.prisma.user.delete({ where: { id: userId } });
 
     await this.sendUserDeletionMail(email, displayName);
     return { status: 'deleted' };

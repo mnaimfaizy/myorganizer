@@ -2728,7 +2728,7 @@
 						}
 					}
 				},
-				"description": "User Deletion: permanently and immediately deletes the signed-in User and\neverything they own. Requires the account password and the literal\nconfirmation `DELETE`. Sessions end because the User row is removed.",
+				"description": "User Deletion: permanently and immediately deletes the signed-in User and\neverything they own. Requires the User's password and the literal\nconfirmation `DELETE`. Sessions end because the User row is removed.",
 				"tags": [
 					"Users"
 				],

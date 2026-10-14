@@ -2165,7 +2165,7 @@ export class PlatformAdminApi extends BaseAPI {
 export const UsersApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
-         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the account password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
          * @param {UserDeletionBody} userDeletionBody 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2212,7 +2212,7 @@ export const UsersApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = UsersApiAxiosParamCreator(configuration)
     return {
         /**
-         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the account password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
          * @param {UserDeletionBody} userDeletionBody 
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2233,7 +2233,7 @@ export const UsersApiFactory = function (configuration?: Configuration, basePath
     const localVarFp = UsersApiFp(configuration)
     return {
         /**
-         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the account password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
          * @param {UsersApiDeleteMeRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -2256,7 +2256,7 @@ export interface UsersApiDeleteMeRequest {
  */
 export class UsersApi extends BaseAPI {
     /**
-     * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the account password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+     * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
      * @param {UsersApiDeleteMeRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}

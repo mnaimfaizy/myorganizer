@@ -25,7 +25,7 @@ import { UserDeletionBody, UserDeletionRefusal } from '../types';
 export class UserDeletionController extends Controller {
   /**
    * User Deletion: permanently and immediately deletes the signed-in User and
-   * everything they own. Requires the account password and the literal
+   * everything they own. Requires the User's password and the literal
    * confirmation `DELETE`. Sessions end because the User row is removed.
    */
   @Delete('me')
@@ -43,16 +43,16 @@ export class UserDeletionController extends Controller {
     // invalid body without throwing, and a request that deleted nothing must
     // never look like a success. ValidateError is answered with 422 by the
     // app's tsoa error handler.
-    const body = UserDeletionSchema.safeParse(requestBody);
-    if (!body.success) {
+    const parsed = UserDeletionSchema.safeParse(requestBody);
+    if (!parsed.success) {
       throw new ValidateError(
-        zodIssuesToDetails(body.error),
+        zodIssuesToDetails(parsed.error),
         'Validation Failed',
       );
     }
 
     const userId = requireUserId(req);
-    const outcome = await userService.deleteUser(userId, body.data.password);
+    const outcome = await userService.deleteUser(userId, parsed.data.password);
 
     if (outcome.status === 'incorrect_password') {
       return respond(403, { message: 'Incorrect password.' });

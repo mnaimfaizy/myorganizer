@@ -287,7 +287,7 @@ describe('DELETE /users/me (User Deletion HTTP integration)', () => {
     expect(sendEmail).not.toHaveBeenCalled();
   });
 
-  test('still deletes the User when the account never had a YouTube integration', async () => {
+  test('still deletes the User when they never connected YouTube', async () => {
     const { youtube } = refs();
     youtube.disconnect.mockResolvedValue({
       ok: false,

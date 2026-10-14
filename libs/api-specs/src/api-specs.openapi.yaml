@@ -1781,7 +1781,7 @@ paths:
         User Deletion: permanently and immediately deletes the signed-in User
         and
 
-        everything they own. Requires the account password and the literal
+        everything they own. Requires the User's password and the literal
 
         confirmation `DELETE`. Sessions end because the User row is removed.
       tags:
