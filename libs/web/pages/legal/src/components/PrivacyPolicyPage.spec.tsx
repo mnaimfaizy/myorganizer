@@ -87,7 +87,7 @@ describe('PrivacyPolicyPage', () => {
     it('should describe revocation via Google Account access settings', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
-      expect(text).toMatch(/revoking MyOrganizer's access.*Google Account/i);
+      expect(text).toMatch(/revoking MyOrganiser's access.*Google Account/i);
     });
 
     it('should describe the effect of revocation', () => {

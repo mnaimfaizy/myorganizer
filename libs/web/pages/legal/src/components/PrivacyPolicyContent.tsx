@@ -13,6 +13,9 @@ export interface PrivacyPolicyContentProps {
   linkTarget?: '_blank';
 }
 
+/** When this policy last changed. Update it with every change to the wording. */
+const LAST_UPDATED = '15 October 2026';
+
 export function PrivacyPolicyContent({
   headingLevel: Heading = 'h2',
   operatorContact,
@@ -20,12 +23,16 @@ export function PrivacyPolicyContent({
 }: PrivacyPolicyContentProps) {
   return (
     <>
+      <p className="mt-2 text-xs text-muted-foreground">
+        Last updated: {LAST_UPDATED}
+      </p>
+
       <section className="mt-6">
         <Heading className="text-base font-semibold">Overview</Heading>
         <p className="mt-3 text-sm text-muted-foreground">
-          MyOrganizer is a personal organizer that helps you manage tasks,
+          MyOrganiser is a personal organizer that helps you manage tasks,
           addresses, contacts, grocery lists, and other personal information, on
-          the web and in the MyOrganizer Mobile App. Your personal content is
+          the web and in the MyOrganiser Mobile App. Your personal content is
           kept in a Vault that is end-to-end encrypted: it is encrypted on your
           device with a key only you can unlock, and our servers store only the
           encrypted version, which we cannot read. Your account data — such as
@@ -41,12 +48,12 @@ export function PrivacyPolicyContent({
           YouTube Integration
         </Heading>
         <p className="mt-3 text-sm text-muted-foreground">
-          MyOrganizer can optionally connect to your YouTube account through
+          MyOrganiser can optionally connect to your YouTube account through
           Google OAuth. This connection requests the{' '}
           <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
             youtube.readonly
           </code>{' '}
-          scope, which gives MyOrganizer read-only access to your YouTube
+          scope, which gives MyOrganiser read-only access to your YouTube
           subscriptions and videos — with no ability to write, delete, or modify
           anything on YouTube.
         </p>
@@ -59,8 +66,8 @@ export function PrivacyPolicyContent({
         <p className="mt-3 text-sm text-muted-foreground">
           <strong>Revocation:</strong> You can end this connection at any time
           by disconnecting YouTube from the YouTube page in your dashboard, or
-          by revoking MyOrganizer&apos;s access directly from your Google
-          Account&apos;s third-party access settings. Once revoked, MyOrganizer
+          by revoking MyOrganiser&apos;s access directly from your Google
+          Account&apos;s third-party access settings. Once revoked, MyOrganiser
           stops syncing your YouTube data.
         </p>
         <p className="mt-3 text-sm text-muted-foreground">
@@ -95,7 +102,7 @@ export function PrivacyPolicyContent({
           Cookies &amp; Sessions
         </Heading>
         <p className="mt-3 text-sm text-muted-foreground">
-          MyOrganizer uses session cookies to keep you signed in. These cookies
+          MyOrganiser uses session cookies to keep you signed in. These cookies
           are secure, encrypted, and removed when you sign out or they expire.
           We do not use tracking cookies or third-party analytics cookies.
         </p>

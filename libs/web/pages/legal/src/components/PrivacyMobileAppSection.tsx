@@ -16,7 +16,7 @@ export function PrivacyMobileAppSection({
     <section className="mt-6">
       <Heading className="text-base font-semibold">The Mobile App</Heading>
       <p className="mt-3 text-sm text-muted-foreground">
-        The MyOrganizer Mobile App for Android is distributed as a download from
+        The MyOrganiser Mobile App for Android is distributed as a download from
         our{' '}
         <Link
           href="/download"
@@ -27,7 +27,7 @@ export function PrivacyMobileAppSection({
           download page
         </Link>
         , not through an app store. On iPhone and iPad there is no app to
-        download: you add the MyOrganizer web app to your Home Screen instead,
+        download: you add the MyOrganiser web app to your Home Screen instead,
         and this policy covers it as the web app.
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
