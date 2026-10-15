@@ -703,6 +703,19 @@ class YouTubeSyncService {
           },
         });
       } catch (error) {
+        // A revoked or expired grant fails every channel, so it is the connection's
+        // failure, not this channel's. Rethrow it so the caller marks the YouTube
+        // Connection Revoked (ADR 0129) instead of logging it once per channel.
+        if (isRevokedTokenError(error)) {
+          await this.recordSyncState(
+            userId,
+            attemptAt,
+            'failed',
+            getSyncErrorCode(error),
+          );
+          throw error;
+        }
+
         failedChannels++;
         const channelError = getSyncErrorCode(error);
         lastSyncError = channelError;

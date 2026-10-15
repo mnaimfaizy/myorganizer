@@ -1982,6 +1982,170 @@ describe('YouTubeSyncService', () => {
       );
       expect(result.status).toBe('quota_exceeded');
     });
+
+    describe('per-channel failures during an Upload Sync', () => {
+      beforeEach(() => {
+        (
+          mockPrisma.youTubeIntegration.findUnique as jest.Mock
+        ).mockResolvedValue({
+          userId: 'user-1',
+          encrypted_access_token: 'enc-at',
+          encrypted_refresh_token: 'enc-rt',
+          token_iv: 'iv1:iv2',
+          token_auth_tag: 'tag1:tag2',
+          status: 'connected',
+        });
+        (
+          mockPrisma.youTubeSubscription.findMany as jest.Mock
+        ).mockImplementation((args: { where?: { enabled?: boolean } }) =>
+          args?.where?.enabled === true
+            ? [
+                {
+                  id: 'sub-1',
+                  userId: 'user-1',
+                  channelId: 'ch-1',
+                  uploadsPlaylistId: 'pl-1',
+                  enabled: true,
+                },
+                {
+                  id: 'sub-2',
+                  userId: 'user-1',
+                  channelId: 'ch-2',
+                  uploadsPlaylistId: 'pl-2',
+                  enabled: true,
+                },
+              ]
+            : [],
+        );
+      });
+
+      // Rejects playlist fetches for the first channel with `error`; the
+      // second channel's playlist returns no items.
+      function failFirstChannelWith(error: Error) {
+        const mockYoutube = require('googleapis').google.youtube();
+        mockYoutube.playlistItems.list.mockImplementation(
+          async ({ playlistId }: { playlistId: string }) => {
+            if (playlistId === 'pl-1') {
+              throw error;
+            }
+            return { data: { items: [] } };
+          },
+        );
+        return mockYoutube;
+      }
+
+      it('rethrows a grant error from the first channel instead of swallowing it', async () => {
+        const grantError = new Error('invalid_grant');
+        failFirstChannelWith(grantError);
+
+        await expect(
+          youtubeSyncService.syncVideosForUserWithStatus('user-1'),
+        ).rejects.toBe(grantError);
+      });
+
+      it('stops the run on a grant error and never requests the second channel uploads', async () => {
+        const mockYoutube = failFirstChannelWith(new Error('invalid_grant'));
+
+        await expect(
+          youtubeSyncService.syncVideosForUserWithStatus('user-1'),
+        ).rejects.toThrow('invalid_grant');
+
+        expect(mockYoutube.playlistItems.list).toHaveBeenCalledTimes(1);
+        expect(mockYoutube.playlistItems.list).not.toHaveBeenCalledWith(
+          expect.objectContaining({ playlistId: 'pl-2' }),
+        );
+      });
+
+      it('does not write a subscription lastSyncError for a grant error', async () => {
+        failFirstChannelWith(new Error('invalid_grant'));
+
+        await expect(
+          youtubeSyncService.syncVideosForUserWithStatus('user-1'),
+        ).rejects.toThrow('invalid_grant');
+
+        expect(mockPrisma.youTubeSubscription.update).not.toHaveBeenCalled();
+      });
+
+      it('records the run as failed with the sync error code before rethrowing a grant error', async () => {
+        failFirstChannelWith(new Error('invalid_grant'));
+
+        await expect(
+          youtubeSyncService.syncVideosForUserWithStatus('user-1'),
+        ).rejects.toThrow('invalid_grant');
+
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+          where: { userId: 'user-1' },
+          data: {
+            lastSyncAttemptAt: expect.any(Date),
+            lastSyncStatus: 'failed',
+            lastSyncError: 'syncFailed',
+          },
+        });
+      });
+
+      it('marks the run failed, not partial, when a grant error hits a later channel after an earlier channel succeeded', async () => {
+        const mockYoutube = require('googleapis').google.youtube();
+        mockYoutube.playlistItems.list.mockImplementation(
+          async ({ playlistId }: { playlistId: string }) => {
+            if (playlistId === 'pl-2') {
+              throw new Error('invalid_grant');
+            }
+            return { data: { items: [] } };
+          },
+        );
+
+        await expect(
+          youtubeSyncService.syncVideosForUserWithStatus('user-1'),
+        ).rejects.toThrow('invalid_grant');
+
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+          where: { userId: 'user-1' },
+          data: {
+            lastSyncAttemptAt: expect.any(Date),
+            lastSyncStatus: 'failed',
+            lastSyncError: 'syncFailed',
+          },
+        });
+        const channelTwoErrorWrites = (
+          mockPrisma.youTubeSubscription.update as jest.Mock
+        ).mock.calls.filter(
+          ([args]) => args.where?.id === 'sub-2' && args.data?.lastSyncError,
+        );
+        expect(channelTwoErrorWrites).toEqual([]);
+      });
+
+      it('keeps syncing the next channel when the first channel fails with a non-grant error', async () => {
+        const mockYoutube = failFirstChannelWith(
+          new Error('Request failed with status code 404'),
+        );
+
+        await expect(
+          youtubeSyncService.syncVideosForUserWithStatus('user-1'),
+        ).resolves.toMatchObject({ subscriptionsSynced: 1 });
+
+        expect(mockYoutube.playlistItems.list).toHaveBeenCalledWith(
+          expect.objectContaining({ playlistId: 'pl-2' }),
+        );
+        expect(mockPrisma.youTubeSubscription.update).toHaveBeenCalledWith({
+          where: { id: 'sub-1' },
+          data: expect.objectContaining({ lastSyncError: 'syncFailed' }),
+        });
+        expect(mockPrisma.youTubeSubscription.update).toHaveBeenCalledWith({
+          where: { id: 'sub-2' },
+          data: expect.objectContaining({
+            lastSyncedAt: expect.any(Date),
+            lastSyncError: null,
+          }),
+        });
+        expect(mockPrisma.youTubeIntegration.update).toHaveBeenCalledWith({
+          where: { userId: 'user-1' },
+          data: expect.objectContaining({
+            lastSyncStatus: 'partial',
+            lastSyncError: 'syncFailed',
+          }),
+        });
+      });
+    });
   });
 
   describe('getVideos', () => {
