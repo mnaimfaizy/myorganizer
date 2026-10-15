@@ -8,7 +8,7 @@ import {
   VaultApi,
   VaultBlobType,
   VaultMetaV1,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 
 type VaultApiLike = Pick<
   VaultApi,

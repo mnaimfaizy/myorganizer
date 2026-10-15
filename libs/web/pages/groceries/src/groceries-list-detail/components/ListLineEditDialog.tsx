@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { CatalogItem, ListLine } from '@myorganizer/vault-core';
+import type { CatalogItem, ListLine } from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Lock } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';

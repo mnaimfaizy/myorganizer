@@ -1,6 +1,6 @@
 'use client';
 
-import { AddressRecord } from '@myorganizer/vault-core';
+import { AddressRecord } from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
   Form,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

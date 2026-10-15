@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
-import { useAuth, webAppPath } from '@myorganizer/mobile/feat-auth';
+import { useAuth, webAppPath } from '@myorganiser/mobile/feat-auth';
 import {
   BottomSheet,
   Button,
@@ -9,7 +9,7 @@ import {
   Text,
   TextField,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   USER_DELETION_CONFIRMATION,
   canRequestUserDeletion,

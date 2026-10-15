@@ -1,8 +1,8 @@
 'use client';
 
-import { Button, Skeleton } from '@myorganizer/web-ui';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import { VaultGate } from '@myorganizer/web-vault-ui';
+import { Button, Skeleton } from '@myorganiser/web-ui';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import { VaultGate } from '@myorganiser/web-vault-ui';
 import { LayoutGrid, Plus } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import { formatMoney, summarizeListSpend } from '../shared/utils';

@@ -1,8 +1,8 @@
 'use client';
 
-import type { Task } from '@myorganizer/vault-core';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
+import type { Task } from '@myorganiser/vault-core';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import { useLocalVaultRevision } from '@myorganiser/web-vault-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {

@@ -13,7 +13,7 @@ jest.mock('../hooks', () => ({
 /**
  * Mock web-ui components and useToast.
  */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react') as typeof import('react');
   const { Controller, FormProvider } = require('react-hook-form');
 

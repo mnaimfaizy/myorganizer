@@ -302,7 +302,7 @@ test('skips fenced code, placeholders, CLI flags, and identifiers with no nearby
     [
       'The `ComponentBuilder` sub-agent is a role, not a file-ref.',
       '',
-      'Flags like `--print` and packages like `@myorganizer/design-tokens` stay prose.',
+      'Flags like `--print` and packages like `@myorganiser/design-tokens` stay prose.',
       '',
       '```ts',
       'import { missing } from "libs/does-not-exist/gone.ts";',

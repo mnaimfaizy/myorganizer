@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   useUnconfirmedEdit,
   useVaultBlob,
   recoversByReload,
   VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
-import type { ListRowState } from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/feat-vault';
+import type { ListRowState } from '@myorganiser/mobile/ui';
 import {
   findVisibleAddress,
   findVisibleMobileNumber,

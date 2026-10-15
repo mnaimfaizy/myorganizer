@@ -14,8 +14,8 @@ Next.js app shell for MyOrganizer. Route wrappers live here; page logic lives in
 ## Do
 
 - Keep `src/app/**` files thin: routing, metadata, layout composition, and imports from page libraries.
-- Use imports like `@myorganizer/web-pages/<route>` for route implementations.
-- Keep browser-facing auth aligned with `@myorganizer/auth` and refresh-cookie behavior.
+- Use imports like `@myorganiser/web-pages/<route>` for route implementations.
+- Keep browser-facing auth aligned with `@myorganiser/auth` and refresh-cookie behavior.
 
 ## Do Not
 

@@ -7,7 +7,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarInput,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 export function SearchForm({ ...props }: React.ComponentProps<'form'>) {
   return (

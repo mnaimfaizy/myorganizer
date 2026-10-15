@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { colorPrimary, colorSurface } from '@myorganizer/design-tokens';
+import { colorPrimary, colorSurface } from '@myorganiser/design-tokens';
 
 /**
  * E2E tests for the web app manifest contract and generated icons.

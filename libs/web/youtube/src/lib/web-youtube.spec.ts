@@ -1,16 +1,16 @@
 const mockGetAvailability = jest.fn();
 const mockGetAccess = jest.fn();
 
-jest.mock('@myorganizer/core', () => ({
+jest.mock('@myorganiser/core', () => ({
   getApiBaseUrl: jest.fn(),
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   getAccessToken: jest.fn(),
   getAuthAxios: jest.fn(),
 }));
 
-jest.mock('@myorganizer/app-api-client', () => ({
+jest.mock('@myorganiser/app-api-client', () => ({
   Configuration: jest.fn(function Configuration(config) {
     return config;
   }),
@@ -22,9 +22,9 @@ jest.mock('@myorganizer/app-api-client', () => ({
   }),
 }));
 
-import { Configuration, YouTubeApi } from '@myorganizer/app-api-client';
-import { getAccessToken, getAuthAxios } from '@myorganizer/auth';
-import { getApiBaseUrl } from '@myorganizer/core';
+import { Configuration, YouTubeApi } from '@myorganiser/app-api-client';
+import { getAccessToken, getAuthAxios } from '@myorganiser/auth';
+import { getApiBaseUrl } from '@myorganiser/core';
 import { getYouTubeAvailability } from './web-youtube';
 
 const API_BASE = 'http://api.test';

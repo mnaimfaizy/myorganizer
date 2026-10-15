@@ -1,6 +1,6 @@
 /**
  * User-facing copy for a {@link VaultSyncStatus} reading — the sync status
- * indicator's presentation logic, kept out of `@myorganizer/web-vault` the
+ * indicator's presentation logic, kept out of `@myorganiser/web-vault` the
  * same way `vaultImportErrorMessages.ts` keeps import copy out of
  * `vault-core`: the library that decides *what happened* carries no English
  * text, and the library that shows a User owns naming it.
@@ -10,11 +10,11 @@
  * keeps a server's 422 response body, a stray plaintext value, or a token out
  * of anything a User reads: there is no code path here that reads `error`.
  */
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import type {
   VaultSyncStatus,
   VaultSyncStatusKind,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 /**
  * Every Vault Blob Type, and the name a User sees for it. Guarded by

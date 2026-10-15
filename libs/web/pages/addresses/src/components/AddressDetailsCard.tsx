@@ -1,11 +1,11 @@
-import { AddressRecord } from '@myorganizer/vault-core';
+import { AddressRecord } from '@myorganiser/vault-core';
 import {
   Badge,
   Button,
   Card,
   CardContent,
   CardTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Pencil } from 'lucide-react';
 import { formatAddress } from '../utils/formatAddress';
 

@@ -36,8 +36,8 @@ type User = import('../prisma').User;
 const {
   EMAIL_LOGO_CID,
   collectCidReferences,
-} = require('@myorganizer/email-shell');
-const { colorPrimary } = require('@myorganizer/design-tokens');
+} = require('@myorganiser/email-shell');
+const { colorPrimary } = require('@myorganiser/design-tokens');
 const userService = require('./UserService').default;
 const mockSendEmail = require('./EmailService').__mockSendEmail as jest.Mock;
 const apiTokens = require('../helpers/ApiTokens').default as {

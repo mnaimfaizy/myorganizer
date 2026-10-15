@@ -4,14 +4,14 @@ import {
   SidebarProvider,
   SidebarTrigger,
   Toaster,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import {
   DashboardGuard,
   DashboardSidebar,
   DynamicBreadcrumb,
   OfflineNotice,
-} from '@myorganizer/web-pages/dashboard';
+} from '@myorganiser/web-pages/dashboard';
 
 import {
   PassphraseResetPrompt,
@@ -21,7 +21,7 @@ import {
   VaultPullRunner,
   VaultReconcileRunner,
   VaultSessionProvider,
-} from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault-ui';
 
 export default function DashboardLayout({
   children,

@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@myorganizer/web-ui';
+import { cn } from '@myorganiser/web-ui';
 import { AlertCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { describeSyncProgress } from '../lib/syncProgress';

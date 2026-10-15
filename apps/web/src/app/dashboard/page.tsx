@@ -1,1 +1,1 @@
-export { DashboardPage as default } from '@myorganizer/web-pages/dashboard';
+export { DashboardPage as default } from '@myorganiser/web-pages/dashboard';

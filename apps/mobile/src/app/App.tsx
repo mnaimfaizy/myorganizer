@@ -8,22 +8,22 @@ import {
   reportRefusedWrite,
   useAuth,
   versionFloorRefusal,
-} from '@myorganizer/mobile/feat-auth';
+} from '@myorganiser/mobile/feat-auth';
 import {
   SensitiveCopyProvider,
   VaultProvider,
   createVaultApi,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   rememberLocalDataOwner,
   useAppearance,
-} from '@myorganizer/mobile/core';
-import { ThemeProvider } from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/core';
+import { ThemeProvider } from '@myorganiser/mobile/ui';
 import {
   AppLockGate,
   RootNavigator,
   VersionFloorGate,
-} from '@myorganizer/mobile/screens';
+} from '@myorganiser/mobile/screens';
 import { BackendOriginGate } from './BackendOriginGate';
 import { clearUserLocalData } from './userLocalData';
 

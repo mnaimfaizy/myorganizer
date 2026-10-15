@@ -1,4 +1,4 @@
-import { AddressRecord } from '@myorganizer/vault-core';
+import { AddressRecord } from '@myorganiser/vault-core';
 
 /**
  * Check if an address record uses the new structured format

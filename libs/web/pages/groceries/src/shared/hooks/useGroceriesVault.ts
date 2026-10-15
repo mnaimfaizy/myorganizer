@@ -6,15 +6,15 @@ import type {
   GroceryList,
   GroceriesVaultPayload,
   ListLine,
-} from '@myorganizer/vault-core';
-import { readDeletionLog, toEpoch } from '@myorganizer/vault-core';
-import { randomId } from '@myorganizer/core';
+} from '@myorganiser/vault-core';
+import { readDeletionLog, toEpoch } from '@myorganiser/vault-core';
+import { randomId } from '@myorganiser/core';
 import {
   normalizeGroceries,
   saveGroceriesPayload,
   type VaultHandle,
-} from '@myorganizer/web-vault';
-import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault';
+import { useLocalVaultRevision } from '@myorganiser/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { validateAddCatalogItemAndLineInput } from '../utils';
 

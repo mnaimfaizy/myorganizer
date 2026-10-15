@@ -1,4 +1,4 @@
-import { GroceriesPage } from '@myorganizer/web-pages/groceries';
+import { GroceriesPage } from '@myorganiser/web-pages/groceries';
 
 export const metadata = {
   title: 'Grocery Lists | MyOrganizer',

@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View, type ViewStyle } from 'react-native';
-import { useTheme } from '@myorganizer/mobile/ui';
+import { useTheme } from '@myorganiser/mobile/ui';
 
 /**
  * How thick each Groceries bar is drawn (Groceries sheet): the Lists screen's

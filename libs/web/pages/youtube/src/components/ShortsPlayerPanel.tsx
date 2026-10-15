@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@myorganizer/web-ui';
+import { Button } from '@myorganiser/web-ui';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { YouTubeVideo } from '../types';
 import { formatRuntimeSeconds } from '../lib/formatRuntimeSeconds';

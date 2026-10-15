@@ -1,4 +1,4 @@
-import { AppLogo } from '@myorganizer/web-ui';
+import { AppLogo } from '@myorganiser/web-ui';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 

@@ -398,14 +398,14 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 
 ### Adding a new frontend page
 
-1. Create a new React library under `libs/web/pages/<route>/` with import path `@myorganizer/web-pages/<route>`.
+1. Create a new React library under `libs/web/pages/<route>/` with import path `@myorganiser/web-pages/<route>`.
 2. Export the page entry from the library’s `src/index.ts`.
 3. Add a thin wrapper at `apps/web/src/app/<route>/page.tsx` that renders/exports the library page.
 
 Examples of existing page libraries:
 
-- `@myorganizer/web-pages/account`
-- `@myorganizer/web-pages/subscriptions`
+- `@myorganiser/web-pages/account`
+- `@myorganiser/web-pages/subscriptions`
 
 ### Forms
 
@@ -1244,7 +1244,7 @@ Notes:
 
 ### Common Errors
 
-**Error**: `Cannot find module '@myorganizer/...'`
+**Error**: `Cannot find module '@myorganiser/...'`
 
 ```bash
 # Solution: Rebuild TypeScript paths

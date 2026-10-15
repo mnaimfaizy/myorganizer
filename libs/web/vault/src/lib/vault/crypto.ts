@@ -1,5 +1,5 @@
 /**
- * The Vault's crypto primitives, re-exported from `@myorganizer/vault-core`.
+ * The Vault's crypto primitives, re-exported from `@myorganiser/vault-core`.
  *
  * The implementations moved to `vault-core` so the standalone Escape Copy
  * reader can be bundled from the same source the exporter runs
@@ -9,7 +9,7 @@
  * and it would disagree silently — at the only moment anybody runs it.
  *
  * This file stays as the import site every caller in `web-vault` already
- * names, so the move is invisible to them and to `@myorganizer/web-vault`'s
+ * names, so the move is invisible to them and to `@myorganiser/web-vault`'s
  * public surface.
  */
 export {
@@ -22,5 +22,5 @@ export {
   importAesGcmKey,
   randomBytes,
   utf8ToBytes,
-} from '@myorganizer/vault-core';
-export type { Base64String } from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
+export type { Base64String } from '@myorganiser/vault-core';

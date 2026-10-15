@@ -1,9 +1,9 @@
-jest.mock('@myorganizer/app-api-client');
-jest.mock('@myorganizer/core');
+jest.mock('@myorganiser/app-api-client');
+jest.mock('@myorganiser/core');
 jest.mock('axios');
 
-import { AuthenticationApi } from '@myorganizer/app-api-client';
-import { getApiBaseUrl } from '@myorganizer/core';
+import { AuthenticationApi } from '@myorganiser/app-api-client';
+import { getApiBaseUrl } from '@myorganiser/core';
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 

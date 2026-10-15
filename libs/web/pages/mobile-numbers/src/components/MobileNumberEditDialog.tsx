@@ -1,6 +1,6 @@
 'use client';
 
-import { MobileNumberRecord } from '@myorganizer/vault-core';
+import { MobileNumberRecord } from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

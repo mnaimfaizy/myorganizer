@@ -3,7 +3,7 @@
 import type {
   AdminUserIdentity,
   YouTubeDisconnectOutcome,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   Button,
   Dialog,
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { isAxiosError } from 'axios';
 import { useCallback, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';

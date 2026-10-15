@@ -2,13 +2,13 @@ import {
   VaultBlobType,
   type PutVaultBlobResponse,
   type VaultApi,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   toVaultBlobEnvelope,
   VAULT_BLOB_CONVERGE_STRATEGIES,
   type VaultBlobConvergeStrategy,
   type VaultBlobEnvelope,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 
 import { IV_LENGTH } from './constants';
 import {

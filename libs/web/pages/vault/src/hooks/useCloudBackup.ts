@@ -17,7 +17,7 @@ import {
   setProviderPrefs,
   startScheduler,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 export interface UseCloudBackupOptions {
@@ -43,7 +43,7 @@ export interface UseCloudBackupOptions {
   getNewestCopyMs?: () => Promise<number | null>;
   /**
    * Optional override for `startScheduler`, useful for tests. Defaults to
-   * the implementation exported from `@myorganizer/web-vault`.
+   * the implementation exported from `@myorganiser/web-vault`.
    */
   schedulerImpl?: typeof startScheduler;
 }

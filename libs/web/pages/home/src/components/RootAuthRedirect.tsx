@@ -1,6 +1,6 @@
 'use client';
 
-import { authSession, resolveInboundGuard } from '@myorganizer/auth';
+import { authSession, resolveInboundGuard } from '@myorganiser/auth';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 

@@ -76,7 +76,7 @@ function checkMockOrdering(code, raw, findings) {
       imp.index,
       /import\s[^;]*?from\s*(['"])([^'"]+)\1/,
     );
-    if (spec?.startsWith('@myorganizer/')) {
+    if (spec?.startsWith('@myorganiser/')) {
       firstWorkspaceImport = { index: imp.index, spec };
       break;
     }
@@ -89,12 +89,12 @@ function checkMockOrdering(code, raw, findings) {
   while ((m = mockRe.exec(code)) !== null) {
     if (m.index <= firstWorkspaceImport.index) continue;
     const spec = specifierAt(m.index, /mock\s*\(\s*(['"])([^'"]+)\1/);
-    if (!spec?.startsWith('@myorganizer/')) continue;
+    if (!spec?.startsWith('@myorganiser/')) continue;
     findings.push({
       level: 'error',
       rule: 'jest-mock-before-imports',
       line: lineOf(raw, m.index),
-      message: `jest.mock('${spec}') appears after the workspace import of '${firstWorkspaceImport.spec}' on line ${firstLine}. Nx flags that static import as a boundary violation at lint time; move every jest.mock() of a @myorganizer/* library above all @myorganizer/* imports, including 'import type'.`,
+      message: `jest.mock('${spec}') appears after the workspace import of '${firstWorkspaceImport.spec}' on line ${firstLine}. Nx flags that static import as a boundary violation at lint time; move every jest.mock() of a @myorganiser/* library above all @myorganiser/* imports, including 'import type'.`,
     });
   }
 }

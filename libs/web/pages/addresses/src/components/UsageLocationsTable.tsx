@@ -1,6 +1,6 @@
 'use client';
 
-import { UsageLocationRecord } from '@myorganizer/vault-core';
+import { UsageLocationRecord } from '@myorganiser/vault-core';
 import {
   Button,
   Card,
@@ -12,7 +12,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   ColumnDef,
   flexRender,

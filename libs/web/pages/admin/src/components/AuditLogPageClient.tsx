@@ -1,6 +1,6 @@
 'use client';
 
-import type { AdminAuditLogEntry } from '@myorganizer/app-api-client';
+import type { AdminAuditLogEntry } from '@myorganiser/app-api-client';
 import {
   Table,
   TableBody,
@@ -8,7 +8,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useState } from 'react';
 
 import { createPlatformAdminApi } from '../lib/apiClient';

@@ -1,4 +1,4 @@
-import type { FilteredUserInterface } from '@myorganizer/app-api-client';
+import type { FilteredUserInterface } from '@myorganiser/app-api-client';
 import axios, {
   AxiosError,
   type AxiosAdapter,

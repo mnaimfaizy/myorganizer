@@ -1,4 +1,4 @@
-import { AddressRecord } from '@myorganizer/vault-core';
+import { AddressRecord } from '@myorganiser/vault-core';
 import {
   Badge,
   Button,
@@ -6,7 +6,7 @@ import {
   CardContent,
   CardTitle,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { MapPinned, Plus, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 

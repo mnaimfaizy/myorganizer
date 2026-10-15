@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Dialog, DialogContent } from '@myorganizer/web-ui';
+import { Button, Dialog, DialogContent } from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { formatShortsDuration } from '../lib/shortsBudget';

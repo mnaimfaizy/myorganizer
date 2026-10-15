@@ -2,8 +2,8 @@
 
 import { useCallback } from 'react';
 
-import { Button, DialogFooter } from '@myorganizer/web-ui';
-import { useExportVault } from '@myorganizer/web-vault-ui';
+import { Button, DialogFooter } from '@myorganiser/web-ui';
+import { useExportVault } from '@myorganiser/web-vault-ui';
 
 interface DeleteAccountEscapeCopyStepProps {
   escapeCopyDownloaded: boolean;

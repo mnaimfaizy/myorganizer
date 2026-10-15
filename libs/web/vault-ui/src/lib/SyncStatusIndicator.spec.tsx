@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { fireEvent } from '@testing-library/react';
-import type { VaultSyncStatus } from '@myorganizer/web-vault';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import type { VaultSyncStatus } from '@myorganiser/web-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { SyncStatusIndicator } from './SyncStatusIndicator';
 

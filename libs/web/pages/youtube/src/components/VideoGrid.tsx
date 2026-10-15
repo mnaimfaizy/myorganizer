@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Input, Skeleton } from '@myorganizer/web-ui';
+import { Button, Input, Skeleton } from '@myorganiser/web-ui';
 import type { SortOption, YouTubeVideo } from '../types';
 import { VideoCard } from './VideoCard';
 

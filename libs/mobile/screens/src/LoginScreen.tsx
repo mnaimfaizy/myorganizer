@@ -4,7 +4,7 @@ import {
   requestPasswordReset,
   useAuth,
   webAppPath,
-} from '@myorganizer/mobile/feat-auth';
+} from '@myorganiser/mobile/feat-auth';
 import {
   BrandMark,
   Button,
@@ -14,7 +14,7 @@ import {
   TextField,
   useIsOffline,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   BackLink,
   EntryScroll,

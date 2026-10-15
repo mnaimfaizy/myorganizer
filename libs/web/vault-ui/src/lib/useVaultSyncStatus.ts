@@ -2,7 +2,7 @@
 
 /**
  * Reads the current sync status from the Vault Session — see
- * `computeVaultSyncStatus` in `@myorganizer/web-vault` for what "current"
+ * `computeVaultSyncStatus` in `@myorganiser/web-vault` for what "current"
  * means. No state is owned here beyond the last reading: every recompute
  * re-derives from the Sync Bookmarks, the sync queue's own status, and the
  * pull trigger's own status, so a component unmounting and remounting loses
@@ -13,7 +13,7 @@ import { useCallback, useEffect, useState } from 'react';
 import {
   computeVaultSyncStatus,
   type VaultSyncStatus,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { useOptionalVaultSession } from './session';
 

@@ -1,4 +1,4 @@
-import { YouTubeDataPrivacyPage } from '@myorganizer/web-pages/youtube';
+import { YouTubeDataPrivacyPage } from '@myorganiser/web-pages/youtube';
 
 export default function Page() {
   return <YouTubeDataPrivacyPage />;

@@ -114,7 +114,7 @@ local-only branch, read it yourself via `git show <branch>:<path>` rather than
 relying only on the spec's description of it — a paraphrase is one more copy
 that can drift from the source. Promote the prototype's layout, control set,
 and state model; do not copy its markup verbatim (it uses raw Tailwind and
-mock data, production uses `@myorganizer/web-ui` and real types).
+mock data, production uses `@myorganiser/web-ui` and real types).
 
 ## Step 3 — Choose the Structure (GUIDELINES §3)
 

@@ -49,7 +49,7 @@ would assert it.
 2. Run the appropriate generator (see [references/nx-cli-runbook.md](./references/nx-cli-runbook.md) for exact commands).
 3. After generation, add the path alias to `tsconfig.base.json` if the library will be imported by other projects:
    ```json
-   "@myorganizer/<lib-name>": ["libs/<path>/src/index.ts"]
+   "@myorganiser/<lib-name>": ["libs/<path>/src/index.ts"]
    ```
 4. Verify the project wires up correctly:
    - `yarn nx build <project-name>` (or `yarn nx test <project-name>` for test-only libs)

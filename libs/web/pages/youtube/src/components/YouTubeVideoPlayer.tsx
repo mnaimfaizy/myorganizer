@@ -1,6 +1,6 @@
 'use client';
 
-import { Badge, Button, cn } from '@myorganizer/web-ui';
+import { Badge, Button, cn } from '@myorganiser/web-ui';
 import { AlertCircle, ExternalLink, Play } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { YouTubeVideo } from '../types';

@@ -1,7 +1,7 @@
 'use client';
 
-import { AddressRecord } from '@myorganizer/vault-core';
-import { Button } from '@myorganizer/web-ui';
+import { AddressRecord } from '@myorganiser/vault-core';
+import { Button } from '@myorganiser/web-ui';
 import { CheckCircle2 } from 'lucide-react';
 import { useCallback } from 'react';
 

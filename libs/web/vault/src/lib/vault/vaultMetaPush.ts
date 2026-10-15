@@ -25,7 +25,7 @@
  * composes the two exactly as `vaultReconcile.ts` composes `convergeVaultBlob`
  * — the write capability lives here, above the primitive, never inside it.
  */
-import { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultApi, VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

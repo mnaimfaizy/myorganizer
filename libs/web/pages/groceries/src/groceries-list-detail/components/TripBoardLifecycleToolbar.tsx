@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@myorganizer/web-ui';
+import { Button } from '@myorganiser/web-ui';
 import { ListPlus, Plus, Trash2 } from 'lucide-react';
 
 interface TripBoardLifecycleToolbarProps {

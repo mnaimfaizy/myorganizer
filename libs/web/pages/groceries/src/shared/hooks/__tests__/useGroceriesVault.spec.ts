@@ -1,8 +1,8 @@
 /*
   Tests for useGroceriesVault hook.
-  - Mocks @myorganizer/web-vault's normalizeGroceries and a VaultHandle
+  - Mocks @myorganiser/web-vault's normalizeGroceries and a VaultHandle
     exposing loadDecryptedData/saveEncryptedData
-  - Mocks @myorganizer/core's randomId with a predictable sequential generator
+  - Mocks @myorganiser/core's randomId with a predictable sequential generator
   - Covers the catalog-membership mutation seams: addItemToLists,
     addExistingCatalogItemToLists, deleteCatalogItem, plus a light regression
     pass over pre-existing trip lifecycle actions (toggle/uncheck/remove/
@@ -10,9 +10,9 @@
 */
 
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-vault', () => {
-  const actual = jest.requireActual<typeof import('@myorganizer/web-vault')>(
-    '@myorganizer/web-vault',
+jest.mock('@myorganiser/web-vault', () => {
+  const actual = jest.requireActual<typeof import('@myorganiser/web-vault')>(
+    '@myorganiser/web-vault',
   );
   return {
     ...actual,
@@ -20,7 +20,7 @@ jest.mock('@myorganizer/web-vault', () => {
   };
 });
 
-jest.mock('@myorganizer/core', () => {
+jest.mock('@myorganiser/core', () => {
   let counter = 0;
   return {
     randomId: jest.fn(() => `id-${++counter}`),
@@ -32,9 +32,9 @@ import type {
   GroceriesVaultPayload,
   GroceryList,
   ListLine,
-} from '@myorganizer/vault-core';
-import { randomId } from '@myorganizer/core';
-import { normalizeGroceries, type VaultHandle } from '@myorganizer/web-vault';
+} from '@myorganiser/vault-core';
+import { randomId } from '@myorganiser/core';
+import { normalizeGroceries, type VaultHandle } from '@myorganiser/web-vault';
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { useGroceriesVault } from '../useGroceriesVault';
 

@@ -1,4 +1,4 @@
-import { MobileNumbersPage } from '@myorganizer/web-pages/mobile-numbers';
+import { MobileNumbersPage } from '@myorganiser/web-pages/mobile-numbers';
 
 export default function Page() {
   return <MobileNumbersPage />;

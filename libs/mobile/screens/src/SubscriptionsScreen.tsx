@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   newRecordId,
   draftSheetBusy,
@@ -18,12 +18,12 @@ import {
   useVaultBlob,
   recoversByReload,
   VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   putVaultRecord,
   type CurrencyCode,
   type SubscriptionRecord,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   BottomSheet,
   Button,
@@ -44,7 +44,7 @@ import {
   usePressFeedback,
   useTheme,
   type ListRowState,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   BILLING_CYCLE_UNITS,
   calculateVisibleMonthlyEquivalents,

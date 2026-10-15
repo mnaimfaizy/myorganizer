@@ -1,4 +1,4 @@
-# `@myorganizer/design-tokens`
+# `@myorganiser/design-tokens`
 
 Single source of truth for the MyOrganizer design system (colors, spacing,
 typography, radius, shadow). Based on the **Secure Modernism** spec in
@@ -73,14 +73,14 @@ applies the `dark` class.
 **TypeScript (when a value must reach JS, e.g. SVG fill):**
 
 ```ts
-import { colorPrimary, colorPrimaryVar } from '@myorganizer/design-tokens';
+import { colorPrimary, colorPrimaryVar } from '@myorganiser/design-tokens';
 ```
 
 ## Rules
 
 - **Never hard-code hex colors, spacing values, or font stacks in
   components.** Use a Tailwind class or import from
-  `@myorganizer/design-tokens`.
+  `@myorganiser/design-tokens`.
 - New token? Add it to `tokens.json` first, regenerate, then use it.
 - Keep DESIGN.md as brand rationale (when to use a role), not a second
   palette. Update it when a semantic role or brand rule changes, not when

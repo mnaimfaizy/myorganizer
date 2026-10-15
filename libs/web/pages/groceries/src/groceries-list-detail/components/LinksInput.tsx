@@ -8,7 +8,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Plus, Trash2 } from 'lucide-react';
 import { useCallback, type MouseEvent } from 'react';
 import type {

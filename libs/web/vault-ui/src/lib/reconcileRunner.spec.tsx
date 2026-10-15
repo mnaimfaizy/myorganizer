@@ -11,15 +11,15 @@ const mockToast = jest.fn();
 const mockReconcileVaultWithServer = jest.fn();
 const mockReportMountSettled = jest.fn();
 
-jest.mock('@myorganizer/web-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-ui');
+jest.mock('@myorganiser/web-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-ui');
   return {
     ...actual,
     useToast: () => ({ toast: mockToast }),
   };
 });
 
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   createVaultApi: jest.fn(() => ({})),
   getHttpStatus: jest.fn(() => undefined),
   reconcileVaultWithServer: (options: ReconcileOptions) =>
@@ -38,8 +38,8 @@ import type {
   VaultBlobConvergeOutcome,
   VaultReconcileAsk,
   VaultReconcileDecision,
-} from '@myorganizer/web-vault';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+} from '@myorganiser/web-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { useOptionalVaultSession } from './session';
@@ -56,7 +56,7 @@ type ReconcileOptions = {
 
 /**
  * A stand-in for the Local Vault Revision. Hand-rolled rather than imported,
- * because `@myorganizer/web-vault` is mocked wholesale in this spec — but the
+ * because `@myorganiser/web-vault` is mocked wholesale in this spec — but the
  * same shape `createLocalVaultRevision` returns: a number, a bump that tells
  * every listener, and a subscribe that hands back its own unsubscribe.
  */

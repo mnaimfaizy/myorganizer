@@ -56,9 +56,9 @@ function writeBaseTsconfig(workspace, paths = {}) {
 
 /** Aliases shaped like the real repo's: one library with a Portable Entry Point, one without. */
 const PORTABLE_PATHS = {
-  '@myorganizer/auth': ['libs/auth/src/index.ts'],
-  '@myorganizer/auth/portable': ['libs/auth/src/portable.ts'],
-  '@myorganizer/design-tokens': ['libs/design-tokens/src/index.ts'],
+  '@myorganiser/auth': ['libs/auth/src/index.ts'],
+  '@myorganiser/auth/portable': ['libs/auth/src/portable.ts'],
+  '@myorganiser/design-tokens': ['libs/design-tokens/src/index.ts'],
 };
 
 /**
@@ -618,7 +618,7 @@ test('fails a main-entry import of a library that has a Portable Entry Point', (
   const workspace = scaffold(
     t,
     {
-      'libs/mobile/feat/auth/src/api/client.ts': `import { buildRefreshTokenRequest } from '@myorganizer/auth';
+      'libs/mobile/feat/auth/src/api/client.ts': `import { buildRefreshTokenRequest } from '@myorganiser/auth';
 export { buildRefreshTokenRequest };
 `,
     },
@@ -629,7 +629,7 @@ export { buildRefreshTokenRequest };
   assert.equal(result.status, 1);
   assert.match(
     result.stderr,
-    /client\.ts:1: imports '@myorganizer\/auth' — its main entry point\. Import '@myorganizer\/auth\/portable' instead/,
+    /client\.ts:1: imports '@myorganiser\/auth' — its main entry point\. Import '@myorganiser\/auth\/portable' instead/,
   );
 });
 
@@ -640,14 +640,14 @@ test('fails a main-entry reach through import type, export from, require, and im
   const workspace = scaffold(
     t,
     {
-      'libs/mobile/feat/vault/src/a.ts': `import type { AuthClientType } from '@myorganizer/auth';
+      'libs/mobile/feat/vault/src/a.ts': `import type { AuthClientType } from '@myorganiser/auth';
 export type { AuthClientType };
 `,
-      'libs/mobile/feat/vault/src/b.ts': `export * from '@myorganizer/auth';
+      'libs/mobile/feat/vault/src/b.ts': `export * from '@myorganiser/auth';
 `,
-      'apps/mobile/src/c.js': `module.exports = require('@myorganizer/auth');
+      'apps/mobile/src/c.js': `module.exports = require('@myorganiser/auth');
 `,
-      'apps/mobile/src/d.ts': `export const load = () => import('@myorganizer/auth');
+      'apps/mobile/src/d.ts': `export const load = () => import('@myorganiser/auth');
 `,
     },
     [],
@@ -655,12 +655,12 @@ export type { AuthClientType };
   );
   const result = run(workspace);
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /a\.ts:1: imports '@myorganizer\/auth'/);
-  assert.match(result.stderr, /b\.ts:1: imports '@myorganizer\/auth'/);
-  assert.match(result.stderr, /c\.js:1: requires '@myorganizer\/auth'/);
+  assert.match(result.stderr, /a\.ts:1: imports '@myorganiser\/auth'/);
+  assert.match(result.stderr, /b\.ts:1: imports '@myorganiser\/auth'/);
+  assert.match(result.stderr, /c\.js:1: requires '@myorganiser\/auth'/);
   assert.match(
     result.stderr,
-    /d\.ts:1: dynamically imports '@myorganizer\/auth'/,
+    /d\.ts:1: dynamically imports '@myorganiser\/auth'/,
   );
 });
 
@@ -668,7 +668,7 @@ test('passes an import through the Portable Entry Point', (t) => {
   const workspace = scaffold(
     t,
     {
-      'libs/mobile/feat/auth/src/api/client.ts': `import { buildRefreshTokenRequest } from '@myorganizer/auth/portable';
+      'libs/mobile/feat/auth/src/api/client.ts': `import { buildRefreshTokenRequest } from '@myorganiser/auth/portable';
 export { buildRefreshTokenRequest };
 `,
     },
@@ -686,7 +686,7 @@ test('passes a main-entry import of a library with no Portable Entry Point', (t)
   const workspace = scaffold(
     t,
     {
-      'libs/mobile/ui/src/theme.ts': `import { tokens } from '@myorganizer/design-tokens';
+      'libs/mobile/ui/src/theme.ts': `import { tokens } from '@myorganiser/design-tokens';
 export const theme = tokens;
 `,
     },
@@ -699,7 +699,7 @@ export const theme = tokens;
 
 test('opts a library in as soon as its Portable Entry Point appears in tsconfig.base.json', (t) => {
   const files = {
-    'libs/mobile/ui/src/theme.ts': `import { tokens } from '@myorganizer/design-tokens';
+    'libs/mobile/ui/src/theme.ts': `import { tokens } from '@myorganiser/design-tokens';
 export const theme = tokens;
 `,
   };
@@ -708,7 +708,7 @@ export const theme = tokens;
 
   const after = scaffold(t, files, [], {
     ...PORTABLE_PATHS,
-    '@myorganizer/design-tokens/portable': [
+    '@myorganiser/design-tokens/portable': [
       'libs/design-tokens/src/portable.ts',
     ],
   });
@@ -716,7 +716,7 @@ export const theme = tokens;
   assert.equal(result.status, 1);
   assert.match(
     result.stderr,
-    /imports '@myorganizer\/design-tokens' — its main entry point/,
+    /imports '@myorganiser\/design-tokens' — its main entry point/,
   );
 });
 
@@ -724,8 +724,8 @@ test('does not treat a lookalike specifier as the main entry', (t) => {
   const workspace = scaffold(
     t,
     {
-      'libs/mobile/utils/src/index.ts': `import { a } from '@myorganizer/auth-extras';
-import { b } from '@myorganizer/auth/portable';
+      'libs/mobile/utils/src/index.ts': `import { a } from '@myorganiser/auth-extras';
+import { b } from '@myorganiser/auth/portable';
 export { a, b };
 `,
     },
@@ -740,7 +740,7 @@ test('an exempted Platform Variant may import a main entry point', (t) => {
   const workspace = scaffold(
     t,
     {
-      'libs/mobile/feat/vault/src/crypto.web.ts': `import type { AuthClientType } from '@myorganizer/auth';
+      'libs/mobile/feat/vault/src/crypto.web.ts': `import type { AuthClientType } from '@myorganiser/auth';
 export type { AuthClientType };
 `,
     },
@@ -788,7 +788,7 @@ test('--print lists the Portable Entry Points it derived', (t) => {
   assert.equal(result.status, 0, result.stderr);
   assert.match(
     result.stdout,
-    /portable: @myorganizer\/auth → @myorganizer\/auth\/portable/,
+    /portable: @myorganiser\/auth → @myorganiser\/auth\/portable/,
   );
-  assert.doesNotMatch(result.stdout, /portable: @myorganizer\/design-tokens/);
+  assert.doesNotMatch(result.stdout, /portable: @myorganiser\/design-tokens/);
 });

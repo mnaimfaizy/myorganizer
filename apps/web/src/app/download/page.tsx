@@ -1,4 +1,4 @@
-import { DownloadPage } from '@myorganizer/web-pages/download';
+import { DownloadPage } from '@myorganiser/web-pages/download';
 
 export const metadata = {
   title: 'Download',

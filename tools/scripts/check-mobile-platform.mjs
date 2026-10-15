@@ -67,10 +67,10 @@
 // treated as just another object's property.
 //
 // The Portable Entry Point rule (ADR 0103) is an import rule. A shared
-// library's main entry point may reach browser-only code — `@myorganizer/auth`
-// reaches the browser session storage adapter and `@myorganizer/core`'s
+// library's main entry point may reach browser-only code — `@myorganiser/auth`
+// reaches the browser session storage adapter and `@myorganiser/core`'s
 // `window` helpers — so mobile source reaches such a library only through its
-// `@myorganizer/<lib>/portable` alias (CONTEXT.md, Portable Entry Point). The
+// `@myorganiser/<lib>/portable` alias (CONTEXT.md, Portable Entry Point). The
 // mobile native typecheck program has no `dom` in `lib`, which catches a
 // main-entry import only while the barrel happens to reach a *browser* global,
 // and no Node types (ADR 0120), which catches one reaching `crypto`, `Buffer`,
@@ -82,9 +82,9 @@
 // `compilerOptions.paths`, never written here: every alias ending in
 // `/portable` names a library whose main specifier is then banned, so adding a
 // Portable Entry Point opts its library in with no edit to this file, and a
-// library without one (`@myorganizer/design-tokens`) is not affected — it has
+// library without one (`@myorganiser/design-tokens`) is not affected — it has
 // no browser code to route around. The match is exact on the main specifier;
-// `@myorganizer/auth-extras` and `@myorganizer/auth/portable` are not it. Every
+// `@myorganiser/auth-extras` and `@myorganiser/auth/portable` are not it. Every
 // specifier form counts, `import type` included: a type-only import still loads
 // the whole barrel into the typecheck program, and every other form loads it
 // into the Metro bundle, which does not tree-shake. A missing
@@ -196,7 +196,7 @@ function readExemptions({ cwd: root = cwd, path = EXEMPTIONS_PATH } = {}) {
 
 /**
  * Main specifier → Portable Entry Point specifier, for every
- * `@myorganizer/<lib>/portable` alias in tsconfig.base.json. Never returns on
+ * `@myorganiser/<lib>/portable` alias in tsconfig.base.json. Never returns on
  * error — it exits.
  */
 function readPortableEntryPoints({ cwd: root = cwd } = {}) {

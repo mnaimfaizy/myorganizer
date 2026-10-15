@@ -14,9 +14,9 @@ module.exports = {
   },
   resolve: {
     // Explicitly register tsconfig path aliases so that workspace library
-    // imports (e.g. @myorganizer/auth) resolve. NxAppWebpackPlugin's own
+    // imports (e.g. @myorganiser/auth) resolve. NxAppWebpackPlugin's own
     // tsconfig-paths wiring does not resolve them for this node target: the
-    // build fails on `@myorganizer/email-shell` without this plugin.
+    // build fails on `@myorganiser/email-shell` without this plugin.
     plugins: [
       new TsconfigPathsPlugin({
         configFile: join(__dirname, '../../tsconfig.base.json'),

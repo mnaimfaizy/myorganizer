@@ -1,7 +1,7 @@
 import type {
   FilteredUserInterface,
   RefreshToken200Response,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import axios, {
   AxiosError,
   type AxiosAdapter,

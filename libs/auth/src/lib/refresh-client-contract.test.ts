@@ -1,4 +1,4 @@
-import type { RefreshToken200Response } from '@myorganizer/app-api-client';
+import type { RefreshToken200Response } from '@myorganiser/app-api-client';
 
 import {
   buildLoginUserBody,

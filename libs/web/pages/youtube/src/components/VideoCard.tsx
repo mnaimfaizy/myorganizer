@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, cn } from '@myorganizer/web-ui';
+import { Button, cn } from '@myorganiser/web-ui';
 import { CheckCircle, Circle, ListPlus } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { updateVideoWatched } from '../hooks';

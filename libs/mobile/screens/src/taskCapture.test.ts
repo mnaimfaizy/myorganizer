@@ -1,4 +1,4 @@
-import type { Task } from '@myorganizer/vault-core/portable';
+import type { Task } from '@myorganiser/vault-core/portable';
 import {
   captureLanded,
   draftAfterLanding,

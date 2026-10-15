@@ -7,7 +7,7 @@ Root (`/`) landing page library. Includes the auth-aware redirect that sends alr
 ## Do
 
 - Keep the landing page and the authenticated redirect gate in this library.
-- Preserve the import path `@myorganizer/web-pages/home`.
+- Preserve the import path `@myorganiser/web-pages/home`.
 
 ## Do Not
 

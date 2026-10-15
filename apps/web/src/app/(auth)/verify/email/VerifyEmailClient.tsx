@@ -1,7 +1,7 @@
 'use client';
 
-import { getApiBaseUrl } from '@myorganizer/core';
-import { Button } from '@myorganizer/web-ui';
+import { getApiBaseUrl } from '@myorganiser/core';
+import { Button } from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';

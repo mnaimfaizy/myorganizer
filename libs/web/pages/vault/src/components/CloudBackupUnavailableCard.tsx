@@ -3,7 +3,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 interface CloudBackupUnavailableCardProps {
   reason: string;

@@ -4,13 +4,13 @@ import {
   DEFAULT_AUTO_LOCK_DELAY,
   readAppVersion,
   type AppVersion,
-} from '@myorganizer/mobile/core';
+} from '@myorganiser/mobile/core';
 import {
   useAuth,
   WEB_APP_URL,
   webAppPath,
-} from '@myorganizer/mobile/feat-auth';
-import { useVaultSession } from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-auth';
+import { useVaultSession } from '@myorganiser/mobile/feat-vault';
 import {
   BottomSheet,
   Button,
@@ -28,7 +28,7 @@ import {
   TextField,
   useLargeTitleCollapse,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   APPEARANCE_SEGMENTS,
   AUTO_LOCK_CHOICES,

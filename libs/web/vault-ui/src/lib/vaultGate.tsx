@@ -8,7 +8,7 @@ import {
   Input,
   Label,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import {
@@ -21,7 +21,7 @@ import {
   newPassphraseSchema,
   replaceOwnedLocalVaultOnEvidence,
   replaceOwnedLocalVaultWithRecoveryKey,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { downloadJsonFile } from './downloadFile';
 import {

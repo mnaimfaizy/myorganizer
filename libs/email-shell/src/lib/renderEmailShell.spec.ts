@@ -5,7 +5,7 @@ import {
   colorOnPrimary,
   colorPrimary,
   colorSurface,
-} from '@myorganizer/design-tokens';
+} from '@myorganiser/design-tokens';
 import { collectCidReferences } from './cidLinkage';
 import { EMAIL_BRAND_NAME, renderEmailShell } from './renderEmailShell';
 import { EMAIL_LOGO_CID } from './types';

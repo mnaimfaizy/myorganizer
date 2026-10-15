@@ -170,7 +170,7 @@ test('error fixture exits 1 in advisory and strict modes', (t) => {
     workspace,
     'libs/web/pages/todos/src/ErrorComponent.tsx',
     [
-      "import { Button } from '@myorganizer/web-ui/src/lib/components/button/Button';",
+      "import { Button } from '@myorganiser/web-ui/src/lib/components/button/Button';",
       '',
       'export function ErrorComponent() {',
       '  return <Button />;',
@@ -268,7 +268,7 @@ test('--staged inspects staged added/modified files and ignores unstaged files',
   const unstagedFile = writeFixture(
     workspace,
     'libs/web/pages/todos/src/UnstagedComponent.tsx',
-    "import { Button } from '@myorganizer/web-ui/src/lib/components/button/Button';\nexport function UnstagedComponent() { return <Button />; }\n",
+    "import { Button } from '@myorganiser/web-ui/src/lib/components/button/Button';\nexport function UnstagedComponent() { return <Button />; }\n",
   );
 
   const result = runChecker(workspace, '--staged', '--json');
@@ -1072,7 +1072,7 @@ test('--all and --staged reach the same verdict on the same .ts file', (t) => {
     workspace,
     'libs/web/pages/todos/src/hooks/useTodoDeepImport.ts',
     [
-      "import { Button } from '@myorganizer/web-ui/src/lib/components/button/Button';",
+      "import { Button } from '@myorganiser/web-ui/src/lib/components/button/Button';",
       '',
       'export const useTodoDeepImport = () => Button;',
       '',

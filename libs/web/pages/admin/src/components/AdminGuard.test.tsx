@@ -5,7 +5,7 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   authSession: {},
   getCurrentUser: jest.fn(),
   resolveOutboundGuard: jest.fn(),
@@ -17,12 +17,12 @@ import type {
   AuthUser,
   SessionEndedEvent,
   SessionEndedListener,
-} from '@myorganizer/auth';
+} from '@myorganiser/auth';
 import {
   getCurrentUser,
   onSessionEnded,
   resolveOutboundGuard,
-} from '@myorganizer/auth';
+} from '@myorganiser/auth';
 import { useRouter } from 'next/navigation';
 
 import AdminGuard from './AdminGuard';

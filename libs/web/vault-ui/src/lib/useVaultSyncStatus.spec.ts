@@ -3,7 +3,7 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 
 const mockComputeVaultSyncStatus = jest.fn();
 
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   computeVaultSyncStatus: (opts: unknown) => mockComputeVaultSyncStatus(opts),
 }));
 
@@ -11,7 +11,7 @@ jest.mock('./session', () => ({
   useOptionalVaultSession: jest.fn(),
 }));
 
-import type { VaultSyncStatus } from '@myorganizer/web-vault';
+import type { VaultSyncStatus } from '@myorganiser/web-vault';
 import { useOptionalVaultSession } from './session';
 import { useVaultSyncStatus } from './useVaultSyncStatus';
 

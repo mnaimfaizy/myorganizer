@@ -1,5 +1,5 @@
-import { VaultBlobType, type VaultApi } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
+import { VaultBlobType, type VaultApi } from '@myorganiser/app-api-client';
+import type { VaultBlobEnvelope } from '@myorganiser/vault-core/portable';
 import {
   base64ToBytes,
   bytesToBase64,

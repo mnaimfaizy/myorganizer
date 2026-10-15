@@ -1,6 +1,6 @@
-import type { Task } from '@myorganizer/vault-core';
+import type { Task } from '@myorganiser/vault-core';
 import { createProductionTasksVaultAdapter } from './tasks-vault-adapter';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 
 const FIXED_NOW = '2024-06-15T12:00:00.000Z';
 

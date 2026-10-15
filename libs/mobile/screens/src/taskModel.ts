@@ -5,7 +5,7 @@ import {
   type TaskContext,
   type TaskPriority,
   type TaskStatus,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   formatCalendarDate,
   formatCalendarDateShort,

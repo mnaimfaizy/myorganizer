@@ -2,7 +2,7 @@ import {
   GROCERY_CATEGORY_ORDER,
   groceryCategoryLabel,
   type GroceryCategoryType,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 
 /**
  * What the Groceries screens read out of a decrypted Groceries Vault Blob.

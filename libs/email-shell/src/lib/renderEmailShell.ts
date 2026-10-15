@@ -14,7 +14,7 @@ import {
   spaceMd,
   spaceSm,
   spaceXs,
-} from '@myorganizer/design-tokens';
+} from '@myorganiser/design-tokens';
 import { LOGO_EMAIL_PNG_BASE64 } from '../generated/logoEmailPng';
 import { assertCidLinkage } from './cidLinkage';
 import { escapeHtml } from './escapeHtml';

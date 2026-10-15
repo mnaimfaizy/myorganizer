@@ -18,8 +18,8 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core';
+import { VaultBlobType, type VaultMetaV1 } from '@myorganiser/app-api-client';
+import type { VaultBlobEnvelope } from '@myorganiser/vault-core';
 
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import type { VaultStorageV1 } from './localVaultStorage';

@@ -9,7 +9,7 @@
  * Handles are not reusable across Users. When the owner changes, the old
  * handle is discarded and a new one is created.
  */
-import { VaultBlobType, VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultBlobType, VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import {
   createLocalVaultAccess,

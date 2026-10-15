@@ -13,7 +13,7 @@
  */
 import { useCallback, useSyncExternalStore } from 'react';
 
-import type { LocalVaultRevision } from '@myorganizer/web-vault';
+import type { LocalVaultRevision } from '@myorganiser/web-vault';
 
 /**
  * The revision a caller sees when there is no Vault Session to read one from.

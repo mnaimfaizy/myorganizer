@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Linking, StyleSheet, View } from 'react-native';
-import type { SubscriptionStatus } from '@myorganizer/vault-core/portable';
-import { webAppPath } from '@myorganizer/mobile/feat-auth';
+import type { SubscriptionStatus } from '@myorganiser/vault-core/portable';
+import { webAppPath } from '@myorganiser/mobile/feat-auth';
 import {
   BottomSheet,
   Button,
@@ -10,7 +10,7 @@ import {
   Text,
   TextField,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { DateField } from './DateField';
 import { toCalendarDate } from './calendarDate';
 import {

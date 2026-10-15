@@ -1,4 +1,4 @@
-import { YouTubeUnsubscribePage } from '@myorganizer/web-pages/youtube';
+import { YouTubeUnsubscribePage } from '@myorganiser/web-pages/youtube';
 import { Suspense } from 'react';
 
 // The client component reads the unsubscribe token with useSearchParams, which

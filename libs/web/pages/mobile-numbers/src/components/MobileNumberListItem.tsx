@@ -1,5 +1,5 @@
-import { MobileNumberRecord } from '@myorganizer/vault-core';
-import { Badge, Button } from '@myorganizer/web-ui';
+import { MobileNumberRecord } from '@myorganiser/vault-core';
+import { Badge, Button } from '@myorganiser/web-ui';
 import { Smartphone, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback } from 'react';

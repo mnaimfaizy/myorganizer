@@ -1,6 +1,6 @@
-import { Configuration, VaultApi } from '@myorganizer/app-api-client';
+import { Configuration, VaultApi } from '@myorganiser/app-api-client';
 import type { AxiosInstance } from 'axios';
-import { MOBILE_ENVIRONMENT } from '@myorganizer/mobile/core';
+import { MOBILE_ENVIRONMENT } from '@myorganiser/mobile/core';
 
 const BASE_PATH = MOBILE_ENVIRONMENT.apiBasePath;
 

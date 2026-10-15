@@ -4,7 +4,7 @@ import type {
   CatalogItem,
   GroceryCategoryType,
   GroceryList,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import { Edit2, Plus } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import {

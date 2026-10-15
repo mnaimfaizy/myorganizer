@@ -21,7 +21,7 @@ import {
   utf8ToBytes,
   VaultImportError,
   EscapeCopySecretMismatchError,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { bootstrap, describeFailure, secretFromForm } from './main';
 

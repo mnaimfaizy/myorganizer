@@ -3,9 +3,9 @@ jest.mock('../sync', () => ({
 }));
 
 import { readVaultBlob } from '../sync';
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultApi } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
+import { VaultBlobType } from '@myorganiser/app-api-client';
+import type { VaultApi } from '@myorganiser/app-api-client';
+import type { VaultBlobEnvelope } from '@myorganiser/vault-core/portable';
 import { storedKeyOpensVault, NoCiphertextToCheckError } from './keyCheck';
 
 const mockReadVaultBlob = readVaultBlob as jest.MockedFunction<

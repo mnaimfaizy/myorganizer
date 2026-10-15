@@ -1,7 +1,7 @@
 import React, { useLayoutEffect, useRef } from 'react';
-import { useAutoLockDelay, shouldAutoLock } from '@myorganizer/mobile/core';
-import { useVaultSession } from '@myorganizer/mobile/feat-vault';
-import { PrivacyCover, useAppState } from '@myorganizer/mobile/ui';
+import { useAutoLockDelay, shouldAutoLock } from '@myorganiser/mobile/core';
+import { useVaultSession } from '@myorganiser/mobile/feat-vault';
+import { PrivacyCover, useAppState } from '@myorganiser/mobile/ui';
 
 interface AppLockGateProps {
   children: React.ReactNode;

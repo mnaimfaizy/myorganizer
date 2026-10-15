@@ -2,8 +2,8 @@
 
 import { useMemo, useState, useCallback } from 'react';
 
-import { GoogleDriveCloudBackupProvider } from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import { GoogleDriveCloudBackupProvider } from '@myorganiser/web-vault';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
 
 import {
   useGoogleIdentityScript,

@@ -1,5 +1,5 @@
-jest.mock('@myorganizer/app-api-client');
-jest.mock('@myorganizer/core');
+jest.mock('@myorganiser/app-api-client');
+jest.mock('@myorganiser/core');
 
 import type { AuthSessionModule } from './auth-session-module';
 import { createAuthSessionModule } from './auth-session-module';

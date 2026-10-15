@@ -49,7 +49,7 @@ gets the new member without being edited. For `VaultBlobType` that table is
 the legacy bundle path, the hardened envelope path, and the Local Vault write-back all iterate it.
 
 Where two hand-maintained lists describe the same domain set — `VaultBlobType` from the API
-contract and `VaultExportBlobType` from `@myorganizer/vault-core` — the table satisfies both, so
+contract and `VaultExportBlobType` from `@myorganiser/vault-core` — the table satisfies both, so
 nothing can be added to one and forgotten in the other.
 
 `yarn enum:fanout:check` (`tools/scripts/check-enum-fanout.mjs`) enforces it. It parses the

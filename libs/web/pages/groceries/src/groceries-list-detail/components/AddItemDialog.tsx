@@ -1,7 +1,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { CatalogItem, GroceryCategoryType } from '@myorganizer/vault-core';
+import type { CatalogItem, GroceryCategoryType } from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogDescription,
   DialogTitle,
   Form,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Info, Lock } from 'lucide-react';
 import { useCallback, useMemo, useState } from 'react';
 import type { ChangeEvent, KeyboardEvent } from 'react';

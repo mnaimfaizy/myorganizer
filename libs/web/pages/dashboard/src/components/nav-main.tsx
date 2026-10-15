@@ -15,7 +15,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 export function NavMain({
   items,

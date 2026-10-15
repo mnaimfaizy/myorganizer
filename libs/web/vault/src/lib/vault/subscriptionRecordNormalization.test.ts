@@ -4,7 +4,7 @@ import {
   SubscriptionRenewalTypeEnum,
   SubscriptionStatusEnum,
   SubscriptionTierEnum,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { normalizeSubscriptions } from './subscriptionRecordNormalization';
 import {

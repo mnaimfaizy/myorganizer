@@ -90,7 +90,7 @@ jest.mock('./crypto', () => {
   };
 });
 
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import type { VaultStorageV1 } from './localVaultStorage';
 import { localVaultStorageKey } from './localVaultStorage';

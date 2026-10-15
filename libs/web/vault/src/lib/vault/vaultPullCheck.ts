@@ -80,7 +80,7 @@
  * push, never an edit (ADR 0088, decision 5, and
  * [ADR 0058](../../../../../docs/adr/0058-a-sync-bookmark-is-a-second-per-user-namespace-not-a-second-vault.md)).
  */
-import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultApi, VaultBlobType } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

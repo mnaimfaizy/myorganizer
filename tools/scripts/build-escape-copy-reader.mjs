@@ -5,7 +5,7 @@
 //   node tools/scripts/build-escape-copy-reader.mjs [--out-dir <dir>]
 //
 // The reader is bundled from `apps/escape-copy-reader/src/main.ts`, which is a
-// page shell around `openEscapeCopy` in `@myorganizer/vault-core` — the same
+// page shell around `openEscapeCopy` in `@myorganiser/vault-core` — the same
 // module, the same envelope schema and the same crypto the exporter runs. That
 // is the point of building it rather than writing it: a reader carrying its
 // own copy of the crypto would be a second implementation of the one thing

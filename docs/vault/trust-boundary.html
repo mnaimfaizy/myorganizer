@@ -30,7 +30,7 @@
     "replay-detected", "decrypt-failed", "network-failed"
   ],
   "assertableFrom": {
-    "@myorganizer/vault-core": [
+    "@myorganiser/vault-core": [
       "VAULT_ENVELOPE_PARSE_MAX_BYTES",
       "CURRENT_VAULT_EXPORT_SCHEMA_VERSION",
       "VAULT_EXPORT_BLOB_TYPES"
@@ -962,7 +962,7 @@ textarea.input { min-height: 90px; resize: vertical; }
   </section>
 
   <footer style="max-width:1400px;border-top:2px solid var(--line);padding-top:22px;display:grid;gap:14px">
-    <div style="font-size:13px;color:var(--ink-2);max-width:100ch;line-height:1.6">Every constant on this page is also embedded as JSON at <span style="font-family:var(--mono);font-size:12.5px">#vault-map-manifest</span>. Three of them can be diffed against real exports today — <span style="font-family:var(--mono);font-size:12.5px">VAULT_ENVELOPE_PARSE_MAX_BYTES</span>, <span style="font-family:var(--mono);font-size:12.5px">CURRENT_VAULT_EXPORT_SCHEMA_VERSION</span> and <span style="font-family:var(--mono);font-size:12.5px">VAULT_EXPORT_BLOB_TYPES</span> from <span style="font-family:var(--mono);font-size:12.5px">@myorganizer/vault-core</span>. The KDF and byte-length figures are module-private constants, so a check on those needs them exported first; they are listed under <span style="font-family:var(--mono);font-size:12.5px">notYetExported</span> rather than pretending to be assertable.</div>
+    <div style="font-size:13px;color:var(--ink-2);max-width:100ch;line-height:1.6">Every constant on this page is also embedded as JSON at <span style="font-family:var(--mono);font-size:12.5px">#vault-map-manifest</span>. Three of them can be diffed against real exports today — <span style="font-family:var(--mono);font-size:12.5px">VAULT_ENVELOPE_PARSE_MAX_BYTES</span>, <span style="font-family:var(--mono);font-size:12.5px">CURRENT_VAULT_EXPORT_SCHEMA_VERSION</span> and <span style="font-family:var(--mono);font-size:12.5px">VAULT_EXPORT_BLOB_TYPES</span> from <span style="font-family:var(--mono);font-size:12.5px">@myorganiser/vault-core</span>. The KDF and byte-length figures are module-private constants, so a check on those needs them exported first; they are listed under <span style="font-family:var(--mono);font-size:12.5px">notYetExported</span> rather than pretending to be assertable.</div>
     <div style="display:flex;flex-wrap:wrap;gap:20px;justify-content:space-between;align-items:baseline">
       <div style="font-size:13px;color:var(--ink-2)">Describes the system as built — not a threat model, not an audit.</div>
       <div style="font-size:13px;color:var(--ink-2)">Newcomers start at <a href="Vault Lifecycle.dc.html">The life of a vault</a>.</div>

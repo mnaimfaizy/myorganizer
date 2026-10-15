@@ -11,13 +11,13 @@ import {
   CardTitle,
   ConfirmDeleteDialog,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import {
   useOptionalVaultSession,
   vaultBlobTypeLabel,
   formatDate,
-} from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault-ui';
 
 import { getErrorMessage } from '../utils/getErrorMessage';
 import {

@@ -16,7 +16,7 @@
  * fails to compile until somebody says what the User sees for it
  * ([ADR 0053](../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  */
-import type { VaultAbsentEvidence } from '@myorganizer/web-vault';
+import type { VaultAbsentEvidence } from '@myorganiser/web-vault';
 
 export type VaultAbsentEvidenceGateView =
   /** Carry on as an ordinary absent device — the create offer is safe. */

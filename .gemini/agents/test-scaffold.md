@@ -101,7 +101,7 @@ Do not include these unless the implementation explicitly supports them:
 ### Jest Ordering And Isolation
 
 - Put every `jest.mock()` before any imports, including `import type`.
-- Mock every module whose functions you cast or configure. If a test configures `randomId`, mock `@myorganizer/core` explicitly.
+- Mock every module whose functions you cast or configure. If a test configures `randomId`, mock `@myorganiser/core` explicitly.
 - Reset mocks in `beforeEach()`, not `beforeAll()`.
 - Keep casts local to the setup or assertion that uses them.
 - Prefer `mockImplementation()` over long `mockReturnValueOnce()` queues for async or multi-call behavior.
@@ -110,7 +110,7 @@ Do not include these unless the implementation explicitly supports them:
 ### Project Boundaries
 
 - Backend: mock Prisma with an inline `jest.mock('../prisma', () => { ... })` factory that exports `__mockPrisma`; use `supertest` without starting a real server.
-- Frontend/page libraries: mock `@myorganizer/app-api-client`, `next/navigation`, `@myorganizer/auth`, and vault modules at the module boundary.
+- Frontend/page libraries: mock `@myorganiser/app-api-client`, `next/navigation`, `@myorganiser/auth`, and vault modules at the module boundary.
 - Vault: do not leak plaintext outside the tested unit. Take the crypto seam from the owning project's guide, not from a default — [`web-vault.md`](../../docs/testing/projects/web-vault.md) keys it to what the test claims, [`web-vault-ui.md`](../../docs/testing/projects/web-vault-ui.md) to the subject of the test. Where the guide calls for no crypto, use deterministic IV/ciphertext stubs; never mock a crypto primitive in a suite the guide puts on the real handle.
 - Playwright: use role/label/text selectors where possible; avoid Tailwind class and incidental DOM selectors; seed or intercept data deterministically.
 

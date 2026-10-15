@@ -1,4 +1,4 @@
-import { AddressesPage } from '@myorganizer/web-pages/addresses';
+import { AddressesPage } from '@myorganiser/web-pages/addresses';
 
 export default function Page() {
   return <AddressesPage />;

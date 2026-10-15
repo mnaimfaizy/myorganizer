@@ -1,9 +1,9 @@
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   cn: (...args: any[]) => args.filter(Boolean).join(' '),
 }));
 
-import type { GroceryCategoryType, GroceryItem } from '@myorganizer/vault-core';
+import type { GroceryCategoryType, GroceryItem } from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 

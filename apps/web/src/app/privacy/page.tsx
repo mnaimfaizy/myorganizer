@@ -1,4 +1,4 @@
-import { PrivacyPolicyPage } from '@myorganizer/web-pages/legal';
+import { PrivacyPolicyPage } from '@myorganiser/web-pages/legal';
 
 export const metadata = {
   title: 'Privacy Policy',

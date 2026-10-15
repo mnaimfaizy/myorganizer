@@ -31,10 +31,10 @@ Route files under `apps/web/src/app/**` are intentionally thin (metadata + compo
 
 | Dependency         | How to mock                                                                        |
 | ------------------ | ---------------------------------------------------------------------------------- |
-| **API client**     | `jest.mock('@myorganizer/app-api-client', () => ({ ... }))`                        |
+| **API client**     | `jest.mock('@myorganiser/app-api-client', () => ({ ... }))`                        |
 | **Next.js router** | `jest.mock('next/navigation', () => ({ useRouter: () => ({ push: jest.fn() }) }))` |
-| **Auth/session**   | `jest.mock('@myorganizer/auth', ...)` — return a fixed token or null               |
-| **Vault**          | `jest.mock('@myorganizer/web-vault', ...)` — stub unlock/read/write                |
+| **Auth/session**   | `jest.mock('@myorganiser/auth', ...)` — return a fixed token or null               |
+| **Vault**          | `jest.mock('@myorganiser/web-vault', ...)` — stub unlock/read/write                |
 
 See the [Nx lazy-loading & `jest.mock()` ordering rule](../README.md#nx-lazy-loading--jestmock-ordering) — it applies here.
 

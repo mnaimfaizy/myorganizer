@@ -1,7 +1,7 @@
 'use client';
 
-import { requestPasswordReset } from '@myorganizer/auth';
-import { Button, Input, Label, useToast } from '@myorganizer/web-ui';
+import { requestPasswordReset } from '@myorganiser/auth';
+import { Button, Input, Label, useToast } from '@myorganiser/web-ui';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';

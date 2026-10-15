@@ -8,9 +8,9 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import { webAppPath } from '@myorganizer/mobile/feat-auth';
-import { useVaultBlob } from '@myorganizer/mobile/feat-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
+import { webAppPath } from '@myorganiser/mobile/feat-auth';
+import { useVaultBlob } from '@myorganiser/mobile/feat-vault';
 import {
   Button,
   EmptyState,
@@ -24,7 +24,7 @@ import {
   useLargeTitleCollapse,
   useTheme,
   type IconName,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   countUnnotified,
   formatAddressSummary,

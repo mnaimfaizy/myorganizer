@@ -1,4 +1,4 @@
-import { MOBILE_ENVIRONMENT } from '@myorganizer/mobile/core';
+import { MOBILE_ENVIRONMENT } from '@myorganiser/mobile/core';
 
 // Web app creation (sign-up, Vault creation) and finishing a password reset
 // both stay on the web — this is where a mobile screen sends the User to do

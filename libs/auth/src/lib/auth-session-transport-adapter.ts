@@ -1,5 +1,5 @@
-import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
-import { getApiBaseUrl } from '@myorganizer/core';
+import { AuthenticationApi, Configuration } from '@myorganiser/app-api-client';
+import { getApiBaseUrl } from '@myorganiser/core';
 import axios, { type AxiosError, type AxiosInstance } from 'axios';
 
 import type { AuthSessionStorageAdapter } from './auth-session-storage-adapter';
@@ -19,7 +19,7 @@ export interface AuthSessionTransportAdapter {
 }
 
 function toSessionData(
-  response: import('@myorganizer/app-api-client').Login200Response,
+  response: import('@myorganiser/app-api-client').Login200Response,
 ): AuthSessionData {
   return {
     token: response.token,

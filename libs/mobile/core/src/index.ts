@@ -1,4 +1,4 @@
-// @myorganizer/mobile/core — device-scoped state shared across mobile features.
+// @myorganiser/mobile/core — device-scoped state shared across mobile features.
 export {
   DEFAULT_APPEARANCE,
   toAppearance,

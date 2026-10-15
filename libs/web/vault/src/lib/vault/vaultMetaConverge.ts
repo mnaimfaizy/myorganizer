@@ -20,7 +20,7 @@
  * and undo a passphrase change made elsewhere. Adoption is returned as a next
  * Local Vault for the caller to save, exactly as Vault Reconcile returns one.
  */
-import { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultApi, VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

@@ -1,4 +1,4 @@
-// @myorganizer/mobile/screens — navigation root + screen composition.
+// @myorganiser/mobile/screens — navigation root + screen composition.
 export { AppLockGate } from './AppLockGate';
 export { VersionFloorGate } from './VersionFloorGate';
 export { BiometricOfferSheet } from './BiometricOfferSheet';

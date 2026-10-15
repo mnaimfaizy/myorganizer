@@ -1,1 +1,1 @@
-export { VaultPage as default } from '@myorganizer/web-pages/vault';
+export { VaultPage as default } from '@myorganiser/web-pages/vault';

@@ -16,12 +16,12 @@ import {
   type RouteProp,
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   setKeepScreenAwake,
   useKeepAwake,
   useKeepScreenAwakeSetting,
-} from '@myorganizer/mobile/core';
+} from '@myorganiser/mobile/core';
 import {
   newRecordId,
   useUnconfirmedEdit,
@@ -29,7 +29,7 @@ import {
   useVaultSession,
   recoversByReload,
   VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   createCatalogItemAndAddLine,
   deleteListLine,
@@ -42,7 +42,7 @@ import {
   type CatalogItem,
   type GroceryCategoryType,
   type ListLine,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   Button,
   Checkbox,
@@ -70,7 +70,7 @@ import {
   useTheme,
   type ListRowState,
   type MenuSheetItem,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { AddToListSheet, type JustAddedLine } from './AddToListSheet';
 import { GroceryFooterButton } from './GroceryFooterButton';
 import { GroceryProgressBar } from './GroceryProgressBar';

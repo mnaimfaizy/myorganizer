@@ -98,7 +98,7 @@
 ## Frontend — Mobile App
 
 > Bare React Native via `@nx/react-native` (ADR-0005). Styling uses React Native
-> `StyleSheet` over a `@myorganizer/design-tokens`-derived theme (ADR-0008) — no
+> `StyleSheet` over a `@myorganiser/design-tokens`-derived theme (ADR-0008) — no
 > NativeWind/Tailwind on mobile (incompatible with the repo's Tailwind v4).
 
 | Package                                  | Version  | Purpose                                                               |

@@ -11,15 +11,15 @@ jest.mock('./session', () => ({
   useVaultSession: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   resetPassphraseAfterRecovery: (...args: unknown[]) =>
     mockResetPassphraseAfterRecovery(...args),
   createVaultApi: () => mockCreateVaultApi(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-ui'),
+jest.mock('@myorganiser/web-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-ui'),
   useToast: jest.fn(),
 }));
 
@@ -31,8 +31,8 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import { useToast } from '@myorganizer/web-ui';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import { useToast } from '@myorganiser/web-ui';
 import { useVaultSession } from './session';
 import { PassphraseResetPrompt } from './passphraseResetPrompt';
 

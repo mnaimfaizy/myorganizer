@@ -1,8 +1,8 @@
 'use client';
 
-import { Button, cn } from '@myorganizer/web-ui';
+import { Button, cn } from '@myorganiser/web-ui';
 import { CircleAlert, Clock } from 'lucide-react';
-import type { VaultSyncStatus } from '@myorganizer/web-vault';
+import type { VaultSyncStatus } from '@myorganiser/web-vault';
 import {
   describeVaultSyncStatus,
   type VaultSyncTone,

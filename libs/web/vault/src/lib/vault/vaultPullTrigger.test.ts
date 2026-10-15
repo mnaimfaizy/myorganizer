@@ -9,7 +9,7 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { createVaultHandle } from './vaultHandle';
 import {

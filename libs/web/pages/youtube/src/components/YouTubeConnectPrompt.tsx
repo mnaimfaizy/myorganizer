@@ -10,7 +10,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';

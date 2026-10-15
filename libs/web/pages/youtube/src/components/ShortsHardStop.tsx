@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@myorganizer/web-ui';
+import { Button } from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { formatShortsDuration } from '../lib/shortsBudget';
 

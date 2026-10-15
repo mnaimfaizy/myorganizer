@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
+import { Card, CardContent, CardHeader, CardTitle } from '@myorganiser/web-ui';
 import {
   CreditCard,
   ClipboardList,

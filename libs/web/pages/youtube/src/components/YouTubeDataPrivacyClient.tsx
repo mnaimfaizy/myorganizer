@@ -1,4 +1,4 @@
-import { Button, Card, CardContent } from '@myorganizer/web-ui';
+import { Button, Card, CardContent } from '@myorganiser/web-ui';
 import Link from 'next/link';
 
 export default function YouTubeDataPrivacyClient() {

@@ -1,4 +1,4 @@
-import { SubscriptionsPage } from '@myorganizer/web-pages/subscriptions';
+import { SubscriptionsPage } from '@myorganiser/web-pages/subscriptions';
 
 export default function Page() {
   return <SubscriptionsPage />;

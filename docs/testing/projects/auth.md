@@ -17,7 +17,7 @@ Uses **ts-jest** but under **jsdom**, because auth utilities interact with brows
 - Test `localStorage` / `sessionStorage` via the jsdom globals.
 - No real network calls.
 
-`@myorganizer/auth` is lazy-loaded — see the [Nx lazy-loading & `jest.mock()` ordering rule](../README.md#nx-lazy-loading--jestmock-ordering).
+`@myorganiser/auth` is lazy-loaded — see the [Nx lazy-loading & `jest.mock()` ordering rule](../README.md#nx-lazy-loading--jestmock-ordering).
 
 ## Commands
 

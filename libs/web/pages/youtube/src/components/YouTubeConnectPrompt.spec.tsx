@@ -8,8 +8,8 @@ jest.mock('../hooks', () => ({
   useYouTubeAcknowledgement: () => mockUseYouTubeAcknowledgement(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-ui');
+jest.mock('@myorganiser/web-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-ui');
   const { forwardRef } = jest.requireActual('react');
 
   return {

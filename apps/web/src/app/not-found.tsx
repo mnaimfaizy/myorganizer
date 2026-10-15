@@ -1,6 +1,6 @@
 import Link from 'next/link';
 
-import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import { Button, Card, CardContent, CardTitle } from '@myorganiser/web-ui';
 
 export default function NotFound() {
   return (

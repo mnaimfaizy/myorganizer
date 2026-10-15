@@ -1,6 +1,6 @@
 /*
   Tests for DeleteCatalogItemDialog component.
-  - Mocks @myorganizer/web-ui Dialog compound for predictable behavior
+  - Mocks @myorganiser/web-ui Dialog compound for predictable behavior
   - Mocks lucide-react AlertTriangle icon
   - Covers null-guard rendering, pluralized affected-list-count copy,
     typed-confirmation gating (including trim behavior), confirm/loading
@@ -8,7 +8,7 @@
 */
 
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react');
 
   function Dialog({ open, onOpenChange, children }: any) {
@@ -75,7 +75,7 @@ jest.mock('lucide-react', () => ({
   AlertTriangle: () => <div data-testid="alert-icon" />,
 }));
 
-import type { CatalogItem } from '@myorganizer/vault-core';
+import type { CatalogItem } from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { DeleteCatalogItemDialog } from '../components/DeleteCatalogItemDialog';

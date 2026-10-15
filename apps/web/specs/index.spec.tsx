@@ -5,7 +5,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   authSession: {},
   resolveInboundGuard: jest.fn().mockResolvedValue({ kind: 'show_guest' }),
 }));

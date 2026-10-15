@@ -48,7 +48,7 @@
  * of decision 6. `subscribe()` fires for that too, so a reading catches a
  * stall, and a stall clearing, without waiting for the next `focus`.
  */
-import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultApi, VaultBlobType } from '@myorganiser/app-api-client';
 
 import type {
   ConvergingVaultHandle,

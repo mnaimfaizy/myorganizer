@@ -1,6 +1,6 @@
 'use client';
 
-import { Checkbox, Input, Label } from '@myorganizer/web-ui';
+import { Checkbox, Input, Label } from '@myorganiser/web-ui';
 import { useCallback } from 'react';
 import type { SyntheticEvent } from 'react';
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';

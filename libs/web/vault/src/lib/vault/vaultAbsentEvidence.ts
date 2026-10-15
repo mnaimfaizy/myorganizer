@@ -15,7 +15,7 @@
  * Structurally read-only, for the same reason `checkVaultClaimEvidence` is:
  * one method, so no answer given to it can write anything anywhere.
  */
-import { VaultApi } from '@myorganizer/app-api-client';
+import { VaultApi } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

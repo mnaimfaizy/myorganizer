@@ -1,4 +1,4 @@
-import type { IconName } from '@myorganizer/mobile/ui';
+import type { IconName } from '@myorganiser/mobile/ui';
 
 /**
  * The Mobile App's five tabs, in the order they appear in the tab bar.

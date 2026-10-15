@@ -4,13 +4,13 @@ import type {
   CatalogItem,
   GroceryCategoryType,
   GroceryList,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { MoreVertical, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { memo, useCallback, useMemo, useState } from 'react';

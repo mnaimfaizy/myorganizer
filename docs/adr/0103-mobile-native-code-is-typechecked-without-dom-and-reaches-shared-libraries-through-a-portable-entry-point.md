@@ -13,7 +13,7 @@ The grilling session for #882 found four facts that changed the question:
 - **The Mobile App targets two runtimes.** `apps/mobile` also builds for react-native-web through Vite (`main-web.tsx`, with `.web.*` files resolved first). That makes the `main-web.tsx` error correct code for the runtime it runs in. `libs/mobile/feat/vault/src/crypto.web.ts` is the same case, and it was typechecked by nothing: the app program resolved `./crypto` to `crypto.ts`, and the `libs/mobile/*` projects have no typecheck target.
 - **Barrel reachability caused all 39 shared-library errors.** Mobile used none of the code that raised them. It imports four functions from `libs/auth/src/lib/refresh-client-contract.ts`, whose only imports are types, and `import type { VaultCrypto }` from `libs/vault-core`. `libs/core` is never imported by mobile. It arrived through the transport adapter in `libs/auth`.
 - **`typeof window` guards do not guard on native.** React Native sets `global.window = global` (`react-native/Libraries/Core/setUpGlobals.js`), so on Hermes `isBrowser()` in the storage adapter returns true and the adapter then reads `window.localStorage`, which is undefined.
-- **Metro does not tree-shake.** Importing the `@myorganizer/auth` barrel meant native ran `createBrowserAuthSessionStorageAdapter()` at module load.
+- **Metro does not tree-shake.** Importing the `@myorganiser/auth` barrel meant native ran `createBrowserAuthSessionStorageAdapter()` at module load.
 
 ## Decision
 
@@ -23,8 +23,8 @@ The grilling session for #882 found four facts that changed the question:
 
    `dom` moves out of the shared `apps/mobile/tsconfig.json`, so the spec program no longer gets it either. That matches the `react-native` Jest preset, which does not run in jsdom.
 
-2. **Portable Entry Points** (CONTEXT.md). `@myorganizer/auth/portable` (`libs/auth/src/portable.ts`) re-exports the refresh-token contract. `@myorganizer/vault-core/portable` (`libs/vault-core/src/portable.ts`) re-exports `interfaces.ts` and `types.ts`. Mobile code imports these libraries only through their Portable Entry Points. The main barrels, and every web and backend consumer, are unchanged. `libs/core` has no Portable Entry Point because mobile needs nothing from it.
-3. **`yarn mobile-platform:check` enforces the import.** In `apps/mobile` and `libs/mobile`, outside exempted Platform Variants, naming `@myorganizer/<lib>` in any specifier form fails the check when `tsconfig.base.json` declares `@myorganizer/<lib>/portable`. The check derives its library list from those aliases, so adding a Portable Entry Point opts its library in without editing the checker.
+2. **Portable Entry Points** (CONTEXT.md). `@myorganiser/auth/portable` (`libs/auth/src/portable.ts`) re-exports the refresh-token contract. `@myorganiser/vault-core/portable` (`libs/vault-core/src/portable.ts`) re-exports `interfaces.ts` and `types.ts`. Mobile code imports these libraries only through their Portable Entry Points. The main barrels, and every web and backend consumer, are unchanged. `libs/core` has no Portable Entry Point because mobile needs nothing from it.
+3. **`yarn mobile-platform:check` enforces the import.** In `apps/mobile` and `libs/mobile`, outside exempted Platform Variants, naming `@myorganiser/<lib>` in any specifier form fails the check when `tsconfig.base.json` declares `@myorganiser/<lib>/portable`. The check derives its library list from those aliases, so adding a Portable Entry Point opts its library in without editing the checker.
 
 ## Considered Options
 
@@ -36,11 +36,11 @@ The grilling session for #882 found four facts that changed the question:
 
 ## Consequences
 
-- The native program has no `lib.dom.d.ts`, and it fails if mobile imports a main barrel that reaches browser globals. Restoring the one `@myorganizer/auth` import in `libs/mobile/feat/auth/src/api/client.ts` brings back 32 errors.
+- The native program has no `lib.dom.d.ts`, and it fails if mobile imports a main barrel that reaches browser globals. Restoring the one `@myorganiser/auth` import in `libs/mobile/feat/auth/src/api/client.ts` brings back 32 errors.
 - `crypto.web.ts` is typechecked for the first time, in the web program.
 - [ADR 0039](0039-web-and-mobile-vaults-share-one-crypto-suite.md) and ADR 0064 hold unchanged. `vaultCrypto.ts` stays in `vault-core`, and mobile reaches the shared suite through the `VaultCrypto` interface, as `libs/vault-core/AGENTS.md` already required.
 - Native no longer loads `libs/auth/src/lib/auth.ts` at runtime, so the browser storage adapter is not constructed on Hermes.
-- `@myorganizer/<lib>/portable` is the first slash alias in `tsconfig.base.json` that does not name its own Nx project. The `/portable` suffix marks an entry point into an existing library, not a new project.
+- `@myorganiser/<lib>/portable` is the first slash alias in `tsconfig.base.json` that does not name its own Nx project. The `/portable` suffix marks an entry point into an existing library, not a new project.
 - **Node types are gone too.** This ADR left `types: ["node"]` on the native program, which admitted Node's global `crypto`, `Buffer`, and `process`. [ADR 0120](0120-a-mobile-program-gets-node-types-only-if-it-runs-on-node.md) removed it from every non-spec mobile program (issue #892).
 - `mobile-platform:check` also fails a bare `react-native/…` subpath import (excluding the separate
   `@react-native/*` scope), across all four call forms — `from '...'`, `require('...')`,

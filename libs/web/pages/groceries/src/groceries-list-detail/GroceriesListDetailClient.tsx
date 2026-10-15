@@ -1,7 +1,7 @@
 'use client';
 
-import type { ListLine } from '@myorganizer/vault-core';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { ListLine } from '@myorganiser/vault-core';
+import type { VaultHandle } from '@myorganiser/web-vault';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';

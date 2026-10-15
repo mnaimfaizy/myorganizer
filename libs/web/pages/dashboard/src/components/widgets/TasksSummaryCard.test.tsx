@@ -1,10 +1,10 @@
 /* eslint-disable import/first */
-jest.mock('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault');
 
 import { render, screen, waitFor } from '@testing-library/react';
 
-import type { Task } from '@myorganizer/vault-core';
-import { normalizeTasks, type VaultHandle } from '@myorganizer/web-vault';
+import type { Task } from '@myorganiser/vault-core';
+import { normalizeTasks, type VaultHandle } from '@myorganiser/web-vault';
 import { TasksSummaryCard } from './TasksSummaryCard';
 
 const createMockHandle = (

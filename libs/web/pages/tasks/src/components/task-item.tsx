@@ -1,6 +1,6 @@
 'use client';
 
-import { Task, TaskStatus } from '@myorganizer/vault-core';
+import { Task, TaskStatus } from '@myorganiser/vault-core';
 import {
   ArchiveIcon,
   ArchiveRestoreIcon,

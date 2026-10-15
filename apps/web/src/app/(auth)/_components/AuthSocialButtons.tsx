@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@myorganizer/web-ui';
+import { Button } from '@myorganiser/web-ui';
 
 export type AuthSocialProvider = 'facebook' | 'google' | 'twitter' | 'apple';
 

@@ -3,7 +3,7 @@
 /**
  * Mock web-vault-ui hooks before importing the tested hook.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
   useLocalVaultRevision: jest.fn(),
 }));
@@ -12,9 +12,9 @@ import { renderHook } from '@testing-library/react';
 import {
   useOptionalVaultSession,
   useLocalVaultRevision,
-} from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault-ui';
 import { useVaultDisabledState } from './useVaultDisabledState';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 
 // === Mock helpers ===
 

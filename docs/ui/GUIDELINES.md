@@ -33,14 +33,14 @@ Every UI Primitive must:
 A component belongs here if:
 
 - It is **private to a single route** and has no reason to be shared
-- It **composes UI Primitives** from `@myorganizer/web-ui` with domain logic
+- It **composes UI Primitives** from `@myorganiser/web-ui` with domain logic
 - It knows about React Hook Form, Zod schemas, API calls, or vault data
 
 Feature components must **never** import directly from `libs/web/ui/src/...`. Always use the public path:
 
 ```typescript
 // ✅ correct
-import { Button, Form, FormField } from '@myorganizer/web-ui';
+import { Button, Form, FormField } from '@myorganiser/web-ui';
 
 // ❌ wrong — bypasses the barrel and breaks Nx module boundaries
 import { Button } from '../../../libs/web/ui/src/lib/components/Button/Button';

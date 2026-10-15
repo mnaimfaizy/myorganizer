@@ -10,7 +10,7 @@
 
 import { act, renderHook } from '@testing-library/react';
 
-import { createLocalVaultRevision } from '@myorganizer/web-vault';
+import { createLocalVaultRevision } from '@myorganiser/web-vault';
 
 import { useLocalVaultRevision } from './useLocalVaultRevision';
 import { useOptionalVaultSession } from './session';

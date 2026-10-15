@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { useNavigation, type ParamListBase } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useLargeTitleCollapse } from '@myorganizer/mobile/ui';
+import { useLargeTitleCollapse } from '@myorganiser/mobile/ui';
 import { barRuleOptions } from './pushedBar';
 
 /**

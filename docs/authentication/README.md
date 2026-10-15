@@ -56,7 +56,7 @@ Email verification:
 
 ## Frontend behavior
 
-Frontend auth logic lives in the monorepo library `@myorganizer/auth`.
+Frontend auth logic lives in the monorepo library `@myorganiser/auth`.
 
 ### Email verification UX
 
@@ -87,11 +87,11 @@ page load would not know where to look.
 
 Because `myorganizer_user` is always in `localStorage`, a user whose access token has expired
 still has a recoverable identity on disk. That is the `restorable` session state — see
-`getSnapshot` in `@myorganizer/auth`.
+`getSnapshot` in `@myorganiser/auth`.
 
 ### Requests and refresh-on-401
 
-`@myorganizer/auth` creates an Axios instance with:
+`@myorganiser/auth` creates an Axios instance with:
 
 - `withCredentials: true` (so the refresh cookie is sent)
 - An interceptor that, on `401` for non-auth requests:

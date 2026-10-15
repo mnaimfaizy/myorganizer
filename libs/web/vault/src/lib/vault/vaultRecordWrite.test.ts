@@ -1,7 +1,7 @@
 import type {
   GroceriesVaultPayload,
   VaultBlobEnvelope,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import {
   type EditableVaultRecordType,

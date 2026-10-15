@@ -8,8 +8,8 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: mockPush }),
 }));
 
-// Mock @myorganizer/web-ui
-jest.mock('@myorganizer/web-ui', () => ({
+// Mock @myorganiser/web-ui
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

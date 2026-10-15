@@ -13,7 +13,7 @@
   "blobTypes": ["addresses", "groceries", "mobileNumbers", "subscriptions", "tasks"],
   "import": { "replayHistoryLength": 10 },
   "assertableFrom": {
-    "@myorganizer/vault-core": [
+    "@myorganiser/vault-core": [
       "VAULT_ENVELOPE_PARSE_MAX_BYTES",
       "CURRENT_VAULT_EXPORT_SCHEMA_VERSION",
       "VAULT_EXPORT_BLOB_TYPES"
@@ -2756,7 +2756,7 @@ textarea.input { min-height: 90px; resize: vertical; }
   </section>
 
   <footer style="max-width:1440px;border-top:2px solid var(--line);margin-top:56px;padding-top:22px;display:grid;gap:12px">
-    <div style="font-size:13px;color:var(--ink-2);max-width:104ch;line-height:1.6">The constants asserted here are embedded as JSON at <span style="font-family:var(--mono);font-size:12.5px">#vault-lifecycle-manifest</span>, keyed by layer — <span style="font-family:var(--mono);font-size:12.5px">envelopeParseBytes</span> and <span style="font-family:var(--mono);font-size:12.5px">backendExportBytes</span> separately, <span style="font-family:var(--mono);font-size:12.5px">vaultIvBytes</span> rather than <span style="font-family:var(--mono);font-size:12.5px">ivBytes</span>. Only <span style="font-family:var(--mono);font-size:12.5px">VAULT_ENVELOPE_PARSE_MAX_BYTES</span>, <span style="font-family:var(--mono);font-size:12.5px">CURRENT_VAULT_EXPORT_SCHEMA_VERSION</span> and <span style="font-family:var(--mono);font-size:12.5px">VAULT_EXPORT_BLOB_TYPES</span> are exported from <span style="font-family:var(--mono);font-size:12.5px">@myorganizer/vault-core</span> today; the KDF and byte-length figures are module-private, so they are listed under <span style="font-family:var(--mono);font-size:12.5px">notYetExported</span> rather than given a key a check script cannot actually assert.</div>
+    <div style="font-size:13px;color:var(--ink-2);max-width:104ch;line-height:1.6">The constants asserted here are embedded as JSON at <span style="font-family:var(--mono);font-size:12.5px">#vault-lifecycle-manifest</span>, keyed by layer — <span style="font-family:var(--mono);font-size:12.5px">envelopeParseBytes</span> and <span style="font-family:var(--mono);font-size:12.5px">backendExportBytes</span> separately, <span style="font-family:var(--mono);font-size:12.5px">vaultIvBytes</span> rather than <span style="font-family:var(--mono);font-size:12.5px">ivBytes</span>. Only <span style="font-family:var(--mono);font-size:12.5px">VAULT_ENVELOPE_PARSE_MAX_BYTES</span>, <span style="font-family:var(--mono);font-size:12.5px">CURRENT_VAULT_EXPORT_SCHEMA_VERSION</span> and <span style="font-family:var(--mono);font-size:12.5px">VAULT_EXPORT_BLOB_TYPES</span> are exported from <span style="font-family:var(--mono);font-size:12.5px">@myorganiser/vault-core</span> today; the KDF and byte-length figures are module-private, so they are listed under <span style="font-family:var(--mono);font-size:12.5px">notYetExported</span> rather than given a key a check script cannot actually assert.</div>
     <div style="font-size:13px;color:var(--ink-2)">Describes the system as built — not a threat model, not an audit.</div>
   </footer>
 </div>

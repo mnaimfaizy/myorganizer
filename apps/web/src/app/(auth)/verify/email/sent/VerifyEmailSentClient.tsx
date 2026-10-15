@@ -1,7 +1,7 @@
 'use client';
 
-import { resendVerificationEmail } from '@myorganizer/auth';
-import { Button, useToast } from '@myorganizer/web-ui';
+import { resendVerificationEmail } from '@myorganiser/auth';
+import { Button, useToast } from '@myorganiser/web-ui';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';

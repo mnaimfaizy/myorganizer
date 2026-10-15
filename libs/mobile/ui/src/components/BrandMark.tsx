@@ -5,7 +5,7 @@ import {
   colorOnSecondary,
   colorSecondary,
   colorTertiary,
-} from '@myorganizer/design-tokens';
+} from '@myorganiser/design-tokens';
 import { staticElement } from '../staticElement';
 import { useTheme } from '../useTheme';
 import { fontCutFor } from '../typeScale';

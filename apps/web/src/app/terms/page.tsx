@@ -1,4 +1,4 @@
-import { TermsOfServicePage } from '@myorganizer/web-pages/legal';
+import { TermsOfServicePage } from '@myorganiser/web-pages/legal';
 
 export const metadata = {
   title: 'Terms of Service',

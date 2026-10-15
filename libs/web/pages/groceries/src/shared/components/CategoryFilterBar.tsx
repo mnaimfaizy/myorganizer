@@ -1,7 +1,7 @@
 'use client';
 
-import { GroceryCategoryType, GroceryItem } from '@myorganizer/vault-core';
-import { cn } from '@myorganizer/web-ui';
+import { GroceryCategoryType, GroceryItem } from '@myorganiser/vault-core';
+import { cn } from '@myorganiser/web-ui';
 import { memo, useCallback, useMemo } from 'react';
 import {
   CATEGORY_LABELS,

@@ -8,8 +8,8 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core';
+import { VaultBlobType } from '@myorganiser/app-api-client';
+import type { VaultBlobEnvelope } from '@myorganiser/vault-core';
 
 import { createVaultHandle } from './vaultHandle';
 import {

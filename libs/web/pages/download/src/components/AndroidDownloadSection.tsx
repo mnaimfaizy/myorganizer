@@ -1,4 +1,4 @@
-import { Button } from '@myorganizer/web-ui';
+import { Button } from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { mobileReleaseLinks } from '../lib/mobileRelease';
 

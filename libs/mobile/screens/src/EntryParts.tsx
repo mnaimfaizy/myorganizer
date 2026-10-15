@@ -18,7 +18,7 @@ import {
   useTheme,
   type ColorMode,
   type IconName,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 
 /*
  * The pieces the Entry screens — Sign in, Forgot password, Unlock, Recovery

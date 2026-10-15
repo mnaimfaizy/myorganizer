@@ -1,4 +1,4 @@
-import { UserDeletionBodyConfirmationEnum } from '@myorganizer/app-api-client';
+import { UserDeletionBodyConfirmationEnum } from '@myorganiser/app-api-client';
 import { z } from 'zod';
 
 // Mirrors UserDeletionSchema in apps/backend/src/schemas/auth.schema.ts.

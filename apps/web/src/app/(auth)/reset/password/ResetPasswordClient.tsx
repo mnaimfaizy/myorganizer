@@ -1,7 +1,7 @@
 'use client';
 
-import { confirmPasswordReset } from '@myorganizer/auth';
-import { Button, Input, Label, useToast } from '@myorganizer/web-ui';
+import { confirmPasswordReset } from '@myorganiser/auth';
+import { Button, Input, Label, useToast } from '@myorganiser/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useMemo, useState, type FormEvent } from 'react';

@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo } from 'react';
 import { Appearance as NativeAppearance, useColorScheme } from 'react-native';
-import type { Appearance } from '@myorganizer/mobile/core';
+import type { Appearance } from '@myorganiser/mobile/core';
 import { resolveColorMode } from './appearance';
 import { themeForMode, type Theme } from './theme';
 

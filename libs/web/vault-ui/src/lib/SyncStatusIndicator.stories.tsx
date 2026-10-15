@@ -1,8 +1,8 @@
 'use client';
 
 import type { Meta, StoryObj } from '@storybook/react';
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import { VAULT_BLOB_TYPES } from '@myorganizer/web-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
+import { VAULT_BLOB_TYPES } from '@myorganiser/web-vault';
 import { fn } from '@storybook/test';
 
 import { SyncStatusIndicator } from './SyncStatusIndicator';

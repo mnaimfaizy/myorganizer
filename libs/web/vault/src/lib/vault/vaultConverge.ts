@@ -38,11 +38,11 @@ import {
   PutVaultBlobResponse,
   VaultApi,
   VaultBlobType,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   toVaultBlobEnvelope,
   type VaultBlobConvergeStrategy,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

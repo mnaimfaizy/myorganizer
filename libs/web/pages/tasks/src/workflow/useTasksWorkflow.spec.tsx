@@ -9,23 +9,23 @@
  */
 
 /* eslint-disable import/first -- jest.mock must precede application imports */
-jest.mock('@myorganizer/web-vault-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-vault-ui');
+jest.mock('@myorganiser/web-vault-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-vault-ui');
   return {
     ...actual,
     useLocalVaultRevision: jest.fn(() => 0),
   };
 });
 
-jest.mock('@myorganizer/core', () => ({
-  ...jest.requireActual('@myorganizer/core'),
+jest.mock('@myorganiser/core', () => ({
+  ...jest.requireActual('@myorganiser/core'),
   randomId: jest.fn(),
 }));
 
 import { renderHook, act, waitFor } from '@testing-library/react';
-import type { Task } from '@myorganizer/vault-core';
-import { randomId } from '@myorganizer/core';
-import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
+import type { Task } from '@myorganiser/vault-core';
+import { randomId } from '@myorganiser/core';
+import { useLocalVaultRevision } from '@myorganiser/web-vault-ui';
 
 import { useTasksWorkflow } from './useTasksWorkflow';
 import { InMemoryTasksVaultAdapter } from './tasks-vault-adapter';

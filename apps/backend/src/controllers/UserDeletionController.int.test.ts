@@ -6,7 +6,7 @@ import {
   jest,
   test,
 } from '@jest/globals';
-import { EMAIL_BRAND_NAME } from '@myorganizer/email-shell';
+import { EMAIL_BRAND_NAME } from '@myorganiser/email-shell';
 import bcrypt from 'bcrypt';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';

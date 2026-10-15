@@ -3,7 +3,7 @@
 // environment (no React Native preset), so these stay free of any import
 // that would pull in `react-native` or `react-native-quick-crypto` — which
 // is also why this does not simply import `isNetworkError` from
-// `@myorganizer/mobile/feat-vault`: that package's entry point re-exports
+// `@myorganiser/mobile/feat-vault`: that package's entry point re-exports
 // `crypto.ts`, and `crypto.ts` imports `react-native-quick-crypto`, which
 // cannot load outside a React Native runtime.
 

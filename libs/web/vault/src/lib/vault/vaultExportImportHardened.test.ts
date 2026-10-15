@@ -4,7 +4,7 @@
  * existing `vaultExportImport.test.ts` which still covers the legacy
  * `validateVaultExportBundle*` helpers used by the current UI cards.
  */
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { AuditReporter, AuditReporterInput } from './auditReporter';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';

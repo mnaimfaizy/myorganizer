@@ -9,7 +9,7 @@
  * The hash function requires no Master Key and works while locked.
  */
 
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import { bytesToBase64 } from './crypto';
 import {

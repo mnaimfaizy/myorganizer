@@ -29,7 +29,7 @@
  * again, so the type is recorded as a terminal failure instead of being
  * re-marked, and only a manual retry (`retryNow`) gives it another attempt.
  */
-import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultApi, VaultBlobType } from '@myorganiser/app-api-client';
 
 import { observeServerVaultMetaOnce } from './serverVaultSync';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';

@@ -2,9 +2,9 @@
 
 import { useCallback, useState } from 'react';
 
-import { VaultSecretMismatchError } from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+import { VaultSecretMismatchError } from '@myorganiser/web-vault';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 
 import { getErrorMessage } from '../utils/getErrorMessage';
 

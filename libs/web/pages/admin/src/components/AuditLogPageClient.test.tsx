@@ -5,7 +5,7 @@ jest.mock('../lib/apiClient', () => ({
   createPlatformAdminApi: jest.fn(),
 }));
 
-import type { AdminAuditLogEntry } from '@myorganizer/app-api-client';
+import type { AdminAuditLogEntry } from '@myorganiser/app-api-client';
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 

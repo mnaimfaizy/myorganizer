@@ -1,4 +1,4 @@
-import { Toaster } from '@myorganizer/web-ui';
+import { Toaster } from '@myorganiser/web-ui';
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google';
 import type { CSSProperties, ReactNode } from 'react';
 

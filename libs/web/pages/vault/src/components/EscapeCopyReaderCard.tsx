@@ -7,7 +7,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import {
   ESCAPE_COPY_READER_CHECKSUM_FILENAME,

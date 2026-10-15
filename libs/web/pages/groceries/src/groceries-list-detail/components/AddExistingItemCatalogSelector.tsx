@@ -1,7 +1,7 @@
 'use client';
 
-import type { CatalogItem } from '@myorganizer/vault-core';
-import { Input, Label, cn } from '@myorganizer/web-ui';
+import type { CatalogItem } from '@myorganiser/vault-core';
+import { Input, Label, cn } from '@myorganiser/web-ui';
 import { Search } from 'lucide-react';
 import { useCallback, useMemo } from 'react';
 import { getCategoryEmoji } from '../../shared/constants/categories';

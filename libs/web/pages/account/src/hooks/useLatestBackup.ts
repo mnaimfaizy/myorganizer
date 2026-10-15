@@ -1,6 +1,6 @@
 'use client';
 
-import { createVaultBackupsApi } from '@myorganizer/web-vault';
+import { createVaultBackupsApi } from '@myorganiser/web-vault';
 import { useCallback, useEffect, useState } from 'react';
 
 /**

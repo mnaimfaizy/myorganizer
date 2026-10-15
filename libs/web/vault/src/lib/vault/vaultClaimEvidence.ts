@@ -35,7 +35,7 @@
  * Collapsing it into an absence would let anyone able to drop the network turn
  * the strong check off and fall through to a weaker one.
  */
-import { VaultApi } from '@myorganizer/app-api-client';
+import { VaultApi } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

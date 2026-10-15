@@ -7,7 +7,7 @@ import React, {
   useState,
 } from 'react';
 import type { ReactNode } from 'react';
-import type { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultApi, VaultMetaV1 } from '@myorganiser/app-api-client';
 import { mobileVaultCrypto } from '../crypto';
 import { nativeBiometricKeystore } from '../biometric/nativeKeystore';
 import type { BiometricKeystore, BiometricMethod } from '../biometric/keystore';

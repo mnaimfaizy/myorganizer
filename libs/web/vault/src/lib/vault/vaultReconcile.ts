@@ -48,7 +48,7 @@
  * being a server that holds no Vault Meta at all, where the first sync has
  * nothing to override.
  */
-import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultApi, VaultBlobType } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

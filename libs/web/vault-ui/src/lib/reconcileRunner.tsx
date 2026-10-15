@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
@@ -18,12 +18,12 @@ import type {
   VaultReconcileDecision,
   VaultReconcileResult,
   VaultReconcileStart,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   createVaultApi,
   getHttpStatus,
   reconcileVaultWithServer,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { useOptionalVaultSession } from './session';
 import { NO_REVISION } from './useLocalVaultRevisionOf';
@@ -47,7 +47,7 @@ const KEEP_REMOTE_LABEL = "Keep the server's data";
 /**
  * What a User is told when reconcile has to ask.
  *
- * Written here rather than in `@myorganizer/web-vault` for the reason
+ * Written here rather than in `@myorganiser/web-vault` for the reason
  * `vaultSyncMessages.ts` gives, and beside its runner for the reason
  * `metaConvergeRunner.tsx` keeps its copy beside its own: the library that
  * decides what happened carries no English, and the component that shows a

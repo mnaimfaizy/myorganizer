@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, cn } from '@myorganizer/web-ui';
+import { Button, cn } from '@myorganiser/web-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { updateVideoWatched } from '../hooks';
 import type { VideoQueue } from '../hooks/useVideoQueue';

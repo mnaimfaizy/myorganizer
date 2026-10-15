@@ -1,7 +1,7 @@
 import type {
   BiometricUnlockAttempt,
   BiometricEnrolment,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   BIOMETRIC_METHOD_COPY,
   biometricCopyFor,

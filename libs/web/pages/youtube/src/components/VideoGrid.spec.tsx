@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import type { SortOption, YouTubeVideo } from '../types';
 import { VideoGrid } from './VideoGrid';
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

@@ -21,12 +21,12 @@ import {
   FormMessage,
   Input,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   currentPassphraseSchema,
   mintRecoveryKey,
   type MintedRecoveryKey,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { downloadTextFile } from '../utils';
 import {

@@ -1,7 +1,7 @@
 import {
   isSupportedCurrencyCode,
   type CurrencyCode,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 
 const FX_CACHE_KEY = 'myorganizer_fx_rates_v1';
 const DEFAULT_TTL_MS = 1000 * 60 * 60 * 24; // 24h

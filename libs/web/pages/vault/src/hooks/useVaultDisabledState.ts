@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import {
   useLocalVaultRevision,
   useOptionalVaultSession,
-} from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault-ui';
 
 import type { VaultDisabledState } from '../policy';
 

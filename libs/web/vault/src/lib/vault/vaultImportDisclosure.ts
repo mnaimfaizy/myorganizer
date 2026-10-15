@@ -15,7 +15,7 @@
  * the same property that lets a locked device keep converging lets a locked
  * device be told the truth here.
  */
-import { VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import {
   describeVaultMetaDivergence,

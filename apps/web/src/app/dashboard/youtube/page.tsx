@@ -1,4 +1,4 @@
-import { YouTubePage } from '@myorganizer/web-pages/youtube';
+import { YouTubePage } from '@myorganiser/web-pages/youtube';
 import { Suspense } from 'react';
 
 // The client component reads the `?channel=` deep link with useSearchParams,

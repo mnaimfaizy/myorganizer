@@ -1,4 +1,4 @@
-import { COUNTRIES } from '@myorganizer/core';
+import { COUNTRIES } from '@myorganiser/core';
 import { z } from 'zod';
 
 const countryCodes = new Set<string>(COUNTRIES.map((country) => country.code));

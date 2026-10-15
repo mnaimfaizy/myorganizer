@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useEffect } from 'react';
 
-import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import { Button, Card, CardContent, CardTitle } from '@myorganiser/web-ui';
 
 export default function GlobalError({
   error,

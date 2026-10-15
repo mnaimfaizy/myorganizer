@@ -1,5 +1,5 @@
-import { UsageLocationRecord } from '@myorganizer/vault-core';
-import { Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import { UsageLocationRecord } from '@myorganiser/vault-core';
+import { Card, CardContent, CardTitle } from '@myorganiser/web-ui';
 
 import { titleCase } from '../utils/enumUtils';
 

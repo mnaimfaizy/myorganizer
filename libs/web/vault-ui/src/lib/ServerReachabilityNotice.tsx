@@ -1,8 +1,8 @@
 'use client';
 
-import { Button, cn } from '@myorganizer/web-ui';
+import { Button, cn } from '@myorganiser/web-ui';
 import { TriangleAlert } from 'lucide-react';
-import type { ServerReachability } from '@myorganizer/web-vault';
+import type { ServerReachability } from '@myorganiser/web-vault';
 import {
   serverReachabilityReading,
   type ServerReachabilityTone,

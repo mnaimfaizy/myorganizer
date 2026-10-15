@@ -1,6 +1,6 @@
-import { Configuration, YouTubeApi } from '@myorganizer/app-api-client';
-import { getAccessToken, getAuthAxios } from '@myorganizer/auth';
-import { getApiBaseUrl } from '@myorganizer/core';
+import { Configuration, YouTubeApi } from '@myorganiser/app-api-client';
+import { getAccessToken, getAuthAxios } from '@myorganiser/auth';
+import { getApiBaseUrl } from '@myorganiser/core';
 
 /**
  * Whether YouTube exists for the signed-in User (ADR 0129): the global

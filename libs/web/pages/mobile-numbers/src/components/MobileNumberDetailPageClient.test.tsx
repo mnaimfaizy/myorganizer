@@ -1,4 +1,4 @@
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const RHF = jest.requireActual('react-hook-form');
   return {
     useToast: jest.fn(),
@@ -140,7 +140,7 @@ const createMockHandle = (
 
 let mockRevision = 0;
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useLocalVaultRevision: () => mockRevision,
   VaultGate: ({
     children,
@@ -154,8 +154,8 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => {
-  const actual = jest.requireActual('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault', () => {
+  const actual = jest.requireActual('@myorganiser/web-vault');
   return {
     ...actual,
     normalizeMobileNumbers: jest.fn((data) => {
@@ -171,8 +171,8 @@ jest.mock('@myorganizer/web-vault', () => {
   };
 });
 
-jest.mock('@myorganizer/core', () => {
-  const actual = jest.requireActual('@myorganizer/core');
+jest.mock('@myorganiser/core', () => {
+  const actual = jest.requireActual('@myorganiser/core');
   return {
     ...actual,
   };
@@ -192,9 +192,9 @@ import '@testing-library/jest-dom';
 import type {
   MobileNumberRecord,
   UsageLocationRecord,
-} from '@myorganizer/vault-core';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/vault-core';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import { useToast } from '@myorganiser/web-ui';
 import { MobileNumberDetailPageClient } from './MobileNumberDetailPageClient';
 /* eslint-enable import/first */
 

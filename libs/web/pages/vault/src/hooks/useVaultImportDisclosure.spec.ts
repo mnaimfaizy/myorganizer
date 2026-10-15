@@ -1,14 +1,14 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 import { renderHook, waitFor } from '@testing-library/react';
 
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   classifyVaultImportCredentialOutcome: jest.fn(),
   localToServerMeta: jest.fn(),
   parseVaultExportEnvelope: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
 }));
 
@@ -16,10 +16,10 @@ import {
   classifyVaultImportCredentialOutcome,
   localToServerMeta,
   parseVaultExportEnvelope,
-} from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
 import { useVaultImportDisclosure } from './useVaultImportDisclosure';
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 // === Mock helpers ===
 

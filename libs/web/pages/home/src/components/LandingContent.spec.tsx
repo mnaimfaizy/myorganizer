@@ -35,7 +35,7 @@ jest.mock('lucide-react', () => ({
   Smartphone: () => <div data-testid="icon-smartphone" />,
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   AppLogo: ({
     variant,
     height,

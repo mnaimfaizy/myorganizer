@@ -8,7 +8,7 @@ import {
   type IdentifiedRecord,
   type IsoDateTimeString,
   type VaultBlobEnvelope,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import type { VaultRecordType } from './localVaultStorage';
 import type { VaultHandle } from './vaultHandle';

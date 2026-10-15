@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Input, Label, useToast } from '@myorganizer/web-ui';
+import { Button, Input, Label, useToast } from '@myorganiser/web-ui';
 import { useCallback } from 'react';
 import { downloadTextFile } from './downloadFile';
 

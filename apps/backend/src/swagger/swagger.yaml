@@ -1141,7 +1141,7 @@ components:
       name: X-Cron-Secret
       description: Shared secret for cron-triggered endpoints
 info:
-  title: "@myorganizer/source"
+  title: "@myorganiser/source"
   version: 1.1.0
   license:
     name: Elastic-2.0

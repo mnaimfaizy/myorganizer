@@ -9,7 +9,7 @@ import { createAuthApi } from './client';
  * give it a second way to disagree with itself.
  *
  * Reaches the server directly through the mobile Axios client rather than
- * through `@myorganizer/auth`'s `requestPasswordReset` — that module's
+ * through `@myorganiser/auth`'s `requestPasswordReset` — that module's
  * default transport is bound to the browser session storage adapter
  * (ADR 0103), which mobile cannot import.
  */

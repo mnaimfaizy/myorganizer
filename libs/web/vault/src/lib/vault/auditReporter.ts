@@ -5,7 +5,7 @@ import {
   VaultBackupSource,
   VaultBackupStatus,
   VaultBackupsApi,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 
 import { createVaultBackupsApi } from '../apiClient';
 

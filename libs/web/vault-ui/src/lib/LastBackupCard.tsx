@@ -6,14 +6,14 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import * as React from 'react';
 import { formatDate } from './formatDate';
 
 /**
  * Minimal subset of {@link GetLatestVaultBackupResponse} required to render the
  * "Last backup" summary. Kept local so this component does not pull a hard
- * dependency on `@myorganizer/app-api-client` types that change on regeneration.
+ * dependency on `@myorganiser/app-api-client` types that change on regeneration.
  */
 export interface LastBackupCardRecord {
   event: string;

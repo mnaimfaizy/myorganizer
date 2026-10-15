@@ -1,13 +1,13 @@
 /*
   Tests for AddExistingItemDialog component.
-  - Mocks @myorganizer/web-ui Dialog/DialogContent/Button/Input/Label/Checkbox/cn
+  - Mocks @myorganiser/web-ui Dialog/DialogContent/Button/Input/Label/Checkbox/cn
   - Mocks lucide-react icons
   - Covers catalog search/filter, single-select semantics, list toggling,
     submit-button gating, submit argument shape, cancel, and re-open reset
 */
 
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react');
 
   function Dialog({ open, onOpenChange, children }: any) {
@@ -81,7 +81,7 @@ jest.mock('lucide-react', () => ({
   Search: () => <div data-testid="search-icon" />,
 }));
 
-import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
+import type { CatalogItem, GroceryList } from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { AddExistingItemDialog } from '../components/AddExistingItemDialog';

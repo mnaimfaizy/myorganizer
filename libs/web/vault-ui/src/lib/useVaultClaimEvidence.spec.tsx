@@ -20,15 +20,15 @@ const mockClaimUnclaimedLocalVaultOnEvidence = jest.fn<
 >();
 const mockCreateVaultApi = jest.fn();
 
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   claimUnclaimedLocalVaultOnEvidence: (options: ClaimEvidenceOptions) =>
     mockClaimUnclaimedLocalVaultOnEvidence(options),
   createVaultApi: () => mockCreateVaultApi(),
 }));
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import type { VaultClaimOnEvidenceResult } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import type { VaultClaimOnEvidenceResult } from '@myorganiser/web-vault';
 import type { VaultClaimEvidenceState } from './useVaultClaimEvidence';
 import { useVaultClaimEvidence } from './useVaultClaimEvidence';
 

@@ -8,8 +8,8 @@ import {
   createNativeStackNavigator,
   type NativeStackNavigationOptions,
 } from '@react-navigation/native-stack';
-import { getDeviceSettings, setLastTab } from '@myorganizer/mobile/core';
-import { useVaultSession } from '@myorganizer/mobile/feat-vault';
+import { getDeviceSettings, setLastTab } from '@myorganiser/mobile/core';
+import { useVaultSession } from '@myorganiser/mobile/feat-vault';
 import {
   FONT_FAMILY,
   LockAction,
@@ -18,7 +18,7 @@ import {
   useReturnFocusOnLeave,
   useTheme,
   type Theme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { AccountScreen } from './AccountScreen';
 import { AddressDetailScreen } from './AddressDetailScreen';
 import { DetailsScreen } from './DetailsScreen';

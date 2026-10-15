@@ -7,7 +7,7 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import type { VaultApi } from '@myorganizer/app-api-client';
+import type { VaultApi } from '@myorganiser/app-api-client';
 import { base64ToBytes } from './crypto';
 import { mintRecoveryKey, type MintedRecoveryKey } from './recoveryKeyMint';
 import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';

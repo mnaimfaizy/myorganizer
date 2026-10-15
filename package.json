@@ -1,5 +1,5 @@
 {
-  "name": "@myorganizer/source",
+  "name": "@myorganiser/source",
   "version": "1.1.0",
   "license": "Elastic-2.0",
   "packageManager": "yarn@4.13.0",

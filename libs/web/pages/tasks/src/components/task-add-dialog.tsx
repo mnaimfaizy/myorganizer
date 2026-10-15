@@ -1,13 +1,13 @@
 'use client';
 
-import type { Task } from '@myorganizer/vault-core';
+import type { Task } from '@myorganiser/vault-core';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useState } from 'react';
 import { TaskForm } from './task-form';
 

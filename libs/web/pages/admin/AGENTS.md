@@ -8,7 +8,7 @@ Platform Admin console page library for the `/admin` shell, AdminGuard, User dir
 
 - Keep admin chrome separate from the personal dashboard (no vault unlock UI).
 - Use `PlatformAdminApi` for directory, lifecycle mutations, and audit log list endpoints.
-- Preserve the import path `@myorganizer/web-pages/admin`.
+- Preserve the import path `@myorganiser/web-pages/admin`.
 - Treat directory and audit fields as identity/audit metadata only.
 - Surface lifecycle API success and error feedback (including last-admin rejection on demote).
 

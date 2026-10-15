@@ -32,7 +32,7 @@ assignees: ''
 
 ## Which library will be affected by this change?
 
-<!-- Example: @myorganizer/web-ui, @myorganizer/app-api-client, backend service package, etc. -->
+<!-- Example: @myorganiser/web-ui, @myorganiser/app-api-client, backend service package, etc. -->
 
 ## Which project is this change focused on?
 

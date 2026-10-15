@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Linking, Platform, StyleSheet, View } from 'react-native';
-import { describeAutoLock, useAutoLockDelay } from '@myorganizer/mobile/core';
-import { useAuth, WEB_APP_URL } from '@myorganizer/mobile/feat-auth';
-import { useVaultSession } from '@myorganizer/mobile/feat-vault';
+import { describeAutoLock, useAutoLockDelay } from '@myorganiser/mobile/core';
+import { useAuth, WEB_APP_URL } from '@myorganiser/mobile/feat-auth';
+import { useVaultSession } from '@myorganiser/mobile/feat-vault';
 import {
   Button,
   ConfirmSheet,
@@ -14,7 +14,7 @@ import {
   staticElement,
   useIsOffline,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   biometricCopyFor,
   describeBiometricAttempt,

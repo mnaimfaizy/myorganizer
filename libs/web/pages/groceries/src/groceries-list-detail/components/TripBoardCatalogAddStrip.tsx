@@ -1,7 +1,7 @@
 'use client';
 
-import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
-import { Input, cn } from '@myorganizer/web-ui';
+import type { CatalogItem, GroceryList } from '@myorganiser/vault-core';
+import { Input, cn } from '@myorganiser/web-ui';
 import { useCallback, useMemo, useState, type ChangeEvent } from 'react';
 import { getCategoryEmoji } from '../../shared/constants/categories';
 import { formatMoney } from '../../shared/utils';

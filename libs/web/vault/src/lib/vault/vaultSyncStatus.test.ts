@@ -2,7 +2,7 @@
  * Tests for computing vault sync status from queue status and unsent changes.
  */
 
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { computeVaultSyncStatus } from './vaultSyncStatus';
 import type { VaultPullTriggerStatus } from './vaultPullTrigger';

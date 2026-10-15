@@ -100,7 +100,7 @@ importer: name it in `Required Revisions`.
 `check-component-hygiene.mjs` decides these; report its output, do not re-check by eye:
 
 `forwardRef` without `displayName` · template-concatenated `className` instead of
-`cn()` · missing barrel export · deep imports past `@myorganizer/web-ui` ·
+`cn()` · missing barrel export · deep imports past `@myorganiser/web-ui` ·
 handlers passed as props without `useCallback` · inline props object types ·
 `useEffect` that subscribes without cleanup · generic component names ·
 returned JSX over ~150 lines.

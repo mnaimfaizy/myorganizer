@@ -10,7 +10,7 @@ const serverVaultSync = jest.requireMock('./serverVaultSync') as {
   getServerVaultMeta: jest.Mock;
 };
 
-import type { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultApi, VaultMetaV1 } from '@myorganiser/app-api-client';
 import type { VaultStorageV1 } from './localVaultStorage';
 import {
   convergeVaultMeta,

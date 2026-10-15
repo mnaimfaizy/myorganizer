@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
@@ -17,12 +17,12 @@ import type {
   VaultMetaChange,
   VaultMetaDecision,
   VaultMetaRefusalLifetime,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   createVaultApi,
   getHttpStatus,
   settleVaultMeta,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { useOptionalVaultSession } from './session';
 import { useReportVaultMountSettle } from './vaultMountSettle';

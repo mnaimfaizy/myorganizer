@@ -1,4 +1,4 @@
-import type { GroceryCategoryType } from '@myorganizer/vault-core';
+import type { GroceryCategoryType } from '@myorganiser/vault-core';
 
 import {
   CATEGORY_EMOJIS,

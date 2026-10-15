@@ -4,9 +4,9 @@ import {
   SidebarProvider,
   SidebarTrigger,
   Toaster,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
-import { AdminGuard, AdminSidebar } from '@myorganizer/web-pages/admin';
+import { AdminGuard, AdminSidebar } from '@myorganiser/web-pages/admin';
 
 export default function AdminLayout({
   children,

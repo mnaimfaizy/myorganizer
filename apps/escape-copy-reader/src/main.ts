@@ -2,7 +2,7 @@
  * The Escape Copy reader's page — the only part of the reader that is not
  * shared with the app.
  *
- * Everything that decides anything lives in `@myorganizer/vault-core`:
+ * Everything that decides anything lives in `@myorganiser/vault-core`:
  * `openEscapeCopy` parses the envelope, unwraps the Master Key and decrypts
  * every Vault Blob Type, using the same schema and the same crypto the
  * exporter ran. This file reads a file the User picked, reads a secret the
@@ -39,7 +39,7 @@ import {
   type OpenedEscapeCopySection,
   type VaultImportError,
   type VaultImportErrorCode,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 /** The human name each Vault Blob Type is shown under. */
 const SECTION_LABELS: Record<OpenedEscapeCopySection['type'], string> = {

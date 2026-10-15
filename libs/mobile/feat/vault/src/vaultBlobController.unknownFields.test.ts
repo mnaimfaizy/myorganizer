@@ -17,14 +17,14 @@ jest.mock('./crypto', () => {
   };
 });
 
-import { VaultBlobType, type VaultApi } from '@myorganizer/app-api-client';
+import { VaultBlobType, type VaultApi } from '@myorganiser/app-api-client';
 import {
   putVaultRecord,
   renameGroceryList,
   setListLineAmount,
   setListLineChecked,
   type VaultBlobEnvelope,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 
 import {
   base64ToBytes,

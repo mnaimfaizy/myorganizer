@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Card, CardContent, CardTitle } from '@myorganizer/web-ui';
+import { Button, Card, CardContent, CardTitle } from '@myorganiser/web-ui';
 import { RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';

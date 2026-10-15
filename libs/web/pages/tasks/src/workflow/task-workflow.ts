@@ -1,7 +1,7 @@
-import type { Task } from '@myorganizer/vault-core';
-import { transitionTaskStatus } from '@myorganizer/vault-core';
-import { randomId } from '@myorganizer/core';
-import { normalizeTasks } from '@myorganizer/web-vault';
+import type { Task } from '@myorganiser/vault-core';
+import { transitionTaskStatus } from '@myorganiser/vault-core';
+import { randomId } from '@myorganiser/core';
+import { normalizeTasks } from '@myorganiser/web-vault';
 
 import { sortTasks } from './task-sorting';
 import type {

@@ -8,7 +8,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   authSession: {},
   resolveOutboundGuard: jest.fn(),
   onSessionEnded: jest.fn(),
@@ -19,9 +19,9 @@ import '@testing-library/jest-dom';
 import type {
   SessionEndedEvent,
   SessionEndedListener,
-} from '@myorganizer/auth';
+} from '@myorganiser/auth';
 import DashboardGuard from './DashboardGuard';
-import { onSessionEnded, resolveOutboundGuard } from '@myorganizer/auth';
+import { onSessionEnded, resolveOutboundGuard } from '@myorganiser/auth';
 
 describe('DashboardGuard', () => {
   const mockResolveOutboundGuard = resolveOutboundGuard as jest.Mock;

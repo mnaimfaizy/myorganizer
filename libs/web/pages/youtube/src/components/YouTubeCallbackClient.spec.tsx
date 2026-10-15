@@ -12,13 +12,13 @@ jest.mock('../hooks', () => ({
   useYouTubeAvailability: () => mockUseYouTubeAvailability(),
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   getAccessToken: jest.fn(),
 }));
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { getAccessToken } from '@myorganizer/auth';
+import { getAccessToken } from '@myorganiser/auth';
 import YouTubeCallbackClient from './YouTubeCallbackClient';
 
 describe('YouTubeCallbackClient — fail-closed availability', () => {

@@ -46,7 +46,7 @@ import {
   createVaultApi,
   type VaultClaimOnEvidenceResult,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 export type VaultClaimEvidenceState =
   /** The question is out. Nothing is offered while it is. */

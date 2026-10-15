@@ -1,7 +1,7 @@
 import {
   resolveAuthClientType,
   shouldIncludeRefreshTokenInLoginBody,
-} from '@myorganizer/auth';
+} from '@myorganiser/auth';
 import { User } from '../models/User';
 import { FilteredUserInterface, UserInterface } from '../types';
 import apiTokens from './ApiTokens';

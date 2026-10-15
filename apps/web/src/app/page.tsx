@@ -1,4 +1,4 @@
-import { HomePage } from '@myorganizer/web-pages/home';
+import { HomePage } from '@myorganiser/web-pages/home';
 
 const jsonLd = {
   '@context': 'https://schema.org',

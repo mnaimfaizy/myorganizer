@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import {
   InstallPromptCapture,
   ServiceWorkerRegistration,
-} from '@myorganizer/web-pages/offline';
+} from '@myorganiser/web-pages/offline';
 
 import './global.css';
 

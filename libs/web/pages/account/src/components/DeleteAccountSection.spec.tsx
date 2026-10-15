@@ -11,11 +11,11 @@ jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   clearAuthSession: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useExportVault: jest.fn(),
 }));
 
@@ -23,8 +23,8 @@ jest.mock('../lib/apiClient', () => ({
   createUsersApi: jest.fn(),
 }));
 
-import { clearAuthSession } from '@myorganizer/auth';
-import { useExportVault } from '@myorganizer/web-vault-ui';
+import { clearAuthSession } from '@myorganiser/auth';
+import { useExportVault } from '@myorganiser/web-vault-ui';
 import {
   act,
   fireEvent,

@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@myorganizer/web-ui';
+import { Button } from '@myorganiser/web-ui';
 import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { type MouseEvent, useCallback } from 'react';

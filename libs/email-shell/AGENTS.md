@@ -18,7 +18,7 @@ See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degra
 
 - Keep the email class (`transactional` | `notification`) a required parameter with no default.
 - Escape every interpolated value.
-- Resolve colours from `@myorganizer/design-tokens`; never hardcode hex.
+- Resolve colours from `@myorganiser/design-tokens`; never hardcode hex.
 - Keep layout table-based with inline CSS, fluid, single-column.
 - Keep the CID linkage invariant here. The shell returns `attachments` alongside `html`, and
   `assertCidLinkage` runs on every render so a message can never ship an attachment its body does

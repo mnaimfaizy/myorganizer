@@ -8,7 +8,7 @@ import {
   Card,
   CardContent,
   CardTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { goToDashboard, reloadPage } from '../lib/navigation';
 

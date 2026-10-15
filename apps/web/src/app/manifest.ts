@@ -1,4 +1,4 @@
-import { colorPrimary, colorSurface } from '@myorganizer/design-tokens';
+import { colorPrimary, colorSurface } from '@myorganiser/design-tokens';
 import type { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {

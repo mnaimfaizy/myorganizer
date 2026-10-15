@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { YouTubeUnavailableNotice } from './YouTubeUnavailableNotice';
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ children, asChild, onClick, ...props }: any) => {
     if (asChild) return children;
     return (

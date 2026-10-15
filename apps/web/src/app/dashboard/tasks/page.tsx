@@ -1,1 +1,1 @@
-export { TasksPage as default } from '@myorganizer/web-pages/tasks';
+export { TasksPage as default } from '@myorganiser/web-pages/tasks';

@@ -11,7 +11,7 @@ import {
   useLargeTitleCollapse,
   useTheme,
   type IconName,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   formatMobileNumber,
   formatStreetLine,

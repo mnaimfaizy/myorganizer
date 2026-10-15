@@ -1,6 +1,6 @@
 import type { AxiosInstance } from 'axios';
 
-import { AuthenticationApi } from '@myorganizer/app-api-client';
+import { AuthenticationApi } from '@myorganiser/app-api-client';
 
 import {
   createAuthSessionModule,

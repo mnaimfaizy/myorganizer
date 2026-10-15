@@ -8,7 +8,7 @@
  * See CONTEXT.md's "Sync Bookmark" entry.
  */
 
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import type { EncryptedBlob, VaultRecordType } from './localVaultStorage';
 import {

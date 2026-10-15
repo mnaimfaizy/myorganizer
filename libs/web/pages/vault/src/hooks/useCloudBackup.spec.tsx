@@ -1,7 +1,7 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   loadCloudBackupPreferences: jest.fn(),
   saveCloudBackupPreferences: jest.fn(),
   getProviderPrefs: jest.fn(),
@@ -20,14 +20,14 @@ import {
   type CloudBackupResult,
   type CloudRestoreResult,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   loadCloudBackupPreferences,
   saveCloudBackupPreferences,
   getProviderPrefs,
   setProviderPrefs,
   clearProviderPrefs,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import { useCloudBackup } from './useCloudBackup';
 
 // Minimal in-memory localStorage so the preferences module works

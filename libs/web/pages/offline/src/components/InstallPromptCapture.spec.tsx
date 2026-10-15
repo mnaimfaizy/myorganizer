@@ -1,10 +1,10 @@
 /* eslint-disable import/first */
-// The install-prompt listener lives in @myorganizer/web-ui. It is mocked at that
+// The install-prompt listener lives in @myorganiser/web-ui. It is mocked at that
 // module boundary so the test observes the one call this component makes,
 // rather than the browser events the listener would capture.
 const mockStartAppInstallCapture = jest.fn();
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   startAppInstallCapture: () => mockStartAppInstallCapture(),
 }));
 

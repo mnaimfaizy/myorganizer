@@ -4,8 +4,8 @@ import {
   login,
   resendVerificationEmail,
   toAuthErrorFromMessage,
-} from '@myorganizer/auth';
-import { Button, Checkbox, Input, Label, useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/auth';
+import { Button, Checkbox, Input, Label, useToast } from '@myorganiser/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';

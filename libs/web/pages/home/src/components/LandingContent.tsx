@@ -20,8 +20,8 @@ import {
   colorSurface,
   colorSurfaceContainer,
   fontDisplay,
-} from '@myorganizer/design-tokens';
-import { AppLogo } from '@myorganizer/web-ui';
+} from '@myorganiser/design-tokens';
+import { AppLogo } from '@myorganiser/web-ui';
 
 import MobileMenu from './MobileMenu';
 import Reveal from './Reveal';

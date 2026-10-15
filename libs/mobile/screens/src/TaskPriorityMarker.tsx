@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import type { TaskPriority } from '@myorganizer/vault-core/portable';
-import { useTheme } from '@myorganizer/mobile/ui';
+import type { TaskPriority } from '@myorganiser/vault-core/portable';
+import { useTheme } from '@myorganiser/mobile/ui';
 import { priorityBarCount } from './taskModel';
 
 export interface TaskPriorityMarkerProps {

@@ -1,7 +1,7 @@
 'use client';
 
-import type { AuthUser } from '@myorganizer/auth';
-import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
+import type { AuthUser } from '@myorganiser/auth';
+import { Card, CardContent, CardHeader, CardTitle } from '@myorganiser/web-ui';
 import { User } from 'lucide-react';
 
 function getGreeting(): string {

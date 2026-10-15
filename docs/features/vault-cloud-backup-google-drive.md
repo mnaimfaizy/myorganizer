@@ -435,7 +435,7 @@ libs/web/vault-ui/src/lib/CloudBackupCard.tsx
 The Next.js route wrapper at
 [apps/web/src/app/dashboard/vault/page.tsx](../../apps/web/src/app/dashboard/vault/page.tsx)
 is intentionally minimal — it just re-exports `VaultPage` from the
-`@myorganizer/web-pages/vault` library.
+`@myorganiser/web-pages/vault` library.
 
 The page is reachable from:
 

@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogItem, ListLine } from '@myorganizer/vault-core';
+import type { CatalogItem, ListLine } from '@myorganiser/vault-core';
 import {
   Checkbox,
   DropdownMenu,
@@ -9,7 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   cn,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   AlertTriangle,
   Edit2,

@@ -1,6 +1,6 @@
 // What the User Deletion sheets decide, with no React in it, so the node Jest
 // project drives it: when the request may be sent, and what a refusal says.
-import { UserDeletionBodyConfirmationEnum } from '@myorganizer/app-api-client';
+import { UserDeletionBodyConfirmationEnum } from '@myorganiser/app-api-client';
 import { httpStatus, isNetworkError } from './httpErrorShape';
 
 /** What the User types to confirm, exactly as the server requires it. */

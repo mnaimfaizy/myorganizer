@@ -3,7 +3,7 @@ import {
   transitionTaskStatus,
   type SubscriptionRecord,
   type VaultBlobEnvelope,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import type { SubscriptionEditValues } from './SubscriptionEditSheet';
 import type { DecryptedTask } from './taskModel';
 import {

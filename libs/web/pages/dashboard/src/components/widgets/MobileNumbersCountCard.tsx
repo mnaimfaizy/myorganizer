@@ -3,8 +3,8 @@
 import {
   normalizeMobileNumbers,
   type VaultHandle,
-} from '@myorganizer/web-vault';
-import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault';
+import { useLocalVaultRevision } from '@myorganiser/web-vault-ui';
 import { Phone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

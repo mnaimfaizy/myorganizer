@@ -1,4 +1,4 @@
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   useToast: jest.fn(),
   Button: ({ children, onClick, disabled, ...props }: any) => (
     <button onClick={onClick} disabled={disabled} {...props}>
@@ -122,7 +122,7 @@ const createMockHandle = (
   };
 };
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   // Constant: these suites never converge, so the revision never moves.
   // Reloading on a moved revision is covered where it is the subject.
   useLocalVaultRevision: () => 0,
@@ -138,8 +138,8 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => {
-  const actual = jest.requireActual('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault', () => {
+  const actual = jest.requireActual('@myorganiser/web-vault');
   return {
     ...actual,
     normalizeMobileNumbers: jest.fn((data) => {
@@ -155,8 +155,8 @@ jest.mock('@myorganizer/web-vault', () => {
   };
 });
 
-jest.mock('@myorganizer/core', () => {
-  const actual = jest.requireActual('@myorganizer/core');
+jest.mock('@myorganiser/core', () => {
+  const actual = jest.requireActual('@myorganiser/core');
   return {
     ...actual,
   };
@@ -172,8 +172,8 @@ import {
   waitFor,
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { MobileNumberRecord } from '@myorganizer/vault-core';
-import { useToast } from '@myorganizer/web-ui';
+import type { MobileNumberRecord } from '@myorganiser/vault-core';
+import { useToast } from '@myorganiser/web-ui';
 import { MobileNumbersPageClient } from './MobileNumbersPageClient';
 /* eslint-enable import/first */
 

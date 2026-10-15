@@ -6,7 +6,7 @@
  */
 
 import { VAULT_ABSENT_EVIDENCE_GATE_VIEWS } from './vaultAbsentEvidenceGateView';
-import type { VaultAbsentEvidence } from '@myorganizer/web-vault';
+import type { VaultAbsentEvidence } from '@myorganiser/web-vault';
 
 // Derive kinds from the type definition
 const RESULT_KINDS = [

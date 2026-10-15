@@ -1,4 +1,4 @@
-import { randomId } from '@myorganizer/core';
+import { randomId } from '@myorganiser/core';
 import {
   AddressRecord,
   AddressStatusEnum,
@@ -15,7 +15,7 @@ import {
   MOBILE_NUMBER_KEYS,
   USAGE_LOCATION_KEYS,
   withUnknownFields,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 type NormalizeResult<T> = {
   value: T;

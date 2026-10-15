@@ -14,11 +14,11 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import { VaultBlobType, type VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultBlobType, type VaultMetaV1 } from '@myorganiser/app-api-client';
 import {
   readVaultBlobRecords,
   type VaultBlobEnvelope,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { createVaultHandle } from './vaultHandle';
 import {

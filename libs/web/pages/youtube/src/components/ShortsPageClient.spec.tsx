@@ -13,7 +13,7 @@ jest.mock('../hooks', () => ({
   updateVideoWatched: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ children, asChild, ...props }: any) => {
     if (asChild) return children;
     return <button {...props}>{children}</button>;

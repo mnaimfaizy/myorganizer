@@ -10,7 +10,7 @@ import React, {
   useState,
 } from 'react';
 
-import { getCurrentUser } from '@myorganizer/auth';
+import { getCurrentUser } from '@myorganiser/auth';
 import {
   createLocalVaultRevision,
   createVaultApi,
@@ -21,7 +21,7 @@ import {
   type VaultHandle,
   type VaultPullTrigger,
   type VaultSyncQueue,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import {
   useVaultAbsentEvidence,

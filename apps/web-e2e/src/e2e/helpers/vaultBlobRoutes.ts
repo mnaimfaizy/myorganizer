@@ -10,7 +10,7 @@
  * Use these functions to construct route-matching regexes in Playwright mock routes.
  */
 
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 /**
  * Constructs the alternation of blob type segments from the generated enum.

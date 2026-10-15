@@ -1,4 +1,4 @@
-import { AdminUserDetailPage } from '@myorganizer/web-pages/admin';
+import { AdminUserDetailPage } from '@myorganiser/web-pages/admin';
 
 export default function Page() {
   return <AdminUserDetailPage />;

@@ -6,13 +6,13 @@ import {
   createVaultApi,
   rotateRecoveryKeyWithPassphrase,
   VaultSecretMismatchError,
-} from '@myorganizer/web-vault';
-import type { MintedRecoveryKey } from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
+import type { MintedRecoveryKey } from '@myorganiser/web-vault';
 import {
   recoveryKeyRotationReading,
   useOptionalVaultSession,
-} from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 
 import { getErrorMessage } from '../utils/getErrorMessage';
 
@@ -20,7 +20,7 @@ import { getErrorMessage } from '../utils/getErrorMessage';
  * Hook for committing a Recovery Key Rotation.
  *
  * Minting the new key is a pure call the card makes directly against
- * `mintRecoveryKey` from `@myorganizer/web-vault` — nothing is written and
+ * `mintRecoveryKey` from `@myorganiser/web-vault` — nothing is written and
  * this hook is not reached until the User has recorded the key and asks to
  * commit.
  *

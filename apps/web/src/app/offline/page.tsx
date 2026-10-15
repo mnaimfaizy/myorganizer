@@ -1,4 +1,4 @@
-import { OfflinePage } from '@myorganizer/web-pages/offline';
+import { OfflinePage } from '@myorganiser/web-pages/offline';
 
 export const metadata = {
   title: 'Offline',

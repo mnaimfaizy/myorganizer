@@ -1,13 +1,13 @@
 /** Mocking rule: place jest.mock calls before any imports */
 /* eslint-disable import/first -- jest.mock must precede application imports */
 
-jest.mock('@myorganizer/core', () => ({
-  ...jest.requireActual('@myorganizer/core'),
+jest.mock('@myorganiser/core', () => ({
+  ...jest.requireActual('@myorganiser/core'),
   randomId: jest.fn(),
 }));
 
-import type { Task, TaskPriority } from '@myorganizer/vault-core';
-import { randomId } from '@myorganizer/core';
+import type { Task, TaskPriority } from '@myorganiser/vault-core';
+import { randomId } from '@myorganiser/core';
 
 import {
   addTaskToWorkflow,

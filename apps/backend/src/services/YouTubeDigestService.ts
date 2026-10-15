@@ -3,7 +3,7 @@ import {
   EmailMediaItem,
   RenderedEmail,
   renderEmailShell,
-} from '@myorganizer/email-shell';
+} from '@myorganiser/email-shell';
 import { randomBytes } from 'crypto';
 import winston from 'winston';
 import { isoWeekKey, localWeekday } from '../helpers/localCalendar';

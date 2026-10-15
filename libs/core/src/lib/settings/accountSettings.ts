@@ -2,7 +2,7 @@ import {
   isSupportedCurrencyCode,
   SUPPORTED_CURRENCY_CODES,
   type CurrencyCode,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 
 export type AccountSettings = {
   countryCode: string;

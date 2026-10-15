@@ -31,7 +31,7 @@ jest.mock('lucide-react', () => ({
 }));
 
 // Mock UI components
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   cn: (...classes: Array<string | undefined>) =>
     classes.filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => (

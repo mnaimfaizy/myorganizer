@@ -3,7 +3,7 @@ import { Pressable, StyleSheet, View } from 'react-native';
 import type {
   CurrencyCode,
   SubscriptionBillingCycle,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   BottomSheet,
   Chip,
@@ -15,7 +15,7 @@ import {
   useFocusRing,
   usePressFeedback,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { DateField } from './DateField';
 import {
   BILLING_CYCLE_LABELS,

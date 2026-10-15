@@ -2,23 +2,23 @@
 
 // Mock useToast to prevent requirement for a Toaster in the tree
 const mockUseToast = jest.fn();
-jest.mock('@myorganizer/web-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-ui'),
+jest.mock('@myorganiser/web-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-ui'),
   useToast: () => mockUseToast(),
 }));
 
 // Mock getCurrentUser to return a fixed test user
 const mockGetCurrentUser = jest.fn();
-jest.mock('@myorganizer/auth', () => ({
-  ...jest.requireActual('@myorganizer/auth'),
+jest.mock('@myorganiser/auth', () => ({
+  ...jest.requireActual('@myorganiser/auth'),
   getCurrentUser: () => mockGetCurrentUser(),
 }));
 
 // Mock the Vault Absent Evidence network check — the *network* boundary, not the hook.
 // Default to settled "server holds no vault" so the create panel is reachable.
 const mockCheckVaultAbsentEvidence = jest.fn();
-jest.mock('@myorganizer/web-vault', () => {
-  const actual = jest.requireActual('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault', () => {
+  const actual = jest.requireActual('@myorganiser/web-vault');
   return {
     ...actual,
     checkVaultAbsentEvidence: (args: unknown) =>
@@ -36,7 +36,7 @@ import {
 } from '@testing-library/react';
 import { useEffect } from 'react';
 
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 import { VaultGate } from './vaultGate';
 import { VaultSessionProvider, useOptionalVaultSession } from './session';
 

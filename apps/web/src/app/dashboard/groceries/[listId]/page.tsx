@@ -1,4 +1,4 @@
-import { GroceriesListDetailPage } from '@myorganizer/web-pages/groceries';
+import { GroceriesListDetailPage } from '@myorganiser/web-pages/groceries';
 
 export default async function GroceriesDetailPage(props: {
   params: Promise<{ listId: string }>;

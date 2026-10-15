@@ -1,1 +1,1 @@
-export { randomId } from '@myorganizer/core';
+export { randomId } from '@myorganiser/core';

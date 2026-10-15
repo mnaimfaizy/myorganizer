@@ -1,6 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import { Button, useTheme } from '@myorganizer/mobile/ui';
+import { Button, useTheme } from '@myorganiser/mobile/ui';
 
 export interface GroceryFooterButtonProps {
   label: string;

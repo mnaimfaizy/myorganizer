@@ -24,10 +24,10 @@ description: "Use when adding or changing frontend pages, dashboard flows, forms
 1. Decide whether the change belongs in a route wrapper, a page library, or a shared library.
 2. Keep app wrappers thin and move feature logic into the owning page library.
 3. Use shared libraries first:
-   - `@myorganizer/web-ui`
-   - `@myorganizer/auth`
-   - `@myorganizer/web-vault`
-   - `@myorganizer/app-api-client`
+   - `@myorganiser/web-ui`
+   - `@myorganiser/auth`
+   - `@myorganiser/web-vault`
+   - `@myorganiser/app-api-client`
 4. If the UI only needs a small part of a generated response, prefer a narrow local type over coupling to unstable generated aliases.
 5. If the route is vault-backed, keep sensitive plaintext in browser memory only and reuse the vault libraries instead of reimplementing crypto or sync logic.
 6. Add focused tests and e2e coverage when the user-facing flow changes meaningfully.

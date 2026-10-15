@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogItem } from '@myorganizer/vault-core';
+import type { CatalogItem } from '@myorganiser/vault-core';
 import {
   FormControl,
   FormField,
@@ -9,7 +9,7 @@ import {
   FormMessage,
   Input,
   cn,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import type { Control } from 'react-hook-form';
 import { useCallback } from 'react';
 import type { ChangeEvent, KeyboardEvent, MouseEvent } from 'react';

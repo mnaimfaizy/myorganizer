@@ -1,6 +1,6 @@
 'use client';
 
-import type { CatalogItem } from '@myorganizer/vault-core';
+import type { CatalogItem } from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -11,7 +11,7 @@ import {
   DialogTitle,
   Input,
   Label,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { AlertTriangle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 

@@ -1,5 +1,5 @@
-import { COUNTRIES, getAccountSettings } from '@myorganizer/core';
-import { AddressRecord } from '@myorganizer/vault-core';
+import { COUNTRIES, getAccountSettings } from '@myorganiser/core';
+import { AddressRecord } from '@myorganiser/vault-core';
 
 import {
   type AddAddressFormValues,

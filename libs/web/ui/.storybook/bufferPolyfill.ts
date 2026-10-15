@@ -1,6 +1,6 @@
 /**
  * Storybook renders in a browser, which has no `Buffer` global. The Email
- * Shell (`@myorganizer/email-shell`, ADR 0034) is authored for Node and calls
+ * Shell (`@myorganiser/email-shell`, ADR 0034) is authored for Node and calls
  * `Buffer.from(...)` to build its inline logo attachment on every render, so
  * a story that calls it unmodified needs this to exist before the story
  * renders. This is a preview-only compatibility shim, not a general-purpose

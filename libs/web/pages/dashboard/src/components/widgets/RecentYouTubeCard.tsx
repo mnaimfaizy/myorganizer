@@ -1,8 +1,8 @@
 'use client';
 
-import { getAccessToken } from '@myorganizer/auth';
-import { getApiBaseUrl } from '@myorganizer/core';
-import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
+import { getAccessToken } from '@myorganiser/auth';
+import { getApiBaseUrl } from '@myorganiser/core';
+import { Card, CardContent, CardHeader, CardTitle } from '@myorganiser/web-ui';
 import { Youtube } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';

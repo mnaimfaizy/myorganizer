@@ -1,4 +1,4 @@
-import { AccountDeletedPage } from '@myorganizer/web-pages/account';
+import { AccountDeletedPage } from '@myorganiser/web-pages/account';
 
 export const metadata = {
   title: 'Account deleted',

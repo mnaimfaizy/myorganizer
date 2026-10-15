@@ -240,7 +240,7 @@ Also: label every form input in a story the way a real page would, and prefer `l
 
 Stories are rendered by Chromatic and the test-runner, so anything non-deterministic becomes a flaky diff.
 
-- No `fetch`, no API clients, no `@myorganizer/app-api-client`. Pass data as props.
+- No `fetch`, no API clients, no `@myorganiser/app-api-client`. Pass data as props.
 - No `new Date()`, `Date.now()`, `Math.random()`, or `crypto.randomUUID()` — pin a fixed date and fixed ids.
 - No live Vault, no decryption. UI Primitives must not take domain records. Vault UI Components may take mock backup/restore props (GUIDELINES §1). If a `web-ui` primitive appears to need vault data, it does not belong there.
 - No `setTimeout`-driven visual states.

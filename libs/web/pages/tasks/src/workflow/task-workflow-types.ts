@@ -1,4 +1,4 @@
-import type { Task, TaskPriority } from '@myorganizer/vault-core';
+import type { Task, TaskPriority } from '@myorganiser/vault-core';
 
 export type TaskWorkflowErrorCode = 'load_failed' | 'save_failed';
 

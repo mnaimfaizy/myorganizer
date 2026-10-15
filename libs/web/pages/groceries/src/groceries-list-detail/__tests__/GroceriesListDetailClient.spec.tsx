@@ -34,7 +34,7 @@ jest.mock('next/link', () => ({
   ),
 }));
 
-jest.mock('@myorganizer/core', () => ({}));
+jest.mock('@myorganiser/core', () => ({}));
 
 jest.mock('../../shared/hooks', () => ({
   useGroceriesVault: jest.fn(),
@@ -57,8 +57,8 @@ jest.mock('lucide-react', () => ({
 
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import type { GroceryList } from '@myorganizer/vault-core';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { GroceryList } from '@myorganiser/vault-core';
+import type { VaultHandle } from '@myorganiser/web-vault';
 import { useGroceriesVault } from '../../shared/hooks';
 import { GroceriesListDetailClient } from '../GroceriesListDetailClient';
 

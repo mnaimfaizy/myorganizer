@@ -8,7 +8,7 @@ Same transform as [`libs/web/ui`](./web-ui.md) — babel-jest + `@nx/react/babel
 Read `libs/web/vault-ui/jest.config.ts` before writing.
 
 This library owns the vault gate, the session provider, and the reconcile / meta-converge /
-pull runners. Crypto lives in `@myorganizer/vault-core` via `@myorganizer/web-vault`; this
+pull runners. Crypto lives in `@myorganiser/vault-core` via `@myorganiser/web-vault`; this
 library does not reimplement it.
 
 ## Crypto and the vault handle
@@ -21,7 +21,7 @@ That table does **not** extend here; this library's seam follows the subject of 
 | The gate's own create / unlock / recovery-key state machine | Real `VaultSessionProvider` and the real vault handle | Network evidence only (`checkVaultAbsentEvidence`)                                                                       |
 | A UI branch given a session                                 | —                                                     | `useOptionalVaultSession` (put `claimEvidence` / `absentEvidence` on the session object; the gate reads them from there) |
 | The session provider's wiring                               | Real `VaultSessionProvider`                           | `createVaultHandle` / `createVaultSyncQueue`                                                                             |
-| A runner (reconcile, meta-converge, pull)                   | —                                                     | `@myorganizer/web-vault` collaborators                                                                                   |
+| A runner (reconcile, meta-converge, pull)                   | —                                                     | `@myorganiser/web-vault` collaborators                                                                                   |
 
 A test whose subject is the gate itself must drive the real handle. Stubbed doubles hide the
 state-machine bugs this library exists to catch — `vaultGate.create.spec.tsx` is the worked

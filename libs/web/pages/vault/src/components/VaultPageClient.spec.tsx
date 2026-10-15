@@ -43,8 +43,8 @@ jest.mock('../hooks', () => {
   };
 });
 
-jest.mock('@myorganizer/web-vault-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-vault-ui');
+jest.mock('@myorganiser/web-vault-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-vault-ui');
   return {
     ...actual,
     useOptionalVaultSession: () => ({

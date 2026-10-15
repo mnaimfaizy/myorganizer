@@ -1,17 +1,17 @@
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   VAULT_BLOB_CONVERGE_STRATEGIES as CORE_VAULT_BLOB_CONVERGE_STRATEGIES,
   type VaultBlobConvergeStrategy,
   type VaultExportBlobType,
   type VaultRecordType as CoreVaultRecordType,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { VaultRecordType } from './localVaultStorage';
 
 export type {
   VaultBlobConvergeStrategy,
   VaultBlobMerge,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 /**
  * Every Vault Blob Type, and the Local Vault field each one lands in.

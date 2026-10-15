@@ -3,7 +3,7 @@ import {
   VaultBlobType,
   VaultExportV1,
   VaultMetaV1,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   CURRENT_VAULT_EXPORT_SCHEMA_VERSION,
   isVaultImportError,
@@ -14,7 +14,7 @@ import {
   VaultExportBlobType,
   VaultExportEnvelope,
   VaultImportError,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { AuditReporter, noopAuditReporter } from './auditReporter';
 import {
@@ -524,7 +524,7 @@ export async function importVault(
 }
 
 // Re-export vault-core symbols that are part of the new public surface so
-// consumers can import them from `@myorganizer/web-vault` without a direct
+// consumers can import them from `@myorganiser/web-vault` without a direct
 // vault-core dependency.
 export {
   CURRENT_VAULT_EXPORT_SCHEMA_VERSION,

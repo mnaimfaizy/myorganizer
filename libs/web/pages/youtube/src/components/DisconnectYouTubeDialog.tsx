@@ -1,4 +1,4 @@
-import { ConfirmDeleteDialog } from '@myorganizer/web-ui';
+import { ConfirmDeleteDialog } from '@myorganiser/web-ui';
 
 export interface DisconnectYouTubeDialogProps {
   open: boolean;

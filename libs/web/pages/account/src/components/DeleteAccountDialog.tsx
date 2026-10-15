@@ -8,7 +8,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { DeleteAccountConfirmForm } from './DeleteAccountConfirmForm';
 import { DeleteAccountEscapeCopyStep } from './DeleteAccountEscapeCopyStep';

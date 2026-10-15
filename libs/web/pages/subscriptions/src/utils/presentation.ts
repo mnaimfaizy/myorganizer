@@ -9,7 +9,7 @@ import {
   type SubscriptionRenewalType,
   type SubscriptionStatus,
   type SubscriptionTier,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import { format, isValid, parseISO } from 'date-fns';
 
 function titleCase(input: string) {

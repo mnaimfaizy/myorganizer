@@ -1,4 +1,4 @@
-import { YouTubeCallbackPage } from '@myorganizer/web-pages/youtube';
+import { YouTubeCallbackPage } from '@myorganiser/web-pages/youtube';
 
 export default function Page() {
   return <YouTubeCallbackPage />;

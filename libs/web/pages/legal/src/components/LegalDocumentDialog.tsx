@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
   cn,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   type ComponentType,
   type ReactNode,

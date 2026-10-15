@@ -1,4 +1,4 @@
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   useToast: jest.fn(),
   Button: ({ children, onClick, ...props }: any) => (
     <button onClick={onClick} {...props}>
@@ -120,7 +120,7 @@ jest.mock('./SubscriptionsTotalsCard', () => ({
 let mockHandleLoadFn: jest.Mock | null = null;
 let mockHandleSaveFn: jest.Mock | null = null;
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   // Constant: these suites never converge, so the revision never moves.
   // Reloading on a moved revision is covered where it is the subject.
   useLocalVaultRevision: () => 0,
@@ -136,8 +136,8 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => {
-  const actual = jest.requireActual('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault', () => {
+  const actual = jest.requireActual('@myorganiser/web-vault');
   return {
     ...actual,
     normalizeSubscriptions: jest.fn((data) => {
@@ -155,8 +155,8 @@ jest.mock('@myorganizer/web-vault', () => {
   };
 });
 
-jest.mock('@myorganizer/core', () => {
-  const actual = jest.requireActual('@myorganizer/core');
+jest.mock('@myorganiser/core', () => {
+  const actual = jest.requireActual('@myorganiser/core');
   return {
     ...actual,
     getAccountSettings: jest.fn(() => ({
@@ -177,12 +177,12 @@ import {
   SubscriptionPaymentMethodEnum,
   SubscriptionRenewalTypeEnum,
   SubscriptionTierEnum,
-} from '@myorganizer/vault-core';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/vault-core';
+import { useToast } from '@myorganiser/web-ui';
 import {
   normalizeSubscriptions,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import { SubscriptionsPageClient } from './SubscriptionsPageClient';
 /* eslint-enable import/first */
 

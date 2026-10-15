@@ -6,7 +6,7 @@
 // context because the rule is worth reading on its own: it decides whether a
 // stored key is **deleted**, and the only answer that may delete one is
 // positive evidence that the key is wrong.
-import { VaultBlobType, type VaultApi } from '@myorganizer/app-api-client';
+import { VaultBlobType, type VaultApi } from '@myorganiser/app-api-client';
 import { isNetworkError } from '../networkError';
 import { readVaultBlob } from '../sync';
 

@@ -27,17 +27,17 @@ jest.mock('../hooks', () => {
 /**
  * Mock web-vault-ui hooks.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
-  vaultBlobTypeLabel: jest.requireActual('@myorganizer/web-vault-ui')
+  vaultBlobTypeLabel: jest.requireActual('@myorganiser/web-vault-ui')
     .vaultBlobTypeLabel,
-  formatDate: jest.requireActual('@myorganizer/web-vault-ui').formatDate,
+  formatDate: jest.requireActual('@myorganiser/web-vault-ui').formatDate,
 }));
 
 /**
  * Mock web-ui components and useToast.
  */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   return {
     Button: ({ children, onClick, disabled, ...props }: any) => (
       <button onClick={onClick} disabled={disabled} {...props}>
@@ -80,10 +80,10 @@ jest.mock('@myorganizer/web-ui', () => {
 });
 
 import { RemoveVaultCard } from './RemoveVaultCard';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 import {
   useLatestCloudBackup,
   useExportVault,

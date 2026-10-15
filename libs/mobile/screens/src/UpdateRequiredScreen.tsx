@@ -5,7 +5,7 @@ import {
   InlineNotice,
   Screen,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 
 export interface UpdateRequiredScreenProps {
   /** A Vault Push was refused, so the User's last change was not saved. */

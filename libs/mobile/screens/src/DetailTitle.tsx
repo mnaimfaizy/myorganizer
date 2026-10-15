@@ -2,7 +2,7 @@ import React, { useLayoutEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Text, useTheme } from '@myorganizer/mobile/ui';
+import { Text, useTheme } from '@myorganiser/mobile/ui';
 import type { DetailsStackParamList } from './detailsStack';
 
 /**

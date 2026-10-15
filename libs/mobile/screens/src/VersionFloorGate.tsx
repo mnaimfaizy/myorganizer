@@ -1,7 +1,7 @@
 import React, { useCallback } from 'react';
 import { Linking } from 'react-native';
-import { MOBILE_RELEASE_DOWNLOAD_URL } from '@myorganizer/mobile/core';
-import { useVersionFloorRefusal } from '@myorganizer/mobile/feat-auth';
+import { MOBILE_RELEASE_DOWNLOAD_URL } from '@myorganiser/mobile/core';
+import { useVersionFloorRefusal } from '@myorganiser/mobile/feat-auth';
 import { UpdateRequiredScreen } from './UpdateRequiredScreen';
 
 /**

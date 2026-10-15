@@ -13,7 +13,7 @@
 // aesGcmEncryptNative assembles by hand, so a blob written on one platform
 // decrypts on the other. libs/vault-core/src/lib/cryptoCompatibility.test.ts pins
 // that shared format.
-import type { VaultCrypto } from '@myorganizer/vault-core/portable';
+import type { VaultCrypto } from '@myorganiser/vault-core/portable';
 import { utf8ToBytes } from './bytes';
 
 // Re-exported for existing callers, as ./crypto does. On the web target

@@ -2,7 +2,7 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const RHF = jest.requireActual('react-hook-form');
   return {
     useToast: jest.fn(),
@@ -144,7 +144,7 @@ const createMockHandle = (
 
 let mockRevision = 0;
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useLocalVaultRevision: () => mockRevision,
   VaultGate: ({
     children,
@@ -158,8 +158,8 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-vault', () => {
-  const actual = jest.requireActual('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault', () => {
+  const actual = jest.requireActual('@myorganiser/web-vault');
   return {
     ...actual,
     normalizeAddresses: jest.fn((data) => ({
@@ -169,8 +169,8 @@ jest.mock('@myorganizer/web-vault', () => {
   };
 });
 
-jest.mock('@myorganizer/core', () => {
-  const actual = jest.requireActual('@myorganizer/core');
+jest.mock('@myorganiser/core', () => {
+  const actual = jest.requireActual('@myorganiser/core');
   return {
     ...actual,
   };
@@ -190,10 +190,10 @@ import '@testing-library/jest-dom';
 import type {
   AddressRecord,
   UsageLocationRecord,
-} from '@myorganizer/vault-core';
-import type { VaultHandle } from '@myorganizer/web-vault';
+} from '@myorganiser/vault-core';
+import type { VaultHandle } from '@myorganiser/web-vault';
 import { useRouter } from 'next/navigation';
-import { useToast } from '@myorganizer/web-ui';
+import { useToast } from '@myorganiser/web-ui';
 import { AddressDetailPageClient } from './AddressDetailPageClient';
 /* eslint-enable import/first */
 

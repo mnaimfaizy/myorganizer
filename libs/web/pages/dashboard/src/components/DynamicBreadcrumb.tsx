@@ -9,7 +9,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 interface BreadcrumbNavItem {
   label: string;

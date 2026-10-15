@@ -35,7 +35,7 @@ Current `next` version lives in `TECH_STACK.md`. Do not claim that Next.js auto-
 React Native ships no bundled documentation — verify an export against the installed package rather than from memory.
 
 - Import only from the `react-native` package root, never a `react-native/...` subpath; `yarn mobile-platform:check` enforces this over `apps/mobile` and `libs/mobile`.
-- Native mobile code reaches a shared library through its Portable Entry Point (`@myorganizer/auth/portable`, `@myorganizer/vault-core/portable`), never its main entry point: `typeof window` guards do not protect native, because React Native sets `global.window = global`. See [ADR 0103](docs/adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md).
+- Native mobile code reaches a shared library through its Portable Entry Point (`@myorganiser/auth/portable`, `@myorganiser/vault-core/portable`), never its main entry point: `typeof window` guards do not protect native, because React Native sets `global.window = global`. See [ADR 0103](docs/adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md).
 - No non-spec mobile program has Node types, so `process`, `Buffer`, and a global `crypto` do not compile. Import a missing name from a package that provides it; only for a global Hermes itself provides, declare it in `libs/mobile/native-globals.d.ts` (created with its first entry). Never restore `types: ["node"]` or add `dom` to make a name resolve. See [ADR 0120](docs/adr/0120-a-mobile-program-gets-node-types-only-if-it-runs-on-node.md).
 - `targetSdk 36` means Android enforces edge-to-edge: every screen root must come from `react-native-safe-area-context`, not a manual status-bar inset.
 - Reach the mobile theme through `useTheme()` inside a `ThemeProvider`, never as a module-level constant. Colours come from the Semantic Roles the theme exposes, and text size from a Type Scale step used whole.
@@ -85,7 +85,7 @@ The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh
 ## Design Tokens
 
 - The design reference lives in `libs/design-tokens/DESIGN.md`; use it together with `libs/design-tokens/src/tokens.json` when changing colors, typography, spacing, radii, or shadows.
-- `libs/design-tokens/src/tokens.json` is the single source of truth for design values; do not hard-code hex colors, font stacks, or magic spacing values in components when a token should exist. Prefer importing token constants from `@myorganizer/design-tokens`.
+- `libs/design-tokens/src/tokens.json` is the single source of truth for design values; do not hard-code hex colors, font stacks, or magic spacing values in components when a token should exist. Prefer importing token constants from `@myorganiser/design-tokens`.
 - `DESIGN.md` is brand rationale, not a second palette. Update it when a semantic role or brand rule changes, not when a hex or spacing step moves. See ADR 0023.
 - After editing tokens, regenerate with `yarn nx run design-tokens:build-tokens`; never edit files under `libs/design-tokens/src/generated/` directly.
 

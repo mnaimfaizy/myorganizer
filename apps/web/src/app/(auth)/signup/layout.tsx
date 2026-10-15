@@ -1,4 +1,4 @@
-import { LegalOperatorProvider } from '@myorganizer/web-pages/legal';
+import { LegalOperatorProvider } from '@myorganiser/web-pages/legal';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {

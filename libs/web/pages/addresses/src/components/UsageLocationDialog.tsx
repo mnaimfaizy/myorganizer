@@ -4,7 +4,7 @@ import {
   OrganisationTypeEnum,
   UpdateMethodEnum,
   UsageLocationRecord,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -13,7 +13,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';

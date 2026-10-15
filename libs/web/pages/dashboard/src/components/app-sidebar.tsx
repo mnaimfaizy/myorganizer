@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import { getCurrentUser } from '@myorganizer/auth';
+import { getCurrentUser } from '@myorganiser/auth';
 import {
   AppLogo,
   Sidebar,
@@ -10,7 +10,7 @@ import {
   SidebarHeader,
   SidebarRail,
   useSidebar,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useYouTubeNavVisible } from '../hooks/useYouTubeNavVisible';
 import {
   ClipboardList,

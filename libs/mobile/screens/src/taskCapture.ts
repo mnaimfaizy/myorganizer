@@ -2,7 +2,7 @@ import type {
   Task,
   TaskContext,
   TaskPriority,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import { localDateOnlyString } from './taskModel';
 
 /** Which due date, if any, a captured Task starts with. */

@@ -8,7 +8,7 @@ import {
   CardContent,
   CardDescription,
   CardTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { DeleteAccountDialog } from './DeleteAccountDialog';
 

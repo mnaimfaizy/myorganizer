@@ -2,7 +2,7 @@
 
 import '@testing-library/jest-dom';
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   cn: (...classes: Array<string | undefined>) =>
     classes.filter(Boolean).join(' '),
   Badge: ({

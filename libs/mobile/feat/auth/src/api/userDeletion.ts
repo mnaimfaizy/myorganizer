@@ -4,7 +4,7 @@
 // module state. The request and both local steps are handed in, so this
 // project's Node-environment Jest suite drives every outcome. AuthContext is
 // the wiring.
-import { UserDeletionBodyConfirmationEnum } from '@myorganizer/app-api-client';
+import { UserDeletionBodyConfirmationEnum } from '@myorganiser/app-api-client';
 
 /** The only confirmation `DELETE /users/me` accepts, typed by the User. */
 export const USER_DELETION_CONFIRMATION =

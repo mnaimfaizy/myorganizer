@@ -7,11 +7,11 @@
 import type {
   RefreshToken200Response,
   RefreshTokenBody,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   buildRefreshTokenRequest,
   resolveRefreshTokenAfterRefresh,
-} from '@myorganizer/auth/portable';
+} from '@myorganiser/auth/portable';
 import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import type { AuthTokens, FilteredUserInterface } from './types';
 import { isVersionFloorRefusal } from './versionFloor';

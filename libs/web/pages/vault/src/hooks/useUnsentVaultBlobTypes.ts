@@ -2,14 +2,14 @@
 
 import { useEffect, useState } from 'react';
 
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   VAULT_BLOB_FIELDS,
   VAULT_BLOB_TYPES,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
 
 export type UnsentVaultBlobTypesState =
   | { status: 'pending'; types: null }

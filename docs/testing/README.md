@@ -71,26 +71,26 @@ any other issue in this repo:
 
 ```typescript
 // ❌ WRONG — linting flags the static import as a boundary violation
-import { randomId } from '@myorganizer/core';
-jest.mock('@myorganizer/core');
+import { randomId } from '@myorganiser/core';
+jest.mock('@myorganiser/core');
 
 // ✅ CORRECT — mocks first, then imports
-jest.mock('@myorganizer/core', () => ({
-  ...jest.requireActual('@myorganizer/core'),
+jest.mock('@myorganiser/core', () => ({
+  ...jest.requireActual('@myorganiser/core'),
   randomId: jest.fn(),
 }));
-jest.mock('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault');
 
-import { randomId } from '@myorganizer/core';
-import { loadDecryptedData } from '@myorganizer/web-vault';
+import { randomId } from '@myorganiser/core';
+import { loadDecryptedData } from '@myorganiser/web-vault';
 import { useMyHook } from './useMyHook';
 ```
 
 Known lazy-loaded libraries (verify against `nx.json` when new libs are added):
 
-- `@myorganizer/core`
-- `@myorganizer/auth`
-- `@myorganizer/vault-core`
+- `@myorganiser/core`
+- `@myorganiser/auth`
+- `@myorganiser/vault-core`
 
 ---
 

@@ -1,8 +1,8 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { register } from '@myorganizer/auth';
-import { LegalDocumentDialog } from '@myorganizer/web-pages/legal';
+import { register } from '@myorganiser/auth';
+import { LegalDocumentDialog } from '@myorganiser/web-pages/legal';
 import {
   Button,
   Checkbox,
@@ -14,7 +14,7 @@ import {
   FormMessage,
   Input,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Eye, EyeOff } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

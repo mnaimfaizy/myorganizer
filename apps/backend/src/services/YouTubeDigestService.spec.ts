@@ -1,4 +1,4 @@
-import { collectCidReferences } from '@myorganizer/email-shell';
+import { collectCidReferences } from '@myorganiser/email-shell';
 import { YouTubeDigestService, DIGEST_ITEM_CAP } from './YouTubeDigestService';
 
 jest.mock('./WorkerLeaseService', () => {

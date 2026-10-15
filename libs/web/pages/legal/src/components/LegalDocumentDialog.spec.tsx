@@ -15,7 +15,7 @@ import {
   FormItem,
   FormLabel,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { LegalDocumentDialog } from './LegalDocumentDialog';
 import { LegalOperatorProvider } from './LegalOperatorProvider';

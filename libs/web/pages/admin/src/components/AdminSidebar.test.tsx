@@ -9,13 +9,13 @@ jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   getCurrentUser: jest.fn(),
   logout: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-ui'),
+jest.mock('@myorganiser/web-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-ui'),
   useSidebar: jest.fn(),
   // The top-level Sidebar branches on the real context (Sheet on phone width).
   // Stub it so the mocked isMobile value is the only width signal under test.
@@ -27,8 +27,8 @@ jest.mock('@myorganizer/web-ui', () => ({
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { getCurrentUser, logout } from '@myorganizer/auth';
-import { SidebarProvider, useSidebar } from '@myorganizer/web-ui';
+import { getCurrentUser, logout } from '@myorganiser/auth';
+import { SidebarProvider, useSidebar } from '@myorganiser/web-ui';
 import { AdminSidebar } from './AdminSidebar';
 
 const adminUser = { name: 'Test Admin', email: 'admin@example.com' };

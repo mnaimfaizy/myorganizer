@@ -8,7 +8,7 @@ import {
   type Priority,
   type UpdateMethod,
   type UsageLocationRecord,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 
 /**
  * What the Details screens read out of a decrypted Addresses or Mobile

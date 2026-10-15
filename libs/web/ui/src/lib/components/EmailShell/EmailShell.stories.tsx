@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { renderEmailShell, type RenderedEmail } from '@myorganizer/email-shell';
+import { renderEmailShell, type RenderedEmail } from '@myorganiser/email-shell';
 
 /**
  * The shell references its inline logo as `cid:<id>` — a MIME Content-ID that

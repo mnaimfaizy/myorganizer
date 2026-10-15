@@ -5,8 +5,8 @@ import { useCallback, useState } from 'react';
 import {
   createDefaultAuditReporter,
   exportVault,
-} from '@myorganizer/web-vault';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/web-vault';
+import { useToast } from '@myorganiser/web-ui';
 
 import { downloadJsonFile } from './downloadFile';
 import { useOptionalVaultSession } from './session';

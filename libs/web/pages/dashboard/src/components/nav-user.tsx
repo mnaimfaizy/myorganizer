@@ -1,6 +1,6 @@
 'use client';
 
-import { logout } from '@myorganizer/auth';
+import { logout } from '@myorganiser/auth';
 import {
   BadgeCheck,
   Bell,
@@ -28,7 +28,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 export function NavUser({
   user,

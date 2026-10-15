@@ -5,7 +5,7 @@ supersedes: ADR-0007
 
 # Mobile styling uses React Native StyleSheet over a token-derived theme
 
-Mobile components style themselves with React Native `StyleSheet` consuming a typed `theme` object built from `@myorganizer/design-tokens`. There is no Tailwind/NativeWind on mobile.
+Mobile components style themselves with React Native `StyleSheet` consuming a typed `theme` object built from `@myorganiser/design-tokens`. There is no Tailwind/NativeWind on mobile.
 
 ## Context
 

@@ -8,12 +8,12 @@
  * across that boundary — a calm pre-commit line followed by an alarmed toast,
  * or the reverse — reads as the product changing its mind.
  *
- * Same split as everywhere else: `@myorganizer/web-vault` decides what
+ * Same split as everywhere else: `@myorganiser/web-vault` decides what
  * happened and carries no English text, and the library that shows a User owns
  * naming it. No string here is built from an error, so no server response body
  * can reach a User through this file.
  */
-import type { ServerReachability } from '@myorganizer/web-vault';
+import type { ServerReachability } from '@myorganiser/web-vault';
 
 /**
  * How loudly a Server Reachability reading is presented.

@@ -471,6 +471,6 @@ close that issue until the production proof there is done.
 1. **Phase 1 — Database & Schema**: Add Prisma models, run migration.
 2. **Phase 2 — Backend Services**: Token encryption, YouTube API service, sync service, notification service.
 3. **Phase 3 — Backend Controller**: TSOA endpoints, cron webhook.
-4. **Phase 4 — Frontend Library**: Create `@myorganizer/web-pages/youtube`, build dashboard components.
+4. **Phase 4 — Frontend Library**: Create `@myorganiser/web-pages/youtube`, build dashboard components.
 5. **Phase 5 — Settings Integration**: Extend account settings page.
 6. **Phase 6 — Testing**: Unit tests + E2E scaffolding.

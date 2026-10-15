@@ -1,4 +1,4 @@
-import type { SubscriptionRecord } from '@myorganizer/vault-core';
+import type { SubscriptionRecord } from '@myorganiser/vault-core';
 import {
   Card,
   CardContent,
@@ -9,7 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { SubscriptionRow } from './SubscriptionRow';
 

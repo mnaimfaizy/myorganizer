@@ -1,4 +1,4 @@
-import { AddressRecord, AddressStatusEnum } from '@myorganizer/vault-core';
+import { AddressRecord, AddressStatusEnum } from '@myorganiser/vault-core';
 
 import { addAddressSchema } from '../schemas/address';
 import {

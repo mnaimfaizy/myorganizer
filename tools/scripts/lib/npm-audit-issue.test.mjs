@@ -43,8 +43,8 @@ const RUN_URL = 'https://github.com/mnaimfaizy/myorganizer/actions/runs/1';
 
 // Two lines as Yarn 4.13 printed them for this repository on 2026-10-08.
 const NDJSON = [
-  '{"value":"compression","children":{"ID":1241221,"Issue":"compression vulnerable to Denial of Service via memory leak on premature response close","URL":"https://github.com/advisories/GHSA-vc2v-76pw-4v95","Severity":"high","Vulnerable Versions":"<1.8.2","Tree Versions":["1.8.1"],"Dependents":["@myorganizer/source@workspace:."]}}',
-  '{"value":"@babel/core","children":{"ID":1123528,"Issue":"@babel/core: Arbitrary File Read via sourceMappingURL Comment","URL":"https://github.com/advisories/GHSA-4x5r-pxfx-6jf8","Severity":"low","Vulnerable Versions":"<=7.29.0","Tree Versions":["7.26.0","7.28.5"],"Dependents":["@myorganizer/source@workspace:."]}}',
+  '{"value":"compression","children":{"ID":1241221,"Issue":"compression vulnerable to Denial of Service via memory leak on premature response close","URL":"https://github.com/advisories/GHSA-vc2v-76pw-4v95","Severity":"high","Vulnerable Versions":"<1.8.2","Tree Versions":["1.8.1"],"Dependents":["@myorganiser/source@workspace:."]}}',
+  '{"value":"@babel/core","children":{"ID":1123528,"Issue":"@babel/core: Arbitrary File Read via sourceMappingURL Comment","URL":"https://github.com/advisories/GHSA-4x5r-pxfx-6jf8","Severity":"low","Vulnerable Versions":"<=7.29.0","Tree Versions":["7.26.0","7.28.5"],"Dependents":["@myorganiser/source@workspace:."]}}',
 ].join('\n');
 
 const advisory = (overrides = {}) => ({

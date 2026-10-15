@@ -18,11 +18,11 @@ import {
   VaultBlobType,
   type GetVaultMetaResponse,
   type VaultMetaV1,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   type VaultBlobEnvelope,
   readVaultBlobRecords,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import {
   claimUnclaimedLocalVaultOnEvidence,
