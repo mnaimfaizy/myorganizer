@@ -2,6 +2,12 @@
 
 This repo uses GitHub Actions for CI/CD.
 
+## Repository name
+
+The repository is `mnaimfaizy/myorganiser`. It was renamed from the old "-izer" spelling, and GitHub redirects the old slug's web URLs, issue links, Release downloads and git remotes to it.
+
+**Never create a repository with the old spelling on this account.** A new repository at the old slug takes over those redirects, and every old link and remote would then point at it. See [ADR 0132](../adr/0132-one-product-name-aligned-while-there-were-no-users.md).
+
 ## Branch strategy
 
 - `main`
