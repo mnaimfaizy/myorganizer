@@ -386,7 +386,7 @@ export function ChannelDirectory({
                   </Button>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  MyOrganizer stores only recent uploads from each channel.
+                  MyOrganiser stores only recent uploads from each channel.
                   Older uploads are not cached here.
                 </p>
                 <a

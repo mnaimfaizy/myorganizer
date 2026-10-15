@@ -24,7 +24,7 @@ const STATIC_PREFIX = '/_next/static/';
 
 // Bump the suffix when the worker's behaviour changes. The offline page's own
 // content needs no bump: see the note on deployments above.
-const CACHE_PREFIX = 'myorganizer-offline-';
+const CACHE_PREFIX = 'myorganiser-offline-';
 const CACHE_NAME = `${CACHE_PREFIX}v1`;
 
 // Same-origin static files named anywhere in the offline page's HTML: its

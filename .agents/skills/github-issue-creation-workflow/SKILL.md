@@ -1,6 +1,6 @@
 ---
 name: github-issue-creation-workflow
-description: 'Use when the user asks to create a standalone GitHub issue for an ad-hoc bug, task, or follow-up in MyOrganizer. Do not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan — those use to-prd or to-issues. Delegate to IssueCreator for duplicate checks, detail collection, label validation, and issue creation.'
+description: 'Use when the user asks to create a standalone GitHub issue for an ad-hoc bug, task, or follow-up in MyOrganiser. Do not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan — those use to-prd or to-issues. Delegate to IssueCreator for duplicate checks, detail collection, label validation, and issue creation.'
 ---
 
 # GitHub Issue Creation Workflow

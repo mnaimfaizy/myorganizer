@@ -17,7 +17,7 @@ function readRuntimeApiBaseUrlFromWindow(): string | undefined {
   if (typeof window === 'undefined') return undefined;
 
   const w = window as any;
-  const cfg = w.__MYORGANIZER_RUNTIME__ ?? w.MYORGANIZER_RUNTIME;
+  const cfg = w.__MYORGANISER_RUNTIME__ ?? w.MYORGANISER_RUNTIME;
   const value = cfg?.API_BASE_URL;
 
   if (typeof value === 'string' && value.trim().length > 0) {
@@ -31,7 +31,7 @@ function readRuntimeRouterPrefixFromWindow(): string | undefined {
   if (typeof window === 'undefined') return undefined;
 
   const w = window as any;
-  const cfg = w.__MYORGANIZER_RUNTIME__ ?? w.MYORGANIZER_RUNTIME;
+  const cfg = w.__MYORGANISER_RUNTIME__ ?? w.MYORGANISER_RUNTIME;
   const value = cfg?.ROUTER_PREFIX;
 
   if (typeof value === 'string' && value.trim().length > 0) {
@@ -44,7 +44,7 @@ function readRuntimeRouterPrefixFromWindow(): string | undefined {
 function readRuntimeApiBaseUrlFromMeta(): string | undefined {
   if (typeof document === 'undefined') return undefined;
 
-  const el = document.querySelector('meta[name="myorganizer-api-base-url"]');
+  const el = document.querySelector('meta[name="myorganiser-api-base-url"]');
   const value = el?.getAttribute('content') ?? '';
 
   if (value.trim().length > 0) {
@@ -57,7 +57,7 @@ function readRuntimeApiBaseUrlFromMeta(): string | undefined {
 function readRuntimeRouterPrefixFromMeta(): string | undefined {
   if (typeof document === 'undefined') return undefined;
 
-  const el = document.querySelector('meta[name="myorganizer-router-prefix"]');
+  const el = document.querySelector('meta[name="myorganiser-router-prefix"]');
   const value = el?.getAttribute('content') ?? '';
 
   if (value.trim().length > 0) {

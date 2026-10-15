@@ -17,13 +17,13 @@ When the user asks to file the agreed plan as a GitHub issue, PRD, or tracked wo
 
 <supporting-info>
 
-## Domain awareness for MyOrganizer
+## Domain awareness for MyOrganiser
 
 During codebase exploration, look for existing documentation:
 
 ### File structure
 
-MyOrganizer uses a single context structure:
+MyOrganiser uses a single context structure:
 
 ```
 /
@@ -77,7 +77,7 @@ If any of the three is missing, skip the ADR. Use the format in [ADR-FORMAT.md](
 
 ## Project-specific context
 
-### MyOrganizer Domain Terms
+### MyOrganiser Domain Terms
 
 These are key concepts already present in the codebase:
 

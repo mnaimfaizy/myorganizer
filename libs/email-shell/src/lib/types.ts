@@ -71,4 +71,4 @@ export interface RenderedEmail {
 }
 
 /** Content-ID the shell's logo `<img>` references and its attachment carries (ADR 0034). */
-export const EMAIL_LOGO_CID = 'myorganizer-logo';
+export const EMAIL_LOGO_CID = 'myorganiser-logo';

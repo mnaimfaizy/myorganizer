@@ -13,7 +13,7 @@ This guide walks through creating Google OAuth 2.0 credentials required for the 
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/).
 2. Click the project dropdown at the top of the page and select **New Project**.
-3. Enter a project name (e.g. `MyOrganizer` or `MyOrganizer Dev`).
+3. Enter a project name (e.g. `MyOrganiser` or `MyOrganiser Dev`).
 4. Click **Create**.
 5. Make sure the new project is selected in the project dropdown.
 
@@ -36,11 +36,11 @@ This is the only API required. The integration uses the `youtube.readonly` scope
 1. In the left sidebar, go to **Google Auth platform** > **Branding** (or **APIs & Services** > **OAuth consent screen** on older console layouts).
 2. If prompted with "Google Auth platform not configured yet", click **Get Started**.
 3. Fill in the required fields:
-   - **App name:** `MyOrganizer` (or your app name)
+   - **App name:** `MyOrganiser` (or your app name)
    - **User support email:** your email address
    - **App logo (optional):** the same 120 × 120 PNG as Drive —
      `apps/web/public/images/google-oauth-app-logo.png`. Production
-     Drive uses App name `MyOrganizer Vault Backup` on its own project; do
+     Drive uses App name `MyOrganiser Vault Backup` on its own project; do
      not put `drive.appdata` on this YouTube consent screen.
 4. Click **Next**.
 
@@ -80,7 +80,7 @@ To add test users:
 3. Search for and select: `https://www.googleapis.com/auth/youtube.readonly`
 4. Click **Save**.
 
-This is a **sensitive scope**, meaning Google may show an "unverified app" warning during the consent flow in testing mode. Test users can bypass this by clicking **Advanced** > **Go to MyOrganizer (unsafe)**.
+This is a **sensitive scope**, meaning Google may show an "unverified app" warning during the consent flow in testing mode. Test users can bypass this by clicking **Advanced** > **Go to MyOrganiser (unsafe)**.
 
 ---
 
@@ -89,7 +89,7 @@ This is a **sensitive scope**, meaning Google may show an "unverified app" warni
 1. Go to **APIs & Services** > **Credentials**.
 2. Click **Create Credentials** > **OAuth client ID**.
 3. For **Application type**, select **Web application**.
-4. Enter a name (e.g. `MyOrganizer Dev` or `MyOrganizer Production`).
+4. Enter a name (e.g. `MyOrganiser Dev` or `MyOrganiser Production`).
 5. Under **Authorized redirect URIs**, add the callback URL (see [Redirect URI](#understanding-the-redirect-uri) section below).
 6. Click **Create**.
 
@@ -214,11 +214,11 @@ Production YouTube is a personal-use feature, granted per User by a Platform Adm
 3. Do not submit for verification. Google lists personal-use apps, for the developer and fewer than 100 users, as not needing it.
 4. Each person sees an "unverified app" warning once and chooses to continue.
 
-> **The 100-account limit is permanent.** Google counts every account that has ever consented on an unverified project, for the life of the project, and never resets it. MyOrganizer caps YouTube Access well below that.
+> **The 100-account limit is permanent.** Google counts every account that has ever consented on an unverified project, for the life of the project, and never resets it. MyOrganiser caps YouTube Access well below that.
 
 > **Testing mode is not an option for production.** Google expires every authorization made in Testing seven days after consent, so every YouTube Connection goes Revoked weekly.
 
-> **MyOrganizer is the only gate.** Google no longer checks who connects on a published project, so a User can connect only if a Platform Admin has granted them YouTube Access ([ADR 0129](../adr/0129-youtube-is-a-personal-use-feature-granted-per-user.md)). Grant it per User from the admin console; `YOUTUBE_ACCESS_CEILING` (default 25) caps how many Users can ever be granted, well below Google's limit. Before turning `YOUTUBE_AVAILABLE` on, grant access to every User who should keep an existing YouTube Connection — the scheduled sync disconnects connections whose User has no access.
+> **MyOrganiser is the only gate.** Google no longer checks who connects on a published project, so a User can connect only if a Platform Admin has granted them YouTube Access ([ADR 0129](../adr/0129-youtube-is-a-personal-use-feature-granted-per-user.md)). Grant it per User from the admin console; `YOUTUBE_ACCESS_CEILING` (default 25) caps how many Users can ever be granted, well below Google's limit. Before turning `YOUTUBE_AVAILABLE` on, grant access to every User who should keep an existing YouTube Connection — the scheduled sync disconnects connections whose User has no access.
 
 ---
 
@@ -252,7 +252,7 @@ client has both redirect URIs and JavaScript origins
 | `redirect_uri_mismatch` error                   | The `GOOGLE_REDIRECT_URI` in `.env` doesn't match what's configured in Google Cloud Console. Check for trailing slashes, protocol (http vs https), and port.                      |
 | "Access blocked: This app's request is invalid" | The OAuth consent screen is not configured, or the app has been suspended.                                                                                                        |
 | "Error 403: access_denied"                      | The user is not in the test users list (when app is in Testing mode).                                                                                                             |
-| "This app isn't verified" warning               | Expected in Testing mode. Click **Advanced** > **Go to MyOrganizer (unsafe)**. In production it is shown once per person, because the project is unverified by design (ADR 0129). |
+| "This app isn't verified" warning               | Expected in Testing mode. Click **Advanced** > **Go to MyOrganiser (unsafe)**. In production it is shown once per person, because the project is unverified by design (ADR 0129). |
 | No refresh token received                       | Google only returns a refresh token on the **first** authorization. The app uses `prompt: 'consent'` to force it every time. If tokens are missing, disconnect and reconnect.     |
 | `YOUTUBE_TOKEN_ENCRYPTION_KEY` errors           | Ensure the key is exactly 64 hex characters (32 bytes). Generate with: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`                                 |
 

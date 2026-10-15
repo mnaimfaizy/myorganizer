@@ -518,7 +518,7 @@ async function installGoogleMocks(
           u.searchParams.get('spaces') === 'appDataFolder'
         ) {
           const list = Array.from(files.values())
-            .filter((f) => f.appProperties.kind === 'myorganizer-vault-backup')
+            .filter((f) => f.appProperties.kind === 'myorganiser-vault-backup')
             .sort((a, b) => b.createdTime.localeCompare(a.createdTime))
             .map(metadata);
           return json({ files: list });

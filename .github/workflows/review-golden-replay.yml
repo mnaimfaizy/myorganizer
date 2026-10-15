@@ -241,7 +241,7 @@ jobs:
         include: ${{ fromJSON(needs.cases.outputs.matrix) }}
     env:
       # Required for Prisma v7 config loading if a reviewer runs backend tests.
-      DATABASE_URL: postgresql://localhost:5432/myorganizer
+      DATABASE_URL: postgresql://localhost:5432/myorganiser
       # One source for the model id this job runs, shared by the reviewer
       # call below and by "Record the result" (issue #932), so the results
       # record can never disagree with what actually ran.

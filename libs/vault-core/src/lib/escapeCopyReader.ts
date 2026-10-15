@@ -2,8 +2,8 @@
  * Opening an Escape Copy — the whole of what the standalone reader does.
  *
  * [ADR 0064](../../../../docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)
- * requires an Escape Copy to be readable by a tool needing no MyOrganizer
- * server, no MyOrganizer session, and no Google account. This module is that
+ * requires an Escape Copy to be readable by a tool needing no MyOrganiser
+ * server, no MyOrganiser session, and no Google account. This module is that
  * tool's entire brain: envelope text plus a passphrase or a Recovery Key in,
  * plaintext out. It reaches the network never, storage never, and the DOM
  * never — the reader page around it supplies the file and renders the result,

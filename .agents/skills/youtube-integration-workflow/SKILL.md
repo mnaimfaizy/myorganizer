@@ -1,6 +1,6 @@
 ---
 name: youtube-integration-workflow
-description: 'Use when working on YouTube OAuth, subscription sync, cached videos, notification settings, cron sync, or the dashboard YouTube page in MyOrganizer.'
+description: 'Use when working on YouTube OAuth, subscription sync, cached videos, notification settings, cron sync, or the dashboard YouTube page in MyOrganiser.'
 ---
 
 # YouTube Integration Workflow

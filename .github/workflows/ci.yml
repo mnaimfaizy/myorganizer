@@ -683,7 +683,7 @@ jobs:
           # Throwaway runner service. Trust avoids storing a credential in the
           # workflow; this database is never reachable off the job.
           POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_DB: myorganizer
+          POSTGRES_DB: myorganiser
         ports:
           - 5432:5432
         options: >-
@@ -696,7 +696,7 @@ jobs:
       # Prisma generate reads this without connecting; migrate deploy and
       # migrate diff use the service above so a migration that fails to apply,
       # or a schema that has drifted from the migrations, fails before merge.
-      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganiser
 
     steps:
       - name: Checkout repository
@@ -1262,7 +1262,7 @@ jobs:
     env:
       # Required for Prisma v7 config loading during `prisma generate`.
       # CI uses a dummy local URL here because generation does not connect.
-      DATABASE_URL: postgresql://localhost:5432/myorganizer
+      DATABASE_URL: postgresql://localhost:5432/myorganiser
 
     steps:
       - name: Checkout repository
@@ -1354,7 +1354,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_DB: myorganizer
+          POSTGRES_DB: myorganiser
         ports:
           - 5432:5432
         options: >-
@@ -1366,7 +1366,7 @@ jobs:
     env:
       NX_DAEMON: 'false'
       E2E_LIVE_BACKEND: '1'
-      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganiser
       ACCESS_JWT_SECRET: e2e-access-jwt
       REFRESH_JWT_SECRET: e2e-refresh-jwt
       VERIFY_JWT_SECRET: e2e-verify-jwt

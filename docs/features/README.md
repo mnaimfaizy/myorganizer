@@ -16,7 +16,7 @@ End-to-end developer documentation for individual product features.
 
 ## Google integrations
 
-MyOrganizer integrates with two distinct Google APIs. They share Google Cloud
+MyOrganiser integrates with two distinct Google APIs. They share Google Cloud
 as the OAuth provider but use very different flows, scopes, and credentials.
 
 | Integration                                                               | Flow                           | Where token lives                                | Required env (browser)         | Required env (backend)                                                                                                   |

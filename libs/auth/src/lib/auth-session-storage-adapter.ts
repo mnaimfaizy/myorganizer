@@ -18,9 +18,9 @@ export interface AuthSessionStorageAdapter {
   onSignedOutElsewhere?(listener: () => void): () => void;
 }
 
-const ACCESS_TOKEN_KEY = 'myorganizer_access_token';
-const USER_KEY = 'myorganizer_user';
-const TOKEN_STORAGE_KEY = 'myorganizer_token_storage';
+const ACCESS_TOKEN_KEY = 'myorganiser_access_token';
+const USER_KEY = 'myorganiser_user';
+const TOKEN_STORAGE_KEY = 'myorganiser_token_storage';
 
 function isBrowser(): boolean {
   return typeof window !== 'undefined';

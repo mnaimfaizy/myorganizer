@@ -68,9 +68,9 @@ export function runHookRaw(
   // have to be driven through the child process rather than a module flag.
   const childEnv = { ...process.env };
   if (options?.sandbox) {
-    childEnv.MYORGANIZER_SANDBOX = '1';
+    childEnv.MYORGANISER_SANDBOX = '1';
   } else {
-    delete childEnv.MYORGANIZER_SANDBOX;
+    delete childEnv.MYORGANISER_SANDBOX;
   }
 
   // Apply any custom environment overrides

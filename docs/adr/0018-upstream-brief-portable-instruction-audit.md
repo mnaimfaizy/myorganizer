@@ -22,7 +22,7 @@ Three briefs showed the single target version contradicting its own source rule,
 ## Considered Options
 
 - **Upgrade-planning skill, or fold into DepAudit / DepSync** — rejected. DepAudit answers “what is outdated or vulnerable.” DepSync writes version numbers after an install ([ADR 0001](0001-tech-stack-single-source-of-truth.md)). This skill answers “what do official docs say now, and which of our instructions are wrong?”
-- **MyOrganizer-native first, extract later** — rejected. The skill will be exported. Baking in `TECH_STACK.md` or `type:hitl` makes the extract a rewrite.
+- **MyOrganiser-native first, extract later** — rejected. The skill will be exported. Baking in `TECH_STACK.md` or `type:hitl` makes the extract a rewrite.
 - **One skill per ecosystem** — rejected. A `next-upstream` skill that embeds “use `middleware`” becomes the sediment this work exists to kill.
 - **Skill looks up latest** — rejected. “Latest” is as stale as the training corpus, and the human sometimes wants a major that is not the newest on the registry.
 - **Auto-file every run, or start the grill in the same run** — rejected. Empty briefs are tracker noise. The human starts the grill and decides what is valuable.

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Vault Lifecycle — MyOrganizer</title>
+<title>Vault Lifecycle — MyOrganiser</title>
 <script type="application/json" id="vault-lifecycle-manifest">
 {
   "kdf": { "name": "PBKDF2", "hash": "SHA-256", "iterations": 310000, "saltBytes": 16 },
@@ -2575,7 +2575,7 @@ textarea.input { min-height: 90px; resize: vertical; }
 
   <header style="display:flex;align-items:flex-start;justify-content:space-between;gap:40px;max-width:1440px;margin:0 0 28px">
     <div style="max-width:820px">
-      <div style="font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);margin-bottom:10px">MyOrganizer · vault, from first week to first disaster</div>
+      <div style="font-size:12px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2);margin-bottom:10px">MyOrganiser · vault, from first week to first disaster</div>
       <h1 style="font-size:50px;line-height:1.04;margin:0 0 14px;max-width:17ch">The life of a vault</h1>
       <p style="font-size:16.5px;line-height:1.5;max-width:72ch;margin:0;text-wrap:pretty">Watch it once and you should be able to tell a colleague why the server cannot read their data, and what happens if they lose their passphrase. One idea per step. Nothing here needs the crypto code read first.</p>
     </div>
@@ -2944,7 +2944,7 @@ class Component extends DCLogic {
     // ---------------- SCENE 1 ----------------
     push({ scene: 1, title: 'You are already signed in. That is a different lock.',
       body: 'Signing in is the JWT. It decides whether the server will hand you your rows. It has nothing to do with whether you can read them — and right now there is nothing to read, because the vault does not exist yet.',
-      nodes: [n('app', 'ghost', CA, R1, WIDE, 58, 'MyOrganizer, open', 'no vault yet'), jwt],
+      nodes: [n('app', 'ghost', CA, R1, WIDE, 58, 'MyOrganiser, open', 'no vault yet'), jwt],
       add: { backend: [{ t: 'Account identity', k: 'meta', d: 'who is asking — not what they hold' }] } });
 
     push({ scene: 1, title: 'You choose a vault passphrase.',
@@ -3114,7 +3114,7 @@ class Component extends DCLogic {
     // ---------------- SCENE 6 ----------------
     push({ scene: 6, title: 'New laptop. You sign in.',
       body: 'The JWT lock opens and the app loads. It shows you nothing. That is correct behaviour, not a bug — and it is the moment nearly every new developer files a ticket.',
-      nodes: [n('app', 'ghost', CA, R2, WIDE, 62, 'MyOrganizer — signed in, empty', 'no key, nothing readable'), jwt] });
+      nodes: [n('app', 'ghost', CA, R2, WIDE, 62, 'MyOrganiser — signed in, empty', 'no key, nothing readable'), jwt] });
 
     push({ scene: 6, title: 'Pull down the ciphertext.',
       body: 'Either the stored rows from the backend, or the envelope downloaded from Drive. Both arrive as bytes you cannot read yet, and both are treated as hostile input from here on.',

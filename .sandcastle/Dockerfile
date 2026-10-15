@@ -101,7 +101,7 @@ RUN node -e "const f='/home/agent/.claude.json',fs=require('fs');let j={};try{j=
 # its own mistake. Secret guards (.env, credentials, key material) are NOT
 # lifted — the transcript still leaves the container. See
 # tools/scripts/copilot-hooks/pre-tool-use.mjs.
-ENV MYORGANIZER_SANDBOX=1
+ENV MYORGANISER_SANDBOX=1
 
 WORKDIR /home/agent
 

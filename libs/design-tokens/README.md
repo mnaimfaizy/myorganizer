@@ -1,6 +1,6 @@
 # `@myorganiser/design-tokens`
 
-Single source of truth for the MyOrganizer design system (colors, spacing,
+Single source of truth for the MyOrganiser design system (colors, spacing,
 typography, radius, shadow). Based on the **Secure Modernism** spec in
 [DESIGN.md](DESIGN.md).
 

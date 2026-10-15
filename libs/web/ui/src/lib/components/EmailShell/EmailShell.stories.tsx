@@ -35,7 +35,7 @@ function VerificationEmailExample() {
     emailClass: 'transactional',
     preheader: 'Confirm your email address to finish setting up your account.',
     blocks: [
-      { kind: 'heading', text: 'Welcome to MyOrganizer' },
+      { kind: 'heading', text: 'Welcome to MyOrganiser' },
       {
         kind: 'paragraph',
         text: 'Thank you for registering. Confirm your email address to activate your account.',
@@ -43,7 +43,7 @@ function VerificationEmailExample() {
       {
         kind: 'button',
         label: 'Verify email',
-        url: 'https://app.myorganizer.example/verify/email?token=fixture-token',
+        url: 'https://app.myorganiser.example/verify/email?token=fixture-token',
       },
       {
         kind: 'paragraph',
@@ -68,7 +68,7 @@ function PasswordResetEmailExample() {
       {
         kind: 'button',
         label: 'Reset password',
-        url: 'https://app.myorganizer.example/reset/password?token=fixture-token',
+        url: 'https://app.myorganiser.example/reset/password?token=fixture-token',
       },
       {
         kind: 'paragraph',
@@ -91,7 +91,7 @@ function WeeklyDigestEmailExample() {
   const rendered = renderEmailShell({
     emailClass: 'notification',
     unsubscribeUrl:
-      'https://app.myorganizer.example/youtube/unsubscribe?token=fixture-token',
+      'https://app.myorganiser.example/youtube/unsubscribe?token=fixture-token',
     preheader: '3 new videos from your enabled channels.',
     blocks: [
       { kind: 'heading', text: `Hi Jamie "<Admin>" O'Brien,` },
@@ -101,8 +101,8 @@ function WeeklyDigestEmailExample() {
       },
       {
         kind: 'button',
-        label: 'Open MyOrganizer',
-        url: 'https://app.myorganizer.example/dashboard/youtube',
+        label: 'Open MyOrganiser',
+        url: 'https://app.myorganiser.example/dashboard/youtube',
       },
       {
         kind: 'mediaList',
@@ -111,21 +111,21 @@ function WeeklyDigestEmailExample() {
             title:
               'Advanced TypeScript Patterns for Building Type-Safe Applications at Scale in Enterprise Monorepos',
             meta: 'Web Dev Simplified · 8/15/2026',
-            url: 'https://app.myorganizer.example/dashboard/youtube?channel=fixture-channel-1',
+            url: 'https://app.myorganiser.example/dashboard/youtube?channel=fixture-channel-1',
             imageUrl: PLACEHOLDER_THUMBNAIL,
             imageAlt: '',
           },
           {
             title: 'React 19 Upgrade Guide',
             meta: 'React Conference · 8/14/2026',
-            url: 'https://app.myorganizer.example/dashboard/youtube?channel=fixture-channel-2',
+            url: 'https://app.myorganiser.example/dashboard/youtube?channel=fixture-channel-2',
             imageUrl: PLACEHOLDER_THUMBNAIL,
             imageAlt: '',
           },
           {
             title: 'Next.js 16 Release Notes',
             meta: 'Vercel · 8/13/2026',
-            url: 'https://app.myorganizer.example/dashboard/youtube?channel=fixture-channel-3',
+            url: 'https://app.myorganiser.example/dashboard/youtube?channel=fixture-channel-3',
             imageUrl: null,
             imageAlt: '',
           },
@@ -133,15 +133,15 @@ function WeeklyDigestEmailExample() {
       },
       {
         kind: 'footnote',
-        text: 'MyOrganizer stores YouTube metadata only — never video files.',
+        text: 'MyOrganiser stores YouTube metadata only — never video files.',
         links: [
           {
             label: 'How we store your data',
-            url: 'https://app.myorganizer.example/youtube/data-privacy',
+            url: 'https://app.myorganiser.example/youtube/data-privacy',
           },
           {
             label: 'Digest settings',
-            url: 'https://app.myorganizer.example/dashboard/youtube',
+            url: 'https://app.myorganiser.example/dashboard/youtube',
           },
         ],
       },
@@ -159,7 +159,7 @@ const meta: Meta<typeof VerificationEmailExample> = {
     docs: {
       description: {
         component:
-          'The shared MyOrganizer Email Shell (ADR 0034), rendered here with the same fixture shape each production email supplies. Every email declares whether it is Transactional (no unsubscribe link) or Notification (always carries one); these stories cover both branches.',
+          'The shared MyOrganiser Email Shell (ADR 0034), rendered here with the same fixture shape each production email supplies. Every email declares whether it is Transactional (no unsubscribe link) or Notification (always carries one); these stories cover both branches.',
       },
     },
   },

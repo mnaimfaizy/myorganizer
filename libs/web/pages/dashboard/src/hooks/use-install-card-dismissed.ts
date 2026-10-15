@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-const DISMISSED_KEY = 'myorganizer.install-card.dismissed.v1';
+const DISMISSED_KEY = 'myorganiser.install-card.dismissed.v1';
 
 // A per-device convenience, not account data: no user id is in the key and
 // nothing is synced.

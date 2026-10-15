@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
   s.summary      = "Local-only, expiring clipboard copy for the Details slice's Sensitive Clipboard."
   s.homepage     = "https://github.com/mnaimfaizy/myorganizer"
   s.license      = "UNLICENSED"
-  s.author       = { "MyOrganizer" => "noreply@myorganizer.invalid" }
+  s.author       = { "MyOrganiser" => "noreply@myorganiser.invalid" }
   s.platforms    = { :ios => "15.1" }
   s.source       = { :path => "." }
   s.source_files = "*.{h,m,swift}"

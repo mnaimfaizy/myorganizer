@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Per-boot service reconciliation for the MyOrganizer Cloud Agent environment.
+# Per-boot service reconciliation for the MyOrganiser Cloud Agent environment.
 # Brings up PostgreSQL (port 5453, matching .env) and MailHog, then applies
 # pending Prisma migrations. Idempotent and safe to re-run.
 set -euo pipefail
@@ -30,8 +30,8 @@ done
 
 echo "==> Ensuring role password and database"
 sudo -u postgres psql -p 5453 -v ON_ERROR_STOP=1 -c "ALTER USER postgres WITH PASSWORD 'Admin@123';"
-sudo -u postgres psql -p 5453 -tAc "SELECT 1 FROM pg_database WHERE datname='myorganizer'" | grep -q 1 \
-  || sudo -u postgres psql -p 5453 -c "CREATE DATABASE myorganizer;"
+sudo -u postgres psql -p 5453 -tAc "SELECT 1 FROM pg_database WHERE datname='myorganiser'" | grep -q 1 \
+  || sudo -u postgres psql -p 5453 -c "CREATE DATABASE myorganiser;"
 
 echo "==> Starting MailHog (SMTP 1453 / UI 8453) if not already running"
 if ! curl -fsS http://localhost:8453/api/v2/messages >/dev/null 2>&1; then

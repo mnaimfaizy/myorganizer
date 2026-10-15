@@ -1,5 +1,5 @@
 services:
-  myorganizer_db:
+  myorganiser_db:
     # Pinned by digest, not by tag, because `bitnami/postgresql` no longer
     # publishes version tags at all — only `latest` (Bitnami's move to Secure
     # Images). This digest is PostgreSQL 18.4.0, built 2026-06-08, and it is a
@@ -16,7 +16,7 @@ services:
     # data directory, then replace the digest below.
     image: bitnami/postgresql@sha256:638095e080399612204f0123bae5b669867d549b43342dc316d05a78cdda643a
     restart: always
-    container_name: myorganizer_db
+    container_name: myorganiser_db
     env_file: '.env'
     # No `user:` override here. The image already runs as uid 1001, and Docker
     # Desktop maps a host bind mount's files to the container's CONFIGURED user.
@@ -35,21 +35,21 @@ services:
       - POSTGRESQL_PASSWORD=${DATABASE_PASSWORD}
       - POSTGRESQL_DATABASE=${DATABASE_NAME}
     networks:
-      - myorganizer_network
+      - myorganiser_network
 
   mailhog:
     image: mailhog/mailhog
-    container_name: myorganizer_mailhog
+    container_name: myorganiser_mailhog
     restart: unless-stopped
     ports:
       - '1453:1025' # SMTP (host 1453)
       - '8453:8025' # Web UI (host 8453)
     networks:
-      - myorganizer_network
+      - myorganiser_network
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: myorganizer_pgadmin
+    container_name: myorganiser_pgadmin
     restart: always
     ports:
       - '8853:80'
@@ -61,12 +61,12 @@ services:
     volumes:
       - pgadmin-data:/var/lib/pgadmin
     networks:
-      - myorganizer_network
+      - myorganiser_network
 
 volumes:
   .database:
   pgadmin-data:
 
 networks:
-  myorganizer_network:
+  myorganiser_network:
     driver: bridge

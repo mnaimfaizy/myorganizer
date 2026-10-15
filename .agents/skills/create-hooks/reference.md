@@ -1,6 +1,6 @@
 # Agent Hooks Reference
 
-Quick matrix for MyOrganizer multi-harness hooks. Prefer the shared scripts in
+Quick matrix for MyOrganiser multi-harness hooks. Prefer the shared scripts in
 `tools/scripts/copilot-hooks/` and the workflow in [SKILL.md](SKILL.md).
 
 ## Config Sources

@@ -129,7 +129,7 @@ jobs:
             const dir = 'dist/escape-copy-reader';
 
             const assets = [
-              'myorganizer-escape-copy-reader.html',
+              'myorganiser-escape-copy-reader.html',
               'SHA256SUMS.txt',
             ];
 

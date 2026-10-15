@@ -293,7 +293,7 @@ there is no intra-channel counter.
   that dies mid-send leaves a claimed row that no later pass re-sends: losing
   one week's digest is the deliberate trade against mailing it twice.
 - **Unsubscribe** link in every email, backed by a stable per-User token, and
-  every content link points back into MyOrganizer rather than youtube.com.
+  every content link points back into MyOrganiser rather than youtube.com.
 
 ## Frontend Views
 
@@ -368,8 +368,8 @@ failed one.
 ```text
 $HOME/bin/youtube-cron.sh          # copy of tools/scripts/youtube-cron.sh
 $HOME/bin/youtube-cron.env         # mode 600; not in git
-$HOME/bin/myorganizer-youtube-sync.lock
-$HOME/bin/myorganizer-youtube-digest.lock
+$HOME/bin/myorganiser-youtube-sync.lock
+$HOME/bin/myorganiser-youtube-digest.lock
 ```
 
 `youtube-cron.env`:

@@ -473,7 +473,7 @@ function readBody(options, commits, branch, baseBranch) {
 
   const bodyText =
     options.body ?? buildFallbackBody(commits, branch, baseBranch);
-  const tempDir = mkdtempSync(join(tmpdir(), 'myorganizer-ai-pr-'));
+  const tempDir = mkdtempSync(join(tmpdir(), 'myorganiser-ai-pr-'));
   const bodyPath = join(
     tempDir,
     `${branch.replace(/[^a-zA-Z0-9_-]/g, '-')}-body.md`,

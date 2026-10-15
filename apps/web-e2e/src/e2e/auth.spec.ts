@@ -72,8 +72,8 @@ test.describe('Authentication', () => {
     // Token should be stored (session or local)
     await page.waitForFunction(() => {
       const token =
-        window.sessionStorage.getItem('myorganizer_access_token') ||
-        window.localStorage.getItem('myorganizer_access_token');
+        window.sessionStorage.getItem('myorganiser_access_token') ||
+        window.localStorage.getItem('myorganiser_access_token');
       return Boolean(token);
     });
 
@@ -96,9 +96,9 @@ test.describe('Authentication', () => {
         firstName: 'Test',
         lastName: 'User',
       };
-      window.localStorage.setItem('myorganizer_access_token', 'fake-jwt-token');
-      window.localStorage.setItem('myorganizer_token_storage', 'local');
-      window.localStorage.setItem('myorganizer_user', JSON.stringify(user));
+      window.localStorage.setItem('myorganiser_access_token', 'fake-jwt-token');
+      window.localStorage.setItem('myorganiser_token_storage', 'local');
+      window.localStorage.setItem('myorganiser_user', JSON.stringify(user));
     });
 
     // Stub /auth/refresh in case the dashboard guard chooses to re-validate.

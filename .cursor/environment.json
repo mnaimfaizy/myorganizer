@@ -1,5 +1,5 @@
 {
-  "name": "MyOrganizer",
+  "name": "MyOrganiser",
   "install": "bash .cursor/install.sh",
   "start": "bash .cursor/start.sh",
   "terminals": [

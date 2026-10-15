@@ -121,11 +121,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        <meta name="myorganizer-api-base-url" content={apiBaseUrl} />
-        <meta name="myorganizer-router-prefix" content={routerPrefix} />
+        <meta name="myorganiser-api-base-url" content={apiBaseUrl} />
+        <meta name="myorganiser-router-prefix" content={routerPrefix} />
         <script
           dangerouslySetInnerHTML={{
-            __html: `window.__MYORGANIZER_RUNTIME__=${runtimeConfigJson};window.MYORGANIZER_RUNTIME=window.__MYORGANIZER_RUNTIME__;`,
+            __html: `window.__MYORGANISER_RUNTIME__=${runtimeConfigJson};window.MYORGANISER_RUNTIME=window.__MYORGANISER_RUNTIME__;`,
           }}
         />
       </head>

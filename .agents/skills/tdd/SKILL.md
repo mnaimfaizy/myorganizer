@@ -110,7 +110,7 @@ After all tests pass, look for [refactor candidates](refactoring.md):
 [ ] No speculative features added
 ```
 
-## MyOrganizer-specific notes
+## MyOrganiser-specific notes
 
 - Use Jest for all unit and integration tests. Consult `docs/testing/projects/<project>.md` for per-project tooling, environments, and mock patterns.
 - For React hook/component tests, use React Testing Library — assert on rendered output and user interactions, not on internal state.

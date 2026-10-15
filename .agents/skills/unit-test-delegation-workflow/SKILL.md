@@ -1,6 +1,6 @@
 ---
 name: unit-test-delegation-workflow
-description: 'Use when a task requires creating or updating Jest unit tests, Jest integration tests, React hook/component integration tests, or specific Jest test cases in MyOrganizer. Delegate implementation to TestScaffold with a behavior matrix and review for correctness, scope, mock hygiene, duplicate output, and validation results.'
+description: 'Use when a task requires creating or updating Jest unit tests, Jest integration tests, React hook/component integration tests, or specific Jest test cases in MyOrganiser. Delegate implementation to TestScaffold with a behavior matrix and review for correctness, scope, mock hygiene, duplicate output, and validation results.'
 argument-hint: 'Requirement summary + source path(s) + test type + expected behaviors'
 ---
 

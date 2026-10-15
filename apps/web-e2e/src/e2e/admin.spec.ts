@@ -43,9 +43,9 @@ function corsHeaders(origin: string) {
 
 async function seedSession(page: Page, user: PersonaUser) {
   await page.addInitScript((seedUser: PersonaUser) => {
-    window.localStorage.setItem('myorganizer_access_token', 'fake-jwt-token');
-    window.localStorage.setItem('myorganizer_token_storage', 'local');
-    window.localStorage.setItem('myorganizer_user', JSON.stringify(seedUser));
+    window.localStorage.setItem('myorganiser_access_token', 'fake-jwt-token');
+    window.localStorage.setItem('myorganiser_token_storage', 'local');
+    window.localStorage.setItem('myorganiser_user', JSON.stringify(seedUser));
   }, user);
 }
 

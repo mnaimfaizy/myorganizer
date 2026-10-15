@@ -1,4 +1,4 @@
-# MyOrganizer Mobile v1
+# MyOrganiser Mobile v1
 
 The approved design for the Mobile App v1 ([PRD #908](https://github.com/mnaimfaizy/myorganizer/issues/908)), committed so that anyone building it — a person, or an agent in a sandbox with no claude.ai login — reads the same design the maintainer approved ([ADR 0110](../../adr/0110-an-approved-design-is-committed-to-the-repo.md)).
 

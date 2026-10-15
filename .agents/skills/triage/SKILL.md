@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Triage
 
-Adapted from `mattpocock/skills` for MyOrganizer's issue and agent workflows.
+Adapted from `mattpocock/skills` for MyOrganiser's issue and agent workflows.
 
 Use this skill to move **existing** issue-tracker work through a consistent triage state machine. Do not use it to create new issues.
 

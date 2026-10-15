@@ -17,16 +17,16 @@ const DRIVE_API_BASE = 'https://www.googleapis.com/drive/v3';
 const DRIVE_UPLOAD_BASE = 'https://www.googleapis.com/upload/drive/v3';
 const DRIVE_APPDATA_SCOPE = 'https://www.googleapis.com/auth/drive.appdata';
 const APP_PROPERTY_KIND = 'kind';
-const APP_PROPERTY_KIND_VALUE = 'myorganizer-vault-backup';
+const APP_PROPERTY_KIND_VALUE = 'myorganiser-vault-backup';
 const APP_PROPERTY_STATUS = 'status';
 const APP_PROPERTY_EXPORT_ID = 'exportId';
 const APP_PROPERTY_SCHEMA_VERSION = 'schemaVersion';
 // The stored value keeps its historical key so existing links survive; it
 // records that the User completed a connection (Linked), nothing more.
-const LINKED_FLAG_KEY = 'myorganizer.cloudBackup.googleDrive.connected';
+const LINKED_FLAG_KEY = 'myorganiser.cloudBackup.googleDrive.connected';
 // Recorded because it cost an attempt to learn (CONTEXT.md: Linked Provider).
 const RECONNECT_NEEDED_FLAG_KEY =
-  'myorganizer.cloudBackup.googleDrive.reconnectNeeded';
+  'myorganiser.cloudBackup.googleDrive.reconnectNeeded';
 
 export interface GoogleDriveProviderOptions {
   /**

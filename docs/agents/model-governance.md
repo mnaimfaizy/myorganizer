@@ -1,6 +1,6 @@
 # Agent model governance
 
-MyOrganizer pins sub-agent models by **role** across GitHub Copilot, Claude Code, Cursor, and Gemini CLI. Assignments live in one versioned policy file; harness agent files are synchronized adapters. A monthly audit detects drift and catalog changes but never rewrites pins automatically.
+MyOrganiser pins sub-agent models by **role** across GitHub Copilot, Claude Code, Cursor, and Gemini CLI. Assignments live in one versioned policy file; harness agent files are synchronized adapters. A monthly audit detects drift and catalog changes but never rewrites pins automatically.
 
 See [ADR 0013: Role-pinned sub-agent model governance](../adr/0013-bounded-subagent-model-governance.md) for the decision record.
 

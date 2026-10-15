@@ -1,6 +1,6 @@
 # Next.js Proxy is not a Session or authorization layer
 
-Next.js 16 renamed `middleware.ts` to `proxy.ts` (Node.js runtime only). Tutorials still treat that file as the place to put auth gates. MyOrganizer already has a Session on Express and Vault Unlock on the client. We will not add a Next.js Proxy (or deprecated `middleware.ts`) as a Session or authorization layer.
+Next.js 16 renamed `middleware.ts` to `proxy.ts` (Node.js runtime only). Tutorials still treat that file as the place to put auth gates. MyOrganiser already has a Session on Express and Vault Unlock on the client. We will not add a Next.js Proxy (or deprecated `middleware.ts`) as a Session or authorization layer.
 
 ## Status
 

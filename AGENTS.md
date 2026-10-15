@@ -1,4 +1,4 @@
-# MyOrganizer Agent Guide
+# MyOrganiser Agent Guide
 
 ## Scope
 

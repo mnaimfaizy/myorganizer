@@ -243,7 +243,7 @@ describe('YouTubeConnectPrompt', () => {
 
       expect(screen.getByText('Before you connect')).toBeInTheDocument();
       expect(
-        screen.getByText(/MyOrganizer reads your YouTube subscriptions/),
+        screen.getByText(/MyOrganiser reads your YouTube subscriptions/),
       ).toBeInTheDocument();
       expect(
         screen.getByText(/stored outside your Vault and is not end-to-end/),

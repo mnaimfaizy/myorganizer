@@ -43,11 +43,11 @@ interface YouTubeConnectPromptProps {
  * terms CONTEXT.md uses: YouTube Disconnect, Vault, Cached Upload, Watched.
  */
 const ACKNOWLEDGEMENT_POINTS = [
-  'MyOrganizer reads your YouTube subscriptions and the channel and upload details for the channels you enable. It only reads from YouTube, and it never stores video files.',
+  'MyOrganiser reads your YouTube subscriptions and the channel and upload details for the channels you enable. It only reads from YouTube, and it never stores video files.',
   'That data is stored outside your Vault and is not end-to-end encrypted. Your YouTube access tokens are encrypted at rest.',
-  'Google will show an "unverified app" warning when you connect. MyOrganizer is run personally and has not been through Google\'s app verification.',
+  'Google will show an "unverified app" warning when you connect. MyOrganiser is run personally and has not been through Google\'s app verification.',
   'If you disconnect YouTube, or the operator withdraws your YouTube access, everything is deleted straight away: your followed channels, cached uploads, Watched marks, digest settings and tokens. Nothing is kept for a later reconnect.',
-  'YouTube in MyOrganizer is run personally by its operator, who can switch it off.',
+  'YouTube in MyOrganiser is run personally by its operator, who can switch it off.',
 ] as const;
 
 const acknowledgementSchema = z.object({

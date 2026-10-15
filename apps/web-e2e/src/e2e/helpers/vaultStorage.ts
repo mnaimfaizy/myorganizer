@@ -5,7 +5,7 @@ import { Page } from '@playwright/test';
  * Local Vaults were owner-bound, or by a signed-out browser. Mirrors
  * `VAULT_STORAGE_KEY` in `libs/web/vault/src/lib/vault/localVaultStorage.ts`.
  */
-export const UNCLAIMED_VAULT_KEY = 'myorganizer_vault_v1';
+export const UNCLAIMED_VAULT_KEY = 'myorganiser_vault_v1';
 
 /**
  * The user id every spec's mocked `/auth/login` response returns, and therefore

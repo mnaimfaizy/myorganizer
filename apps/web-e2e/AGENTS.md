@@ -2,7 +2,7 @@
 
 ## Scope
 
-Playwright end-to-end tests for the MyOrganizer frontend.
+Playwright end-to-end tests for the MyOrganiser frontend.
 
 ## Commands
 

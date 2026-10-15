@@ -21,7 +21,7 @@ function writeReadme(workspace, diagramContent, prose = '') {
   const readmePath = join(workspace, 'README.md');
   writeFileSync(
     readmePath,
-    `# MyOrganizer\n\n\`\`\`\nmyorganizer/\n${diagramContent}\n\`\`\`\n${prose}`,
+    `# MyOrganiser\n\n\`\`\`\nmyorganizer/\n${diagramContent}\n\`\`\`\n${prose}`,
   );
 }
 

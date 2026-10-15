@@ -183,8 +183,8 @@ a second logo:
 
 | Branding / access field    | YouTube production                      | Drive production                                         |
 | -------------------------- | --------------------------------------- | -------------------------------------------------------- |
-| **App name**               | `MyOrganizer`                           | `MyOrganizer Vault Backup`                               |
-| **App logo**               | Same MyOrganizer shield (120 × 120 PNG) | Same file — one product                                  |
+| **App name**               | `MyOrganiser`                           | `MyOrganiser Vault Backup`                               |
+| **App logo**               | Same MyOrganiser shield (120 × 120 PNG) | Same file — one product                                  |
 | Homepage / privacy / terms | `https://myorganiser.app`               | Same URLs                                                |
 | **Data Access**            | `youtube.readonly` only                 | `drive.appdata` only                                     |
 | Enabled API                | YouTube Data API v3                     | Google Drive API                                         |
@@ -196,8 +196,8 @@ shield as `apps/web/src/app/icon.svg`. Do not invent a Drive-only mark
 or use a Google Drive icon.
 
 1. **Google Auth platform → Branding** → fill:
-   - **App name:** `MyOrganizer Vault Backup` (YouTube production stays
-     `MyOrganizer` — this is the field that differs)
+   - **App name:** `MyOrganiser Vault Backup` (YouTube production stays
+     `MyOrganiser` — this is the field that differs)
    - **App logo:** upload `google-oauth-app-logo.png`
    - Support email and developer contact
    - App domain links (homepage, privacy, terms) on `myorganiser.app` once
@@ -259,7 +259,7 @@ not configured"_.
 Sign out of all Google accounts, then visit the dev app and click
 **Connect Google Drive**. Confirm the popup shows:
 
-- The correct app name (`MyOrganizer Vault Backup` on the production Drive
+- The correct app name (`MyOrganiser Vault Backup` on the production Drive
   client). Until brand verification is approved, Google may show only the
   domain `myorganiser.app` instead of the name and logo — that is expected.
 - A **single** scope item: _"See, create, and delete its own configuration
@@ -276,9 +276,9 @@ This is operator work in Google Cloud Console. The repository cannot create
 the project. [#848](https://github.com/mnaimfaizy/myorganizer/issues/848) is
 the YouTube production project; this section is the Drive one.
 
-1. Create a Cloud project (name e.g. `MyOrganizer Vault Backup`).
+1. Create a Cloud project (name e.g. `MyOrganiser Vault Backup`).
 2. Enable **Google Drive API** only ([Step 2](#step-2--enable-the-google-drive-api)).
-3. Configure the consent screen with App name **MyOrganizer Vault Backup**,
+3. Configure the consent screen with App name **MyOrganiser Vault Backup**,
    the shared shield logo, and scope `drive.appdata` only
    ([Step 3](#step-3--configure-the-oauth-consent-screen)).
 4. Create a **Web application** OAuth client whose **Authorized JavaScript
@@ -480,7 +480,7 @@ the relevant page hooks/UI.
 ## What the feature is for
 
 Vault Cloud Backup makes an **Escape Copy** (see `CONTEXT.md`): a whole-Vault
-copy in storage the User controls, so their Ciphertext outlives MyOrganizer.
+copy in storage the User controls, so their Ciphertext outlives MyOrganiser.
 It is **not** how a Vault stays durable — the server already holds every Vault
 Blob and converges it per record. So the feature promises no schedule, and a
 months-old copy is not broken. What it owes the User is honesty about how old
@@ -508,8 +508,8 @@ never contacts Google:
 | `reconnect-needed` | Google itself refused a token request while linked | **Reconnect**, Unlink        |
 
 ```
-myorganizer.cloudBackup.googleDrive.connected       = "1"   # linked (historical key name)
-myorganizer.cloudBackup.googleDrive.reconnectNeeded = "1"   # a recorded refusal
+myorganiser.cloudBackup.googleDrive.connected       = "1"   # linked (historical key name)
+myorganiser.cloudBackup.googleDrive.reconnectNeeded = "1"   # a recorded refusal
 ```
 
 Which failures count is precise, because Reconnect Needed survives a reload:

@@ -50,7 +50,7 @@ This repo uses GitHub Actions for CI/CD.
 - `.github/workflows/publish-github-release.yml` (name: `Publish GitHub Release`)
   - Fires on push of a `v*.*.*` tag, or manual dispatch with a `tag` input.
   - Creates or updates the GitHub Release using the tagged commit's `RELEASE_NOTES.md` as the body. Idempotent.
-  - Builds the standalone Escape Copy reader from the tagged commit (`yarn escape-copy-reader:build`) and attaches `myorganizer-escape-copy-reader.html` and `SHA256SUMS.txt` to the release, replacing either asset if it is already there. The reader on a release is therefore the reader that release's exporter produces envelopes for ([ADR 0064](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md), [feature doc](../features/escape-copy-reader.md)).
+  - Builds the standalone Escape Copy reader from the tagged commit (`yarn escape-copy-reader:build`) and attaches `myorganiser-escape-copy-reader.html` and `SHA256SUMS.txt` to the release, replacing either asset if it is already there. The reader on a release is therefore the reader that release's exporter produces envelopes for ([ADR 0064](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md), [feature doc](../features/escape-copy-reader.md)).
 
 ## Required GitHub secrets
 

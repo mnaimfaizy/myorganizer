@@ -41,7 +41,7 @@ async function login(page: import('@playwright/test').Page) {
  * step by name instead of a bare literal at the call site.
  */
 function syncBookmarkStorageKey(owner: string): string {
-  return `myorganizer_sync_bookmarks_v1:${owner}`;
+  return `myorganiser_sync_bookmarks_v1:${owner}`;
 }
 
 function corsHeaders(origin: string) {

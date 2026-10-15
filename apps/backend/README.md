@@ -1,6 +1,6 @@
 # Backend REST API
 
-This is the backend REST API for MyOrganizer application, built with Express.js, TypeScript, and Prisma ORM.
+This is the backend REST API for MyOrganiser application, built with Express.js, TypeScript, and Prisma ORM.
 
 ## Table of Contents
 
@@ -19,7 +19,7 @@ This is the backend REST API for MyOrganizer application, built with Express.js,
 
 ## Overview
 
-The backend API provides a RESTful interface for the MyOrganizer application. It handles user authentication, vault ciphertext, and other core functionalities. The API is built with TypeScript for type safety and uses Prisma as the ORM for database operations.
+The backend API provides a RESTful interface for the MyOrganiser application. It handles user authentication, vault ciphertext, and other core functionalities. The API is built with TypeScript for type safety and uses Prisma as the ORM for database operations.
 
 ## Technologies
 
@@ -156,12 +156,12 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
    # PostgreSQL Database
    DATABASE_USER=postgres
    DATABASE_PASSWORD=Admin@123
-   DATABASE_NAME=myorganizer
+   DATABASE_NAME=myorganiser
    # Prisma reads DATABASE_URL directly; dotenv does not expand ${VARS} by default.
-   DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganizer
+   DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganiser
 
    # PgAdmin (if using Docker)
-   PGADMIN_DEFAULT_EMAIL=admin@myorganizer.com
+   PGADMIN_DEFAULT_EMAIL=admin@myorganiser.com
    PGADMIN_DEFAULT_PASSWORD=Admin@123
 
    # Mail - SMTP Configuration
@@ -173,7 +173,7 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
    MAIL_SECURE=false
    MAIL_USERNAME=
    MAIL_PASSWORD=
-   EMAIL_SENDER=no-reply@myorganizer.local
+   EMAIL_SENDER=no-reply@myorganiser.local
    ```
 
    **Important Notes:**
@@ -217,13 +217,13 @@ The application uses Prisma ORM for database management. Follow these steps to s
 If using Docker Compose:
 
 ```bash
-docker-compose up -d myorganizer_db
+docker-compose up -d myorganiser_db
 ```
 
 Verify the database is running:
 
 ```bash
-docker ps | grep myorganizer_db
+docker ps | grep myorganiser_db
 ```
 
 ### 2. Generate Prisma Client
@@ -747,6 +747,6 @@ For issues and questions:
 
 ## License
 
-This app is part of MyOrganizer and is licensed under the
+This app is part of MyOrganiser and is licensed under the
 [Elastic License 2.0](../../LICENSE). Third-party notices for vendored files
 are in the repository [NOTICE](../../NOTICE).

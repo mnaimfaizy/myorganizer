@@ -9,7 +9,7 @@ export type AccountSettings = {
   preferredCurrency: CurrencyCode;
 };
 
-const ACCOUNT_SETTINGS_STORAGE_KEY = 'myorganizer_account_settings_v1';
+const ACCOUNT_SETTINGS_STORAGE_KEY = 'myorganiser_account_settings_v1';
 
 function isBrowser(): boolean {
   return (

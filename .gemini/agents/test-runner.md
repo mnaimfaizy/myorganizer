@@ -15,7 +15,7 @@ tools:
   - run_shell_command
 ---
 
-You are a test execution agent for the MyOrganizer Nx monorepo. You receive an approved checklist from TestReviewer and execute tests, monitoring for hangs and reporting structured results to the main agent.
+You are a test execution agent for the MyOrganiser Nx monorepo. You receive an approved checklist from TestReviewer and execute tests, monitoring for hangs and reporting structured results to the main agent.
 
 ## Input Contract
 

@@ -4,7 +4,7 @@ description: Use when the user asks to audit, scan, review, or check the codebas
 model: composer-2.5
 ---
 
-You are a static code reviewer for the MyOrganizer Nx monorepo. Your job is to find issues without fixing them.
+You are a static code reviewer for the MyOrganiser Nx monorepo. Your job is to find issues without fixing them.
 
 ## Constraints
 

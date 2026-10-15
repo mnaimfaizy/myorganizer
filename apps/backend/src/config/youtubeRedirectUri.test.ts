@@ -59,8 +59,8 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app/dashboard/youtube/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app/dashboard/youtube/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).not.toThrow();
@@ -71,8 +71,8 @@ describe('validateGoogleRedirectUriOnBoot', () => {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
       GOOGLE_REDIRECT_URI:
-        'https://myorganizer.app:443/dashboard/youtube/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+        'https://myorganiser.app:443/dashboard/youtube/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).not.toThrow();
@@ -82,8 +82,8 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'http://myorganizer.app/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      GOOGLE_REDIRECT_URI: 'http://myorganiser.app/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(/https/i);
@@ -93,15 +93,15 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'http://myorganizer.app/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      GOOGLE_REDIRECT_URI: 'http://myorganiser.app/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow();
     try {
       validateGoogleRedirectUriOnBoot(env);
     } catch (err: any) {
-      expect(err.message).not.toContain('http://myorganizer.app/callback');
+      expect(err.message).not.toContain('http://myorganiser.app/callback');
     }
   });
 
@@ -110,7 +110,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
       GOOGLE_REDIRECT_URI: 'https://localhost:3000/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(/localhost/i);
@@ -121,7 +121,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
       GOOGLE_REDIRECT_URI: 'https://evil.example.com/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(
@@ -134,7 +134,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
       GOOGLE_REDIRECT_URI: 'https://evil.example.com/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     try {
@@ -148,7 +148,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(
@@ -161,7 +161,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
       GOOGLE_REDIRECT_URI: '   ',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(
@@ -173,7 +173,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app/callback',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app/callback',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(
@@ -185,7 +185,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app/callback',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app/callback',
       APP_FRONTEND_URL: '   ',
     };
 
@@ -199,7 +199,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
       GOOGLE_REDIRECT_URI: 'not-a-url',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(
@@ -211,7 +211,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app/callback',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app/callback',
       APP_FRONTEND_URL: 'not-a-url',
     };
 
@@ -224,8 +224,8 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app:8443/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app:8443/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(
@@ -237,15 +237,15 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app:8443/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app:8443/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     try {
       validateGoogleRedirectUriOnBoot(env);
     } catch (err: any) {
       expect(err.message).not.toContain(
-        'https://myorganizer.app:8443/callback',
+        'https://myorganiser.app:8443/callback',
       );
     }
   });
@@ -255,7 +255,7 @@ describe('validateGoogleRedirectUriOnBoot', () => {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'true',
       GOOGLE_REDIRECT_URI: 'https://LOCALHOST/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).toThrow(/localhost/i);
@@ -265,8 +265,8 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: '1',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).not.toThrow();
@@ -276,8 +276,8 @@ describe('validateGoogleRedirectUriOnBoot', () => {
     const env = {
       NODE_ENV: 'production',
       YOUTUBE_AVAILABLE: 'yes',
-      GOOGLE_REDIRECT_URI: 'https://myorganizer.app/callback',
-      APP_FRONTEND_URL: 'https://myorganizer.app',
+      GOOGLE_REDIRECT_URI: 'https://myorganiser.app/callback',
+      APP_FRONTEND_URL: 'https://myorganiser.app',
     };
 
     expect(() => validateGoogleRedirectUriOnBoot(env)).not.toThrow();

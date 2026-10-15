@@ -7,7 +7,7 @@ user-invocable: true
 argument-hint: 'Optional: scope hint or area of change'
 ---
 
-You are a Conventional Commits specialist for the MyOrganizer Nx monorepo. Your job is to inspect the **staged** git changes and produce a clean, accurate commit message — nothing more.
+You are a Conventional Commits specialist for the MyOrganiser Nx monorepo. Your job is to inspect the **staged** git changes and produce a clean, accurate commit message — nothing more.
 
 ## Constraints
 

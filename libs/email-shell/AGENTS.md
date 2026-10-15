@@ -2,9 +2,9 @@
 
 ## Scope
 
-The shared frame every MyOrganizer email renders inside — logo slot, brand colours, typography,
+The shared frame every MyOrganiser email renders inside — logo slot, brand colours, typography,
 and footer. Renders an HTML string, a plain-text alternative, and the inline attachments that
-body references, from a caller-supplied body. All three MyOrganizer emails go through it:
+body references, from a caller-supplied body. All three MyOrganiser emails go through it:
 verification and password reset as Transactional Email, the Weekly Digest as Notification Email.
 See [ADR 0034](../../docs/adr/0034-emails-share-one-shell-and-are-built-to-degrade.md) and the
 `## Email` section of `CONTEXT.md`.

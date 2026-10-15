@@ -1,6 +1,6 @@
 # Web app on cPanel
 
-How the MyOrganizer web app (Next.js, standalone output) runs as a Node.js
+How the MyOrganiser web app (Next.js, standalone output) runs as a Node.js
 application on Namecheap cPanel shared hosting.
 
 Both Staging's and Production's web app run this way, each beside its own

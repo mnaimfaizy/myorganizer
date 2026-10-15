@@ -50,7 +50,7 @@ export function useExportVault() {
       }
 
       const filenameStamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `myorganizer-vault-export-${filenameStamp}.json`;
+      const filename = `myorganiser-vault-export-${filenameStamp}.json`;
 
       // Hardened local export: stage → serialize → audit → download.
       // `strict: true` means a failed audit POST aborts the download so the

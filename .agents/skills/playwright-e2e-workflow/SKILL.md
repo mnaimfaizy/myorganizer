@@ -1,6 +1,6 @@
 ---
 name: playwright-e2e-workflow
-description: 'Use when adding or changing Playwright end-to-end tests, validating critical user flows, or updating browser automation in MyOrganizer. Build a behavior-first flow matrix, keep browser specs deterministic, and delegate implementation to TestScaffold only with a precise E2E brief.'
+description: 'Use when adding or changing Playwright end-to-end tests, validating critical user flows, or updating browser automation in MyOrganiser. Build a behavior-first flow matrix, keep browser specs deterministic, and delegate implementation to TestScaffold only with a precise E2E brief.'
 ---
 
 # Playwright E2E Workflow

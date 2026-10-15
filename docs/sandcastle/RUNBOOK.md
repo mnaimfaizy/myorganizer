@@ -47,7 +47,7 @@ pipeline.
    Environment variables only into the dispatch process. Do not put API keys in
    `.sandcastle/.env`. The legacy dotenv workflow remains available for local-only
    setups, but `.sandcastle/.env` is ignored and must never be committed.
-5. The `sandcastle:myorganizer` image builds automatically on first run if missing. It
+5. The `sandcastle:myorganiser` image builds automatically on first run if missing. It
    already bakes in Claude Code, Cursor, and GitHub Copilot CLI so the `--agent` flag only
    switches which provider Sandcastle launches.
 
@@ -305,7 +305,7 @@ For a standalone run, substitute the `issue/<n>-<slug>` branch the summary print
 | ------------------------- | ----------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `SLICE_GATE`              | (on)                                      | `off` skips the gate entirely (integrates without verification).                             |
 | `SLICE_GATE_TARGETS`      | `lint test build`                         | Space/comma-separated Nx targets the gate runs (e.g. `lint` for a fast check).               |
-| `SLICE_GATE_DATABASE_URL` | `postgresql://localhost:5432/myorganizer` | `DATABASE_URL` handed to the gate container. A placeholder, not a live database — see below. |
+| `SLICE_GATE_DATABASE_URL` | `postgresql://localhost:5432/myorganiser` | `DATABASE_URL` handed to the gate container. A placeholder, not a live database — see below. |
 | `SLICE_GATE_JEST_WORKERS` | `2`                                       | Jest worker cap for the gate's `test` invocation. Raise only with more Docker VM memory.     |
 
 #### What the gate verifies, and at what scope
@@ -544,7 +544,7 @@ the synced spec, generated Swagger, generated design tokens, Prisma migrations �
 hand-edit during chat or local development. In a disposable container they protect nothing and
 actively cause harm: in the run on issue #408 they rejected every `git restore` the agent tried
 after a botched regeneration, so it was left holding a deletion it could not undo and committed
-it instead. The image sets `MYORGANIZER_SANDBOX=1`, which
+it instead. The image sets `MYORGANISER_SANDBOX=1`, which
 `tools/scripts/copilot-hooks/pre-tool-use.mjs` reads to skip them.
 
 **Secret guards stay active.** Reads and writes of `.env`, credentials, and key material are
@@ -556,7 +556,7 @@ Because the marker is read by the shared hook script rather than by harness conf
 harnesses (Claude, Cursor, Copilot) inherit this without separate wiring. Behavior in both modes
 is pinned by `tools/scripts/copilot-hooks/__tests__/pre-tool-use.spec.ts`.
 
-To reproduce the sandbox behavior locally: `MYORGANIZER_SANDBOX=1 yarn nx test tools`.
+To reproduce the sandbox behavior locally: `MYORGANISER_SANDBOX=1 yarn nx test tools`.
 
 ## Maintenance & gotchas
 
@@ -573,9 +573,9 @@ To reproduce the sandbox behavior locally: `MYORGANIZER_SANDBOX=1 yarn nx test t
 - **Retire the old cache:** delete `.sandcastle/node_modules_linux_cache/` if present — it's no
   longer used (the seed step and lockfile-hash invalidation were removed).
 - **Rebuild the sandbox image after any `.sandcastle/Dockerfile` change:**
-  `ensureSandboxImage()` only builds `sandcastle:myorganizer` when the image is missing, so an
+  `ensureSandboxImage()` only builds `sandcastle:myorganiser` when the image is missing, so an
   existing image silently keeps the old contents. Force a rebuild with
-  `docker image rm sandcastle:myorganizer` before the next dispatch. See `docs/graphify.md` for
+  `docker image rm sandcastle:myorganiser` before the next dispatch. See `docs/graphify.md` for
   why this matters for the mounted graphify graph.
 - **The sandbox image's Node is pinned to 22.16 — do not float it to `node:22`.** Node 22.17
   reimplemented `fs.cpSync` in C++ and the new version returns `EACCES` for a recursive directory

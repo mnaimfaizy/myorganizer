@@ -4,7 +4,7 @@ status: accepted
 
 # Mobile app is bare React Native via @nx/react-native (not Expo)
 
-The MyOrganizer mobile client (`apps/mobile`) is built as a bare React Native app integrated through the `@nx/react-native` plugin, with native `ios/` and `android/` projects committed and compiled directly (Gradle / Xcode).
+The MyOrganiser mobile client (`apps/mobile`) is built as a bare React Native app integrated through the `@nx/react-native` plugin, with native `ios/` and `android/` projects committed and compiled directly (Gradle / Xcode).
 
 ## Considered Options
 

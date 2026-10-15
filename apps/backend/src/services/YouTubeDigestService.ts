@@ -376,7 +376,7 @@ export class YouTubeDigestService {
     const unsubscribeUrl = `${base}/youtube/unsubscribe?token=${encodeURIComponent(unsubscribeToken)}`;
 
     const items: EmailMediaItem[] = videos.map((video) => ({
-      // Every link lands back in MyOrganizer, never on youtube.com — the
+      // Every link lands back in MyOrganiser, never on youtube.com — the
       // digest exists to return the User to the focused experience, which
       // means the channel directory itself (PRD #264, Variant C / issue
       // #250) with the channel preselected, not a separate grid.

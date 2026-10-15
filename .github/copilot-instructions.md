@@ -1,4 +1,4 @@
-# GitHub Copilot Instructions for MyOrganizer
+# GitHub Copilot Instructions for MyOrganiser
 
 Follow the repo Instruction File: [AGENTS.md](../AGENTS.md). Nested `apps/*/AGENTS.md` and `libs/*/AGENTS.md` apply to the nearest path.
 

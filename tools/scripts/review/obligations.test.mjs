@@ -766,7 +766,7 @@ test('#408: a generated output still fires without a version line', () => {
         '--- a/x',
         '+++ b/libs/api-specs/src/api-specs.openapi.yaml',
         '@@ -1,1 +1,1 @@',
-        '+  title: MyOrganizer',
+        '+  title: MyOrganiser',
       ),
     ),
   );

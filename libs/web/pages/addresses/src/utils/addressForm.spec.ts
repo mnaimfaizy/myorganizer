@@ -51,7 +51,7 @@ describe('addressForm', () => {
 
   it('uses the account country setting as the default country', () => {
     window.localStorage.setItem(
-      'myorganizer_account_settings_v1',
+      'myorganiser_account_settings_v1',
       JSON.stringify({ countryCode: 'GB', preferredCurrency: 'GBP' }),
     );
 

@@ -55,7 +55,7 @@ for (const { filename } of LOGOS) {
     assert.equal(svg.match(/<path /g).length, 2, 'shield and check only');
   });
 
-  test(`${filename} is named MyOrganiser, never MyOrganizer`, () => {
+  test(`${filename} is named MyOrganiser, never MyOrganiser`, () => {
     const svg = svgFor(filename);
 
     assert.equal(BRAND_NAME, 'MyOrganiser');

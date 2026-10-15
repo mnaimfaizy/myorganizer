@@ -34,7 +34,7 @@ the remount is a dead end: the card cannot re-show a key it no longer holds.
 confirmation, and never the key that opens it.**
 
 1. **The record is a fingerprint, not a flag.** One durable per-User `localStorage` entry, keyed
-   `myorganizer_recovery_key_acknowledgment_v1:<owner>`, holds a SHA-256 of that owner's
+   `myorganiser_recovery_key_acknowledgment_v1:<owner>`, holds a SHA-256 of that owner's
    `masterKeyWrappedWithRecoveryKey`. The comparison is derived the way a Vault Meta Refusal is:
    hash the wrapping this device now holds and ask whether it is the one recorded as unacknowledged.
    A wrapping that is not it is a different question, so a claim, an import, a replacement or a

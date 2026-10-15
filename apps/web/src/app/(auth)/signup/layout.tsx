@@ -2,8 +2,8 @@ import { LegalOperatorProvider } from '@myorganiser/web-pages/legal';
 import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
-  title: 'Sign Up - MyOrganizer',
-  description: 'Create your MyOrganizer account',
+  title: 'Sign Up - MyOrganiser',
+  description: 'Create your MyOrganiser account',
 };
 
 export default function SignUpLayout({

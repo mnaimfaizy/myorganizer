@@ -14,7 +14,7 @@ property useful does not exist yet
 
 ## Context
 
-MyOrganizer talks to Google twice, in two different ways, and the two sit close enough together to
+MyOrganiser talks to Google twice, in two different ways, and the two sit close enough together to
 invite a question.
 
 The YouTube integration uses the server-side authorization-code flow. The backend exchanges the
@@ -45,7 +45,7 @@ account whatsoever. Drive adds nothing to it.
 
 What Drive adds is the other thing: a copy of the User's Ciphertext, in storage the User controls,
 that survives _us_ — our server losing data, our account deletion, our going away. The threat model
-of Vault Cloud Backup is MyOrganizer itself.
+of Vault Cloud Backup is MyOrganiser itself.
 
 ## Decision
 
@@ -53,7 +53,7 @@ of Vault Cloud Backup is MyOrganizer itself.
 authorization-code flow.** This is a permanent constraint on the feature, not a stage it is
 expected to grow out of.
 
-An escape hatch from MyOrganizer that MyOrganizer's backend must open is not an escape hatch. If
+An escape hatch from MyOrganiser that MyOrganiser's backend must open is not an escape hatch. If
 the backend holding the refresh token is the failure being insured against, then the insurance and
 the risk fail together: the token disappears with the service, and the copy sitting safely in the
 User's own Drive becomes unreachable through the only tool that can reach it. The property the

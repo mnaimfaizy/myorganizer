@@ -1,6 +1,6 @@
 ---
 name: nx-monorepo-workflow
-description: 'Use when generating new Nx libraries, applications, components, or other Nx artifacts in MyOrganizer. Prefer the Nx CLI over manual file creation.'
+description: 'Use when generating new Nx libraries, applications, components, or other Nx artifacts in MyOrganiser. Prefer the Nx CLI over manual file creation.'
 ---
 
 # Nx Monorepo Workflow

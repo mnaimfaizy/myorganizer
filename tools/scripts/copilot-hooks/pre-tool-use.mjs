@@ -147,10 +147,10 @@ const SECRET_WRITE_PATTERNS = [
  * and committed instead. Allow/deny lists are a chat and local-development
  * affordance; the sandbox is the place the agent is meant to be free.
  *
- * Set by `ENV MYORGANIZER_SANDBOX=1` in .sandcastle/Dockerfile. Secret guards
+ * Set by `ENV MYORGANISER_SANDBOX=1` in .sandcastle/Dockerfile. Secret guards
  * are deliberately NOT lifted — see SECRET_WRITE_PATTERNS above.
  */
-const SANDBOX = process.env.MYORGANIZER_SANDBOX === '1';
+const SANDBOX = process.env.MYORGANISER_SANDBOX === '1';
 
 const PROTECTED_PATTERNS = SANDBOX
   ? SECRET_WRITE_PATTERNS

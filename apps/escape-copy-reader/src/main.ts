@@ -74,7 +74,7 @@ function element<T extends HTMLElement>(id: string): T {
  */
 const IMPORT_FAILURE_MESSAGES = {
   'corrupt-file': () =>
-    'That file is not a MyOrganizer Escape Copy, or it has been damaged.',
+    'That file is not a MyOrganiser Escape Copy, or it has been damaged.',
   'empty-envelope': () => 'That Escape Copy carries no data.',
   oversize: () => 'That file is too large to be an Escape Copy.',
   'unknown-blob-type': () =>
@@ -270,7 +270,7 @@ if (typeof document !== 'undefined') {
  * envelope through this handle. That is ADR 0064's second decision, and it is
  * only an assertion about the artifact if it runs the artifact.
  */
-(globalThis as Record<string, unknown>)['MyOrganizerEscapeCopyReader'] = {
+(globalThis as Record<string, unknown>)['MyOrganiserEscapeCopyReader'] = {
   openEscapeCopy,
   describeFailure,
   bootstrap,

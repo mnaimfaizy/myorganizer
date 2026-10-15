@@ -12,7 +12,7 @@ export const ESCAPE_COPY_READER_RELEASES_URL =
  * and keep it in the same folder as their Escape Copy backup.
  */
 export const ESCAPE_COPY_READER_FILENAME =
-  'myorganizer-escape-copy-reader.html';
+  'myorganiser-escape-copy-reader.html';
 
 /**
  * Filename of the checksums file published alongside the reader on GitHub Releases.

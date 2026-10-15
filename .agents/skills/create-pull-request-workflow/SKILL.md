@@ -1,6 +1,6 @@
 ---
 name: create-pull-request-workflow
-description: 'Use when the user asks to create a pull request, open a PR, raise a PR for the current branch, publish this branch as a PR, or submit the current branch for review in MyOrganizer. Delegate title, Surface Labels, merge base, and body to the PrAuthor sub-agent, then run the shared ai:create-pr runner with --title, --body-file, --merge-base, and --label. Push upstream, assign the authenticated GitHub user, and keep reviewers empty unless the user explicitly names one.'
+description: 'Use when the user asks to create a pull request, open a PR, raise a PR for the current branch, publish this branch as a PR, or submit the current branch for review in MyOrganiser. Delegate title, Surface Labels, merge base, and body to the PrAuthor sub-agent, then run the shared ai:create-pr runner with --title, --body-file, --merge-base, and --label. Push upstream, assign the authenticated GitHub user, and keep reviewers empty unless the user explicitly names one.'
 ---
 
 # Create Pull Request Workflow

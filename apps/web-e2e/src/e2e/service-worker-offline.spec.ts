@@ -38,7 +38,7 @@ import {
 const useDevServer = Boolean(process.env['E2E_DEV_SERVER']);
 
 // The worker's cache name (CACHE_NAME in sw.js). Bumping it means updating this.
-const OFFLINE_CACHE_NAME = 'myorganizer-offline-v1';
+const OFFLINE_CACHE_NAME = 'myorganiser-offline-v1';
 
 const OUTAGE_CHROMIUM_ONLY_REASON =
   'Playwright can only emulate an outage that reaches a service worker in Chromium; Firefox and WebKit fail the navigation before the worker answers. Real-device behaviour is checked by the QA Plan (#1122).';
@@ -384,9 +384,9 @@ test.describe('Offline service worker (E2E)', () => {
     const apiOrigin = await page.evaluate(() => {
       const runtime = (
         window as unknown as {
-          __MYORGANIZER_RUNTIME__?: { API_BASE_URL?: string };
+          __MYORGANISER_RUNTIME__?: { API_BASE_URL?: string };
         }
-      ).__MYORGANIZER_RUNTIME__;
+      ).__MYORGANISER_RUNTIME__;
       return new URL(runtime?.API_BASE_URL || 'http://localhost:3000').origin;
     });
     const pageOrigin = new URL(page.url()).origin;

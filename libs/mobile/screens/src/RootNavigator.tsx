@@ -111,7 +111,7 @@ function SessionUnreachableScreen(): React.JSX.Element {
       ) : (
         <EmptyState
           icon="offline"
-          title="Can’t reach MyOrganizer"
+          title="Can’t reach MyOrganiser"
           description="You’re still signed in. Check your connection and try again."
           actionLabel="Try again"
           actionIcon="retry"

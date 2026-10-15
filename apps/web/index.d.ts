@@ -7,11 +7,11 @@ declare module '*.svg' {
 
 declare global {
   interface Window {
-    __MYORGANIZER_RUNTIME__?: {
+    __MYORGANISER_RUNTIME__?: {
       API_BASE_URL?: string;
     };
 
-    MYORGANIZER_RUNTIME?: {
+    MYORGANISER_RUNTIME?: {
       API_BASE_URL?: string;
     };
   }

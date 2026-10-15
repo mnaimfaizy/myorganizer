@@ -77,15 +77,15 @@ Keys used:
 
 | Key                         | Where            | Holds                                                         |
 | --------------------------- | ---------------- | ------------------------------------------------------------- |
-| `myorganizer_access_token`  | local or session | The access token                                              |
-| `myorganizer_user`          | `localStorage`   | The filtered user, always local                               |
-| `myorganizer_token_storage` | `localStorage`   | Which of the two the access token went to (`local`/`session`) |
+| `myorganiser_access_token`  | local or session | The access token                                              |
+| `myorganiser_user`          | `localStorage`   | The filtered user, always local                               |
+| `myorganiser_token_storage` | `localStorage`   | Which of the two the access token went to (`local`/`session`) |
 
-`myorganizer_token_storage` is what makes **Remember me** survive a reload: the access token
+`myorganiser_token_storage` is what makes **Remember me** survive a reload: the access token
 itself may live in `sessionStorage`, but the preference recording that choice cannot, or the next
 page load would not know where to look.
 
-Because `myorganizer_user` is always in `localStorage`, a user whose access token has expired
+Because `myorganiser_user` is always in `localStorage`, a user whose access token has expired
 still has a recoverable identity on disk. That is the `restorable` session state — see
 `getSnapshot` in `@myorganiser/auth`.
 

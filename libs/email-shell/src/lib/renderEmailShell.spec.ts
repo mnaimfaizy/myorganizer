@@ -761,7 +761,7 @@ describe('renderEmailShell', () => {
         blocks: [],
       });
 
-      expect(result.html).toContain('cid:myorganizer-logo');
+      expect(result.html).toContain('cid:myorganiser-logo');
       expect(result.html).toContain('<img');
     });
 
@@ -1349,8 +1349,8 @@ describe('renderEmailShell', () => {
   });
 
   describe('EMAIL_BRAND_NAME export', () => {
-    it('exports EMAIL_BRAND_NAME as MyOrganizer', () => {
-      expect(EMAIL_BRAND_NAME).toBe('MyOrganizer');
+    it('exports EMAIL_BRAND_NAME as MyOrganiser', () => {
+      expect(EMAIL_BRAND_NAME).toBe('MyOrganiser');
     });
 
     it('EMAIL_BRAND_NAME appears in html footer', () => {

@@ -1,6 +1,6 @@
 import { CloudBackupProviderId, EscapeCopyAgeLimit } from './types';
 
-const PREFERENCES_KEY = 'myorganizer.cloud-backup.preferences.v1';
+const PREFERENCES_KEY = 'myorganiser.cloud-backup.preferences.v1';
 
 export const CLOUD_BACKUP_PROVIDER_IDS: readonly CloudBackupProviderId[] = [
   'google-drive',

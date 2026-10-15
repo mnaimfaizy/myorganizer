@@ -88,7 +88,7 @@ export type VaultMetaRefusalEntry = {
 
 /** The storage key prefix every per-User Vault Meta Refusal key is built from. */
 export const VAULT_META_REFUSAL_STORAGE_KEY =
-  'myorganizer_vault_meta_refusal_v1';
+  'myorganiser_vault_meta_refusal_v1';
 
 /** Record version written for a Vault Meta Refusal. */
 export const VAULT_META_REFUSAL_RECORD_VERSION = 1;

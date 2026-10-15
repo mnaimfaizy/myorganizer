@@ -225,7 +225,7 @@ export function VaultGate(props: VaultGateProps) {
     });
     const stamp = new Date().toISOString().replace(/[:.]/g, '-');
     downloadJsonFile(
-      `myorganizer-vault-about-to-be-replaced-${stamp}.json`,
+      `myorganiser-vault-about-to-be-replaced-${stamp}.json`,
       text,
     );
   }, [handle]);

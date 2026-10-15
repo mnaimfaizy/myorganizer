@@ -2,7 +2,7 @@
 
 ## Scope
 
-Next.js app shell for MyOrganizer. Route wrappers live here; page logic lives in libraries.
+Next.js app shell for MyOrganiser. Route wrappers live here; page logic lives in libraries.
 
 ## Commands
 

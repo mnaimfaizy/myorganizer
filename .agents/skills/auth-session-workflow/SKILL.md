@@ -1,6 +1,6 @@
 ---
 name: auth-session-workflow
-description: 'Use when changing login, logout, registration, refresh-token flow, email verification, token storage, or auth UI helpers in MyOrganizer.'
+description: 'Use when changing login, logout, registration, refresh-token flow, email verification, token storage, or auth UI helpers in MyOrganiser.'
 ---
 
 # Auth Session Workflow

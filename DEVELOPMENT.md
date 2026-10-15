@@ -1,6 +1,6 @@
-# Development Guide - MyOrganizer Monorepo
+# Development Guide - MyOrganiser Monorepo
 
-This guide provides comprehensive documentation for developing in the MyOrganizer monorepo. Whether you're a new contributor or a seasoned developer, this guide will help you get started and navigate the development workflow.
+This guide provides comprehensive documentation for developing in the MyOrganiser monorepo. Whether you're a new contributor or a seasoned developer, this guide will help you get started and navigate the development workflow.
 
 ## Table of Contents
 
@@ -44,7 +44,7 @@ This guide provides comprehensive documentation for developing in the MyOrganize
 
 ## Overview
 
-MyOrganizer is a full-stack web application built as an Nx monorepo. It consists of:
+MyOrganiser is a full-stack web application built as an Nx monorepo. It consists of:
 
 - **Frontend**: Next.js application with React and Tailwind CSS
 - **Backend**: Express.js REST API with TypeScript, Prisma ORM
@@ -108,11 +108,11 @@ Before you begin, ensure you have the following installed on your system:
    # Database
    DATABASE_USER=postgres
    DATABASE_PASSWORD=Admin@123
-   DATABASE_NAME=myorganizer
-   DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganizer
+   DATABASE_NAME=myorganiser
+   DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganiser
 
    # PgAdmin (for database management GUI)
-   PGADMIN_DEFAULT_EMAIL=admin@myorganizer.com
+   PGADMIN_DEFAULT_EMAIL=admin@myorganiser.com
    PGADMIN_DEFAULT_PASSWORD=Admin@123
 
    # CORS - Comma-separated list
@@ -126,7 +126,7 @@ Before you begin, ensure you have the following installed on your system:
    MAIL_SECURE=false
    MAIL_USERNAME=
    MAIL_PASSWORD=
-   EMAIL_SENDER=no-reply@myorganizer.local
+   EMAIL_SENDER=no-reply@myorganiser.local
 
    # Frontend
    API_BASE_URL=http://localhost:3000/api/v1
@@ -177,7 +177,7 @@ The application uses Docker Compose to run local development dependencies:
 docker-compose up -d
 
 # Start specific service
-docker-compose up -d myorganizer_db
+docker-compose up -d myorganiser_db
 docker-compose up -d mailhog
 
 # View logs
@@ -192,7 +192,7 @@ docker-compose down -v
 
 **Services included**:
 
-- **PostgreSQL** (myorganizer_db): Database server on port 5453
+- **PostgreSQL** (myorganiser_db): Database server on port 5453
 - **MailHog**: Email testing server on host ports 1453 (SMTP) and 8453 (Web UI)
 - **PgAdmin**: Database GUI on host port 8853
 
@@ -358,7 +358,7 @@ Once everything is running, you can access:
 
 **PgAdmin Credentials** (from .env):
 
-- Email: admin@myorganizer.com
+- Email: admin@myorganiser.com
 - Password: Admin@123
 
 ## Monorepo Structure
@@ -378,7 +378,7 @@ For more than one line on a project, read the `AGENTS.md` (and, where one exists
 
 ## Frontend Architecture (Web Page Libraries)
 
-MyOrganizer enforces a simple rule for the Next.js App Router:
+MyOrganiser enforces a simple rule for the Next.js App Router:
 
 - Files under `apps/web/src/app/**` are **thin route wrappers** only.
 - All page/domain logic lives in Nx libraries under `libs/web/pages/<route>/`.
@@ -1107,7 +1107,7 @@ docker-compose down
 docker-compose up -d
 
 # View logs
-docker-compose logs -f myorganizer_db
+docker-compose logs -f myorganiser_db
 ```
 
 ### Database Issues
@@ -1116,7 +1116,7 @@ docker-compose logs -f myorganizer_db
 
 ```bash
 # Solution 1: Check database is running
-docker ps | grep myorganizer_db
+docker ps | grep myorganiser_db
 
 # Solution 2: Verify DATABASE_URL in .env
 # Should match docker-compose.yml settings

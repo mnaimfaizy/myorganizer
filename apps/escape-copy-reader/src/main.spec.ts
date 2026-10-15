@@ -143,7 +143,7 @@ describe('describeFailure', () => {
     );
 
     expect(wrongSecret).toMatch(/passphrase does not open/iu);
-    expect(damaged).toMatch(/not a MyOrganizer Escape Copy|damaged/iu);
+    expect(damaged).toMatch(/not a MyOrganiser Escape Copy|damaged/iu);
     expect(wrongSecret).not.toEqual(damaged);
   });
 

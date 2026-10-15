@@ -5,13 +5,13 @@ import { BrandMark } from './BrandMark';
 import { PrivacyCover } from './PrivacyCover';
 
 describe('BrandMark Component', () => {
-  it('should be one image named MyOrganizer', async () => {
+  it('should be one image named MyOrganiser', async () => {
     await render(
       <ThemeProvider appearance="light">
         <BrandMark lockup="inline" />
       </ThemeProvider>,
     );
-    expect(screen.getByRole('image', { name: 'MyOrganizer' })).toBeTruthy();
+    expect(screen.getByRole('image', { name: 'MyOrganiser' })).toBeTruthy();
   });
 
   it('should draw the two-weight wordmark in the stacked lockup, and none for the mark alone', async () => {
@@ -21,7 +21,7 @@ describe('BrandMark Component', () => {
       </ThemeProvider>,
     );
     expect(
-      screen.getByText('Organizer', { includeHiddenElements: true }),
+      screen.getByText('Organiser', { includeHiddenElements: true }),
     ).toBeTruthy();
 
     await rerender(
@@ -30,7 +30,7 @@ describe('BrandMark Component', () => {
       </ThemeProvider>,
     );
     expect(
-      screen.queryByText('Organizer', { includeHiddenElements: true }),
+      screen.queryByText('Organiser', { includeHiddenElements: true }),
     ).toBeNull();
   });
 
@@ -41,7 +41,7 @@ describe('BrandMark Component', () => {
       </ThemeProvider>,
     );
     expect(
-      screen.getByLabelText('MyOrganizer', { includeHiddenElements: true }),
+      screen.getByLabelText('MyOrganiser', { includeHiddenElements: true }),
     ).toBeTruthy();
   });
 });

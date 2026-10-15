@@ -19,7 +19,7 @@ import {
 import { createVaultHandle } from './vaultHandle';
 
 const TEST_OWNER = 'test-owner';
-const OWNED_VAULT_STORAGE_KEY = `myorganizer_vault_v1:${TEST_OWNER}`;
+const OWNED_VAULT_STORAGE_KEY = `myorganiser_vault_v1:${TEST_OWNER}`;
 
 // Minimal in-memory localStorage shim so `saveVault` works in node.
 class MemoryStorage {

@@ -42,7 +42,7 @@ import { VaultSessionProvider, useOptionalVaultSession } from './session';
 
 const TEST_USER_ID = 'test-user-id';
 const TEST_PASSPHRASE = 'testPass123456';
-const RECOVERY_KEY_ACK_STORAGE_KEY = `myorganizer_recovery_key_acknowledgment_v1:${TEST_USER_ID}`;
+const RECOVERY_KEY_ACK_STORAGE_KEY = `myorganiser_recovery_key_acknowledgment_v1:${TEST_USER_ID}`;
 
 const gateChildren = () => (
   <div data-testid="children">Tasks Content (unlocked)</div>
@@ -336,8 +336,8 @@ describe('VaultGate (create recovery key flow)', () => {
     );
 
     // Assert: Check localStorage for the vault record
-    // The vault is stored under the key pattern: myorganizer_vault_v1:<owner-id>
-    const vaultKey = `myorganizer_vault_v1:${TEST_USER_ID}`;
+    // The vault is stored under the key pattern: myorganiser_vault_v1:<owner-id>
+    const vaultKey = `myorganiser_vault_v1:${TEST_USER_ID}`;
     const storedVault = localStorage.getItem(vaultKey);
     expect(storedVault).not.toBeNull();
     // It should be JSON-parseable and contain owner and wrapped keys

@@ -1,5 +1,5 @@
 ---
-description: 'Use when the user asks to create a standalone ad-hoc GitHub issue (bug, task, follow-up) in MyOrganizer. Do not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan — those use to-prd / to-issues.'
+description: 'Use when the user asks to create a standalone ad-hoc GitHub issue (bug, task, follow-up) in MyOrganiser. Do not use for PRD Issues, PRD slices, or publishing a grill/to-prd plan — those use to-prd / to-issues.'
 name: 'IssueCreator'
 tools: [read, search, execute]
 model: ['GPT-5.6 Luna (copilot)']
@@ -7,7 +7,7 @@ user-invocable: true
 argument-hint: 'Issue request details: task/bug context, title, body details, labels, and scope'
 ---
 
-You are the MyOrganizer GitHub issue creation specialist. Your only responsibility is to create a high-quality issue when enough validated information is available.
+You are the MyOrganiser GitHub issue creation specialist. Your only responsibility is to create a high-quality issue when enough validated information is available.
 
 ## Target Repository
 

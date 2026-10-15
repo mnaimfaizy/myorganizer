@@ -4,7 +4,7 @@ status: accepted
 
 # Platform Admin console lives in the same web app under `/admin`
 
-MyOrganizer needs operator tooling to manage Users' account metadata (directory, disable/enable with session kill, force logout, resend verification, promote/demote). That is a **Platform Admin** concern — not Organization membership (still emerging) and not Vault access (E2EE plaintext stays client-only).
+MyOrganiser needs operator tooling to manage Users' account metadata (directory, disable/enable with session kill, force logout, resend verification, promote/demote). That is a **Platform Admin** concern — not Organization membership (still emerging) and not Vault access (E2EE plaintext stays client-only).
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # Local Skills
 
-This directory holds repo-local skills for MyOrganizer.
+This directory holds repo-local skills for MyOrganiser.
 
 Committed first wave:
 
@@ -37,16 +37,16 @@ Committed seventh wave:
 
 - `prototype` (later returned upstream — now an Upstream-Owned Skill; see ADR 0030)
 - `handoff` (later returned upstream — now an Upstream-Owned Skill; see ADR 0030)
-- `ask-matt` (adapted from `mattpocock/skills`, tweaked for MyOrganizer routing)
+- `ask-matt` (adapted from `mattpocock/skills`, tweaked for MyOrganiser routing)
 
 Committed eighth wave:
 
-- `triage` (adapted from `mattpocock/skills`, with MyOrganizer issue/PR triage flow)
+- `triage` (adapted from `mattpocock/skills`, with MyOrganiser issue/PR triage flow)
 
 Committed ninth wave:
 
-- `implement` (adapted from `mattpocock/skills`, with MyOrganizer delegation, validation, and commit/PR conventions)
-- `code-review` (adapted from `mattpocock/skills`, with MyOrganizer standards sources and GitHub issue fetching)
+- `implement` (adapted from `mattpocock/skills`, with MyOrganiser delegation, validation, and commit/PR conventions)
+- `code-review` (adapted from `mattpocock/skills`, with MyOrganiser standards sources and GitHub issue fetching)
 
 Committed tenth wave:
 

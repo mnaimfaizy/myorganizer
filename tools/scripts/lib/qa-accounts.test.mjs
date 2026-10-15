@@ -33,7 +33,7 @@ const account = (overrides = {}) => ({
 });
 
 describe('localDatabaseRefusal', () => {
-  const local = 'postgresql://localhost:5453/myorganizer';
+  const local = 'postgresql://localhost:5453/myorganiser';
 
   it('allows a database on this machine', () => {
     for (const host of ['localhost', '127.0.0.1', '[::1]']) {

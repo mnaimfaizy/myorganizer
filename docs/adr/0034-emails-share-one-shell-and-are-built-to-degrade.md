@@ -6,13 +6,13 @@ accepted
 
 ## Context
 
-MyOrganizer sends three emails. Verification and password reset were unfilled boilerplate committed in June and never revisited: a logo referenced as `logo.png`, a relative path no mail client can resolve, a hardcoded `© 2023`, Bootstrap's default blue instead of a brand colour, and placeholder substitution by first-match string replacement. The YouTube Weekly Digest was built separately and inline, with its own inline styles and table layout, sharing no header, footer, or logo with the other two. None of the three sent a plain-text alternative.
+MyOrganiser sends three emails. Verification and password reset were unfilled boilerplate committed in June and never revisited: a logo referenced as `logo.png`, a relative path no mail client can resolve, a hardcoded `© 2023`, Bootstrap's default blue instead of a brand colour, and placeholder substitution by first-match string replacement. The YouTube Weekly Digest was built separately and inline, with its own inline styles and table layout, sharing no header, footer, or logo with the other two. None of the three sent a plain-text alternative.
 
 Three emails had already produced two divergent styles, and the visible defects had survived three months in production.
 
 ## Decision
 
-All MyOrganizer email renders inside one **Email Shell** that owns the logo, brand colours, typography, and footer. Each email supplies only its body and declares its class. The Weekly Digest migrates into the shell as part of this work rather than later.
+All MyOrganiser email renders inside one **Email Shell** that owns the logo, brand colours, typography, and footer. Each email supplies only its body and declares its class. The Weekly Digest migrates into the shell as part of this work rather than later.
 
 The shell is **parameterised by email class, not uniform**. A Transactional Email must never carry an unsubscribe link — a User who opts out of password-reset mail can lock themselves out of their account — while a Notification Email must always carry one. Making the caller declare its class is what prevents the shell from ever putting an unsubscribe on mail a User cannot afford to lose.
 

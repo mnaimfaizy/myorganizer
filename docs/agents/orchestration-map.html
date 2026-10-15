@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Agent Orchestration Map — MyOrganizer</title>
+<title>Agent Orchestration Map — MyOrganiser</title>
 <script type="application/json" id="agent-map-manifest">
 {
   "note": "Asserted by tools/scripts/check-agent-map.mjs: on orchestration-map.html — agents (name→tier), policyReviewedAt, and diagram presence; on agent-journey.html — policyReviewedAt and station tiers in the page script. Edit in place via design-brief → Designer (ADR 0046). Do not rebuild — build-agent-map.mjs is a one-time importer and cannot reproduce these pages.",
@@ -355,7 +355,7 @@ a:hover{color:var(--a-strong)}
 <div data-map-root="1" style="max-width:1360px;margin:0 auto;padding:var(--space-8) var(--space-8) 80px;font-size:14px;line-height:1.5;text-wrap:pretty">
 
   <header style="display:grid;gap:var(--space-4);margin-bottom:var(--space-8)">
-    <div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted)">MyOrganizer · Claude Code · 19 sub-agents</div>
+    <div style="font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:var(--muted)">MyOrganiser · Claude Code · 19 sub-agents</div>
     <h1 style="font-size:52px;line-height:1.02;letter-spacing:-0.02em;margin:0;max-width:16ch">Sub-agent orchestration map</h1>
     <p style="margin:0;max-width:74ch;font-size:16px;color:var(--muted)">One main orchestrator classifies every task into a <strong style="color:var(--ink);font-weight:700">gate tier</strong>, and that tier decides whether it edits directly or delegates to a pipeline of narrow, single-purpose sub-agents — most of them cheap and read-only, a few reviewers holding veto power. <strong style="color:var(--ink);font-weight:700">Every sub-agent returns to the orchestrator. There are no agent-to-agent calls.</strong></p>
     <div style="display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center;margin-top:var(--space-2)">

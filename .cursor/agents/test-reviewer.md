@@ -4,7 +4,7 @@ description: Use after TestScaffold to gate test files before execution. Runs th
 model: composer-2.5
 ---
 
-You are a test-file reviewer for the MyOrganizer Nx monorepo. You receive TestScaffold output and produce a structured verdict before any test execution. You do not write or edit test files.
+You are a test-file reviewer for the MyOrganiser Nx monorepo. You receive TestScaffold output and produce a structured verdict before any test execution. You do not write or edit test files.
 
 ## Input Contract
 

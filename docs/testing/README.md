@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document is the canonical **tooling** reference for the MyOrganizer Nx monorepo: which runner,
+This document is the canonical **tooling** reference for the MyOrganiser Nx monorepo: which runner,
 environment, and mock patterns apply to each project, plus the patterns shared across all of them.
 
 It is deliberately short. Per-project detail lives in [`projects/`](./projects/) — read the index
@@ -23,7 +23,7 @@ below plus **only the file for the project you are testing**.
 | Target                               | Test type                    | Runner                               | Command                          | Guide                                         |
 | ------------------------------------ | ---------------------------- | ------------------------------------ | -------------------------------- | --------------------------------------------- |
 | `apps/backend`                       | Jest unit/integration        | `ts-jest` + `node` env               | `yarn nx test backend`           | [backend.md](./projects/backend.md)           |
-| `apps/web`                           | Jest unit/integration        | `babel-jest` + `jsdom` env           | `yarn nx test web`               | [myorganizer.md](./projects/myorganizer.md)   |
+| `apps/web`                           | Jest unit/integration        | `babel-jest` + `jsdom` env           | `yarn nx test web`               | [web.md](./projects/web.md)                   |
 | `libs/web/ui`                        | Jest unit/integration        | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-ui`            | [web-ui.md](./projects/web-ui.md)             |
 | `libs/auth`                          | Jest unit/integration        | `ts-jest` + `jsdom` env              | `yarn nx test auth`              | [auth.md](./projects/auth.md)                 |
 | `libs/core`                          | Jest unit                    | `ts-jest` or `babel-jest`            | `yarn nx test core`              | [core.md](./projects/core.md)                 |

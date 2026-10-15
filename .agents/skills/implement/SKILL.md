@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Implement
 
-Adapted from [mattpocock/skills — implement](https://github.com/mattpocock/skills/tree/main/skills/engineering/implement) for MyOrganizer workflows.
+Adapted from [mattpocock/skills — implement](https://github.com/mattpocock/skills/tree/main/skills/engineering/implement) for MyOrganiser workflows.
 
 Claude Code resolves this file through the committed `.claude/skills` → `../.agents/skills` symlink, so this project-scoped `implement` skill takes precedence over the unmodified upstream one installed globally at `~/.claude/skills/implement`.
 
@@ -56,7 +56,7 @@ Pick domain workflow skills when they apply:
 - Prisma runbook (read by PrismaWriter) → `prisma-migration-workflow`
 - YouTube integration → `youtube-integration-workflow`
 
-Respect MyOrganizer structure: thin Next.js route wrappers in `apps/web`, page logic in `libs/web/pages/**`, shared code in `libs/**`.
+Respect MyOrganiser structure: thin Next.js route wrappers in `apps/web`, page logic in `libs/web/pages/**`, shared code in `libs/**`.
 
 ## Validation loop
 

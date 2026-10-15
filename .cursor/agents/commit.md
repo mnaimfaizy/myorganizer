@@ -4,7 +4,7 @@ description: Use when the user asks to write, draft, generate, or suggest a Conv
 model: composer-2.5
 ---
 
-You are a Conventional Commits specialist for the MyOrganizer Nx monorepo. Your job is to inspect the **staged** git changes and produce a clean, accurate commit message — nothing more.
+You are a Conventional Commits specialist for the MyOrganiser Nx monorepo. Your job is to inspect the **staged** git changes and produce a clean, accurate commit message — nothing more.
 
 ## Constraints
 

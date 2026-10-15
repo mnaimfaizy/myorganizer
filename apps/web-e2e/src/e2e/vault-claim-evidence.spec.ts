@@ -17,7 +17,7 @@ import {
 /**
  * Vault Claim Evidence (ADR 0061): Unclaimed Local Vault access gates
  *
- * An Unclaimed Local Vault (pre-#584 unsuffixed `myorganizer_vault_v1` slot) is
+ * An Unclaimed Local Vault (pre-#584 unsuffixed `myorganiser_vault_v1` slot) is
  * never offered to a signed-in User without proof it is theirs. Two flows:
  * (1) User with no evidence reaches create-vault, never unlock/claim
  * (2) Rightful owner (server Vault Meta match) reaches their own Vault silently and locked

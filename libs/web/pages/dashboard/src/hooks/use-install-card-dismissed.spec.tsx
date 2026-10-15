@@ -11,7 +11,7 @@ process.env.RTL_SKIP_AUTO_CLEANUP = 'true';
 type Rtl = typeof import('@testing-library/react');
 type DismissedHookModule = typeof import('./use-install-card-dismissed');
 
-const DISMISSED_KEY = 'myorganizer.install-card.dismissed.v1';
+const DISMISSED_KEY = 'myorganiser.install-card.dismissed.v1';
 
 let loadedRtl: Rtl | null = null;
 

@@ -1,6 +1,6 @@
 ---
 name: frontend-page-library-workflow
-description: "Use when adding or changing frontend pages, dashboard flows, forms, or route implementations in MyOrganizer's Next.js app and page libraries."
+description: "Use when adding or changing frontend pages, dashboard flows, forms, or route implementations in MyOrganiser's Next.js app and page libraries."
 ---
 
 # Frontend Page Library Workflow

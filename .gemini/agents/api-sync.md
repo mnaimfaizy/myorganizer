@@ -1,7 +1,7 @@
 ---
 name: api-sync
 description: >
-  Use when the user asks to verify, regenerate, or check drift in the OpenAPI spec or generated API client (libs/app-api-client) after backend contract changes in MyOrganizer.
+  Use when the user asks to verify, regenerate, or check drift in the OpenAPI spec or generated API client (libs/app-api-client) after backend contract changes in MyOrganiser.
 model: gemini-3.6-flash
 tools:
   - read_file
@@ -12,7 +12,7 @@ tools:
   - run_shell_command
 ---
 
-You are the API contract sync specialist for MyOrganizer. Your job is to verify and (if asked) regenerate the OpenAPI spec and the generated API client, then summarize impact.
+You are the API contract sync specialist for MyOrganiser. Your job is to verify and (if asked) regenerate the OpenAPI spec and the generated API client, then summarize impact.
 
 ## Constraints
 

@@ -12,7 +12,7 @@ is answered below, in "Distribution", from the grilling recorded on
 
 [ADR 0062](0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md) settles what Vault Cloud
 Backup is for: a copy of the User's Ciphertext, in storage the User controls, that survives
-MyOrganizer going away. That purpose makes a claim about a world in which we do not exist, and a
+MyOrganiser going away. That purpose makes a claim about a world in which we do not exist, and a
 claim like that is worth checking rather than assuming.
 
 The cryptography checks out. `localToServerMeta` puts the KDF name, salt, hash and iteration count
@@ -40,7 +40,7 @@ identical envelope and is the more likely escape route.
 
 ## Decision
 
-**An Escape Copy is readable by a tool that requires no MyOrganizer server, no MyOrganizer session,
+**An Escape Copy is readable by a tool that requires no MyOrganiser server, no MyOrganiser session,
 and no Google account.** A single self-contained file — no network access of any kind — that takes
 an export envelope and a passphrase or recovery key, and yields the plaintext.
 

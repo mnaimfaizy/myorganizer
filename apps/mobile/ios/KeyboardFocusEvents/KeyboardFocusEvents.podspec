@@ -4,7 +4,7 @@ Pod::Spec.new do |s|
   s.summary      = "Tells a React Native view on iOS when a hardware keyboard gives it focus."
   s.homepage     = "https://github.com/mnaimfaizy/myorganizer"
   s.license      = "UNLICENSED"
-  s.author       = { "MyOrganizer" => "noreply@myorganizer.invalid" }
+  s.author       = { "MyOrganiser" => "noreply@myorganiser.invalid" }
   s.platforms    = { :ios => "15.1" }
   s.source       = { :path => "." }
   s.source_files = "*.{h,mm}"

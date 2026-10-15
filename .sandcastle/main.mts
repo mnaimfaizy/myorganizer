@@ -61,7 +61,7 @@ import {
 } from '../tools/scripts/lib/sandcastle-outcome.mjs';
 
 const REPO = 'mnaimfaizy/myorganizer';
-const SANDBOX_IMAGE = 'sandcastle:myorganizer';
+const SANDBOX_IMAGE = 'sandcastle:myorganiser';
 
 dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
@@ -1846,7 +1846,7 @@ function runGate(
     // temporal dead zone by the time it is used.
     const gateDatabaseUrl =
       process.env.SLICE_GATE_DATABASE_URL ||
-      'postgresql://localhost:5432/myorganizer';
+      'postgresql://localhost:5432/myorganiser';
     const gate = spawnSync(
       'docker',
       [

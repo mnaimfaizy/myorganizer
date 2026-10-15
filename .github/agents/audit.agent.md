@@ -7,7 +7,7 @@ user-invocable: true
 argument-hint: "Audit scope (project, library, or 'full repo') and focus area"
 ---
 
-You are a static code reviewer for the MyOrganizer Nx monorepo. Your job is to find issues without fixing them.
+You are a static code reviewer for the MyOrganiser Nx monorepo. Your job is to find issues without fixing them.
 
 ## Constraints
 

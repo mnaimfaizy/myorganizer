@@ -1,6 +1,6 @@
 ---
 name: backend-api-contract-change
-description: 'Use when adding or changing backend REST endpoints, DTOs, validation, Prisma schema, auth responses, OpenAPI output, or generated API client behavior in MyOrganizer. Orchestrates PrismaWriter → ApiWriter → ApiSync as One-shot Specialists (ADR 0015).'
+description: 'Use when adding or changing backend REST endpoints, DTOs, validation, Prisma schema, auth responses, OpenAPI output, or generated API client behavior in MyOrganiser. Orchestrates PrismaWriter → ApiWriter → ApiSync as One-shot Specialists (ADR 0015).'
 ---
 
 # Backend API Contract Change

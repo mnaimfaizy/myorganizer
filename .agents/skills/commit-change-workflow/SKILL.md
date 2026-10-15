@@ -1,6 +1,6 @@
 ---
 name: commit-change-workflow
-description: 'Use when the user asks to commit changes, make a commit, git commit the current work, commit this branch, or save the current staged work as a commit in MyOrganizer. Use the existing Commit sub-agent to draft the message, then execute the commit through the shared workflow so Husky is allowed to finish.'
+description: 'Use when the user asks to commit changes, make a commit, git commit the current work, commit this branch, or save the current staged work as a commit in MyOrganiser. Use the existing Commit sub-agent to draft the message, then execute the commit through the shared workflow so Husky is allowed to finish.'
 ---
 
 # Commit Change Workflow

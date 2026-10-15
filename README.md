@@ -6,7 +6,7 @@
   </picture>
 </p>
 
-<h1 align="center">MyOrganizer</h1>
+<h1 align="center">MyOrganiser</h1>
 
 <p align="center">
   A privacy-first personal organizer. Your data is encrypted in the browser — the server only ever sees ciphertext.
@@ -39,7 +39,7 @@
 
 ## What it is
 
-MyOrganizer keeps the things you would rather not hand to a server — addresses, phone numbers,
+MyOrganiser keeps the things you would rather not hand to a server — addresses, phone numbers,
 subscriptions, tasks, groceries — in a vault that is encrypted and decrypted **in your browser**.
 The key is derived from your passphrase and never leaves the device; the backend stores an opaque
 blob it cannot read.

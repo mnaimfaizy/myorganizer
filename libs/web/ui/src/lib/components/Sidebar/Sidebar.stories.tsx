@@ -75,7 +75,7 @@ function SidebarDashboardExample({
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-3">
             <span className="truncate font-semibold group-data-[collapsible=icon]:hidden">
-              MyOrganizer
+              MyOrganiser
             </span>
             <span className="sr-only font-semibold group-data-[collapsible=icon]:not-sr-only">
               MO
@@ -152,7 +152,7 @@ function SidebarMobileExample() {
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-3">
-            <span className="truncate font-semibold">MyOrganizer</span>
+            <span className="truncate font-semibold">MyOrganiser</span>
           </div>
         </SidebarHeader>
         <SidebarContent>
@@ -235,7 +235,7 @@ function SidebarLongNavExample() {
       <Sidebar collapsible="icon">
         <SidebarHeader>
           <div className="flex items-center gap-2 px-2 py-3">
-            <span className="truncate font-semibold">MyOrganizer</span>
+            <span className="truncate font-semibold">MyOrganiser</span>
           </div>
         </SidebarHeader>
         <SidebarContent>

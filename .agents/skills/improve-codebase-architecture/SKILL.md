@@ -73,7 +73,7 @@ Side effects happen inline as decisions crystallise:
 - **User rejects the candidate with a load-bearing reason?** Use the domain-modeling skill to offer an ADR, framed as: _"Want me to record this as an ADR so future architecture reviews don't re-suggest it?"_ The domain-modeling skill owns `ADR-FORMAT.md` — only offer when all three conditions are met (hard to reverse, surprising without context, result of a real trade-off).
 - **Want to explore alternative interfaces for the deepened module?** Use the design-it-twice parallel sub-agent pattern in `.agents/skills/codebase-design/DESIGN-IT-TWICE.md`.
 
-## MyOrganizer-specific context
+## MyOrganiser-specific context
 
 When exploring this codebase, be aware of the following architectural landmarks:
 

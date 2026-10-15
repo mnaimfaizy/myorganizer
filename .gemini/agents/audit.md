@@ -12,7 +12,7 @@ tools:
   - run_shell_command
 ---
 
-You are a static code reviewer for the MyOrganizer Nx monorepo. Your job is to find issues without fixing them.
+You are a static code reviewer for the MyOrganiser Nx monorepo. Your job is to find issues without fixing them.
 
 ## Constraints
 

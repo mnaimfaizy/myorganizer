@@ -161,7 +161,7 @@ export function CloudBackupCard({
         <CardTitle>Encrypted Escape Copy</CardTitle>
         <CardDescription>
           Keep an encrypted copy of your vault in your own {providerLabel}, so
-          it outlives MyOrganizer. Plaintext never leaves this device.
+          it outlives MyOrganiser. Plaintext never leaves this device.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
