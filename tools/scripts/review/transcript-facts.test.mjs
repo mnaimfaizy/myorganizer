@@ -12,6 +12,10 @@
 //     first run. On template; `CODING_STANDARDS.md` opened.
 //   cli-2.1.293-template                    run 37711917002 — the same, with a
 //     Read of a harness spill file outside the workspace.
+//   cli-2.1.301-handback                    run 38809002623 — the sub-agents ended
+//     by calling SubagentHandback with their report. Each dispatch's own
+//     tool_result is only a pointer to that call; the Spec sub-agent returned
+//     one should-fix finding.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
@@ -403,6 +407,101 @@ test('an unreadable transcript returns no findings list at all', () => {
   const unknown = readTranscriptFacts('not json');
   assert.equal(unknown.returned, null);
   assert.equal(unknown.repliesParsed, null);
+});
+
+// --- what a SubagentHandback call returned (CLI 2.1.301) ----------------------
+
+const SPEC_FINDING_SUMMARY =
+  'Allowlist excuses the old spelling in QA Account files and recorded fixtures, beyond the frozen set the spec names';
+
+test('a report handed back by SubagentHandback is read from the call, not the pointer', () => {
+  const f = facts('cli-2.1.301-handback');
+  assert.equal(f.shape, 'readable');
+  assert.equal(f.cliVersion, '2.1.301');
+  assert.equal(f.repliesParsed, true);
+  assert.equal(f.returned.length, 1);
+  assert.equal(f.returned[0].axis, 'spec');
+  assert.equal(f.returned[0].severity, 'should-fix');
+  assert.equal(f.returned[0].summary, SPEC_FINDING_SUMMARY);
+  assert.equal(f.axes.standards.replyIsJson, true);
+  assert.equal(f.axes.spec.replyIsJson, true);
+});
+
+test('a dispatch whose only tool_result is the pointer, with no hand-back call, is unparseable', () => {
+  // Drop every SubagentHandback call and the tool_result that answers it: what
+  // is left is each dispatch's pointer, and nothing else in the transcript
+  // says what the sub-agent reported.
+  const events = JSON.parse(fixture('cli-2.1.301-handback'));
+  const handbackIds = new Set(
+    events.flatMap((e) =>
+      (e.message?.content ?? [])
+        .filter((b) => b.name === 'SubagentHandback')
+        .map((b) => b.id),
+    ),
+  );
+  const pointerOnly = events.filter(
+    (e) =>
+      !(e.message?.content ?? []).some(
+        (b) => handbackIds.has(b.id) || handbackIds.has(b.tool_use_id),
+      ),
+  );
+  const f = readTranscriptFacts(JSON.stringify(pointerOnly), { index: INDEX });
+  assert.equal(f.shape, 'readable');
+  assert.equal(f.repliesParsed, false);
+  assert.deepEqual(f.returned, []);
+  assert.equal(f.axes.standards.replyIsJson, false);
+  assert.equal(f.axes.spec.replyIsJson, false);
+});
+
+test('when a dispatch hands back twice, the last report is the one read', () => {
+  const events = JSON.parse(fixture('cli-2.1.301-handback'));
+  const at = events.findIndex((e) =>
+    (e.message?.content ?? []).some(
+      (b) =>
+        b.name === 'SubagentHandback' &&
+        b.input.message.includes('"axis":"spec"'),
+    ),
+  );
+  const parent = events[at].parent_tool_use_id;
+  // A retry after the Spec sub-agent's report: an empty findings list.
+  const retryId = 'toolu_retry_handback';
+  events.splice(
+    at + 2,
+    0,
+    {
+      type: 'assistant',
+      parent_tool_use_id: parent,
+      message: {
+        role: 'assistant',
+        content: [
+          {
+            type: 'tool_use',
+            id: retryId,
+            name: 'SubagentHandback',
+            input: { message: '{"findings":[],"executed":[]}' },
+          },
+        ],
+      },
+    },
+    {
+      type: 'user',
+      parent_tool_use_id: parent,
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'tool_result',
+            tool_use_id: retryId,
+            content: 'Report delivered to your caller.',
+          },
+        ],
+      },
+    },
+  );
+  const f = readTranscriptFacts(JSON.stringify(events), { index: INDEX });
+  assert.equal(f.repliesParsed, true);
+  // The first report had a finding; the last, which is read, has none.
+  assert.deepEqual(f.returned, []);
 });
 
 // --- token figures (issue #1057) --------------------------------------------
