@@ -286,6 +286,10 @@ _Avoid_: Component brief, component plan, design spec
 
 ## Mobile
 
+**Web App**:
+The Next.js browser client, the web counterpart of the Mobile App. Feature code lives under `libs/web/*`. Its app folder is named for its role, never for the product.
+_Avoid_: frontend (the Mobile App is a frontend too), the myorganizer app, the app
+
 **Mobile App**:
 The React Native client in `apps/mobile`, sharing domain logic with the web app through cross-platform libraries. Feature code lives under `libs/mobile/*`.
 _Avoid_: native app, RN app, the app
