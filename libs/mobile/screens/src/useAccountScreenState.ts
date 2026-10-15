@@ -26,6 +26,7 @@ export type AccountSheet =
   | 'biometricDisable'
   | 'autoLock'
   | 'logout'
+  | 'deleteAccount'
   | null;
 
 interface AccountScreenState {

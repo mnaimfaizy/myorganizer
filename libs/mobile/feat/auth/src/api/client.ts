@@ -1,4 +1,8 @@
-import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
+import {
+  AuthenticationApi,
+  Configuration,
+  UsersApi,
+} from '@myorganizer/app-api-client';
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
 import { MOBILE_ENVIRONMENT, readAppVersion } from '@myorganizer/mobile/core';
@@ -115,6 +119,18 @@ export const refreshSession: () => Promise<RefreshOutcome> =
 // A 426 never starts a refresh: the 401 interceptor passes it through.
 installVersionFloor(apiClient, versionFloorWiring);
 installRefreshOn401(apiClient, refreshSession);
+
+/**
+ * `/users/*` on `apiClient`, so a request carries the Access Token and rides
+ * the 401 refresh and Version Floor interceptors.
+ */
+export function createUsersApi(): UsersApi {
+  return new UsersApi(
+    new Configuration({ basePath: BASE_PATH }),
+    BASE_PATH,
+    apiClient,
+  );
+}
 
 export function createAuthApi(): AuthenticationApi {
   const config = new Configuration({
