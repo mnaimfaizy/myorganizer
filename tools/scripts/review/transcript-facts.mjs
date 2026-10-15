@@ -213,6 +213,8 @@ const emptyAxis = () => ({
   onTemplate: null,
   replyIsJson: null,
   toolCalls: 0,
+  opened: [],
+  diffed: [],
 });
 
 const textOf = (content) =>
@@ -312,6 +314,38 @@ export const findingsReturnedBy = (content) => {
     ? reply.findings
     : null;
 };
+
+/**
+ * The files one tool call diffed by name: a `git diff` that lists paths after
+ * `--` returns those files' hunks. A diff naming no path, or one asking only for
+ * names or counts (`--stat`, `--name-only`), is not credited to any file: the
+ * reader cannot tell from the call whether a whole-range diff came back whole
+ * (issue #1140).
+ *
+ * @param {{ name: string, input: object }} call a tool_use block
+ * @param {string} cwd the workspace root
+ * @returns {string[]} repo-relative paths, in order
+ */
+export const filesDiffedBy = (call, cwd) => {
+  const command = call?.name === 'Bash' ? call.input?.command : undefined;
+  if (typeof command !== 'string') return [];
+  const diffed = [];
+  for (const simple of simpleCommands(command)) {
+    const [program, sub, ...args] = tokenize(simple);
+    if (program !== 'git' || sub !== 'diff') continue;
+    const dashes = args.indexOf('--');
+    if (dashes === -1) continue;
+    if (args.slice(0, dashes).some((a) => NAMES_ONLY.test(a))) continue;
+    for (const arg of args.slice(dashes + 1)) {
+      const path = toRepoPath(arg, cwd);
+      if (path) diffed.push(path);
+    }
+  }
+  return diffed;
+};
+
+const NAMES_ONLY =
+  /^--(?:stat|numstat|shortstat|name-only|name-status|summary|dirstat)\b/;
 
 /**
  * Read a transcript.
@@ -505,6 +539,10 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
         entry.replyIsJson === null ? bare : entry.replyIsJson && bare;
     }
     entry.toolCalls += calls.length;
+    for (const path of openedHere)
+      if (!entry.opened.includes(path)) entry.opened.push(path);
+    for (const path of calls.flatMap((call) => filesDiffedBy(call, init.cwd)))
+      if (!entry.diffed.includes(path)) entry.diffed.push(path);
     if (axis === 'standards') standardsOpened.push(...openedHere);
   }
 

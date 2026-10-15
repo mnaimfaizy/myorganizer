@@ -17,6 +17,7 @@ import {
   groupRuns,
   parseResultsFile,
   renderRunsTable,
+  seededCaseIds,
   summarizeRun,
 } from './golden-results.mjs';
 
@@ -493,4 +494,53 @@ test('cannot tell is recorded as null, never as false', () => {
       dispatchOnTemplate: null,
       shapeReadable: null,
     });
+});
+
+// ADR 0130 item 4: a Seeded Case shows the reviewer can catch a defect shape,
+// an attributed one that it would have caught a defect that shipped. The run
+// tally never pools the two.
+
+test('a run with seeded cases tallies them apart from attributed ones', () => {
+  const seeded = new Set(['seeded-swap', 'seeded-host']);
+  const group = groupRuns([
+    buildResultRecord(CAUGHT),
+    buildResultRecord({
+      ...CAUGHT,
+      caseId: 'attributed-miss',
+      outcome: 'missed',
+      recall: 0,
+    }),
+    buildResultRecord({ ...CAUGHT, caseId: 'seeded-swap' }),
+    buildResultRecord({
+      ...CAUGHT,
+      caseId: 'seeded-host',
+      outcome: 'missed',
+      recall: 0,
+    }),
+    buildResultRecord({ ...VOID, caseId: 'seeded-host' }),
+  ])[0];
+  assert.equal(
+    summarizeRun(group, { seeded }).result,
+    'attributed 1 of 2 · seeded 1 of 2 scorable, 1 void',
+  );
+  // A run with no seeded case reads exactly as it always has, so the ledger's
+  // existing rows do not move.
+  const plain = groupRuns([buildResultRecord(CAUGHT)])[0];
+  assert.equal(summarizeRun(plain, { seeded }).result, '1 of 1');
+  assert.match(
+    renderRunsTable(group.records, { seeded }),
+    /\| 5 \| attributed 1 of 2 · seeded 1 of 2 scorable, 1 void \|/,
+  );
+});
+
+test('seededCaseIds reads the seeded cases from a raw golden set', () => {
+  assert.deepEqual(
+    seededCaseIds({
+      cases: [
+        { id: 'a', origin: 'attributed' },
+        { id: 'b', origin: 'seeded' },
+      ],
+    }),
+    new Set(['b']),
+  );
 });

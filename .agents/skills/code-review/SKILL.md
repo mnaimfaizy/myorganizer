@@ -271,9 +271,13 @@ Write the envelope to `tmp/code-review/<head>.report.json` (uncommitted, ADR 004
   should stand or what its severity should be. Severity is earned by the evidence the sub-agent
   cited, and the validator checks that.
 - **The one change you make is a drop.** Apply the one-axis-per-defect rule: for each Standards
-  finding whose `location.file` and line range overlap a Spec finding's, drop the Standards one and
-  keep the Spec one. This is the one point in the process where both axes' findings are in the same
-  hands, which is why the rule is applied here and not asked of either sub-agent (PR #819).
+  finding whose `location.file` and line range overlap a Spec finding's, keep the more severe of the
+  two and drop the other; on equal severity, keep the Spec one. Never keep the less severe copy:
+  the rule stops one defect being answered twice, and it must not trade a should-fix for a nit
+  ([ADR 0131](../../../docs/adr/0131-a-rule-may-carry-a-severity-floor-and-the-one-axis-drop-keeps-the-more-severe.md)).
+  The kept finding still goes in field for field. This is the one point in the process where both
+  axes' findings are in the same hands, which is why the rule is applied here and not asked of
+  either sub-agent (PR #819).
 
 The envelope's `standardsSources` is the list the Standards sub-agent returned, like every other
 field it returned. Five envelope fields are facts about the run and not yours to settle:
@@ -375,8 +379,9 @@ rediscover them:
 - **Those facts are enforced.** `Agent Review Ran` fails when no sub-agent read an axis's brief, and
   when the report carries a finding that is not, field for field, one a sub-agent returned (an
   obligation finding for a worklist site excepted). The Review Tier moves one step toward a human
-  when the Standards sub-agent never opened `CODING_STANDARDS.md`, when a dispatch carried text
-  beyond the template, or when the transcript or a reply could not be read.
+  when the Standards sub-agent never opened `CODING_STANDARDS.md`, when the Spec sub-agent never opened
+  a changed workflow or script (a diff of it does not count), when a dispatch carried text beyond
+  the template, or when the transcript or a reply could not be read.
 - **A rejected report is a failed check.** The workflow posts the validator's reasons and the Pull
   Request goes to `review:human`. Nothing is downgraded to make it pass.
 - **Your run ends when you reply without a tool call, and no background notification reaches you.**

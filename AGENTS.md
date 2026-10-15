@@ -52,9 +52,9 @@ React Native ships no bundled documentation — verify an export against the ins
 
 The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh` replace `docker-compose up -d` with native services.
 
-- If a service is down, re-run `bash .cursor/start.sh` (idempotent; it does not reinstall dependencies). It starts PostgreSQL on **5453** and MailHog (**SMTP 1025 / UI 8025**), applies Prisma migrations, and seeds the QA Accounts.
+- If a service is down, re-run `bash .cursor/start.sh` (idempotent; it does not reinstall dependencies). It starts PostgreSQL on **5453** and MailHog (**SMTP 1453 / UI 8453**), applies Prisma migrations, and seeds the QA Accounts.
 - The backend serves on `:3000` and the frontend on `:4200`, pinned on the Nx `dev` target in `apps/myorganizer/project.json`.
-- Verify email flows via MailHog at `http://localhost:8025`. Login and refresh require a verified email: register → read the verification email → verify → login. To skip that, use a QA Account: `yarn qa:accounts` prints the values.
+- Verify email flows via MailHog at `http://localhost:8453`. Login and refresh require a verified email: register → read the verification email → verify → login. To skip that, use a QA Account: `yarn qa:accounts` prints the values.
 - `next dev` rewrites `apps/myorganizer/AGENTS.md` (its `nextjs-agent-rules` block); do not commit that incidental change unless it is the point of your work.
 
 ## Commands

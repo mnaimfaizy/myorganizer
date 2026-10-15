@@ -31,4 +31,5 @@ export const TIGHTENING_FACTS = /** @type {const} */ ([
   'dispatch-off-template',
   'transcript-unreadable',
   'reply-unparseable',
+  'spec-axis-left-executable-file-unopened',
 ]);

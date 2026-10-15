@@ -122,7 +122,7 @@ Before you begin, ensure you have the following installed on your system:
    MAIL_SERVICE=smtp
    DEFAULT_EMAIL_PROVIDER=smtp
    MAIL_HOST=localhost
-   MAIL_PORT=1025
+   MAIL_PORT=1453
    MAIL_SECURE=false
    MAIL_USERNAME=
    MAIL_PASSWORD=
@@ -193,8 +193,8 @@ docker-compose down -v
 **Services included**:
 
 - **PostgreSQL** (myorganizer_db): Database server on port 5453
-- **MailHog**: Email testing server on ports 1025 (SMTP) and 8025 (Web UI)
-- **PgAdmin**: Database GUI on port 8888
+- **MailHog**: Email testing server on host ports 1453 (SMTP) and 8453 (Web UI)
+- **PgAdmin**: Database GUI on host port 8853
 
 ### Starting the Backend
 
@@ -343,8 +343,8 @@ Once everything is running, you can access:
 | Backend API | http://localhost:3000/api/v1 | REST API                 |
 | API Docs    | http://localhost:3000/docs   | Swagger UI documentation |
 | Storybook   | http://localhost:6006        | UI component library     |
-| MailHog     | http://localhost:8025        | Email testing interface  |
-| PgAdmin     | http://localhost:8888        | Database management      |
+| MailHog     | http://localhost:8453        | Email testing interface  |
+| PgAdmin     | http://localhost:8853        | Database management      |
 
 **PgAdmin Credentials** (from .env):
 

@@ -73,7 +73,7 @@ const getEmailService = (): EmailService => {
           ? portFromEnv
           : process.env.NODE_ENV === 'production'
             ? undefined
-            : 1025;
+            : 1453;
 
       const secure = (process.env.MAIL_SECURE ?? '').toLowerCase() === 'true';
 

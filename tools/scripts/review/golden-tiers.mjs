@@ -2,13 +2,15 @@
 // The golden set's tier filter (ADR 0072), and the only implementation of it.
 //
 //   node tools/scripts/review/golden-tiers.mjs [--tier guard|frontier|all]
-//   node tools/scripts/review/golden-tiers.mjs --matrix --tier <tier> --event <event>
+//   node tools/scripts/review/golden-tiers.mjs --matrix --tier <tier> --event <event> [--cases <id,id>]
 //   node tools/scripts/review/golden-tiers.mjs --scheduled
 //
 // Prints the case ids of one tier as a JSON array. `all`, or no `--tier`,
 // prints every case. `--matrix` prints the replay workflow's matrix instead:
 // one `{case, repetition}` entry per reviewer session, three per frontier
 // case when the event is `schedule` and one otherwise (ADR 0116).
+// `--cases` replaces the tier with the named cases, still one repetition
+// each: a dispatch-only bake-off over the cases it is about (issue #1140).
 // `--scheduled` prints the tier this week's scheduled replay runs, or an
 // empty line for none, from the git history of the reviewer's inputs
 // (ADR 0109).
@@ -81,10 +83,28 @@ export const SCHEDULE_EVENT = 'schedule';
  * The replay workflow's matrix: one entry per reviewer session, case by
  * case so a case's repetitions sit together in the record.
  *
+ * `cases`, when it names any, replaces the tier: a dispatch that asks for
+ * three cases replays those three, from whichever tier they stand at, in the
+ * set's order (issue #1140). It never buys repetitions; a dispatch stays one
+ * repetition per case (ADR 0072 item 8, ADR 0116).
+ *
+ * @param {string[]} [options.cases] case ids to replay instead of a tier
  * @returns {{case: string, repetition: number}[]}
  */
-export const replayMatrix = (set, tier, { records = [], event } = {}) =>
-  standingsInTier(set, tier, records).flatMap((s) => {
+export const replayMatrix = (
+  set,
+  tier,
+  { records = [], event, cases = [] } = {},
+) => {
+  const ids = new Set(set.cases.map((c) => c.id));
+  for (const id of cases)
+    if (!ids.has(id)) throw new Error(`no golden case "${id}"`);
+  const standings = cases.length
+    ? standingsInTier(set, ALL_TIERS, records).filter((s) =>
+        cases.includes(s.id),
+      )
+    : standingsInTier(set, tier, records);
+  return standings.flatMap((s) => {
     const repetitions =
       event === SCHEDULE_EVENT && s.tier === 'frontier'
         ? SCHEDULED_FRONTIER_REPETITIONS
@@ -94,6 +114,7 @@ export const replayMatrix = (set, tier, { records = [], event } = {}) =>
       repetition: i + 1,
     }));
   });
+};
 
 /**
  * What a replay measures, as git pathspecs: the paths that produce a review.
@@ -184,7 +205,14 @@ const main = (argv) => {
     const set = JSON.parse(readFileSync(GOLDEN_SET_PATH, 'utf8'));
     const records = loadGoldenRecords();
     const out = argv.includes('--matrix')
-      ? replayMatrix(set, tier, { records, event: value('--event') })
+      ? replayMatrix(set, tier, {
+          records,
+          event: value('--event'),
+          cases: (value('--cases') ?? '')
+            .split(',')
+            .map((c) => c.trim())
+            .filter(Boolean),
+        })
       : caseIdsInTier(set, tier, records);
     process.stdout.write(`${JSON.stringify(out)}\n`);
   } catch (err) {

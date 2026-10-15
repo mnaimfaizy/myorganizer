@@ -11,7 +11,8 @@
 //
 // `--list` prints the case ids (the replay workflow's matrix), optionally
 // narrowed to one tier (ADR 0072); `--show` prints the facts the reviewer
-// prompt needs for one case as JSON.
+// prompt needs for one case as JSON, with its pinned spec text as `specText`
+// when its spec is an issue (ADR 0130).
 //
 // Exit 0 = the case passed: recall at or above its minimum for a pattern
 // case, or no Blocking finding for a clean case (issue #933). Exit 1 = it
@@ -19,7 +20,12 @@
 import { appendFileSync, writeFileSync } from 'node:fs';
 
 import { cannotRun, isMain, parseArgs, readJsonOr } from './cli.mjs';
-import { loadGoldenSet, renderScore, scoreCase } from './golden.mjs';
+import {
+  caseForReplay,
+  loadGoldenSet,
+  renderScore,
+  scoreCase,
+} from './golden.mjs';
 import { caseIdsInTier, loadGoldenRecords } from './golden-tiers.mjs';
 
 export const main = (argv) => {
@@ -47,7 +53,7 @@ export const main = (argv) => {
   if (flags.show) {
     const c = set.cases.find((x) => x.id === flags.show);
     if (!c) bail(`no case ${flags.show}`);
-    process.stdout.write(`${JSON.stringify(c, null, 2)}\n`);
+    process.stdout.write(`${JSON.stringify(caseForReplay(c), null, 2)}\n`);
     return;
   }
   if (!flags.case || !flags.normalized)

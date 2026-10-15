@@ -5,11 +5,14 @@ import test from 'node:test';
 import {
   GoldenSetError,
   assertGoldenSet,
+  caseRangeFindings,
+  caseForReplay,
   loadGoldenSet,
   renderScore,
   replayObligationCheckFindings,
   replayRepetitionFindings,
   replayRunFactsFindings,
+  replaySpecSnapshotFindings,
   replayTriggerFindings,
   scoreCase,
 } from './golden.mjs';
@@ -21,6 +24,8 @@ const goldenCase = {
   id: 'enum-fanout',
   title: 'A blob type added without its fan-outs',
   incident: 'ADR 0053, #512',
+  origin: 'attributed',
+  spec: { kind: 'none', foundBy: 'none' },
   tier: 'frontier',
   base: sha('a'),
   head: sha('b'),
@@ -57,14 +62,17 @@ test('a well-formed set passes and the committed set loads', () => {
   assert.equal(assertGoldenSet(set), set);
   const committed = loadGoldenSet();
   assert.ok(committed.cases.length >= 3);
-  // Every case is attributed: it names the issue it came from and the pull
-  // request that introduced it.
+  // Every attributed case names the issue it came from and the pull request
+  // that introduced it; a seeded case names the commit it was planted on
+  // (ADR 0130).
   for (const c of committed.cases) {
     assert.match(c.incident, /#\d+/, c.id);
     // A clean case (issue #933) names a merged pull request that introduced
     // no defect, so "introduced by PR" does not apply to it the way it does
     // to every other case here.
-    if (!c.expectsNoBlocking)
+    if (c.origin === 'seeded')
+      assert.match(c.incident, /seeded on [0-9a-f]{7}/, c.id);
+    else if (!c.expectsNoBlocking)
       assert.match(c.incident, /introduced by PR #\d+/, c.id);
   }
   // A guard runs on a narrower trigger than a frontier case (ADR 0072), so
@@ -77,15 +85,17 @@ test('a well-formed set passes and the committed set loads', () => {
     committed.cases.some((c) => c.tier === 'frontier'),
     'the set has no frontier case left',
   );
-  // The set is eight pattern cases plus three clean-diff cases (issue #933):
+  // The set is thirteen pattern cases plus three clean-diff cases (issue #933):
   // the narrowed six, plus the two frontier cases issue #934 traced from
-  // attributed fixes (#745 and the second defect attributed to #77). Three
+  // attributed fixes (#745 and the second defect attributed to #77), plus the
+  // #1139 range and the four Seeded Cases planted on it (issue #1140). Three
   // more of that trace are parked, not retired; the fourth was folded into
   // the parked entry already holding its range. The loop below is what
   // asserts the property that matters — every parked entry keeps its id
   // reserved and carries a written condition for its return rather than a
   // reason it cannot be won — so the count above stays out of it.
-  assert.equal(committed.cases.length, 11);
+  assert.equal(committed.cases.length, 16);
+  assert.equal(committed.cases.filter((c) => c.origin === 'seeded').length, 4);
   assert.equal(committed.cases.filter((c) => c.expectsNoBlocking).length, 3);
   assert.ok(committed.parked?.length >= 1, 'the set has no parked case');
   for (const p of committed.parked) {
@@ -242,6 +252,8 @@ const cleanGoldenCase = {
   title: 'A known-good merged pull request',
   incident:
     'PR #900, clean: merged 2026-09-20; no later fix names it as root cause',
+  origin: 'attributed',
+  spec: { kind: 'none', foundBy: 'none' },
   tier: 'frontier',
   base: sha('c'),
   head: sha('d'),
@@ -946,4 +958,248 @@ test('a recorder that is not handed the normalized report is a finding', () => {
     )[0],
     /does not pass --normalized/,
   );
+});
+
+// Seeded Cases and pinned spec snapshots (ADR 0130, issue #1140).
+
+const SNAPSHOT =
+  'tools/config/review-golden-specs/1138-at-2026-10-13T06-36-54Z.json';
+const seededCase = {
+  ...goldenCase,
+  id: 'seeded-example',
+  origin: 'seeded',
+  tag: 'golden/seeded-1140-ancestor-args-swapped',
+  spec: { kind: 'issue', ref: '#1138', foundBy: 'branch' },
+  specSnapshot: SNAPSHOT,
+};
+const onlyThe = (path) => (p) => p === path;
+const check =
+  (c, exists = onlyThe(SNAPSHOT)) =>
+  () =>
+    assertGoldenSet({ schemaVersion: 4, cases: [c] }, 'golden set', { exists });
+
+test('a case declares whether it is attributed or seeded', () => {
+  assert.doesNotThrow(check(seededCase));
+  const { origin, ...noOrigin } = goldenCase;
+  assert.throws(check(noOrigin), /origin must be attributed or seeded/);
+  assert.throws(
+    check({ ...goldenCase, origin: 'synthetic' }),
+    /origin must be attributed or seeded/,
+  );
+});
+
+test('a seeded case names the golden tag that keeps its head alive, and only a seeded case does', () => {
+  const { tag, ...untagged } = seededCase;
+  assert.throws(
+    check(untagged),
+    /a seeded case must name its tag as golden\/seeded-<issue>-<slug>/,
+  );
+  assert.throws(
+    check({ ...seededCase, tag: 'seeded-1140-x' }),
+    /a seeded case must name its tag as golden\/seeded-<issue>-<slug>/,
+  );
+  assert.throws(
+    check({ ...goldenCase, tag: 'golden/seeded-1140-x' }),
+    /an attributed case's head is reachable from main and carries no tag/,
+  );
+});
+
+test('a case on the Spec axis pins a spec snapshot that exists, and a spec-less case pins none', () => {
+  assert.doesNotThrow(
+    check({ ...goldenCase, spec: seededCase.spec, specSnapshot: SNAPSHOT }),
+  );
+  assert.throws(
+    check({ ...goldenCase, spec: { kind: 'vibes', foundBy: 'none' } }),
+    /spec\.kind must be none or issue/,
+  );
+  assert.throws(
+    check({
+      ...goldenCase,
+      spec: { kind: 'issue', ref: '1138', foundBy: 'branch' },
+      specSnapshot: SNAPSHOT,
+    }),
+    /spec\.ref must be an issue reference like #123/,
+  );
+  // A live fetch at replay time would read edits the original review never saw.
+  assert.throws(
+    check({ ...goldenCase, spec: seededCase.spec }),
+    /a case with an issue spec must pin specSnapshot/,
+  );
+  assert.throws(
+    check(seededCase, () => false),
+    /specSnapshot .* does not exist/,
+  );
+  assert.throws(
+    check({ ...goldenCase, specSnapshot: SNAPSHOT }),
+    /a case with no spec carries no specSnapshot/,
+  );
+});
+
+test('a seeded head is reachable from its golden tag, and a missing tag is a finding', () => {
+  // A fake git: the commits that exist, and which commit reaches which.
+  const fakeGit =
+    ({ commits, refs = {}, reaches = [] }) =>
+    (args) => {
+      const [cmd, ...rest] = args;
+      if (cmd === 'cat-file')
+        return commits.includes(rest[1].replace('^{commit}', ''));
+      if (cmd === 'rev-parse') return rest.at(-1) in refs;
+      if (cmd === 'merge-base') {
+        const [, from, to] = rest;
+        const target = refs[to] ?? to;
+        return (
+          from === target ||
+          reaches.some(([a, b]) => a === from && b === target)
+        );
+      }
+      throw new Error(`unexpected git ${args.join(' ')}`);
+    };
+  const seeded = { ...seededCase, base: sha('a'), head: sha('e') };
+  const tagRef = `refs/tags/${seeded.tag}`;
+  const reachable = fakeGit({
+    commits: [sha('a'), sha('e')],
+    refs: { [tagRef]: sha('e'), main: sha('f') },
+    reaches: [[sha('a'), sha('e')]],
+  });
+  assert.deepEqual(
+    caseRangeFindings([seeded], { git: reachable, mainRef: 'main' }),
+    [],
+  );
+
+  const tagless = fakeGit({
+    commits: [sha('a'), sha('e')],
+    refs: { main: sha('f') },
+    reaches: [[sha('a'), sha('e')]],
+  });
+  assert.deepEqual(
+    caseRangeFindings([seeded], { git: tagless, mainRef: 'main' }),
+    [
+      `seeded-example: tag ${seeded.tag} is not in this clone; a golden tag is load-bearing, and deleting it breaks its case`,
+    ],
+  );
+
+  // An attributed case is still held to main, and a seeded head is not.
+  const attributed = { ...goldenCase, base: sha('a'), head: sha('e') };
+  assert.deepEqual(
+    caseRangeFindings([attributed], { git: reachable, mainRef: 'main' }),
+    [
+      `enum-fanout: head ${sha('e').slice(0, 7)} is not reachable from main; a squash merge needs the squash commit and its parent`,
+    ],
+  );
+  const elsewhere = fakeGit({
+    commits: [sha('a'), sha('e')],
+    refs: { [tagRef]: sha('9'), main: sha('f') },
+    reaches: [[sha('a'), sha('e')]],
+  });
+  assert.deepEqual(
+    caseRangeFindings([seeded], { git: elsewhere, mainRef: 'main' }),
+    [
+      `seeded-example: head ${sha('e').slice(0, 7)} is not reachable from ${tagRef}`,
+    ],
+  );
+});
+
+// ADR 0130 item 5: a Spec-axis case replays with the spec text its original
+// review saw, written from the committed snapshot, and the checkout keeps the
+// history that carries a seeded case's golden tag.
+
+const specSteps = ({
+  load = [
+    '        run: |',
+    `          jq '{spec: .spec} + (.specText // {})' <<<"$CASE" > tmp/code-review/spec.json`,
+  ],
+  fetchDepth = '          fetch-depth: 0',
+} = {}) =>
+  [
+    'jobs:',
+    '  replay:',
+    '    steps:',
+    '      - name: Check out',
+    '        uses: actions/checkout@v7',
+    '        with:',
+    fetchDepth,
+    '      - name: Load the case',
+    ...load,
+  ].join('\n');
+
+test('the replay writes a pinned spec snapshot into spec.json and keeps full history', () => {
+  assert.deepEqual(replaySpecSnapshotFindings(specSteps()), []);
+  assert.match(
+    replaySpecSnapshotFindings(
+      specSteps({
+        load: [
+          '        run: jq \'{spec: .spec}\' <<<"$CASE" > tmp/code-review/spec.json',
+        ],
+      }),
+    )[0],
+    /writes tmp\/code-review\/spec\.json without the case's specText/,
+  );
+  assert.match(
+    replaySpecSnapshotFindings(specSteps({ load: ['        run: exit 0'] }))[0],
+    /no step writes tmp\/code-review\/spec\.json/,
+  );
+  assert.match(
+    replaySpecSnapshotFindings(
+      specSteps({ fetchDepth: '          fetch-depth: 1' }),
+    )[0],
+    /"Check out" checks out without fetch-depth: 0, so a seeded case's golden tag may be missing/,
+  );
+});
+
+test('the real replay workflow writes the pinned spec snapshot', () => {
+  const workflow = readFileSync(
+    '.github/workflows/review-golden-replay.yml',
+    'utf8',
+  );
+  assert.deepEqual(replaySpecSnapshotFindings(workflow), []);
+});
+
+test('an expectation may name more than one axis, and either copy of the defect scores', () => {
+  // ADR 0131 keeps the Spec copy of an overlapping pair on a tie, so a defect
+  // both axes can raise must not score a miss for which copy survived.
+  const either = {
+    ...goldenCase,
+    expected: [{ ...goldenCase.expected[0], axis: ['standards', 'spec'] }],
+  };
+  assert.doesNotThrow(() =>
+    assertGoldenSet({ schemaVersion: 4, cases: [either] }),
+  );
+  for (const axis of ['standards', 'spec'])
+    assert.equal(
+      scoreCase(either, { findings: [finding({ axis })] }).recall,
+      1,
+      axis,
+    );
+  // A single-axis expectation still holds the other axis out.
+  assert.equal(
+    scoreCase(goldenCase, { findings: [finding({ axis: 'spec' })] }).recall,
+    0,
+  );
+  assert.throws(
+    () =>
+      assertGoldenSet({
+        schemaVersion: 4,
+        cases: [
+          { ...either, expected: [{ ...either.expected[0], axis: ['vibes'] }] },
+        ],
+      }),
+    /axis/,
+  );
+});
+
+test('a case shown for replay carries its pinned spec text, and a spec-less case carries none', () => {
+  const read = (path) =>
+    path === SNAPSHOT
+      ? JSON.stringify({
+          ref: '#1138',
+          title: 'Old title',
+          body: 'Body as it was',
+          revisionEditedAt: 'x',
+        })
+      : assert.fail(`read ${path}`);
+  assert.deepEqual(caseForReplay(seededCase, { read }).specText, {
+    title: 'Old title',
+    body: 'Body as it was',
+  });
+  assert.equal(caseForReplay(goldenCase, { read }).specText, undefined);
 });
