@@ -65,13 +65,15 @@ describe('YouTubeDataPrivacyClient', () => {
     expect(text).toMatch(/permanently deleted/i);
   });
 
-  it('should render disconnect retention claim', () => {
+  it('should render disconnect claim: Watched marks deleted immediately with nothing kept for reconnect', () => {
     const { container } = render(<YouTubeDataPrivacyClient />);
     const text = container.textContent || '';
-    expect(text).toMatch(/Disconnecting.*YouTube account/i);
-    expect(text).toMatch(/Followed Channels.*Cached Uploads/i);
-    expect(text).toMatch(/30 days/i);
-    expect(text).toMatch(/optionally delete them when disconnecting/i);
+    expect(text).toMatch(
+      /Disconnecting your YouTube account immediately deletes Followed Channels, Cached Uploads, Watched marks, notification and digest settings, and OAuth tokens/,
+    );
+    expect(text).toMatch(/Nothing is kept for a later reconnect/);
+    expect(text).not.toMatch(/Watched marks are kept for/);
+    expect(text).not.toMatch(/optionally delete/i);
   });
 
   it('should render Shorts Daily Budget browser-local claim', () => {

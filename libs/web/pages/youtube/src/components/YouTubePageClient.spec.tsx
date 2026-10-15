@@ -118,6 +118,12 @@ jest.mock('../hooks', () => {
     useYouTubeSyncStatus: () => mockUseYouTubeSyncStatus(),
     useVideoQueue: () => mockUseVideoQueue(),
     useChannelUploads: () => mockUseChannelUploads(),
+    useYouTubeAcknowledgement: () => ({
+      acknowledged: true,
+      loading: false,
+      error: null,
+      accept: jest.fn(),
+    }),
     YouTubeRequestError,
     isRetryCooldownActive: (retryAt?: string | null) =>
       Boolean(retryAt && Date.parse(retryAt) > Date.now()),
@@ -1252,5 +1258,32 @@ describe('YouTubePageClient', () => {
       });
       expect(backLink).toHaveAttribute('href', '/dashboard');
     });
+
+    it.each([
+      ['explicitly false', { available: false, loading: false, error: null }],
+      ['still loading', { available: null, loading: true, error: null }],
+    ])(
+      'makes no connection or data hook call when availability is %s',
+      (_label, availability) => {
+        mockUseYouTubeAvailability.mockReturnValue(availability);
+
+        render(<YouTubePageClient />);
+
+        expect(
+          screen.getByRole('heading', {
+            name: /YouTube is not available right now/i,
+          }),
+        ).toBeInTheDocument();
+        [
+          mockUseYouTubeStatus,
+          mockUseYouTubeConnect,
+          mockUseYouTubeSubscriptions,
+          mockUseYouTubeCarousel,
+          mockUseYouTubeSyncStatus,
+          mockUseVideoQueue,
+          mockUseChannelUploads,
+        ].forEach((hook) => expect(hook).not.toHaveBeenCalled());
+      },
+    );
   });
 });

@@ -99,6 +99,39 @@ describe('AuditLogPageClient', () => {
     expect(screen.getByText('target-3')).toBeInTheDocument();
   });
 
+  it('renders the YouTube access grant and withdraw actions with their labels', async () => {
+    mockListAuditLogs.mockResolvedValue({
+      data: [
+        {
+          id: 'audit-yt-grant',
+          action: 'youtube_access_grant',
+          actorUserId: 'actor-yt',
+          targetUserId: 'target-yt',
+          createdAt: '2026-10-14T09:00:00.000Z',
+        },
+        {
+          id: 'audit-yt-withdraw',
+          action: 'youtube_access_withdraw',
+          actorUserId: 'actor-yt',
+          targetUserId: 'target-yt',
+          createdAt: '2026-10-14T10:00:00.000Z',
+        },
+      ],
+    });
+
+    render(<AuditLogPageClient />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Grant YouTube Access')).toBeInTheDocument();
+    });
+
+    expect(screen.getByText('Withdraw YouTube Access')).toBeInTheDocument();
+    expect(screen.queryByText('youtube_access_grant')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('youtube_access_withdraw'),
+    ).not.toBeInTheDocument();
+  });
+
   it('formats timestamps with the same Intl options as formatAuditTimestamp', async () => {
     const timestamp = '2026-07-16T12:00:00.000Z';
     mockListAuditLogs.mockResolvedValue({

@@ -6,7 +6,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Smartphone,
-  Youtube,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -404,18 +403,13 @@ function Integrations() {
             Seamless Integrations
           </h3>
           <p className="text-base" style={{ color: palette.muted }}>
-            Backup your encrypted vault to Google Drive and connect with YouTube
-            easily.
+            Back up your encrypted vault to Google Drive.
           </p>
         </div>
         <div className="flex flex-wrap gap-4">
           <IntegrationPill
             icon={<CloudUpload className="h-4 w-4" />}
             label="Google Drive"
-          />
-          <IntegrationPill
-            icon={<Youtube className="h-4 w-4" />}
-            label="YouTube"
           />
         </div>
       </div>

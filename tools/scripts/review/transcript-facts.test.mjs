@@ -639,3 +639,54 @@ test('a call that ends in & has no exit code to read either', () => {
   const f = readTranscriptFacts(JSON.stringify(events), { index: INDEX });
   assert.equal(executionOf(f, `${RULES_CHECK} &`)[0].exitCode, null);
 });
+
+// --- which changed files each axis opened or diffed (issue #1140) -----------
+
+/** A real transcript with tool calls added to one axis's sub-agent. */
+const withCallsOn = (axis, inputs) => {
+  const events = JSON.parse(fixture(TWO_FINDINGS));
+  const dispatch = events
+    .flatMap((e) => (e.parent_tool_use_id ? [] : (e.message?.content ?? [])))
+    .find(
+      (b) =>
+        b.type === 'tool_use' &&
+        typeof b.input?.prompt === 'string' &&
+        b.input.prompt.includes(BRIEFS[axis]),
+    );
+  inputs.forEach(([name, input], i) =>
+    events.push({
+      type: 'assistant',
+      parent_tool_use_id: dispatch.id,
+      message: {
+        content: [{ type: 'tool_use', id: `added-${axis}-${i}`, name, input }],
+      },
+    }),
+  );
+  return readTranscriptFacts(JSON.stringify(events), { index: INDEX });
+};
+
+test('each axis records the files it opened and the files it diffed by path', () => {
+  const f = withCallsOn('spec', [
+    [
+      'Read',
+      {
+        file_path: `/home/runner/work/myorganizer/myorganizer/.github/workflows/deploy.yml`,
+      },
+    ],
+    [
+      'Bash',
+      {
+        command: 'git diff main...HEAD -- tools/scripts/deploy.mjs tools/a.sh',
+      },
+    ],
+    // A stat names no file's content; it is neither an open nor a diff.
+    ['Bash', { command: 'git diff main...HEAD --stat' }],
+  ]);
+  assert.ok(f.axes.spec.opened.includes('.github/workflows/deploy.yml'));
+  for (const path of ['tools/scripts/deploy.mjs', 'tools/a.sh'])
+    assert.ok(f.axes.spec.diffed.includes(path), path);
+  assert.ok(!f.axes.spec.diffed.includes('main...HEAD'));
+  // The other axis is credited with nothing the Spec sub-agent did.
+  assert.ok(!f.axes.standards.opened.includes('.github/workflows/deploy.yml'));
+  assert.ok(!f.axes.standards.diffed.includes('tools/a.sh'));
+});

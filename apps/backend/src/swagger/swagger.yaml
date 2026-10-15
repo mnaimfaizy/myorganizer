@@ -35,12 +35,15 @@ components:
         - platform
       type: object
       additionalProperties: false
-    AuthUrlResponse:
+    YouTubeAcknowledgementResponse:
       properties:
-        url:
+        acknowledgedAt:
           type: string
+          nullable: true
+          description: ISO time the User accepted the one-time acknowledgement, or null
+            (ADR 0129).
       required:
-        - url
+        - acknowledgedAt
       type: object
       additionalProperties: false
     YouTubeErrorResponse:
@@ -50,6 +53,28 @@ components:
       required:
         - message
       type: object
+    AuthUrlResponse:
+      properties:
+        url:
+          type: string
+      required:
+        - url
+      type: object
+      additionalProperties: false
+    AcknowledgementRequiredResponse:
+      properties:
+        message:
+          type: string
+        code:
+          type: string
+          enum:
+            - acknowledgement_required
+          nullable: false
+      required:
+        - message
+        - code
+      type: object
+      additionalProperties: false
     StatusResponse:
       properties:
         connected:
@@ -96,14 +121,6 @@ components:
             - message
             - ok
           type: object
-    DisconnectRequest:
-      properties:
-        deleteWatchedMarks:
-          type: boolean
-          description: When true, do not preserve Watched — clear/skip ledger. Default
-            false.
-      type: object
-      additionalProperties: false
     SubscriptionResponse:
       properties:
         id:
@@ -432,6 +449,16 @@ components:
         timeZone:
           type: string
           nullable: true
+      type: object
+      additionalProperties: false
+    YouTubeAccessResponse:
+      properties:
+        granted:
+          type: boolean
+          description: Whether a Platform Admin has granted the signed-in User YouTube
+            Access (ADR 0129).
+      required:
+        - granted
       type: object
       additionalProperties: false
     YouTubeAvailabilityResponse:
@@ -990,6 +1017,20 @@ components:
         - confirm_password
       type: object
       additionalProperties: false
+    YouTubeAccessUsageResponse:
+      description: Platform Admin read of the YouTube Access lifetime ceiling (ADR 0129).
+      properties:
+        everGranted:
+          type: number
+          format: double
+        ceiling:
+          type: number
+          format: double
+      required:
+        - everGranted
+        - ceiling
+      type: object
+      additionalProperties: false
     AdminUserIdentity:
       description: Identity-only User projection for Platform Admin directory APIs.
       properties:
@@ -1011,6 +1052,10 @@ components:
           type: boolean
         emailVerified:
           type: boolean
+        youtubeAccess:
+          type: boolean
+          description: Whether a Platform Admin currently grants this User YouTube Access
+            (ADR 0129).
       required:
         - id
         - name
@@ -1020,8 +1065,26 @@ components:
         - role
         - disabled
         - emailVerified
+        - youtubeAccess
       type: object
       additionalProperties: false
+    YouTubeDisconnectOutcome:
+      type: string
+      enum:
+        - completed
+        - pending
+        - not_connected
+      description: Outcome of the YouTube Disconnect that a withdrawal triggers (ADR 0129).
+    WithdrawYouTubeAccessResponse:
+      allOf:
+        - $ref: "#/components/schemas/AdminUserIdentity"
+        - properties:
+            youtubeDisconnect:
+              $ref: "#/components/schemas/YouTubeDisconnectOutcome"
+          required:
+            - youtubeDisconnect
+          type: object
+      description: Identity after a YouTube Access withdrawal, with the disconnect outcome.
     AdminAuditAction:
       type: string
       enum:
@@ -1031,6 +1094,8 @@ components:
         - resend_verification
         - promote
         - demote
+        - youtube_access_grant
+        - youtube_access_withdraw
     AdminAuditLogEntry:
       description: Platform Admin Audit Log entry returned by list APIs.
       properties:
@@ -1082,6 +1147,61 @@ info:
     name: Elastic-2.0
   contact: {}
 paths:
+  /youtube/acknowledgement:
+    get:
+      operationId: GetAcknowledgement
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YouTubeAcknowledgementResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
+      description: >-
+        Returns the one-time YouTube acknowledgement state for the signed-in
+        User
+
+        (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+      tags:
+        - YouTube
+      security:
+        - jwt:
+            - youtube_access
+      parameters: []
+    post:
+      operationId: AcceptAcknowledgement
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                anyOf:
+                  - $ref: "#/components/schemas/YouTubeAcknowledgementResponse"
+                  - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
+      description: >-
+        Records the signed-in User's one-time YouTube acknowledgement (ADR
+        0129).
+
+        The first accepted time is kept: calling again returns it unchanged.
+      tags:
+        - YouTube
+      security:
+        - jwt:
+            - youtube_access
+      parameters: []
   /youtube/auth-url:
     get:
       operationId: GetAuthUrl
@@ -1093,18 +1213,30 @@ paths:
               schema:
                 anyOf:
                   - $ref: "#/components/schemas/AuthUrlResponse"
+                  - $ref: "#/components/schemas/AcknowledgementRequiredResponse"
                   - $ref: "#/components/schemas/YouTubeErrorResponse"
+        "409":
+          description: The YouTube acknowledgement has not been accepted yet.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcknowledgementRequiredResponse"
         "426":
           description: Below the Version Floor
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/VersionFloorRefusal"
-      description: Returns the Google OAuth consent URL for linking YouTube.
+      description: >-
+        Returns the Google OAuth consent URL for linking YouTube. Refused with
+        409
+
+        until the User has stored the one-time acknowledgement (ADR 0129).
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/callback:
     post:
@@ -1134,7 +1266,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
       requestBody:
         required: true
@@ -1169,7 +1302,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/disconnect:
     delete:
@@ -1190,19 +1324,14 @@ paths:
       description: >-
         Disconnects the user's YouTube account after revoking the token.
 
-        Optionally wipes Watched marks via the request body; preserves them by
-        default.
+        Deletes all YouTube data, including Watched marks; nothing is kept for a
+        reconnect.
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/DisconnectRequest"
   /youtube/subscriptions:
     get:
       operationId: GetSubscriptions
@@ -1227,7 +1356,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/subscriptions/sync:
     put:
@@ -1252,7 +1382,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/uploads/sync:
     put:
@@ -1276,7 +1407,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/sync-status:
     get:
@@ -1300,7 +1432,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/subscriptions/{subscriptionId}:
     patch:
@@ -1329,7 +1462,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters:
         - in: path
           name: subscriptionId
@@ -1369,7 +1503,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters:
         - description: "Sort order: latest | oldest | az"
           in: query
@@ -1438,7 +1573,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters:
         - in: path
           name: videoId
@@ -1475,7 +1611,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
   /youtube/notification-settings:
     get:
@@ -1499,7 +1636,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
     patch:
       operationId: UpdateNotificationSettings
@@ -1522,7 +1660,8 @@ paths:
       tags:
         - YouTube
       security:
-        - jwt: []
+        - jwt:
+            - youtube_access
       parameters: []
       requestBody:
         required: true
@@ -1530,6 +1669,32 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/NotificationSettingsBody"
+  /youtube/access:
+    get:
+      operationId: GetAccess
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YouTubeAccessResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
+      description: >-
+        Whether the signed-in User has YouTube Access (ADR 0129). Reachable
+        without
+
+        the access scope, so the web can hide YouTube from Users without it.
+      tags:
+        - YouTube
+      security:
+        - jwt: []
+      parameters: []
   /youtube/availability:
     get:
       operationId: GetAvailability
@@ -2389,6 +2554,30 @@ paths:
           application/json:
             schema:
               $ref: "#/components/schemas/ConfirmResetPasswordBody"
+  /admin/youtube-access:
+    get:
+      operationId: GetYouTubeAccessUsage
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/YouTubeAccessUsageResponse"
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
+      description: Users ever granted YouTube Access, and the configured ceiling.
+        Platform Admin only.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters: []
   /admin/users:
     get:
       operationId: ListUsers
@@ -2722,6 +2911,102 @@ paths:
       description: |-
         Demote a Platform Admin to a normal User.
         Rejects demotion of the last Platform Admin.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/youtube-access/grant:
+    post:
+      operationId: GrantYouTubeAccess
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AdminUserIdentity"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "409":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
+      description: |-
+        Grant YouTube Access to a User (ADR 0129). Refused with 409 when the
+        lifetime ceiling is reached and this User was never granted before.
+      tags:
+        - Platform Admin
+      security:
+        - jwt:
+            - platform_admin
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            type: string
+  /admin/users/{userId}/youtube-access/withdraw:
+    post:
+      operationId: WithdrawYouTubeAccess
+      responses:
+        "200":
+          description: Ok
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WithdrawYouTubeAccessResponse"
+        "404":
+          description: ""
+          content:
+            application/json:
+              schema:
+                properties:
+                  message:
+                    type: string
+                required:
+                  - message
+                type: object
+        "426":
+          description: Below the Version Floor
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionFloorRefusal"
+      description: >-
+        Withdraw YouTube Access from a User. A connected User is disconnected
+        from
+
+        YouTube in the same operation; a live Sync Run leaves the disconnect
+        pending.
       tags:
         - Platform Admin
       security:

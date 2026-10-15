@@ -16,7 +16,8 @@ import {
   Tags,
 } from 'tsoa';
 import { isYouTubeAvailable } from '../config/youtube';
-import { requireUserId } from '../guards/AuthGuard';
+import { getAuthenticatedUser, requireUserId } from '../guards/AuthGuard';
+import userService from '../services/UserService';
 import youTubeDigestService from '../services/YouTubeDigestService';
 import youTubeSyncWorkerService from '../services/YouTubeSyncWorkerService';
 import youtubeSyncService, {
@@ -36,6 +37,16 @@ interface AuthUrlResponse {
   url: string;
 }
 
+interface YouTubeAcknowledgementResponse {
+  /** ISO time the User accepted the one-time acknowledgement, or null (ADR 0129). */
+  acknowledgedAt: string | null;
+}
+
+interface AcknowledgementRequiredResponse {
+  message: string;
+  code: 'acknowledgement_required';
+}
+
 interface StatusResponse {
   connected: boolean;
   status: string;
@@ -43,6 +54,11 @@ interface StatusResponse {
 
 interface YouTubeAvailabilityResponse {
   available: boolean;
+}
+
+interface YouTubeAccessResponse {
+  /** Whether a Platform Admin has granted the signed-in User YouTube Access (ADR 0129). */
+  granted: boolean;
 }
 
 interface SubscriptionResponse {
@@ -178,11 +194,6 @@ interface WatchedResponse {
   watched: boolean;
 }
 
-interface DisconnectRequest {
-  /** When true, do not preserve Watched — clear/skip ledger. Default false. */
-  deleteWatchedMarks?: boolean;
-}
-
 type DisconnectResponse =
   | {
       ok: true;
@@ -263,14 +274,61 @@ function toSyncResponse(result: YouTubeRefreshResult): SyncResponse {
 @Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class YouTubeController extends Controller {
   /**
-   * Returns the Google OAuth consent URL for linking YouTube.
+   * Returns the one-time YouTube acknowledgement state for the signed-in User
+   * (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+   */
+  @Get('/acknowledgement')
+  @Security('jwt', ['youtube_access'])
+  public async getAcknowledgement(
+    @Request() req: ExRequest,
+  ): Promise<YouTubeAcknowledgementResponse> {
+    const userId = requireUserId(req);
+    const acknowledgedAt = await userService.getYouTubeAcknowledgedAt(userId);
+    return { acknowledgedAt: acknowledgedAt?.toISOString() ?? null };
+  }
+
+  /**
+   * Records the signed-in User's one-time YouTube acknowledgement (ADR 0129).
+   * The first accepted time is kept: calling again returns it unchanged.
+   */
+  @Post('/acknowledgement')
+  @Security('jwt', ['youtube_access'])
+  public async acceptAcknowledgement(
+    @Request() req: ExRequest,
+  ): Promise<YouTubeAcknowledgementResponse | YouTubeErrorResponse> {
+    const userId = requireUserId(req);
+    const acknowledgedAt = await userService.acknowledgeYouTube(userId);
+    if (acknowledgedAt === null) {
+      this.setStatus(404);
+      return { message: 'User not found' };
+    }
+    return { acknowledgedAt: acknowledgedAt.toISOString() };
+  }
+
+  /**
+   * Returns the Google OAuth consent URL for linking YouTube. Refused with 409
+   * until the User has stored the one-time acknowledgement (ADR 0129).
    */
   @Get('/auth-url')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
+  @Response<AcknowledgementRequiredResponse>(
+    409,
+    'The YouTube acknowledgement has not been accepted yet.',
+  )
   public async getAuthUrl(
     @Request() req: ExRequest,
-  ): Promise<AuthUrlResponse | YouTubeErrorResponse> {
+  ): Promise<
+    AuthUrlResponse | AcknowledgementRequiredResponse | YouTubeErrorResponse
+  > {
     const userId = requireUserId(req);
+    const acknowledgedAt = await userService.getYouTubeAcknowledgedAt(userId);
+    if (acknowledgedAt === null) {
+      this.setStatus(409);
+      return {
+        message: 'Accept the YouTube acknowledgement before connecting.',
+        code: 'acknowledgement_required',
+      };
+    }
     const url = youtubeSyncService.getAuthUrl(userId);
     return { url };
   }
@@ -279,7 +337,7 @@ export class YouTubeController extends Controller {
    * OAuth callback — exchanges the authorization code for tokens.
    */
   @Post('/callback')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async handleCallback(
     @Request() req: ExRequest,
     @Body() body: { code: string },
@@ -299,7 +357,7 @@ export class YouTubeController extends Controller {
    * Returns the user's YouTube integration status.
    */
   @Get('/status')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getConnectionStatus(
     @Request() req: ExRequest,
   ): Promise<StatusResponse | YouTubeErrorResponse> {
@@ -314,18 +372,15 @@ export class YouTubeController extends Controller {
 
   /**
    * Disconnects the user's YouTube account after revoking the token.
-   * Optionally wipes Watched marks via the request body; preserves them by default.
+   * Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
    */
   @Delete('/disconnect')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async disconnect(
     @Request() req: ExRequest,
-    @Body() body?: DisconnectRequest,
   ): Promise<DisconnectResponse> {
     const userId = requireUserId(req);
-    const result = await youtubeSyncService.disconnect(userId, {
-      deleteWatchedMarks: body?.deleteWatchedMarks,
-    });
+    const result = await youtubeSyncService.disconnect(userId);
     if (result.ok === false && result.code === 'sync_run_live') {
       this.setStatus(409);
     }
@@ -336,7 +391,7 @@ export class YouTubeController extends Controller {
    * Returns the user's synced YouTube channel subscriptions.
    */
   @Get('/subscriptions')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getSubscriptions(
     @Request() req: ExRequest,
   ): Promise<SubscriptionResponse[] | YouTubeErrorResponse> {
@@ -357,7 +412,7 @@ export class YouTubeController extends Controller {
    * Channel Sync: fetches fresh subscriptions from YouTube and upserts Followed Channels.
    */
   @Put('/subscriptions/sync')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async syncSubscriptions(
     @Request() req: ExRequest,
   ): Promise<ChannelSyncResponse | YouTubeErrorResponse> {
@@ -369,7 +424,7 @@ export class YouTubeController extends Controller {
    * Upload Sync: fetches Cached Uploads for every Enabled Channel.
    */
   @Put('/uploads/sync')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async syncUploads(
     @Request() req: ExRequest,
   ): Promise<SyncResponse | YouTubeErrorResponse> {
@@ -379,7 +434,7 @@ export class YouTubeController extends Controller {
 
   /** Returns the latest cached-video sync outcome and retry time. */
   @Get('/sync-status')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getSyncStatus(
     @Request() req: ExRequest,
   ): Promise<SyncStatusResponse | YouTubeErrorResponse> {
@@ -391,7 +446,7 @@ export class YouTubeController extends Controller {
    * Toggles a subscription's enabled state.
    */
   @Patch('/subscriptions/{subscriptionId}')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async toggleSubscription(
     @Request() req: ExRequest,
     @Path() subscriptionId: string,
@@ -415,7 +470,7 @@ export class YouTubeController extends Controller {
    * @param kind  Library slice by runtime: short | long | all (default all)
    */
   @Get('/videos')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getVideos(
     @Request() req: ExRequest,
     @Query() sort?: 'latest' | 'oldest' | 'az',
@@ -453,7 +508,7 @@ export class YouTubeController extends Controller {
 
   /** Marks a Cached Upload as Watched or New. */
   @Patch('/videos/{videoId}/watched')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async setVideoWatched(
     @Request() req: ExRequest,
     @Path() videoId: string,
@@ -476,7 +531,7 @@ export class YouTubeController extends Controller {
    * Returns videos grouped by channel for the carousel view.
    */
   @Get('/videos/carousel')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getVideosCarousel(
     @Request() req: ExRequest,
   ): Promise<ChannelCarouselResponse[] | YouTubeErrorResponse> {
@@ -504,7 +559,7 @@ export class YouTubeController extends Controller {
    * Returns the user's YouTube notification preferences.
    */
   @Get('/notification-settings')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async getNotificationSettings(
     @Request() req: ExRequest,
   ): Promise<NotificationSettingsResponse | YouTubeErrorResponse> {
@@ -517,7 +572,7 @@ export class YouTubeController extends Controller {
    * Updates the user's YouTube notification preferences.
    */
   @Patch('/notification-settings')
-  @Security('jwt')
+  @Security('jwt', ['youtube_access'])
   public async updateNotificationSettings(
     @Request() req: ExRequest,
     @Body() body: NotificationSettingsBody,
@@ -538,6 +593,19 @@ export class YouTubeController extends Controller {
             : 'Invalid notification settings.',
       };
     }
+  }
+
+  /**
+   * Whether the signed-in User has YouTube Access (ADR 0129). Reachable without
+   * the access scope, so the web can hide YouTube from Users without it.
+   */
+  @Get('/access')
+  @Security('jwt')
+  public async getAccess(
+    @Request() req: ExRequest,
+  ): Promise<YouTubeAccessResponse> {
+    const user = getAuthenticatedUser(req);
+    return { granted: user.youtube_access === true };
   }
 
   /**

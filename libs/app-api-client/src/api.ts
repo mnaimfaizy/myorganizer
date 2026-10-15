@@ -23,6 +23,24 @@ import type { RequestArgs } from './base';
 // @ts-ignore
 import { BASE_PATH, COLLECTION_FORMATS, BaseAPI, RequiredError, operationServerMap } from './base';
 
+export interface AcceptAcknowledgement200Response {
+    /**
+     * ISO time the User accepted the one-time acknowledgement, or null (ADR 0129).
+     */
+    'acknowledgedAt': string | null;
+    'message': string;
+}
+export interface AcknowledgementRequiredResponse {
+    'message': string;
+    'code': AcknowledgementRequiredResponseCodeEnum;
+}
+
+export const AcknowledgementRequiredResponseCodeEnum = {
+    AcknowledgementRequired: 'acknowledgement_required',
+} as const;
+
+export type AcknowledgementRequiredResponseCodeEnum = typeof AcknowledgementRequiredResponseCodeEnum[keyof typeof AcknowledgementRequiredResponseCodeEnum];
+
 
 export const AdminAuditAction = {
     Disable: 'disable',
@@ -31,6 +49,8 @@ export const AdminAuditAction = {
     ResendVerification: 'resend_verification',
     Promote: 'promote',
     Demote: 'demote',
+    YoutubeAccessGrant: 'youtube_access_grant',
+    YoutubeAccessWithdraw: 'youtube_access_withdraw',
 } as const;
 
 export type AdminAuditAction = typeof AdminAuditAction[keyof typeof AdminAuditAction];
@@ -67,6 +87,10 @@ export interface AdminUserIdentity {
     'role': UserRole;
     'disabled': boolean;
     'emailVerified': boolean;
+    /**
+     * Whether a Platform Admin currently grants this User YouTube Access (ADR 0129).
+     */
+    'youtubeAccess': boolean;
 }
 
 
@@ -132,12 +156,6 @@ export interface CronSyncResponse {
     'usersSynced': number;
     'failed': number;
     'done': boolean;
-}
-export interface DisconnectRequest {
-    /**
-     * When true, do not preserve Watched — clear/skip ledger. Default false.
-     */
-    'deleteWatchedMarks'?: boolean;
 }
 export interface DisconnectResponse {
     'googlePermissionsUrl'?: string;
@@ -212,7 +230,15 @@ export interface FilteredUserInterface {
 export interface GetAuthUrl200Response {
     'url': string;
     'message': string;
+    'code': GetAuthUrl200ResponseCodeEnum;
 }
+
+export const GetAuthUrl200ResponseCodeEnum = {
+    AcknowledgementRequired: 'acknowledgement_required',
+} as const;
+
+export type GetAuthUrl200ResponseCodeEnum = typeof GetAuthUrl200ResponseCodeEnum[keyof typeof GetAuthUrl200ResponseCodeEnum];
+
 export interface GetConnectionStatus200Response {
     'connected': boolean;
     'status': string;
@@ -782,9 +808,62 @@ export interface WatchedResponse {
     'ok': boolean;
     'watched': boolean;
 }
+/**
+ * Identity after a YouTube Access withdrawal, with the disconnect outcome.
+ */
+export interface WithdrawYouTubeAccessResponse {
+    'id': string;
+    'name': string;
+    'email': string;
+    'firstName': string;
+    'lastName': string;
+    'phone'?: string;
+    'role': UserRole;
+    'disabled': boolean;
+    'emailVerified': boolean;
+    /**
+     * Whether a Platform Admin currently grants this User YouTube Access (ADR 0129).
+     */
+    'youtubeAccess': boolean;
+    'youtubeDisconnect': YouTubeDisconnectOutcome;
+}
+
+
+export interface YouTubeAccessResponse {
+    /**
+     * Whether a Platform Admin has granted the signed-in User YouTube Access (ADR 0129).
+     */
+    'granted': boolean;
+}
+/**
+ * Platform Admin read of the YouTube Access lifetime ceiling (ADR 0129).
+ */
+export interface YouTubeAccessUsageResponse {
+    'everGranted': number;
+    'ceiling': number;
+}
+export interface YouTubeAcknowledgementResponse {
+    /**
+     * ISO time the User accepted the one-time acknowledgement, or null (ADR 0129).
+     */
+    'acknowledgedAt': string | null;
+}
 export interface YouTubeAvailabilityResponse {
     'available': boolean;
 }
+/**
+ * Outcome of the YouTube Disconnect that a withdrawal triggers (ADR 0129).
+ */
+
+export const YouTubeDisconnectOutcome = {
+    Completed: 'completed',
+    Pending: 'pending',
+    NotConnected: 'not_connected',
+} as const;
+
+export type YouTubeDisconnectOutcome = typeof YouTubeDisconnectOutcome[keyof typeof YouTubeDisconnectOutcome];
+
+
 export interface YouTubeErrorResponse {
     'message': string;
 }
@@ -1671,6 +1750,76 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
             };
         },
         /**
+         * Users ever granted YouTube Access, and the configured ceiling. Platform Admin only.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getYouTubeAccessUsage: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/admin/youtube-access`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Grant YouTube Access to a User (ADR 0129). Refused with 409 when the lifetime ceiling is reached and this User was never granted before.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        grantYouTubeAccess: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('grantYouTubeAccess', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/youtube-access/grant`
+                .replace('{userId}', encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * List recent Admin Audit Log entries (newest first). Platform Admin only.
          * @param {number} [limit] 
          * @param {*} [options] Override http request option.
@@ -1820,6 +1969,43 @@ export const PlatformAdminApiAxiosParamCreator = function (configuration?: Confi
                 options: localVarRequestOptions,
             };
         },
+        /**
+         * Withdraw YouTube Access from a User. A connected User is disconnected from YouTube in the same operation; a live Sync Run leaves the disconnect pending.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        withdrawYouTubeAccess: async (userId: string, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userId' is not null or undefined
+            assertParamExists('withdrawYouTubeAccess', 'userId', userId)
+            const localVarPath = `/admin/users/{userId}/youtube-access/withdraw`
+                .replace('{userId}', encodeURIComponent(String(userId)));
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
     }
 };
 
@@ -1890,6 +2076,29 @@ export const PlatformAdminApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
+         * Users ever granted YouTube Access, and the configured ceiling. Platform Admin only.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getYouTubeAccessUsage(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<YouTubeAccessUsageResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getYouTubeAccessUsage(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.getYouTubeAccessUsage']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Grant YouTube Access to a User (ADR 0129). Refused with 409 when the lifetime ceiling is reached and this User was never granted before.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async grantYouTubeAccess(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AdminUserIdentity>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.grantYouTubeAccess(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.grantYouTubeAccess']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * List recent Admin Audit Log entries (newest first). Platform Admin only.
          * @param {number} [limit] 
          * @param {*} [options] Override http request option.
@@ -1935,6 +2144,18 @@ export const PlatformAdminApiFp = function(configuration?: Configuration) {
             const localVarAxiosArgs = await localVarAxiosParamCreator.resendVerification(userId, options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.resendVerification']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Withdraw YouTube Access from a User. A connected User is disconnected from YouTube in the same operation; a live Sync Run leaves the disconnect pending.
+         * @param {string} userId 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async withdrawYouTubeAccess(userId: string, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<WithdrawYouTubeAccessResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.withdrawYouTubeAccess(userId, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['PlatformAdminApi.withdrawYouTubeAccess']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
     }
@@ -1992,6 +2213,23 @@ export const PlatformAdminApiFactory = function (configuration?: Configuration, 
             return localVarFp.getUserById(requestParameters.userId, options).then((request) => request(axios, basePath));
         },
         /**
+         * Users ever granted YouTube Access, and the configured ceiling. Platform Admin only.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getYouTubeAccessUsage(options?: RawAxiosRequestConfig): AxiosPromise<YouTubeAccessUsageResponse> {
+            return localVarFp.getYouTubeAccessUsage(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Grant YouTube Access to a User (ADR 0129). Refused with 409 when the lifetime ceiling is reached and this User was never granted before.
+         * @param {PlatformAdminApiGrantYouTubeAccessRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        grantYouTubeAccess(requestParameters: PlatformAdminApiGrantYouTubeAccessRequest, options?: RawAxiosRequestConfig): AxiosPromise<AdminUserIdentity> {
+            return localVarFp.grantYouTubeAccess(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
          * List recent Admin Audit Log entries (newest first). Platform Admin only.
          * @param {PlatformAdminApiListAuditLogsRequest} requestParameters Request parameters.
          * @param {*} [options] Override http request option.
@@ -2026,6 +2264,15 @@ export const PlatformAdminApiFactory = function (configuration?: Configuration, 
          */
         resendVerification(requestParameters: PlatformAdminApiResendVerificationRequest, options?: RawAxiosRequestConfig): AxiosPromise<Login401Response> {
             return localVarFp.resendVerification(requestParameters.userId, options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Withdraw YouTube Access from a User. A connected User is disconnected from YouTube in the same operation; a live Sync Run leaves the disconnect pending.
+         * @param {PlatformAdminApiWithdrawYouTubeAccessRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        withdrawYouTubeAccess(requestParameters: PlatformAdminApiWithdrawYouTubeAccessRequest, options?: RawAxiosRequestConfig): AxiosPromise<WithdrawYouTubeAccessResponse> {
+            return localVarFp.withdrawYouTubeAccess(requestParameters.userId, options).then((request) => request(axios, basePath));
         },
     };
 };
@@ -2066,6 +2313,13 @@ export interface PlatformAdminApiGetUserByIdRequest {
 }
 
 /**
+ * Request parameters for grantYouTubeAccess operation in PlatformAdminApi.
+ */
+export interface PlatformAdminApiGrantYouTubeAccessRequest {
+    readonly userId: string
+}
+
+/**
  * Request parameters for listAuditLogs operation in PlatformAdminApi.
  */
 export interface PlatformAdminApiListAuditLogsRequest {
@@ -2090,6 +2344,13 @@ export interface PlatformAdminApiPromoteUserRequest {
  * Request parameters for resendVerification operation in PlatformAdminApi.
  */
 export interface PlatformAdminApiResendVerificationRequest {
+    readonly userId: string
+}
+
+/**
+ * Request parameters for withdrawYouTubeAccess operation in PlatformAdminApi.
+ */
+export interface PlatformAdminApiWithdrawYouTubeAccessRequest {
     readonly userId: string
 }
 
@@ -2148,6 +2409,25 @@ export class PlatformAdminApi extends BaseAPI {
     }
 
     /**
+     * Users ever granted YouTube Access, and the configured ceiling. Platform Admin only.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getYouTubeAccessUsage(options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).getYouTubeAccessUsage(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Grant YouTube Access to a User (ADR 0129). Refused with 409 when the lifetime ceiling is reached and this User was never granted before.
+     * @param {PlatformAdminApiGrantYouTubeAccessRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public grantYouTubeAccess(requestParameters: PlatformAdminApiGrantYouTubeAccessRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).grantYouTubeAccess(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * List recent Admin Audit Log entries (newest first). Platform Admin only.
      * @param {PlatformAdminApiListAuditLogsRequest} requestParameters Request parameters.
      * @param {*} [options] Override http request option.
@@ -2185,6 +2465,16 @@ export class PlatformAdminApi extends BaseAPI {
      */
     public resendVerification(requestParameters: PlatformAdminApiResendVerificationRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).resendVerification(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Withdraw YouTube Access from a User. A connected User is disconnected from YouTube in the same operation; a live Sync Run leaves the disconnect pending.
+     * @param {PlatformAdminApiWithdrawYouTubeAccessRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public withdrawYouTubeAccess(requestParameters: PlatformAdminApiWithdrawYouTubeAccessRequest, options?: RawAxiosRequestConfig) {
+        return PlatformAdminApiFp(this.configuration).withdrawYouTubeAccess(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
     }
 }
 
@@ -3159,6 +3449,39 @@ export class VaultBackupsApi extends BaseAPI {
 export const YouTubeApiAxiosParamCreator = function (configuration?: Configuration) {
     return {
         /**
+         * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        acceptAcknowledgement: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/acknowledgement`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'POST', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
          * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3223,12 +3546,11 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-         * @param {DisconnectRequest} [disconnectRequest] 
+         * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect: async (disconnectRequest?: DisconnectRequest, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+        disconnect: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
             const localVarPath = `/youtube/disconnect`;
             // use dummy base URL string because the URL constructor only accepts absolute URLs.
             const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
@@ -3245,13 +3567,11 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             // http bearer authentication required
             await setBearerAuthToObject(localVarHeaderParameter, configuration)
 
-            localVarHeaderParameter['Content-Type'] = 'application/json';
             localVarHeaderParameter['Accept'] = 'application/json';
 
             setSearchParams(localVarUrlObj, localVarQueryParameter);
             let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
             localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
-            localVarRequestOptions.data = serializeDataIfNeeded(disconnectRequest, localVarRequestOptions, configuration)
 
             return {
                 url: toPathString(localVarUrlObj),
@@ -3259,7 +3579,73 @@ export const YouTubeApiAxiosParamCreator = function (configuration?: Configurati
             };
         },
         /**
-         * Returns the Google OAuth consent URL for linking YouTube.
+         * Whether the signed-in User has YouTube Access (ADR 0129). Reachable without the access scope, so the web can hide YouTube from Users without it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAccess: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/access`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAcknowledgement: async (options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            const localVarPath = `/youtube/acknowledgement`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'GET', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -3818,6 +4204,17 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
     const localVarAxiosParamCreator = YouTubeApiAxiosParamCreator(configuration)
     return {
         /**
+         * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async acceptAcknowledgement(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<AcceptAcknowledgement200Response>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.acceptAcknowledgement(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.acceptAcknowledgement']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
          * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -3840,19 +4237,40 @@ export const YouTubeApiFp = function(configuration?: Configuration) {
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-         * @param {DisconnectRequest} [disconnectRequest] 
+         * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        async disconnect(disconnectRequest?: DisconnectRequest, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DisconnectResponse>> {
-            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(disconnectRequest, options);
+        async disconnect(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<DisconnectResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.disconnect(options);
             const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
             const localVarOperationServerBasePath = operationServerMap['YouTubeApi.disconnect']?.[localVarOperationServerIndex]?.url;
             return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
         },
         /**
-         * Returns the Google OAuth consent URL for linking YouTube.
+         * Whether the signed-in User has YouTube Access (ADR 0129). Reachable without the access scope, so the web can hide YouTube from Users without it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getAccess(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<YouTubeAccessResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getAccess(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getAccess']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async getAcknowledgement(options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<YouTubeAcknowledgementResponse>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.getAcknowledgement(options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['YouTubeApi.getAcknowledgement']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4039,6 +4457,14 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
     const localVarFp = YouTubeApiFp(configuration)
     return {
         /**
+         * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        acceptAcknowledgement(options?: RawAxiosRequestConfig): AxiosPromise<AcceptAcknowledgement200Response> {
+            return localVarFp.acceptAcknowledgement(options).then((request) => request(axios, basePath));
+        },
+        /**
          * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
@@ -4055,16 +4481,31 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
             return localVarFp.cronSync(options).then((request) => request(axios, basePath));
         },
         /**
-         * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-         * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
+         * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
-        disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig): AxiosPromise<DisconnectResponse> {
-            return localVarFp.disconnect(requestParameters.disconnectRequest, options).then((request) => request(axios, basePath));
+        disconnect(options?: RawAxiosRequestConfig): AxiosPromise<DisconnectResponse> {
+            return localVarFp.disconnect(options).then((request) => request(axios, basePath));
         },
         /**
-         * Returns the Google OAuth consent URL for linking YouTube.
+         * Whether the signed-in User has YouTube Access (ADR 0129). Reachable without the access scope, so the web can hide YouTube from Users without it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAccess(options?: RawAxiosRequestConfig): AxiosPromise<YouTubeAccessResponse> {
+            return localVarFp.getAccess(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        getAcknowledgement(options?: RawAxiosRequestConfig): AxiosPromise<YouTubeAcknowledgementResponse> {
+            return localVarFp.getAcknowledgement(options).then((request) => request(axios, basePath));
+        },
+        /**
+         * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
          * @param {*} [options] Override http request option.
          * @throws {RequiredError}
          */
@@ -4193,13 +4634,6 @@ export const YouTubeApiFactory = function (configuration?: Configuration, basePa
 };
 
 /**
- * Request parameters for disconnect operation in YouTubeApi.
- */
-export interface YouTubeApiDisconnectRequest {
-    readonly disconnectRequest?: DisconnectRequest
-}
-
-/**
  * Request parameters for getVideos operation in YouTubeApi.
  */
 export interface YouTubeApiGetVideosRequest {
@@ -4275,6 +4709,15 @@ export interface YouTubeApiUpdateNotificationSettingsRequest {
  */
 export class YouTubeApi extends BaseAPI {
     /**
+     * Records the signed-in User\'s one-time YouTube acknowledgement (ADR 0129). The first accepted time is kept: calling again returns it unchanged.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public acceptAcknowledgement(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).acceptAcknowledgement(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
      * Cron-only endpoint: runs one bounded pass of the weekly digest worker. Separate from `/cron/sync` so neither job can starve or fail the other.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
@@ -4293,17 +4736,34 @@ export class YouTubeApi extends BaseAPI {
     }
 
     /**
-     * Disconnects the user\'s YouTube account after revoking the token. Optionally wipes Watched marks via the request body; preserves them by default.
-     * @param {YouTubeApiDisconnectRequest} requestParameters Request parameters.
+     * Disconnects the user\'s YouTube account after revoking the token. Deletes all YouTube data, including Watched marks; nothing is kept for a reconnect.
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */
-    public disconnect(requestParameters: YouTubeApiDisconnectRequest = {}, options?: RawAxiosRequestConfig) {
-        return YouTubeApiFp(this.configuration).disconnect(requestParameters.disconnectRequest, options).then((request) => request(this.axios, this.basePath));
+    public disconnect(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).disconnect(options).then((request) => request(this.axios, this.basePath));
     }
 
     /**
-     * Returns the Google OAuth consent URL for linking YouTube.
+     * Whether the signed-in User has YouTube Access (ADR 0129). Reachable without the access scope, so the web can hide YouTube from Users without it.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getAccess(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getAccess(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the one-time YouTube acknowledgement state for the signed-in User (ADR 0129). `acknowledgedAt` is null until the User accepts it.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public getAcknowledgement(options?: RawAxiosRequestConfig) {
+        return YouTubeApiFp(this.configuration).getAcknowledgement(options).then((request) => request(this.axios, this.basePath));
+    }
+
+    /**
+     * Returns the Google OAuth consent URL for linking YouTube. Refused with 409 until the User has stored the one-time acknowledgement (ADR 0129).
      * @param {*} [options] Override http request option.
      * @throws {RequiredError}
      */

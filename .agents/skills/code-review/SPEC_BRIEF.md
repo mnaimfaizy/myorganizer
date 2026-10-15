@@ -33,6 +33,30 @@ recorded solely in a linked ADR does not, because the spec text is the only thin
 spec. PR #852 re-raised a precondition waived in ADR 0003 and not in the issue as Blocking, in seven
 wordings across eleven runs.
 
+## Trace a requirement through the code that decides it
+
+Comparing the diff with the spec's sentences finds a requirement that is missing. It does not find
+one that is present and wrong. When the diff changes code that runs, trace each behavioural
+requirement through it instead. Code that runs means anything under `.github/workflows/`,
+`.github/actions/` or `tools/`, and any `*.sh` or `*.mjs` file. A review that only compared
+sentences has approved such a change with logic defects in it (issue #1140).
+
+For each requirement the spec states as behaviour, do all four steps:
+
+1. **Open the whole changed file at head**, not only its hunks. The defect is often in how a changed
+   line meets an unchanged one. The published report lists the changed files each axis opened,
+   read from your transcript.
+2. **Name the lines that decide the requirement.** If no line decides it, the requirement is missing.
+3. **Walk every way in.** Take each trigger that reaches those lines (a schedule, a manual dispatch,
+   a push) and each case the spec tells apart. Follow each one through to what it does.
+4. **Evaluate each line no test exercises with one concrete input.** Write down the values, and for
+   a command, what each argument means in its position, then say what the line does with them. A
+   line that reads plausibly can still do the opposite of its requirement and pass every gate.
+
+When the outcome contradicts the requirement, raise `spec-requirement-implemented-wrong` with the
+quoted requirement as evidence, located at the deciding lines. A requirement you traced and found
+correct is not a finding.
+
 Set `axis: spec` on every finding.
 
 ## Your reply
@@ -93,9 +117,9 @@ A finding is:
 
 One axis per defect: when one defect is both a standards violation and a spec miss, it is reported on
 the Spec axis only. You cannot see the other axis's findings, so this is not your call to make:
-report everything you find under your own axis. The main agent drops the Standards copy of a
-doubled finding when it assembles the report. PR #819 raised one wrong citation anchor on both
-axes, so the author answered the same defect twice.
+report everything you find under your own axis. When it assembles the report, the main agent keeps
+the more severe copy of a doubled finding, and the Spec copy on a tie. PR #819 raised one wrong
+citation anchor on both axes, so the author answered the same defect twice (ADR 0131).
 
 Rules the validator enforces — a report that breaks one is rejected whole:
 - "ruleId" must be one of the ids in the rule catalogue, and it must be one the
@@ -104,6 +128,8 @@ Rules the validator enforces — a report that breaks one is rejected whole:
 - blocking needs executed or cited evidence, and either a location or a quoted spec line.
 - inferred caps at should-fix. Smell-baseline findings are inferred, and every
   `smell-*` rule caps at should-fix on its own.
+- a rule may also set a floor: a finding under a rule your catalogue marks "Never below
+  should-fix" is rejected at any lower severity (ADR 0131).
 - a Spec finding with executed or cited evidence whose `source` is an accepted ADR
   (`docs/adr/NNNN-….md`), anchored as the blocking rule above requires, is blocking:
   the diff leaves a decided requirement unmet, and

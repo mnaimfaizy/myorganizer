@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { YouTubePrivacySection } from './YouTubePrivacySection';
 
 import { PrivacyAccountDeletionSection } from './PrivacyAccountDeletionSection';
 import { PrivacyMobileAppSection } from './PrivacyMobileAppSection';
@@ -43,47 +43,7 @@ export function PrivacyPolicyContent({
 
       <PrivacyMobileAppSection headingLevel={Heading} linkTarget={linkTarget} />
 
-      <section className="mt-6">
-        <Heading className="text-base font-semibold">
-          YouTube Integration
-        </Heading>
-        <p className="mt-3 text-sm text-muted-foreground">
-          MyOrganiser can optionally connect to your YouTube account through
-          Google OAuth. This connection requests the{' '}
-          <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
-            youtube.readonly
-          </code>{' '}
-          scope, which gives MyOrganiser read-only access to your YouTube
-          subscriptions and videos — with no ability to write, delete, or modify
-          anything on YouTube.
-        </p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          <strong>What we store:</strong> We store only metadata for each video
-          from channels you enable — video ID, title, thumbnail, publish date,
-          and duration. We never store the video files themselves. Your YouTube
-          OAuth tokens are encrypted at rest on our servers.
-        </p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          <strong>Revocation:</strong> You can end this connection at any time
-          by disconnecting YouTube from the YouTube page in your dashboard, or
-          by revoking MyOrganiser&apos;s access directly from your Google
-          Account&apos;s third-party access settings. Once revoked, MyOrganiser
-          stops syncing your YouTube data.
-        </p>
-        <p className="mt-3 text-sm text-muted-foreground">
-          For detailed information about how long we keep your YouTube metadata
-          and how to request deletion, see our{' '}
-          <Link
-            href="/youtube/data-privacy"
-            target={linkTarget}
-            rel={linkTarget ? 'noopener noreferrer' : undefined}
-            className="font-medium underline hover:text-foreground"
-          >
-            YouTube Data Privacy page
-          </Link>
-          .
-        </p>
-      </section>
+      <YouTubePrivacySection headingLevel={Heading} linkTarget={linkTarget} />
 
       <section className="mt-6">
         <Heading className="text-base font-semibold">Account Data</Heading>

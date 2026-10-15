@@ -1,6 +1,9 @@
 'use client';
 
-import type { AdminUserIdentity } from '@myorganizer/app-api-client';
+import type {
+  AdminUserIdentity,
+  YouTubeDisconnectOutcome,
+} from '@myorganizer/app-api-client';
 import {
   Button,
   Dialog,
@@ -24,7 +27,9 @@ type LifecycleAction =
   | 'forceLogout'
   | 'resendVerification'
   | 'promote'
-  | 'demote';
+  | 'demote'
+  | 'grantYouTubeAccess'
+  | 'withdrawYouTubeAccess';
 
 interface UserLifecycleActionsProps {
   user: AdminUserIdentity;
@@ -121,7 +126,48 @@ const ACTION_DEFINITIONS: ActionDefinition[] = [
     variant: 'destructive',
     isVisible: (targetUser) => targetUser.role === 'platform_admin',
   },
+  {
+    id: 'grantYouTubeAccess',
+    label: 'Grant YouTube Access',
+    loadingLabel: 'Granting…',
+    confirmTitle: 'Grant YouTube Access?',
+    confirmDescription:
+      'This will let the user connect and use YouTube in MyOrganizer. A first grant uses one of the limited YouTube Access places.',
+    confirmLabel: 'Grant access',
+    variant: 'outline',
+    isVisible: (targetUser) => !targetUser.youtubeAccess,
+  },
+  {
+    id: 'withdrawYouTubeAccess',
+    label: 'Withdraw YouTube Access',
+    loadingLabel: 'Withdrawing…',
+    confirmTitle: 'Withdraw YouTube Access?',
+    confirmDescription:
+      "This will end the user's YouTube connection and revoke MyOrganizer's access at Google. Their YouTube data will be deleted: followed channels, cached uploads, watched marks and digest settings. Nothing is kept for a later reconnect.",
+    confirmLabel: 'Withdraw access',
+    destructive: true,
+    variant: 'destructive',
+    isVisible: (targetUser) => targetUser.youtubeAccess,
+  },
 ];
+
+const WITHDRAW_YOUTUBE_ACCESS_TOAST = {
+  completed: {
+    title: 'YouTube Access withdrawn',
+    description: 'Their YouTube data was deleted.',
+  },
+  pending: {
+    title: 'YouTube Access withdrawn',
+    description:
+      'A YouTube sync is running. Their YouTube data will be deleted when it finishes.',
+  },
+  not_connected: {
+    title: 'YouTube Access withdrawn',
+  },
+} as const satisfies Record<
+  YouTubeDisconnectOutcome,
+  { title: string; description?: string }
+>;
 
 function getApiErrorMessage(err: unknown): string {
   if (isAxiosError(err)) {
@@ -293,6 +339,19 @@ export function UserLifecycleActions({
             const response = await api.demoteUser({ userId });
             onUserUpdated(response.data);
             toast({ title: 'User demoted' });
+            break;
+          }
+          case 'grantYouTubeAccess': {
+            const response = await api.grantYouTubeAccess({ userId });
+            onUserUpdated(response.data);
+            toast({ title: 'YouTube Access granted' });
+            break;
+          }
+          case 'withdrawYouTubeAccess': {
+            const response = await api.withdrawYouTubeAccess({ userId });
+            const { youtubeDisconnect, ...identity } = response.data;
+            onUserUpdated(identity);
+            toast(WITHDRAW_YOUTUBE_ACCESS_TOAST[youtubeDisconnect]);
             break;
           }
         }

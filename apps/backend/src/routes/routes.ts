@@ -14,6 +14,8 @@ import { UserDeletionController } from './../controllers/UserDeletionController'
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AuthController } from './../controllers/AuthController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+import { AdminYouTubeAccessController } from './../controllers/AdminYouTubeAccessController';
+// WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AdminUsersController } from './../controllers/AdminUsersController';
 // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
 import { AdminAuditLogController } from './../controllers/AdminAuditLogController';
@@ -38,6 +40,19 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "YouTubeAcknowledgementResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "acknowledgedAt": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}],"required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "YouTubeErrorResponse": {
+        "dataType": "refAlias",
+        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}},"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AuthUrlResponse": {
         "dataType": "refObject",
         "properties": {
@@ -46,9 +61,13 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "YouTubeErrorResponse": {
-        "dataType": "refAlias",
-        "type": {"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}},"validators":{}},
+    "AcknowledgementRequiredResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "message": {"dataType":"string","required":true},
+            "code": {"dataType":"enum","enums":["acknowledgement_required"],"required":true},
+        },
+        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "StatusResponse": {
@@ -63,14 +82,6 @@ const models: TsoaRoute.Models = {
     "DisconnectResponse": {
         "dataType": "refAlias",
         "type": {"dataType":"union","subSchemas":[{"dataType":"nestedObjectLiteral","nestedProperties":{"googlePermissionsUrl":{"dataType":"string"},"revokeFailed":{"dataType":"boolean"},"message":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[true],"required":true}}},{"dataType":"nestedObjectLiteral","nestedProperties":{"code":{"dataType":"enum","enums":["sync_run_live"]},"message":{"dataType":"string","required":true},"ok":{"dataType":"enum","enums":[false],"required":true}}}],"validators":{}},
-    },
-    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
-    "DisconnectRequest": {
-        "dataType": "refObject",
-        "properties": {
-            "deleteWatchedMarks": {"dataType":"boolean"},
-        },
-        "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "SubscriptionResponse": {
@@ -222,6 +233,14 @@ const models: TsoaRoute.Models = {
             "enabled": {"dataType":"boolean"},
             "preferredWeekday": {"dataType":"double"},
             "timeZone": {"dataType":"union","subSchemas":[{"dataType":"string"},{"dataType":"enum","enums":[null]}]},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "YouTubeAccessResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "granted": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
@@ -549,6 +568,15 @@ const models: TsoaRoute.Models = {
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "YouTubeAccessUsageResponse": {
+        "dataType": "refObject",
+        "properties": {
+            "everGranted": {"dataType":"double","required":true},
+            "ceiling": {"dataType":"double","required":true},
+        },
+        "additionalProperties": false,
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AdminUserIdentity": {
         "dataType": "refObject",
         "properties": {
@@ -561,13 +589,24 @@ const models: TsoaRoute.Models = {
             "role": {"ref":"UserRole","required":true},
             "disabled": {"dataType":"boolean","required":true},
             "emailVerified": {"dataType":"boolean","required":true},
+            "youtubeAccess": {"dataType":"boolean","required":true},
         },
         "additionalProperties": false,
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "YouTubeDisconnectOutcome": {
+        "dataType": "refAlias",
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["completed"]},{"dataType":"enum","enums":["pending"]},{"dataType":"enum","enums":["not_connected"]}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+    "WithdrawYouTubeAccessResponse": {
+        "dataType": "refAlias",
+        "type": {"dataType":"intersection","subSchemas":[{"ref":"AdminUserIdentity"},{"dataType":"nestedObjectLiteral","nestedProperties":{"youtubeDisconnect":{"ref":"YouTubeDisconnectOutcome","required":true}}}],"validators":{}},
+    },
+    // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AdminAuditAction": {
         "dataType": "refAlias",
-        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["disable"]},{"dataType":"enum","enums":["enable"]},{"dataType":"enum","enums":["force_logout"]},{"dataType":"enum","enums":["resend_verification"]},{"dataType":"enum","enums":["promote"]},{"dataType":"enum","enums":["demote"]}],"validators":{}},
+        "type": {"dataType":"union","subSchemas":[{"dataType":"enum","enums":["disable"]},{"dataType":"enum","enums":["enable"]},{"dataType":"enum","enums":["force_logout"]},{"dataType":"enum","enums":["resend_verification"]},{"dataType":"enum","enums":["promote"]},{"dataType":"enum","enums":["demote"]},{"dataType":"enum","enums":["youtube_access_grant"]},{"dataType":"enum","enums":["youtube_access_withdraw"]}],"validators":{}},
     },
     // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
     "AdminAuditLogEntry": {
@@ -599,11 +638,73 @@ export function RegisterRoutes(app: Router) {
 
 
     
+        const argsYouTubeController_getAcknowledgement: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/youtube/acknowledgement',
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getAcknowledgement)),
+
+            async function YouTubeController_getAcknowledgement(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_getAcknowledgement, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'getAcknowledgement',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_acceptAcknowledgement: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.post('/youtube/acknowledgement',
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.acceptAcknowledgement)),
+
+            async function YouTubeController_acceptAcknowledgement(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_acceptAcknowledgement, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'acceptAcknowledgement',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsYouTubeController_getAuthUrl: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.get('/youtube/auth-url',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getAuthUrl)),
 
@@ -635,7 +736,7 @@ export function RegisterRoutes(app: Router) {
                 body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"code":{"dataType":"string","required":true}}},
         };
         app.post('/youtube/callback',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.handleCallback)),
 
@@ -666,7 +767,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.get('/youtube/status',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getConnectionStatus)),
 
@@ -695,10 +796,9 @@ export function RegisterRoutes(app: Router) {
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsYouTubeController_disconnect: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
-                body: {"in":"body","name":"body","ref":"DisconnectRequest"},
         };
         app.delete('/youtube/disconnect',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.disconnect)),
 
@@ -729,7 +829,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.get('/youtube/subscriptions',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getSubscriptions)),
 
@@ -760,7 +860,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.put('/youtube/subscriptions/sync',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.syncSubscriptions)),
 
@@ -791,7 +891,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.put('/youtube/uploads/sync',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.syncUploads)),
 
@@ -822,7 +922,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.get('/youtube/sync-status',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getSyncStatus)),
 
@@ -855,7 +955,7 @@ export function RegisterRoutes(app: Router) {
                 body: {"in":"body","name":"body","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"enabled":{"dataType":"boolean","required":true}}},
         };
         app.patch('/youtube/subscriptions/:subscriptionId',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.toggleSubscription)),
 
@@ -892,7 +992,7 @@ export function RegisterRoutes(app: Router) {
                 kind: {"in":"query","name":"kind","dataType":"union","subSchemas":[{"dataType":"enum","enums":["short"]},{"dataType":"enum","enums":["long"]},{"dataType":"enum","enums":["all"]}]},
         };
         app.get('/youtube/videos',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getVideos)),
 
@@ -925,7 +1025,7 @@ export function RegisterRoutes(app: Router) {
                 body: {"in":"body","name":"body","required":true,"ref":"WatchedBody"},
         };
         app.patch('/youtube/videos/:videoId/watched',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.setVideoWatched)),
 
@@ -956,7 +1056,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.get('/youtube/videos/carousel',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getVideosCarousel)),
 
@@ -987,7 +1087,7 @@ export function RegisterRoutes(app: Router) {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
         };
         app.get('/youtube/notification-settings',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getNotificationSettings)),
 
@@ -1019,7 +1119,7 @@ export function RegisterRoutes(app: Router) {
                 body: {"in":"body","name":"body","required":true,"ref":"NotificationSettingsBody"},
         };
         app.patch('/youtube/notification-settings',
-            authenticateMiddleware([{"jwt":[]}]),
+            authenticateMiddleware([{"jwt":["youtube_access"]}]),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
             ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.updateNotificationSettings)),
 
@@ -1035,6 +1135,37 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'updateNotificationSettings',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsYouTubeController_getAccess: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/youtube/access',
+            authenticateMiddleware([{"jwt":[]}]),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController)),
+            ...(fetchMiddlewares<RequestHandler>(YouTubeController.prototype.getAccess)),
+
+            async function YouTubeController_getAccess(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsYouTubeController_getAccess, request, response });
+
+                const controller = new YouTubeController();
+
+              await templateService.apiHandler({
+                methodName: 'getAccess',
                 controller,
                 response,
                 next,
@@ -1808,6 +1939,37 @@ export function RegisterRoutes(app: Router) {
             }
         });
         // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAdminYouTubeAccessController_getYouTubeAccessUsage: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+        };
+        app.get('/admin/youtube-access',
+            authenticateMiddleware([{"jwt":["platform_admin"]}]),
+            ...(fetchMiddlewares<RequestHandler>(AdminYouTubeAccessController)),
+            ...(fetchMiddlewares<RequestHandler>(AdminYouTubeAccessController.prototype.getYouTubeAccessUsage)),
+
+            async function AdminYouTubeAccessController_getYouTubeAccessUsage(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAdminYouTubeAccessController_getYouTubeAccessUsage, request, response });
+
+                const controller = new AdminYouTubeAccessController();
+
+              await templateService.apiHandler({
+                methodName: 'getYouTubeAccessUsage',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
         const argsAdminUsersController_listUsers: Record<string, TsoaRoute.ParameterSchema> = {
                 req: {"in":"request","name":"req","required":true,"dataType":"object"},
                 q: {"in":"query","name":"q","dataType":"string"},
@@ -2063,6 +2225,73 @@ export function RegisterRoutes(app: Router) {
 
               await templateService.apiHandler({
                 methodName: 'demoteUser',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAdminUsersController_grantYouTubeAccess: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
+                notFound: {"in":"res","name":"404","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
+                conflict: {"in":"res","name":"409","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
+        };
+        app.post('/admin/users/:userId/youtube-access/grant',
+            authenticateMiddleware([{"jwt":["platform_admin"]}]),
+            ...(fetchMiddlewares<RequestHandler>(AdminUsersController)),
+            ...(fetchMiddlewares<RequestHandler>(AdminUsersController.prototype.grantYouTubeAccess)),
+
+            async function AdminUsersController_grantYouTubeAccess(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAdminUsersController_grantYouTubeAccess, request, response });
+
+                const controller = new AdminUsersController();
+
+              await templateService.apiHandler({
+                methodName: 'grantYouTubeAccess',
+                controller,
+                response,
+                next,
+                validatedArgs,
+                successStatus: undefined,
+              });
+            } catch (err) {
+                return next(err);
+            }
+        });
+        // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+        const argsAdminUsersController_withdrawYouTubeAccess: Record<string, TsoaRoute.ParameterSchema> = {
+                req: {"in":"request","name":"req","required":true,"dataType":"object"},
+                userId: {"in":"path","name":"userId","required":true,"dataType":"string"},
+                notFound: {"in":"res","name":"404","required":true,"dataType":"nestedObjectLiteral","nestedProperties":{"message":{"dataType":"string","required":true}}},
+        };
+        app.post('/admin/users/:userId/youtube-access/withdraw',
+            authenticateMiddleware([{"jwt":["platform_admin"]}]),
+            ...(fetchMiddlewares<RequestHandler>(AdminUsersController)),
+            ...(fetchMiddlewares<RequestHandler>(AdminUsersController.prototype.withdrawYouTubeAccess)),
+
+            async function AdminUsersController_withdrawYouTubeAccess(request: ExRequest, response: ExResponse, next: any) {
+
+            // WARNING: This file was auto-generated with tsoa. Please do not modify it. Re-run tsoa to re-generate this file: https://github.com/lukeautry/tsoa
+
+            let validatedArgs: any[] = [];
+            try {
+                validatedArgs = templateService.getValidatedArgs({ args: argsAdminUsersController_withdrawYouTubeAccess, request, response });
+
+                const controller = new AdminUsersController();
+
+              await templateService.apiHandler({
+                methodName: 'withdrawYouTubeAccess',
                 controller,
                 response,
                 next,

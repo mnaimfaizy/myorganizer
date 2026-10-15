@@ -7,6 +7,7 @@ import {
   LastPlatformAdminError,
   UserNotFoundError,
   VerificationCooldownError,
+  YouTubeAccessCeilingReachedError,
 } from '../errors/AdminLifecycleErrors';
 
 jest.setTimeout(30_000);
@@ -90,6 +91,15 @@ jest.mock('../services/UserService', () => ({
     promoteUser: jest.fn(),
     demoteUser: jest.fn(),
     listAdminAuditLogs: jest.fn(),
+    grantYouTubeAccess: jest.fn(),
+    getYouTubeAccessUsage: jest.fn(),
+  },
+}));
+
+jest.mock('../services/YouTubeAccessService', () => ({
+  __esModule: true,
+  default: {
+    withdrawYouTubeAccess: jest.fn(),
   },
 }));
 
@@ -186,6 +196,7 @@ const expectedIdentityDto = {
   role: 'user',
   disabled: false,
   emailVerified: true,
+  youtubeAccess: false,
 };
 
 const auditLogRow = {
@@ -433,6 +444,158 @@ describe('Admin lifecycle mutations and audit logs (HTTP integration)', () => {
           createdAt: '2024-06-01T12:00:00.000Z',
         },
       ]);
+    });
+  });
+
+  describe('YouTube Access routes', () => {
+    const accessRoutes = [
+      {
+        name: 'grant',
+        request: () =>
+          request(app).post('/admin/users/u1/youtube-access/grant'),
+        service: 'grantYouTubeAccess',
+      },
+      {
+        name: 'withdraw',
+        request: () =>
+          request(app).post('/admin/users/u1/youtube-access/withdraw'),
+        service: 'withdrawYouTubeAccess',
+      },
+      {
+        name: 'usage read',
+        request: () => request(app).get('/admin/youtube-access'),
+        service: 'getYouTubeAccessUsage',
+      },
+    ] as const;
+
+    const serviceFor = (service: string) =>
+      service === 'withdrawYouTubeAccess'
+        ? require('../services/YouTubeAccessService').default
+        : require('../services/UserService').default;
+
+    test.each(accessRoutes)(
+      '$name returns 401 when unauthenticated',
+      async ({ request: send, service }) => {
+        const res = await send();
+
+        expect(res.status).toBe(401);
+        expect(res.body).toEqual({ message: 'Unauthorized' });
+        expect(serviceFor(service)[service]).not.toHaveBeenCalled();
+      },
+    );
+
+    test.each(accessRoutes)(
+      '$name returns 403 for authenticated non-platform_admin',
+      async ({ request: send, service }) => {
+        const res = await send().set('Authorization', 'Bearer user');
+
+        expect(res.status).toBe(403);
+        expect(res.body).toEqual({ message: 'Platform Admin role required' });
+        expect(serviceFor(service)[service]).not.toHaveBeenCalled();
+      },
+    );
+
+    test('POST grant returns 200 with the identity carrying youtubeAccess', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.grantYouTubeAccess.mockResolvedValueOnce({
+        ...identityRow,
+        youtube_access: true,
+      });
+
+      const res = await request(app)
+        .post('/admin/users/u1/youtube-access/grant')
+        .set('Authorization', 'Bearer admin');
+
+      expect(res.status).toBe(200);
+      expect(userService.grantYouTubeAccess).toHaveBeenCalledWith(
+        'admin-1',
+        'u1',
+      );
+      expect(res.body).toEqual({ ...expectedIdentityDto, youtubeAccess: true });
+    });
+
+    test('POST grant returns 404 when user not found', async () => {
+      const userService = require('../services/UserService').default;
+
+      userService.grantYouTubeAccess.mockRejectedValueOnce(
+        new UserNotFoundError(),
+      );
+
+      const res = await request(app)
+        .post('/admin/users/u1/youtube-access/grant')
+        .set('Authorization', 'Bearer admin');
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({ message: 'User not found' });
+    });
+
+    test('POST grant passes the 409 ceiling message through', async () => {
+      const userService = require('../services/UserService').default;
+      const ceilingError = new YouTubeAccessCeilingReachedError(25, 25);
+
+      userService.grantYouTubeAccess.mockRejectedValueOnce(ceilingError);
+
+      const res = await request(app)
+        .post('/admin/users/u1/youtube-access/grant')
+        .set('Authorization', 'Bearer admin');
+
+      expect(res.status).toBe(409);
+      expect(res.body).toEqual({ message: ceilingError.message });
+    });
+
+    test('POST withdraw returns 404 when user not found', async () => {
+      const access = require('../services/YouTubeAccessService').default;
+
+      access.withdrawYouTubeAccess.mockRejectedValueOnce(
+        new UserNotFoundError(),
+      );
+
+      const res = await request(app)
+        .post('/admin/users/u1/youtube-access/withdraw')
+        .set('Authorization', 'Bearer admin');
+
+      expect(res.status).toBe(404);
+      expect(res.body).toEqual({ message: 'User not found' });
+    });
+
+    test.each(['completed', 'pending', 'not_connected'] as const)(
+      'POST withdraw returns identity with youtubeDisconnect "%s"',
+      async (youtubeDisconnect) => {
+        const access = require('../services/YouTubeAccessService').default;
+
+        access.withdrawYouTubeAccess.mockResolvedValueOnce({
+          user: identityRow,
+          youtubeDisconnect,
+        });
+
+        const res = await request(app)
+          .post('/admin/users/u1/youtube-access/withdraw')
+          .set('Authorization', 'Bearer admin');
+
+        expect(res.status).toBe(200);
+        expect(access.withdrawYouTubeAccess).toHaveBeenCalledWith(
+          'admin-1',
+          'u1',
+        );
+        expect(res.body).toEqual({ ...expectedIdentityDto, youtubeDisconnect });
+      },
+    );
+
+    test('GET /admin/youtube-access returns the ever-granted count and ceiling', async () => {
+      const users = require('../services/UserService').default;
+
+      users.getYouTubeAccessUsage.mockResolvedValueOnce({
+        everGranted: 3,
+        ceiling: 25,
+      });
+
+      const res = await request(app)
+        .get('/admin/youtube-access')
+        .set('Authorization', 'Bearer admin');
+
+      expect(res.status).toBe(200);
+      expect(res.body).toEqual({ everGranted: 3, ceiling: 25 });
     });
   });
 });

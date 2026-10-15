@@ -1,19 +1,6 @@
-import {
-  Controller,
-  Get,
-  Query,
-  Request,
-  Response,
-  Route,
-  Security,
-  Tags,
-} from 'tsoa';
+import { Get, Query, Request, Response, Route, Security, Tags } from 'tsoa';
 import { Request as ExRequest } from 'express';
-import {
-  ForbiddenError,
-  UnauthorizedError,
-  requirePlatformAdmin,
-} from '../guards/AuthGuard';
+import { PlatformAdminControllerBase } from './PlatformAdminControllerBase';
 import userService from '../services/UserService';
 import { AdminAuditLogEntry, VersionFloorRefusal } from '../types';
 
@@ -21,7 +8,7 @@ import { AdminAuditLogEntry, VersionFloorRefusal } from '../types';
 @Route('/admin/audit-logs')
 @Security('jwt', ['platform_admin'])
 @Response<VersionFloorRefusal>(426, 'Below the Version Floor')
-export class AdminAuditLogController extends Controller {
+export class AdminAuditLogController extends PlatformAdminControllerBase {
   /**
    * List recent Admin Audit Log entries (newest first). Platform Admin only.
    */
@@ -39,21 +26,5 @@ export class AdminAuditLogController extends Controller {
       action: row.action,
       createdAt: row.created_at,
     }));
-  }
-
-  private assertPlatformAdmin(req: ExRequest): void {
-    try {
-      requirePlatformAdmin(req);
-    } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        this.setStatus(401);
-        throw err;
-      }
-      if (err instanceof ForbiddenError) {
-        this.setStatus(403);
-        throw err;
-      }
-      throw err;
-    }
   }
 }

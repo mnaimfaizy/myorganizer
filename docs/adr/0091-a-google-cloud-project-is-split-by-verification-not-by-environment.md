@@ -1,5 +1,7 @@
 # A Google Cloud project is split by verification, not by environment
 
+> **Partly superseded by [ADR 0129](./0129-youtube-is-a-personal-use-feature-granted-per-user.md).** Production YouTube no longer waits on verification: the production project stays unverified as a personal-use app and the feature is granted per User. The project split and the availability switch stand.
+
 ## Status
 
 accepted

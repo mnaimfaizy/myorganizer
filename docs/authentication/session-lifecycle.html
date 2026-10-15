@@ -12518,7 +12518,9 @@
               "force_logout",
               "resend_verification",
               "promote",
-              "demote"
+              "demote",
+              "youtube_access_grant",
+              "youtube_access_withdraw"
             ],
             "routerPrecedence": { "authRouterBeforeTsoaRoutes": false },
             "assertableFrom": {
@@ -12541,7 +12543,7 @@
         </script>
         <script type="application/json" id="citation-anchors">
 {
-  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page, in the markup and in the SCENES script data (ADR 0085; #982). Audited against the tree on 2026-10-02: each cited line carries the call or declaration its citation is attached to. That is all an anchor asserts; the prose around a citation is not checked by it. Not read by the gate, and checked by hand the same day: the three bare line refs in Scene 6's code sample (:119, :100, :61-64), which name no file inside their own string. One weak anchor, named so a green check is not mistaken for more: AuthController.ts:271-274 starts on a bare 'return {' that says nothing alone, and is carried by its end line, 'user: filteredUser,'.",
+  "note": "Expected-content anchors for every file:line citation the design hygiene gate reads on this page, in the markup and in the SCENES script data (ADR 0085; #982). Audited against the tree on 2026-10-02: each cited line carries the call or declaration its citation is attached to. That is all an anchor asserts; the prose around a citation is not checked by it. Not read by the gate, and checked by hand the same day: the three bare line refs in Scene 6's code sample (:119, :100, :61-64), which name no file inside their own string. One weak anchor, named so a green check is not mistaken for more: AuthController.ts:276-279 starts on a bare 'return {' that says nothing alone, and is carried by its end line, 'user: filteredUser,'.",
   "anchors": {
     "ApiTokens.ts:16": {
       "file": "apps/backend/src/helpers/ApiTokens.ts",
@@ -12568,137 +12570,137 @@
       "start": "      expect(mainSource).not.toMatch(/use\\(['\"]\\/auth['\"]/);",
       "end": "      expect(mainSource).not.toMatch(/from ['\"]\\.\\/routes\\/auth['\"]/);"
     },
-    "AuthController.ts:106-109": {
+    "AuthController.ts:111-114": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  @Response(200, 'Success')",
       "end": "  @Response<ValidateErrorJSON>(422, 'Validation Failed')"
     },
-    "AuthController.ts:108": {
+    "AuthController.ts:113": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  @Response(403, 'Email not verified')",
       "end": "  @Response(403, 'Email not verified')"
     },
-    "AuthController.ts:110": {
+    "AuthController.ts:115": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  @Middlewares([validateLoginBody, authenticateLocal])",
       "end": "  @Middlewares([validateLoginBody, authenticateLocal])"
     },
-    "AuthController.ts:128-129": {
+    "AuthController.ts:133-134": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    if (!isEmailVerified(requestUser)) {",
       "end": "      return forbidden(403, {"
     },
-    "AuthController.ts:139": {
+    "AuthController.ts:144": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "      setRefreshCookieIfPresent(req, refreshToken);",
       "end": "      setRefreshCookieIfPresent(req, refreshToken);"
     },
-    "AuthController.ts:245": {
+    "AuthController.ts:250": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "      isTokenIssuedBeforeInvalidation(",
       "end": "      isTokenIssuedBeforeInvalidation("
     },
-    "AuthController.ts:255": {
+    "AuthController.ts:260": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    if (user.blacklisted_tokens?.includes(refresh_token)) {",
       "end": "    if (user.blacklisted_tokens?.includes(refresh_token)) {"
     },
-    "AuthController.ts:259": {
+    "AuthController.ts:264": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    const { token, refreshToken: newRefreshToken } = apiTokens.createTokens(",
       "end": "    const { token, refreshToken: newRefreshToken } = apiTokens.createTokens("
     },
-    "AuthController.ts:268": {
+    "AuthController.ts:273": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    setRefreshCookieIfPresent(req, newRefreshToken);",
       "end": "    setRefreshCookieIfPresent(req, newRefreshToken);"
     },
-    "AuthController.ts:271-274": {
+    "AuthController.ts:276-279": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    return {",
       "end": "      user: filteredUser,"
     },
-    "AuthController.ts:319": {
+    "AuthController.ts:324": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    const user = await userService.create(requestBody);",
       "end": "    const user = await userService.create(requestBody);"
     },
-    "AuthController.ts:320": {
+    "AuthController.ts:325": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    const token = await userService.sendVerificationMail(user);",
       "end": "    const token = await userService.sendVerificationMail(user);"
     },
-    "AuthController.ts:321-327": {
+    "AuthController.ts:326-332": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    if (token instanceof Error) {",
       "end": "      this.setStatus(500);"
     },
-    "AuthController.ts:323": {
+    "AuthController.ts:328": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "        await userService.deleteById(user.id);",
       "end": "        await userService.deleteById(user.id);"
     },
-    "AuthController.ts:334-335": {
+    "AuthController.ts:339-340": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    await userService.update(user.id, {",
       "end": "      email_verification_token: token,"
     },
-    "AuthController.ts:345": {
+    "AuthController.ts:350": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  @Patch('/verify/email')",
       "end": "  @Patch('/verify/email')"
     },
-    "AuthController.ts:359-361": {
+    "AuthController.ts:364-366": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    const updateUser = await userService.update(userId, {",
       "end": "      email_verification_token: null,"
     },
-    "AuthController.ts:450": {
+    "AuthController.ts:455": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "  async resetPassword(",
       "end": "  async resetPassword("
     },
-    "AuthController.ts:464-475": {
+    "AuthController.ts:469-480": {
       "file": "apps/backend/src/controllers/AuthController.ts",
       "start": "    if (existingResetToken) {",
       "end": "        this.setStatus(429);"
     },
-    "UserService.ts:169": {
+    "UserService.ts:187": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "          disabled: true,",
       "end": "          disabled: true,"
     },
-    "UserService.ts:170": {
+    "UserService.ts:188": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "          sessions_invalidated_at: new Date(),",
       "end": "          sessions_invalidated_at: new Date(),"
     },
-    "UserService.ts:212": {
+    "UserService.ts:230": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "        data: { sessions_invalidated_at: new Date() },",
       "end": "        data: { sessions_invalidated_at: new Date() },"
     },
-    "UserService.ts:378-396": {
+    "UserService.ts:591-609": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "  async resetPassword(",
       "end": "    return updatedUser;"
     },
-    "UserService.ts:409-418": {
+    "UserService.ts:622-631": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "    if (existingToken) {",
       "end": "        return new Error('Verification email already sent recently');"
     },
-    "UserService.ts:430": {
+    "UserService.ts:643": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "    const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;",
       "end": "    const verifyUrl = `${frontendBaseUrl}/verify/email?token=${token}`;"
     },
-    "UserService.ts:454-457": {
+    "UserService.ts:667-670": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "      await sendEmail(user.email, 'Verify your email', message);",
       "end": "      return new Error('Failed to send verification email');"
     },
-    "UserService.ts:499": {
+    "UserService.ts:712": {
       "file": "apps/backend/src/services/UserService.ts",
       "start": "      blacklisted_tokens: {",
       "end": "      blacklisted_tokens: {"
@@ -12783,7 +12785,7 @@
       "start": "  return Boolean(user?.email_verification_timestamp);",
       "end": "  return Boolean(user?.email_verification_timestamp);"
     },
-    "main.ts:159": {
+    "main.ts:164": {
       "file": "apps/backend/src/main.ts",
       "start": "RegisterRoutes(api);",
       "end": "RegisterRoutes(api);"
@@ -13058,7 +13060,7 @@
                         class="text-muted"
                       >
                         tsoa <code>AuthController</code> — <code>RegisterRoutes(api)</code> at
-                        <code>main.ts:159</code>. Serves <strong>every</strong>
+                        <code>main.ts:164</code>. Serves <strong>every</strong>
                         <code>/auth/*</code> path.
                       </div>
                     </div>
@@ -13099,7 +13101,7 @@
                         class="text-muted"
                         style="font-family: var(--font-body); font-size: 11px"
                         >all four declared on the handler —
-                        AuthController.ts:106-109</span
+                        AuthController.ts:111-114</span
                       >
                     </div>
                   </div>
@@ -13324,9 +13326,9 @@
                             font-size: 12px;
                           "
                           ><span class="text-muted"
-                            >check AuthController.ts:128-129</span
+                            >check AuthController.ts:133-134</span
                           ><br /><span class="text-muted"
-                            >declared AuthController.ts:108</span
+                            >declared AuthController.ts:113</span
                           ></sc-raw-td
                         >
                       </sc-raw-tr>
@@ -13344,7 +13346,7 @@
                             font-size: 12px;
                           "
                           ><span class="text-muted"
-                            >AuthController.ts:139</span
+                            >AuthController.ts:144</span
                           ></sc-raw-td
                         >
                       </sc-raw-tr>
@@ -13366,11 +13368,11 @@
                             font-size: 12px;
                           "
                           ><span class="text-muted"
-                            >minted AuthController.ts:259</span
+                            >minted AuthController.ts:264</span
                           ><br /><span class="text-muted"
-                            >cookie AuthController.ts:268</span
+                            >cookie AuthController.ts:273</span
                           ><br /><span class="text-muted"
-                            >body AuthController.ts:271-274</span
+                            >body AuthController.ts:276-279</span
                           ></sc-raw-td
                         >
                       </sc-raw-tr>
@@ -13859,14 +13861,14 @@
                       >logout<br /><span
                         class="text-muted"
                         style="font-size: 11px"
-                        >UserService.ts:499</span
+                        >UserService.ts:712</span
                       ></sc-raw-td
                     >
                     <sc-raw-td style="font-size: 13px"
                       ><strong>refresh only</strong><br /><span
                         class="text-muted"
                         style="font-size: 11px"
-                        >AuthController.ts:255</span
+                        >AuthController.ts:260</span
                       >
                       ></sc-raw-td
                     >
@@ -13887,7 +13889,7 @@
                       >admin disable / force-logout<br /><span
                         class="text-muted"
                         style="font-size: 11px"
-                        >UserService.ts:170, :212</span
+                        >UserService.ts:188, :230</span
                       ></sc-raw-td
                     >
                     <sc-raw-td style="font-size: 13px"
@@ -13896,7 +13898,7 @@
                         >passport.ts:89</span
                       ><br />and refresh
                       <span class="text-muted" style="font-size: 11px"
-                        >AuthController.ts:245</span
+                        >AuthController.ts:250</span
                       >
                       ></sc-raw-td
                     >
@@ -13917,7 +13919,7 @@
                       >admin disable<br /><span
                         class="text-muted"
                         style="font-size: 11px"
-                        >UserService.ts:169</span
+                        >UserService.ts:187</span
                       ></sc-raw-td
                     >
                     <sc-raw-td style="font-size: 13px"
@@ -14104,8 +14106,8 @@ tokenIat * 1000 &lt; sessionsInvalidatedAt.getTime()   // sessionInvalidation.ts
                   <code>sendVerificationMail</code> decodes the previously
                   stored token; if it <em>still verifies</em>, it returns an
                   error instead of sending
-                  (<code>UserService.ts:409-418</code>). The reset path does the
-                  same (<code>AuthController.ts:464-475</code>).
+                  (<code>UserService.ts:622-631</code>). The reset path does the
+                  same (<code>AuthController.ts:469-480</code>).
                 </p>
                 <div
                   style="
@@ -14147,7 +14149,7 @@ tokenIat * 1000 &lt; sessionsInvalidatedAt.getTime()   // sessionInvalidation.ts
                 >
 where: { id, reset_password_token: token }
 data:  { password: hash, reset_password_token: null }
-// UserService.ts:378-396</pre
+// UserService.ts:591-609</pre
                 >
               </div>
 
@@ -14198,7 +14200,7 @@ data:  { password: hash, reset_password_token: null }
                       class="text-muted"
                       style="font-size: 10.5px; margin-top: 6px"
                     >
-                      AuthController.ts:139 · cookieHelper.ts:28-29
+                      AuthController.ts:144 · cookieHelper.ts:28-29
                     </div>
                   </div>
                   <div
@@ -14513,7 +14515,7 @@ data:  { password: hash, reset_password_token: null }
                   rate-limit defaults were each searched repo-wide. Only
                   <code>600_000</code> returned conflicting definitions.
                   <code>AuthErrorCode</code> (7) and
-                  <code>AdminAuditAction</code> (6) match
+                  <code>AdminAuditAction</code> (8) match
                   <code>auth-session-types.ts:5-12</code> and
                   <code>user.prisma</code>, and are cited complete.
                 </p>
@@ -14581,17 +14583,17 @@ data:  { password: hash, reset_password_token: null }
           id: 'register', kicker: 'Scene 1 · POST /auth/register', title: 'Registration is a compensating transaction',
           settles: 'What happens when the mail server is down?', state: 'pending_verification',
           body: 'Order matters and it is not the obvious one: the user row is created first, the mail is sent second, and the verify token is persisted only third — after the send has succeeded.',
-          code: 'create user            // AuthController.ts:319\nsend verification mail //   :320\npersist token          // AuthController.ts:334-335, after the send returned',
-          refs: ['AuthController.ts:319', 'AuthController.ts:320', 'AuthController.ts:334-335', 'bcrypt saltRounds = 10'],
+          code: 'create user            // AuthController.ts:324\nsend verification mail //   :325\npersist token          // AuthController.ts:339-340, after the send returned',
+          refs: ['AuthController.ts:324', 'AuthController.ts:325', 'AuthController.ts:339-340', 'bcrypt saltRounds = 10'],
           flow: [{ t: 'create user' }, { t: 'send mail' }, { t: 'persist token' }],
           tokens: [tok('verify', 'verify #1', 8, 26, 'minted', 'signed, in the email — not yet in the database')]
         },
         {
           id: 'rollback', kicker: 'Scene 2 · the exception', title: '…and if the send fails, the row is deleted',
           settles: 'The one place this system undoes itself.', state: 'no user row',
-          body: 'On a send failure the just-created user is deleted (AuthController.ts:323) and the token is never persisted. Nothing is thrown: the mail failure comes back as a returned Error (UserService.ts:454-457), and the handler answers 500. The delete is best-effort — if it fails, the failure is swallowed and the response is still the 500. This is the only backwards arrow on the page — everywhere else, time runs one way.',
-          code: 'if (token instanceof Error) {            // AuthController.ts:321-327\n  try {\n    await userService.deleteById(user.id)  // :323\n  } catch { /* best-effort rollback */ }\n  this.setStatus(500)\n  return { message: \'Account was not created…\' }\n}',
-          refs: ['AuthController.ts:321-327', 'AuthController.ts:323', 'UserService.ts:454-457'],
+          body: 'On a send failure the just-created user is deleted (AuthController.ts:328) and the token is never persisted. Nothing is thrown: the mail failure comes back as a returned Error (UserService.ts:667-670), and the handler answers 500. The delete is best-effort — if it fails, the failure is swallowed and the response is still the 500. This is the only backwards arrow on the page — everywhere else, time runs one way.',
+          code: 'if (token instanceof Error) {            // AuthController.ts:326-332\n  try {\n    await userService.deleteById(user.id)  // :328\n  } catch { /* best-effort rollback */ }\n  this.setStatus(500)\n  return { message: \'Account was not created…\' }\n}',
+          refs: ['AuthController.ts:326-332', 'AuthController.ts:328', 'UserService.ts:667-670'],
           flow: [{ t: 'create user' }, { t: 'send mail ✕' }, { t: 'delete user', reverse: true }],
           tokens: [tok('verify', 'verify #1', 8, 26, 'void', 'never stored — the email is worthless, the account is gone')]
         },
@@ -14599,8 +14601,8 @@ data:  { password: hash, reset_password_token: null }
           id: 'halt-verify', kicker: 'Scene 3 · the first halt', title: 'The account waits in pending_verification',
           settles: 'Why a fresh account gets 403, not 401.', state: 'pending_verification',
           body: 'Nothing advances until a human clicks the link. Login returns 403 the whole time, and by then the credentials have already been accepted: authenticateLocal runs as middleware before the handler body and is what answers 401, so the handler\'s own isEmailVerified check refuses with a 403 it also declares. Resending is refused while the stored token still verifies, so the cooldown is exactly the 10m TTL.',
-          code: 'if (!isEmailVerified(requestUser)) return forbidden(403, …)  // AuthController.ts:128-129',
-          refs: ['AuthController.ts:128-129', 'AuthController.ts:108', 'AuthController.ts:110', 'UserService.ts:409-418'],
+          code: 'if (!isEmailVerified(requestUser)) return forbidden(403, …)  // AuthController.ts:133-134',
+          refs: ['AuthController.ts:133-134', 'AuthController.ts:113', 'AuthController.ts:115', 'UserService.ts:622-631'],
           flow: [{ t: 'POST /auth/login' }, { t: '403 email_not_verified', bad: true }],
           halt: { title: 'Halt — email verification', body: 'The stepper will not glide past this. An animation that runs straight through the gate teaches the opposite of the truth.', label: 'Click the link in the email' },
           tokens: [tok('verify', 'verify #1', 8, 26, 'live', 'still verifies → /verify/resend answers "already sent recently"')]
@@ -14608,8 +14610,8 @@ data:  { password: hash, reset_password_token: null }
         {
           id: 'verified', kicker: 'Scene 4 · PATCH /auth/verify/email', title: 'Verified — a timestamp, not a flag',
           settles: 'What verification writes.', state: 'verified',
-          body: 'The human clicks a link to a frontend page (UserService.ts:430), which sends PATCH /auth/verify/email with the token (VerifyEmailClient.tsx:36-37). The handler decodes the token with the verify secret and, in one update, stamps email_verification_timestamp and nulls email_verification_token (AuthController.ts:359-361). There is no email_verified column: verified means the timestamp is non-null (isEmailVerified.ts:4).',
-          refs: ['AuthController.ts:345', 'AuthController.ts:359-361', 'UserService.ts:430', 'VerifyEmailClient.tsx:36-37', 'isEmailVerified.ts:4'],
+          body: 'The human clicks a link to a frontend page (UserService.ts:643), which sends PATCH /auth/verify/email with the token (VerifyEmailClient.tsx:36-37). The handler decodes the token with the verify secret and, in one update, stamps email_verification_timestamp and nulls email_verification_token (AuthController.ts:364-366). There is no email_verified column: verified means the timestamp is non-null (isEmailVerified.ts:4).',
+          refs: ['AuthController.ts:350', 'AuthController.ts:364-366', 'UserService.ts:643', 'VerifyEmailClient.tsx:36-37', 'isEmailVerified.ts:4'],
           flow: [{ t: 'click link' }, { t: 'AuthController.verifyEmail', good: true }, { t: 'timestamp stamped' }],
           tokens: [tok('verify', 'verify #1', 8, 20, 'used', 'consumed — the token, not a column, was the gate')]
         },
@@ -14617,8 +14619,8 @@ data:  { password: hash, reset_password_token: null }
           id: 'login', kicker: 'Scene 5 · POST /auth/login', title: 'Two tokens out, two trust models',
           settles: 'Where the refresh token lands.', state: 'authenticated',
           body: 'Access token 10m, refresh token 7d, signed by different secrets. Web receives the refresh token as an httpOnly cookie; mobile receives it in the JSON body and puts it in the OS keychain. Same endpoint, forked by client_type.',
-          code: "setRefreshCookieIfPresent(req, refreshToken)  // AuthController.ts:139 · cookieHelper.ts:28-29",
-          refs: ['AuthController.ts:139', 'cookieHelper.ts:28-29'],
+          code: "setRefreshCookieIfPresent(req, refreshToken)  // AuthController.ts:144 · cookieHelper.ts:28-29",
+          refs: ['AuthController.ts:144', 'cookieHelper.ts:28-29'],
           flow: [{ t: 'credentials' }, { t: 'access 10m', good: true }, { t: 'refresh 7d', good: true }],
           tokens: [
             tok('access', 'access #1', 30, 42, 'live', 'iat recorded — this timestamp decides its fate in scene 10'),
@@ -14640,9 +14642,9 @@ data:  { password: hash, reset_password_token: null }
         {
           id: 'rotate', kicker: 'Scene 7 · POST /auth/refresh', title: 'Refresh rotates — the cookie carries the new token',
           settles: 'What comes back from a refresh.', state: 'authenticated',
-          body: 'The handler mints a new access token AND a new refresh token (AuthController.ts:259), then resets the cookie with the new one (AuthController.ts:268). The response body is token, expires_in and user (AuthController.ts:271-274): the rotated refresh token is not in it and travels by cookie only. The old refresh token is replaced, not revoked.',
-          code: 'const { token, refreshToken: newRefreshToken } = createTokens(…)  // AuthController.ts:259\nsetRefreshCookieIfPresent(req, newRefreshToken)                    // :268\nreturn { token, expires_in, user }                                // :271-274',
-          refs: ['AuthController.ts:259', 'AuthController.ts:268', 'AuthController.ts:271-274', 'cookieHelper.ts:29'],
+          body: 'The handler mints a new access token AND a new refresh token (AuthController.ts:264), then resets the cookie with the new one (AuthController.ts:273). The response body is token, expires_in and user (AuthController.ts:276-279): the rotated refresh token is not in it and travels by cookie only. The old refresh token is replaced, not revoked.',
+          code: 'const { token, refreshToken: newRefreshToken } = createTokens(…)  // AuthController.ts:264\nsetRefreshCookieIfPresent(req, newRefreshToken)                    // :273\nreturn { token, expires_in, user }                                // :276-279',
+          refs: ['AuthController.ts:264', 'AuthController.ts:273', 'AuthController.ts:276-279', 'cookieHelper.ts:29'],
           flow: [{ t: 'refresh #1' }, { t: 'access #2', good: true }, { t: 'refresh #2', good: true }],
           tokens: [
             tok('access', 'access #2', 44, 56, 'live', 'fresh iat'),
@@ -14654,8 +14656,8 @@ data:  { password: hash, reset_password_token: null }
           id: 'reset-request', kicker: 'Scene 8 · POST /auth/password/reset', title: 'A reset token appears — and nothing changes yet',
           settles: 'What a reset request does to the account.', state: 'authenticated · reset pending',
           body: 'Its own secret signs a 10m reset token, stored on the row. The password is untouched. Ask again inside those ten minutes and the still-valid token refuses the send, exactly as verification does.',
-          code: 'if (decode(user.reset_password_token) still valid) return 429  // AuthController.resetPassword, AuthController.ts:464-475',
-          refs: ['AuthController.ts:450', 'AuthController.ts:464-475', 'RESET_JWT_SECRET · ApiTokens.ts:16'],
+          code: 'if (decode(user.reset_password_token) still valid) return 429  // AuthController.resetPassword, AuthController.ts:469-480',
+          refs: ['AuthController.ts:455', 'AuthController.ts:469-480', 'RESET_JWT_SECRET · ApiTokens.ts:16'],
           flow: [{ t: 'reset requested' }, { t: 'token stored' }, { t: 'password unchanged', bad: true }],
           halt: { title: 'Halt — reset confirmation', body: 'The token exists; the password is unchanged until PATCH /auth/password/reset/confirm arrives. The stepper stops here too.', label: 'Send PATCH /auth/password/reset/confirm' },
           tokens: [
@@ -14681,13 +14683,13 @@ data:  { password: hash, reset_password_token: null }
           id: 'force-logout', kicker: 'Scene 10 · admin force-logout', title: 'Watch which tokens go dark — and which do not',
           settles: 'What "log everyone out" actually kills.', state: 'disabled · sessions_invalidated_at set',
           body: 'One timestamp lands on the row. Every access and refresh token issued before it dies at its next check. The verify and reset tokens in flight are signed by different secrets and are checked by neither mechanism — they survive. That is the counter-intuitive result this scene exists to deliver.',
-          code: 'tokenIat * 1000 < sessionsInvalidatedAt.getTime()\n// passport.ts:89 (access) · AuthController.ts:245 (refresh) · sessionInvalidation.ts:14',
-          refs: ['UserService.ts:169, :170, :212', 'passport.ts:89', 'AuthController.ts:245'],
+          code: 'tokenIat * 1000 < sessionsInvalidatedAt.getTime()\n// passport.ts:89 (access) · AuthController.ts:250 (refresh) · sessionInvalidation.ts:14',
+          refs: ['UserService.ts:187, :188, :230', 'passport.ts:89', 'AuthController.ts:250'],
           flow: [{ t: 'admin: force_logout' }, { t: 'sessions_invalidated_at = now' }, { t: '3 dark', bad: true }, { t: '2 survive', good: true }],
           tokens: [
             tok('access', 'access #2', 44, 56, 'dark', 'iat < timestamp → rejected at passport.ts:89'),
             tok('access', 'access #3', 52, 64, 'dark', 'newer, still older than the timestamp → also rejected'),
-            tok('refresh', 'refresh #2', 44, 96, 'dark', 'rejected at AuthController.ts:245 — the 7d window is irrelevant now'),
+            tok('refresh', 'refresh #2', 44, 96, 'dark', 'rejected at AuthController.ts:250 — the 7d window is irrelevant now'),
             tok('verify', 'verify #2', 60, 76, 'live', 'SURVIVES — VERIFY_JWT_SECRET, checked by neither mechanism'),
             tok('reset', 'reset #1', 58, 74, 'live', 'SURVIVES — RESET_JWT_SECRET, and the row still holds it')
           ]
@@ -14696,8 +14698,8 @@ data:  { password: hash, reset_password_token: null }
           id: 'logout', kicker: 'Scene 11 · POST /auth/logout', title: 'Blacklisting cuts the narrowest of the three',
           settles: 'Why logout on one device leaves the others alone.', state: 'guest (this client)',
           body: 'Logout appends one refresh token to blacklisted_tokens[], and that list is consulted at the refresh endpoint only. An access token already in a tab keeps working until its ten minutes are up — no gate reads the blacklist.',
-          code: 'blacklisted_tokens.push(refresh)  // UserService.ts:499\nif (blacklisted.includes(t)) 401   // AuthController.ts:255  ← refresh only',
-          refs: ['UserService.ts:499', 'AuthController.ts:255'],
+          code: 'blacklisted_tokens.push(refresh)  // UserService.ts:712\nif (blacklisted.includes(t)) 401   // AuthController.ts:260  ← refresh only',
+          refs: ['UserService.ts:712', 'AuthController.ts:260'],
           flow: [{ t: 'logout' }, { t: 'blacklist that refresh', good: true }, { t: 'access token unaffected', bad: true }],
           tokens: [
             tok('access', 'access #4', 66, 78, 'live', 'still accepted — nothing checks the blacklist here'),

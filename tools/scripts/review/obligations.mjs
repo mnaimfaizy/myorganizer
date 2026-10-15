@@ -364,11 +364,17 @@ export const parseAddedLines = (diffText) => {
   let file = null;
   let lineNo = 0;
   let context = '';
+  let previous = '';
   for (const raw of diffText.split('\n')) {
-    if (raw.startsWith('+++ b/')) {
-      file = raw.slice(6);
-      if (file === '/dev/null') file = null;
-      else if (!byFile.has(file)) byFile.set(file, []);
+    const afterOld = previous.startsWith('--- ');
+    previous = raw;
+    // A file header is `+++ ` straight after `--- `; anywhere else a line
+    // starting `+++ ` is added content. And `+++ /dev/null` above all: a deleted
+    // file's header starts with `+`, and read as content it was an added line
+    // of whichever file came before it.
+    if (afterOld && raw.startsWith('+++ ')) {
+      file = raw.startsWith('+++ b/') ? raw.slice(6) : null;
+      if (file && !byFile.has(file)) byFile.set(file, []);
       continue;
     }
     if (raw.startsWith('@@')) {
@@ -478,7 +484,14 @@ export const selectObligations = ({
       truncated: Math.max(0, sites.length - maxSites),
     });
   }
-  return { head, selected };
+  // Every file the diff added lines to, most lines first, so a run fact can be
+  // held to a changed-file list the reviewer did not write (issue #1140).
+  // A file that only lost lines has nothing at head to open, so it is left out.
+  const changedFiles = [...addedLines]
+    .filter(([, lines]) => lines.length > 0)
+    .map(([file, lines]) => ({ file, added: lines.length }))
+    .sort((a, b) => b.added - a.added || a.file.localeCompare(b.file));
+  return { head, selected, changedFiles };
 };
 
 /** One answer per site the worklist named. */

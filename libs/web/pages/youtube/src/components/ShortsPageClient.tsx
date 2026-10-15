@@ -41,6 +41,18 @@ import { ShortsPlayerPanel } from './ShortsPlayerPanel';
  */
 export function ShortsPageClient() {
   const { available } = useYouTubeAvailability();
+
+  // Availability gate — fail closed. The Shorts list, budget meter and
+  // keyboard listener live below it, so a User without YouTube Access makes no
+  // YouTube request and starts no budget clock.
+  if (available !== true) {
+    return <YouTubeUnavailableNotice />;
+  }
+
+  return <ShortsWatchExperience />;
+}
+
+function ShortsWatchExperience() {
   const { connected, status } = useYouTubeStatus();
   const {
     shorts,
@@ -204,11 +216,6 @@ export function ShortsPageClient() {
     handlePreviousShort,
     handleNextShort,
   ]);
-
-  // Availability gate — fail closed before connection or Shorts UI
-  if (available !== true) {
-    return <YouTubeUnavailableNotice />;
-  }
 
   // Connection gate
   if (status === 'loading') {

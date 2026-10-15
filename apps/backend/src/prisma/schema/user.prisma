@@ -10,31 +10,38 @@ enum AdminAuditAction {
   resend_verification
   promote
   demote
+  youtube_access_grant
+  youtube_access_withdraw
 }
 
 model User {
-  id                           String    @id @default(cuid())
-  name                         String?
-  first_name                   String
-  last_name                    String
-  phone                        String?
-  email                        String    @unique
-  password                     String
-  reset_password_token         String?
-  email_verification_token     String?
-  email_verification_timestamp DateTime?
-  blacklisted_tokens           String[]
-  role                         UserRole  @default(user)
-  disabled                     Boolean   @default(false)
+  id                              String    @id @default(cuid())
+  name                            String?
+  first_name                      String
+  last_name                       String
+  phone                           String?
+  email                           String    @unique
+  password                        String
+  reset_password_token            String?
+  email_verification_token        String?
+  email_verification_timestamp    DateTime?
+  blacklisted_tokens              String[]
+  role                            UserRole  @default(user)
+  disabled                        Boolean   @default(false)
   /// When set, refresh/access tokens with iat before this timestamp are rejected.
-  sessions_invalidated_at      DateTime?
+  sessions_invalidated_at         DateTime?
+  /// Whether a Platform Admin currently grants this User YouTube Access.
+  youtube_access                  Boolean   @default(false)
+  /// When YouTube Access was first ever granted. Set once on the first grant and never cleared; the lifetime ceiling counts Users where this is not null.
+  youtube_access_first_granted_at DateTime?
+  /// When the User accepted the one-time YouTube acknowledgement before a first connect (ADR 0129). Set once and never cleared: kept across YouTube Disconnects and across a withdrawal and re-grant of YouTube Access.
+  youtube_acknowledged_at         DateTime?
 
   encrypted_vault               EncryptedVault?
   vault_backup_records          VaultBackupRecord[]
   youtube_integration           YouTubeIntegration?
   youtube_subscriptions         YouTubeSubscription[]
   youtube_videos                YouTubeVideo[]
-  youtube_watched_ledger        YouTubeWatchedLedger[]
   youtube_notification_settings YouTubeNotificationSettings?
   youtube_digest_deliveries     YouTubeDigestDelivery[]
 

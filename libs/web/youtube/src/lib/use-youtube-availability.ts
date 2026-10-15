@@ -9,6 +9,11 @@ export interface YouTubeAvailabilityState {
   error: Error | null;
 }
 
+/**
+ * Whether YouTube exists for the signed-in User: the global switch is on AND
+ * the User holds YouTube Access (ADR 0129). Needs a session for the `true`
+ * path; fails closed (`available: false`) on any error.
+ */
 export function useYouTubeAvailability(): YouTubeAvailabilityState {
   const [state, setState] = useState<YouTubeAvailabilityState>({
     available: null,

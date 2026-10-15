@@ -29,11 +29,10 @@ export default function YouTubeDataPrivacyClient() {
               are kept for <strong>30 days</strong>, then permanently deleted.
             </li>
             <li className="text-sm text-muted-foreground">
-              <strong>Disconnecting</strong> your YouTube account removes
-              Followed Channels, Cached Uploads, notification and digest
-              settings, and OAuth tokens. Watched marks are kept for{' '}
-              <strong>30 days</strong> by default (matching disabled-channel
-              retention); you can optionally delete them when disconnecting.
+              <strong>Disconnecting</strong> your YouTube account immediately
+              deletes Followed Channels, Cached Uploads, Watched marks,
+              notification and digest settings, and OAuth tokens. Nothing is
+              kept for a later reconnect.
             </li>
             <li className="text-sm text-muted-foreground">
               Your <strong>Shorts Daily Budget</strong> is tracked locally in

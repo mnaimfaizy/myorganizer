@@ -19,6 +19,8 @@ export interface UserInterface {
   blacklisted_tokens?: Array<string>;
   role?: UserRole;
   disabled?: boolean;
+  /** Whether a Platform Admin currently grants YouTube Access (ADR 0129). */
+  youtube_access?: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -45,7 +47,20 @@ export interface AdminUserIdentity {
   role: UserRole;
   disabled: boolean;
   emailVerified: boolean;
+  /** Whether a Platform Admin currently grants this User YouTube Access (ADR 0129). */
+  youtubeAccess: boolean;
 }
+
+/** Outcome of the YouTube Disconnect that a withdrawal triggers (ADR 0129). */
+export type YouTubeDisconnectOutcome =
+  | 'completed'
+  | 'pending'
+  | 'not_connected';
+
+/** Identity after a YouTube Access withdrawal, with the disconnect outcome. */
+export type WithdrawYouTubeAccessResponse = AdminUserIdentity & {
+  youtubeDisconnect: YouTubeDisconnectOutcome;
+};
 
 export type AdminAuditAction =
   | 'disable'
@@ -53,7 +68,9 @@ export type AdminAuditAction =
   | 'force_logout'
   | 'resend_verification'
   | 'promote'
-  | 'demote';
+  | 'demote'
+  | 'youtube_access_grant'
+  | 'youtube_access_withdraw';
 
 /** Platform Admin Audit Log entry returned by list APIs. */
 export interface AdminAuditLogEntry {

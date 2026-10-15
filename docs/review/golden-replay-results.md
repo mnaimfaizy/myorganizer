@@ -78,6 +78,11 @@ reads.
 | `trust-measurement-docs-land-clean` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
 | `youtube-run-refresh-gated-on-polled-liveness` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
 | `e2e-export-download-read-through-download-path` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `staging-schedule-rollback-guard-and-unreachable-host` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `seeded-1140-ancestor-args-swapped` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `seeded-1140-hostname-in-public-log` | `frontier` | 0 | 0 of 0 | — | `frontier` | declared; under 10 scored runs, so nothing moves |
+| `seeded-1140-restart-while-install-owed` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
+| `seeded-1140-same-site-continue-on-error` | `guard` | 0 | 0 of 0 | — | `guard` | declared; under 10 scored runs, so nothing moves |
 <!-- prettier-ignore-end -->
 
 <!-- GENERATED:golden-standing:END -->
