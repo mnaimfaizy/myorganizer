@@ -1,5 +1,4 @@
 import {
-  Controller,
   Get,
   Path,
   Post,
@@ -21,11 +20,7 @@ import {
   VerificationSendFailedError,
   YouTubeAccessCeilingReachedError,
 } from '../errors/AdminLifecycleErrors';
-import {
-  ForbiddenError,
-  UnauthorizedError,
-  requirePlatformAdmin,
-} from '../guards/AuthGuard';
+import { PlatformAdminControllerBase } from './PlatformAdminControllerBase';
 import { toAdminUserIdentity } from '../helpers/filterUser';
 import youtubeAccessService from '../services/YouTubeAccessService';
 import userService from '../services/UserService';
@@ -34,7 +29,7 @@ import { AdminUserIdentity, WithdrawYouTubeAccessResponse } from '../types';
 @Tags('Platform Admin')
 @Route('/admin/users')
 @Security('jwt', ['platform_admin'])
-export class AdminUsersController extends Controller {
+export class AdminUsersController extends PlatformAdminControllerBase {
   /**
    * List/search Users (identity fields only). Platform Admin only.
    */
@@ -265,22 +260,6 @@ export class AdminUsersController extends Controller {
     } catch (err) {
       if (err instanceof UserNotFoundError) {
         return notFound(404, { message: err.message });
-      }
-      throw err;
-    }
-  }
-
-  private assertPlatformAdmin(req: ExRequest) {
-    try {
-      return requirePlatformAdmin(req);
-    } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        this.setStatus(401);
-        throw err;
-      }
-      if (err instanceof ForbiddenError) {
-        this.setStatus(403);
-        throw err;
       }
       throw err;
     }
