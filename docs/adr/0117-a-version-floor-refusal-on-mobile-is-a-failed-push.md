@@ -17,7 +17,7 @@ The error was found while slicing #956, before anything was built to it.
 ## Decision
 
 1. **A 426 on a mobile push is a failed push under ADR 0107.** The edit is never reported as saved. The screen reverts to the last server-confirmed copy, as it does for any other failed push.
-2. **The update screen says so.** When the refusal arrives during an edit, the blocking update screen states plainly that the last change was not saved and why, before it sends the User to the store.
+2. **The update screen says so.** When the refusal arrives during an edit, the blocking update screen states plainly that the last change was not saved and why, before it sends the User to the web app's `/download` page for the new Mobile Release ([ADR 0127](0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)).
 3. **Nothing is persisted to survive the update.** Holding the refused edit, as ciphertext or otherwise, so it can merge after the update is rejected here. It would give the Mobile App a Local Vault in miniature, which ADR 0107 decided against. That is a larger decision than the Version Floor and is not made here.
 
 ## Consequences
