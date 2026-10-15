@@ -1416,3 +1416,8 @@ jobs:
 
       - name: Run live logout spec
         run: corepack yarn nx e2e myorganizer-e2e --grep="logs out against the real backend"
+
+      # User Deletion (#969) against the real API: its own seeded user, so the
+      # logout spec above is unaffected.
+      - name: Run live account deletion spec
+        run: corepack yarn nx e2e myorganizer-e2e --grep="deletes the account against the real backend"

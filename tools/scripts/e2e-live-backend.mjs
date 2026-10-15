@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 /**
- * Boots the API for the live logout Playwright spec (issue #831).
+ * Boots the API for the live Playwright specs: logout (issue #831) and User
+ * Deletion (#969).
  *
- * Migrates, upserts one verified user, then serves the built backend with
+ * Migrates, upserts one verified user per spec, then serves the built backend with
  * NODE_ENV=development so the refresh cookie is not Secure — the suite talks
  * to the API over http://localhost. Playwright starts this only when
  * E2E_LIVE_BACKEND=1.
@@ -46,20 +47,22 @@ loadEnv({ path: resolve(workspaceRoot, '.env') });
 
 const email = process.env.E2E_LIVE_AUTH_EMAIL;
 const password = process.env.E2E_LIVE_AUTH_PASSWORD;
+const deletionEmail = process.env.E2E_LIVE_DELETION_EMAIL;
+const deletionPassword = process.env.E2E_LIVE_DELETION_PASSWORD;
 
 function fail(message) {
   console.error(message);
   process.exit(1);
 }
 
-if (!email || !password) {
+if (!email || !password || !deletionEmail || !deletionPassword) {
   fail(
-    'E2E_LIVE_AUTH_EMAIL and E2E_LIVE_AUTH_PASSWORD are required. Playwright sets them from liveAuth.ts.',
+    'E2E_LIVE_AUTH_EMAIL, E2E_LIVE_AUTH_PASSWORD, E2E_LIVE_DELETION_EMAIL and E2E_LIVE_DELETION_PASSWORD are required. Playwright sets them from liveAuth.ts.',
   );
 }
 
 if (!process.env.DATABASE_URL) {
-  fail('DATABASE_URL is required to migrate and seed the live logout user.');
+  fail('DATABASE_URL is required to migrate and seed the live e2e users.');
 }
 
 requireBackendBuild(mainPath);
@@ -75,7 +78,8 @@ function run(executable, args, options) {
   });
 }
 
-async function seedVerifiedUser() {
+// An upsert, so the User Deletion spec's user exists again on the next boot.
+async function seedVerifiedUser({ email, password, firstName }) {
   const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
   const prisma = new PrismaClient({ adapter });
   try {
@@ -91,9 +95,9 @@ async function seedVerifiedUser() {
       create: {
         email,
         password: hashedPassword,
-        first_name: 'Logout',
+        first_name: firstName,
         last_name: 'E2E',
-        name: 'Logout E2E',
+        name: `${firstName} E2E`,
         email_verification_timestamp: new Date(),
         blacklisted_tokens: [],
       },
@@ -108,7 +112,12 @@ await run(
   [prismaCli, 'migrate', 'deploy', '--schema', 'prisma/schema'],
   { cwd: backendSrc, env: process.env },
 );
-await seedVerifiedUser();
+await seedVerifiedUser({ email, password, firstName: 'Logout' });
+await seedVerifiedUser({
+  email: deletionEmail,
+  password: deletionPassword,
+  firstName: 'Deletion',
+});
 
 spawnBackendMain(mainPath, {
   ...process.env,

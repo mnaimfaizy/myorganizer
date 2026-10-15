@@ -8,6 +8,8 @@ import {
 import {
   LIVE_AUTH_EMAIL,
   LIVE_AUTH_PASSWORD,
+  LIVE_DELETION_EMAIL,
+  LIVE_DELETION_PASSWORD,
 } from './src/e2e/helpers/liveAuth';
 
 /** Opt out of the production build for fast local iteration (ADR 0050). */
@@ -62,6 +64,8 @@ function liveBackendWebServers(
   env['PORT'] = '3000';
   env['E2E_LIVE_AUTH_EMAIL'] = LIVE_AUTH_EMAIL;
   env['E2E_LIVE_AUTH_PASSWORD'] = LIVE_AUTH_PASSWORD;
+  env['E2E_LIVE_DELETION_EMAIL'] = LIVE_DELETION_EMAIL;
+  env['E2E_LIVE_DELETION_PASSWORD'] = LIVE_DELETION_PASSWORD;
 
   const frontendEnv = cloneDefinedEnv();
   // `next start` is the production server. `E2E_DEV_SERVER=1` must keep
