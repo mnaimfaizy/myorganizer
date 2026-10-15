@@ -167,9 +167,9 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
    # Mail - SMTP Configuration
    MAIL_SERVICE=smtp
    DEFAULT_EMAIL_PROVIDER=smtp
-   # Dev (MailHog): docker-compose provides SMTP on localhost:1025 and UI on http://localhost:8025
+   # Dev (MailHog): docker-compose provides SMTP on localhost:1453 and UI on http://localhost:8453
    MAIL_HOST=localhost
-   MAIL_PORT=1025
+   MAIL_PORT=1453
    MAIL_SECURE=false
    MAIL_USERNAME=
    MAIL_PASSWORD=

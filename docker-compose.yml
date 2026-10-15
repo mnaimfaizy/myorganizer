@@ -39,20 +39,20 @@ services:
 
   mailhog:
     image: mailhog/mailhog
-    container_name: mailhog
+    container_name: myorganizer_mailhog
     restart: unless-stopped
     ports:
-      - '1025:1025' # SMTP
-      - '8025:8025' # Web UI
+      - '1453:1025' # SMTP (host 1453)
+      - '8453:8025' # Web UI (host 8453)
     networks:
       - myorganizer_network
 
   pgadmin:
     image: dpage/pgadmin4
-    container_name: pgadmin4_container
+    container_name: myorganizer_pgadmin
     restart: always
     ports:
-      - '8888:80'
+      - '8853:80'
     env_file:
       - .env
     environment:
