@@ -140,6 +140,27 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
      - It accepts a strong biometric only, never the device PIN, pattern, or passcode.
      - It stops working after a fingerprint or face is added or removed, and falls back to the passphrase and Recovery Key without locking the User out.
 
+## Publish to a GitHub Release
+
+A Mobile Release is a signed APK and its SHA-256 checksum on a GitHub Release tagged `mobile-vX.Y.Z`, which anyone may download ([ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)). Nothing is uploaded to a store. Parts 5 to 8 below are kept for reference only.
+
+1. Set the version on both platforms (Part 3), commit it, and push. The tag is created on GitHub, so the commit you build from must already be there.
+2. Build the signed APK from `apps/mobile/android` with `./gradlew assembleRelease`. It needs the `MYORGANISER_RELEASE_*` signing properties (Part 2); without them the release build fails rather than falling back to the debug key.
+3. Check that every native library is 16 KB aligned: `zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release.apk`.
+4. From the repository root, run:
+
+   ```bash
+   yarn mobile:release:publish --version X.Y.Z
+   ```
+
+   It refuses, naming the problem and before writing or sending anything, when the APK is missing, signed with the public debug key or not signed, or built with a different `versionName`; when `mobile-vX.Y.Z` already exists; or when the commit you are on is not on the remote yet. Otherwise it writes `dist/mobile-release/myorganiser-X.Y.Z.apk` and its `.sha256`, creates the tag and its GitHub Release with both files attached, and does **not** mark it latest: the web app's `vX.Y.Z` Release keeps that place. A `mobile-v` tag releases and deploys nothing: no web release workflow matches it, and the production dispatcher, which hears every new tag and branch, skips anything but a `release/v` branch. Pass `--apk <path>` to publish an APK from somewhere else.
+
+   If it stops after creating the tag (an upload failed), the Release exists without both files, and running it again is refused because the tag exists. Finish that Release by hand with `gh release upload mobile-vX.Y.Z dist/mobile-release/myorganiser-X.Y.Z.apk dist/mobile-release/myorganiser-X.Y.Z.apk.sha256`, then do step 5 by hand: set `CURRENT_MOBILE_RELEASE` to `'X.Y.Z'`.
+
+5. The command also sets the download page's version in `libs/web/pages/download/src/lib/mobileRelease.ts`. Commit that change; `https://myorganiser.app/download` shows the new Mobile Release from the next web Release on.
+
+6. Download the APK from the GitHub Release on a phone and install it, over an earlier Mobile Release if there is one. Sign in and use every tab.
+
 ## Part 5: Google Play, first release
 
 1. **Create the app**: name MyOrganiser, default language English (Australia), App, Free. The package name comes from the first upload and is **permanent**.

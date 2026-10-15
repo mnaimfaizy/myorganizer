@@ -102,6 +102,8 @@
     "brand:logos:test": "node --test tools/scripts/generate-brand-logos.test.mjs",
     "mobile-platform:check": "node tools/scripts/check-mobile-platform.mjs",
     "mobile-platform:test": "node --test tools/scripts/check-mobile-platform.test.mjs",
+    "mobile:release:publish": "node tools/scripts/publish-mobile-release.mjs",
+    "mobile:release:test": "node --test tools/scripts/lib/mobile-release.test.mjs",
     "signing-material:check": "node tools/scripts/check-signing-material.mjs",
     "signing-material:test": "node --test tools/scripts/check-signing-material.test.mjs",
     "prisma:migrations:check": "node tools/scripts/check-prisma-migrations.mjs",

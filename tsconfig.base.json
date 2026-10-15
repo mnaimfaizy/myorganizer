@@ -43,6 +43,9 @@
         "libs/web/pages/groceries/src/index.ts"
       ],
       "@myorganizer/web-pages/home": ["libs/web/pages/home/src/index.ts"],
+      "@myorganizer/web-pages/download": [
+        "libs/web/pages/download/src/index.ts"
+      ],
       "@myorganizer/web-pages/legal": ["libs/web/pages/legal/src/index.ts"],
       "@myorganizer/web-pages/mobile-numbers": [
         "libs/web/pages/mobile-numbers/src/index.ts"

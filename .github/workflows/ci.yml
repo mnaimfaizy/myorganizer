@@ -931,6 +931,9 @@ jobs:
       - name: Signing material checker contracts
         run: corepack yarn signing-material:test
 
+      - name: Mobile Release publish contracts
+        run: corepack yarn mobile:release:test
+
       - name: Prisma migration history checker contracts
         run: corepack yarn prisma:migrations:test
 
