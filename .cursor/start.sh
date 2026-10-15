@@ -33,9 +33,9 @@ sudo -u postgres psql -p 5453 -v ON_ERROR_STOP=1 -c "ALTER USER postgres WITH PA
 sudo -u postgres psql -p 5453 -tAc "SELECT 1 FROM pg_database WHERE datname='myorganizer'" | grep -q 1 \
   || sudo -u postgres psql -p 5453 -c "CREATE DATABASE myorganizer;"
 
-echo "==> Starting MailHog (SMTP 1025 / UI 8025) if not already running"
-if ! curl -fsS http://localhost:8025/api/v2/messages >/dev/null 2>&1; then
-  nohup mailhog -smtp-bind-addr 0.0.0.0:1025 -ui-bind-addr 0.0.0.0:8025 -api-bind-addr 0.0.0.0:8025 \
+echo "==> Starting MailHog (SMTP 1453 / UI 8453) if not already running"
+if ! curl -fsS http://localhost:8453/api/v2/messages >/dev/null 2>&1; then
+  nohup mailhog -smtp-bind-addr 0.0.0.0:1453 -ui-bind-addr 0.0.0.0:8453 -api-bind-addr 0.0.0.0:8453 \
     >/tmp/mailhog.log 2>&1 &
 fi
 

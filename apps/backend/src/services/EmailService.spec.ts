@@ -24,7 +24,7 @@ describe('EmailService', () => {
 
     // Set up env vars for SMTP provider
     process.env.MAIL_HOST = 'localhost';
-    process.env.MAIL_PORT = '1025';
+    process.env.MAIL_PORT = '1453';
     delete process.env.MAIL_USERNAME;
     delete process.env.MAIL_PASSWORD;
     process.env.MAIL_SECURE = 'false';
