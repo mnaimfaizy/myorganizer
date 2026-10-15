@@ -4,7 +4,7 @@
     {
       "id": "slot-injected-props-land-on-the-control",
       "site": {
-        "file": "apps/web/src/app/(auth)/signup/page.tsx",
+        "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
         "line": 232
       },
       "answer": {
@@ -14,7 +14,7 @@
       },
       "citations": {
         "slotChild": {
-          "file": "apps/web/src/app/(auth)/signup/page.tsx",
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
           "line": 233,
           "text": "<Input"
         }
@@ -24,7 +24,7 @@
     {
       "id": "slot-injected-props-land-on-the-control",
       "site": {
-        "file": "apps/web/src/app/(auth)/signup/page.tsx",
+        "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
         "line": 267
       },
       "answer": {
@@ -34,7 +34,7 @@
       },
       "citations": {
         "slotChild": {
-          "file": "apps/web/src/app/(auth)/signup/page.tsx",
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
           "line": 268,
           "text": "<Input"
         }

@@ -11,11 +11,11 @@
       "defectWhen": { "field": "isFocusableControl", "equals": false },
       "sites": [
         {
-          "file": "apps/web/src/app/(auth)/signup/page.tsx",
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
           "line": 232
         },
         {
-          "file": "apps/web/src/app/(auth)/signup/page.tsx",
+          "file": "apps/myorganizer/src/app/(auth)/signup/page.tsx",
           "line": 267
         }
       ],
