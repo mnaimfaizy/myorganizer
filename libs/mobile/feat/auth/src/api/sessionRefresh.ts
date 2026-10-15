@@ -239,8 +239,30 @@ export function createSessionRefresher(
 }
 
 /**
+ * True when `config` went out with an Access Token — a `Bearer` header with
+ * a token in it. `createAuthApi` sends `Bearer ` with nothing after it while
+ * there is no Access Token, so the header's presence alone is not enough.
+ */
+function carriedAccessToken(config: InternalAxiosRequestConfig): boolean {
+  const headers = config.headers as
+    | { get?: (name: string) => unknown; Authorization?: unknown }
+    | undefined;
+  const authorization =
+    typeof headers?.get === 'function'
+      ? headers.get('Authorization')
+      : headers?.Authorization;
+  return typeof authorization === 'string' && /^Bearer \S/.test(authorization);
+}
+
+/**
  * Makes `client` answer a 401 by refreshing the Session and replaying the
  * request once.
+ *
+ * Only a request that carried an Access Token is refreshed for: its 401 can
+ * mean the token expired. One that carried none — signing in, above all,
+ * whose 401 is "Incorrect email or password!" — rejects with its own error,
+ * so the screen can say what the server said. Refreshing for it would meet
+ * no Refresh Token and put that failure in its place.
  *
  * When the refresh fails the request rejects with the refresh's own error
  * rather than with the 401 that prompted it. For a refresh that got no answer
@@ -263,7 +285,8 @@ export function installRefreshOn401(
       if (
         !originalRequest ||
         failed?.response?.status !== 401 ||
-        originalRequest._retry
+        originalRequest._retry ||
+        !carriedAccessToken(originalRequest)
       ) {
         return Promise.reject(error);
       }

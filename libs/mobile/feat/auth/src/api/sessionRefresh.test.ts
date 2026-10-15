@@ -390,6 +390,45 @@ describe('installRefreshOn401', () => {
     return { ...h, instance, seen };
   }
 
+  /**
+   * A client with no default Authorization header, whose API answers every
+   * request 401 with the server's own message, as `POST /auth/login` does for
+   * a wrong password. `thrown` collects the errors the adapter produced, so a
+   * test can check the request rejected with the very error the server sent.
+   */
+  function anonymousClient(authorization?: string) {
+    const h = harness([refreshed()]);
+    const thrown: AxiosError[] = [];
+
+    const adapter: AxiosAdapter = async (config) => {
+      const response: AxiosResponse = {
+        status: 401,
+        statusText: '',
+        headers: {},
+        config,
+        data: { message: 'Incorrect email or password!' },
+      };
+      const error = new AxiosError(
+        'Request failed with status code 401',
+        AxiosError.ERR_BAD_REQUEST,
+        config,
+        {},
+        response,
+      );
+      thrown.push(error);
+      throw error;
+    };
+
+    const instance = axios.create({
+      adapter,
+      headers:
+        authorization === undefined ? {} : { Authorization: authorization },
+    });
+    installRefreshOn401(instance, h.refresh);
+
+    return { ...h, instance, thrown };
+  }
+
   it('refreshes on a 401 and replays the request with the new Access Token', async () => {
     const c = client([refreshed('access-2')]);
 
@@ -477,5 +516,41 @@ describe('installRefreshOn401', () => {
 
     await expect(instance.get('/vault')).rejects.toBe(offline);
     expect(h.deps.readRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('rejects a 401 on a request that carried no Access Token with the server error, without refreshing', async () => {
+    const c = anonymousClient();
+
+    const failure = await c.instance
+      .post('/auth/login', { email: 'user@example.test', password: 'wrong' })
+      .catch((e: unknown) => e);
+
+    expect(failure).toBe(c.thrown[0]);
+    expect((failure as AxiosError).response?.data).toEqual({
+      message: 'Incorrect email or password!',
+    });
+    expect(c.deps.readRefreshToken).not.toHaveBeenCalled();
+    expect(c.deps.requestRefresh).not.toHaveBeenCalled();
+  });
+
+  it('rejects a 401 on a request whose Authorization is an empty Bearer with the original error, without refreshing', async () => {
+    const c = anonymousClient('Bearer ');
+
+    const failure = await c.instance.get('/vault').catch((e: unknown) => e);
+
+    expect(failure).toBe(c.thrown[0]);
+    expect(c.deps.requestRefresh).not.toHaveBeenCalled();
+  });
+
+  it('keeps the Refresh Token and the Session when a request with no Access Token is refused', async () => {
+    const c = anonymousClient();
+
+    await c.instance
+      .post('/auth/login', { email: 'user@example.test', password: 'wrong' })
+      .catch((e: unknown) => e);
+
+    expect(c.keychain.refreshToken).toBe(STORED);
+    expect(c.deps.clearRefreshToken).not.toHaveBeenCalled();
+    expect(c.sessionsEnded()).toBe(0);
   });
 });
