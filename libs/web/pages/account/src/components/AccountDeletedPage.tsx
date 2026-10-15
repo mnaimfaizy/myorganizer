@@ -22,7 +22,7 @@ export function AccountDeletedPage() {
           </p>
           <p className="text-sm text-muted-foreground">
             An Escape Copy you downloaded before deleting is still yours. It
-            does not depend on MyOrganizer to open.
+            does not depend on MyOrganiser to open.
           </p>
           <div className="flex justify-center pt-2">
             <Button asChild variant="outline">

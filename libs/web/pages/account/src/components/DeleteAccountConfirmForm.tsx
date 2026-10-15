@@ -28,8 +28,13 @@ import {
 
 const GENERIC_DELETE_ERROR = 'Your account was not deleted. Try again.';
 
+// Only a 4xx answer carries a message the user can act on (e.g. the 409
+// "A YouTube sync is running…"). A 5xx body is internal detail, and a network
+// failure has no response at all, so both fall back to the generic copy.
 function getServerMessage(error: unknown): string | undefined {
   if (!isAxiosError(error)) return undefined;
+  const status = error.response?.status;
+  if (status === undefined || status < 400 || status >= 500) return undefined;
   const data = error.response?.data;
   if (
     data &&

@@ -266,6 +266,23 @@ describe('DeleteAccountSection', () => {
     expect(mockReplace).not.toHaveBeenCalled();
   });
 
+  it('shows the fallback instead of a 5xx body message and does not sign out or navigate', async () => {
+    mockDeleteMe.mockRejectedValue(
+      createAxiosError(500, 'Internal Server Error'),
+    );
+    renderSection();
+    await openDialog();
+    await continueToConfirm();
+
+    fillConfirm(PASSWORD, 'DELETE');
+    submitConfirm();
+
+    const alert = await screen.findByRole('alert');
+    expect(alert.textContent).toBe('Your account was not deleted. Try again.');
+    expect(clearAuthSession).not.toHaveBeenCalled();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
   it('disables the submit button and shows a busy label while the deletion is pending', async () => {
     let resolveDelete: (value: unknown) => void = () => undefined;
     mockDeleteMe.mockImplementation(

@@ -7,7 +7,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
 } from '@myorganizer/web-ui';
 
@@ -26,15 +25,13 @@ export function DeleteAccountSection() {
 
   return (
     <Card className="p-4">
-      <CardHeader>
-        <CardTitle className="text-lg">Delete account</CardTitle>
-        <CardDescription>
-          Deleting your account removes the account itself, its Sessions, and
-          everything stored on the server for it, including your encrypted
-          vault. This cannot be undone.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
+      <CardTitle className="text-lg">Delete account</CardTitle>
+      <CardDescription className="mt-1.5">
+        Deleting your account removes the account itself, its Sessions, and
+        everything stored on the server for it, including your encrypted vault.
+        This cannot be undone.
+      </CardDescription>
+      <CardContent className="mt-4">
         <Button
           variant="destructive"
           data-testid="delete-account-button"
