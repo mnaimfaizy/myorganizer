@@ -90,23 +90,26 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
 
 ### Android
 
-1. Generate the **release signing key** into `<signing-dir>`. Never generate it inside the repository.
+The keystore and its password live in 1Password and nowhere else on this Mac. A release build reads them through the 1Password CLI (`op`) for one build only.
+
+1. Install the 1Password CLI (`brew install 1password-cli`) and turn on **Settings → Developer → Integrate with 1Password CLI** in the 1Password app, so `op` unlocks with Touch ID.
+2. In 1Password, create a **Password** item named `MyOrganiser Android release key` and let 1Password generate its password.
+3. Generate the **release signing key** into a temporary `<signing-dir>` outside the repository, pasting that password when `keytool` asks for one. A PKCS12 keystore uses the one password for the keystore and the key.
 
    ```bash
    keytool -genkeypair -v -storetype PKCS12 -keystore <signing-dir>/release.jks -alias myorganiser-release -keyalg RSA -keysize 2048 -validity 10000
    ```
 
-2. **This key is the app's permanent signing identity** ([ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)). There is no Play App Signing behind it. Android installs an update only when it is signed with the same key as the installed copy. If you lose the keystore or either password, no installed Mobile App can ever be updated in place: every User has to uninstall, losing the copy on their device, and install a new app. Store the keystore file and both passwords in the password manager straight away, and keep a second backup of the keystore outside the repository and away from this Mac.
-3. Point Gradle at it from your **user-level** Gradle properties file, `~/.gradle/gradle.properties`, never from `apps/mobile/android/gradle.properties`, which is tracked. Set one line per property, as `NAME=value`:
+4. Store it as a 1Password **Document** named `MyOrganiser release keystore`, check it comes back byte for byte, keep one offline backup of `release.jks` away from this Mac, and delete the local copy.
 
-   | Property                             | Value                                            |
-   | ------------------------------------ | ------------------------------------------------ |
-   | `MYORGANISER_RELEASE_STORE_FILE`     | The absolute path to `<signing-dir>/release.jks` |
-   | `MYORGANISER_RELEASE_STORE_PASSWORD` | The keystore password                            |
-   | `MYORGANISER_RELEASE_KEY_ALIAS`      | `myorganiser-release`                            |
-   | `MYORGANISER_RELEASE_KEY_PASSWORD`   | The key password                                 |
+   ```bash
+   op document create <signing-dir>/release.jks --title "MyOrganiser release keystore" --vault Private
+   ```
 
-   `apps/mobile/android/app/build.gradle` signs the release build type with these and nothing else. A release build with any of them missing fails and names the missing properties, and so does one whose properties are set in the tracked file; it never falls back to the debug key. Debug builds keep using the debug key.
+5. **This key is the app's permanent signing identity** ([ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)). There is no Play App Signing behind it. Android installs an update only when it is signed with the same key as the installed copy. If you lose the keystore or its password, no installed Mobile App can ever be updated in place: every User has to uninstall, losing the copy on their device, and install a new app. That is why it exists in 1Password and in an offline backup.
+6. Build a release with `yarn mobile:release:build` from the repository root. It fetches the keystore into a throwaway folder, runs `./gradlew --no-daemon clean assembleRelease` under `op run`, which hands the password to that build alone and masks it in the output, and deletes the keystore copy whether the build passes or fails. It also clears the native build caches (`.cxx`) first: `gradlew clean` leaves them, and a stale one fails CMake with "Imported target … includes non-existent path". If your vault or item names differ, set `MYORGANISER_OP_VAULT`, `MYORGANISER_OP_KEYSTORE_DOCUMENT`, and `MYORGANISER_OP_KEY_ITEM`.
+
+   The build reads the Gradle properties `MYORGANISER_RELEASE_STORE_FILE`, `MYORGANISER_RELEASE_STORE_PASSWORD`, `MYORGANISER_RELEASE_KEY_ALIAS`, and `MYORGANISER_RELEASE_KEY_PASSWORD`; the command sets them as `ORG_GRADLE_PROJECT_*` variables. `apps/mobile/android/app/build.gradle` signs the release build type with these and nothing else. A release build with any of them missing fails and names the missing properties, and so does one whose properties are set in the tracked `apps/mobile/android/gradle.properties`; it never falls back to the debug key. Setting them in the user-level `~/.gradle/gradle.properties` also works, but leaves the password in a file on disk. Debug builds keep using the debug key.
 
 ### iOS
 
@@ -145,7 +148,7 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
 A Mobile Release is a signed APK and its SHA-256 checksum on a GitHub Release tagged `mobile-vX.Y.Z`, which anyone may download ([ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)). Nothing is uploaded to a store. Parts 5 to 8 below are kept for reference only.
 
 1. Set the version on both platforms (Part 3), commit it, and push. The tag is created on GitHub, so the commit you build from must already be there.
-2. Build the signed APK from `apps/mobile/android` with `./gradlew assembleRelease`. It needs the `MYORGANISER_RELEASE_*` signing properties (Part 2); without them the release build fails rather than falling back to the debug key.
+2. Build the signed APK with `yarn mobile:release:build` from the repository root (Part 2). It reads the signing key from 1Password; without it the release build fails rather than falling back to the debug key.
 3. Check that every native library is 16 KB aligned: `zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release.apk`.
 4. From the repository root, run:
 
