@@ -1,6 +1,10 @@
 import type { IsoDateTimeString } from './contactRecords';
 import type { IdentifiedRecord } from './mergeVaultRecords';
-import { mergeDeletionLogs, type VaultBlobEnvelope } from './vaultBlobEnvelope';
+import {
+  mergeDeletionLogs,
+  readEnvelopeUnknownFields,
+  type VaultBlobEnvelope,
+} from './vaultBlobEnvelope';
 
 /**
  * The records array of an envelope about to be edited.
@@ -50,7 +54,11 @@ export function putVaultRecord<TRecord extends IdentifiedRecord>(
       ? [record, ...records]
       : records.map((entry, i) => (i === index ? record : entry));
 
-  return { records: next, deletions: envelope.deletions };
+  return {
+    ...readEnvelopeUnknownFields(envelope),
+    records: next,
+    deletions: envelope.deletions,
+  };
 }
 
 /**
@@ -73,6 +81,7 @@ export function deleteVaultRecord(
   );
 
   return {
+    ...readEnvelopeUnknownFields(envelope),
     records,
     deletions: mergeDeletionLogs(envelope.deletions, { [id]: deletedAt }),
   };

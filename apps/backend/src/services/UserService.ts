@@ -1,6 +1,7 @@
 import { EMAIL_BRAND_NAME, renderEmailShell } from '@myorganizer/email-shell';
 import bcrypt from 'bcrypt';
 import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
+import winston from 'winston';
 import { getYouTubeAccessCeiling } from '../config/youtube';
 import {
   EmailAlreadyVerifiedError,
@@ -11,6 +12,7 @@ import {
   YouTubeAccessCeilingReachedError,
 } from '../errors/AdminLifecycleErrors';
 import apiTokens from '../helpers/ApiTokens';
+import { logErrorWithStack } from '../helpers/describeError';
 import { isEmailVerified } from '../helpers/isEmailVerified';
 import { decodeToken } from '../helpers/jwtHelper';
 import { User, UserCreationBody } from '../models/User';
@@ -21,6 +23,13 @@ import {
   createPrismaClient,
 } from '../prisma';
 import sendEmail from './EmailService';
+import youtubeSyncService from './YouTubeSyncService';
+
+const logger = winston.createLogger({
+  level: 'info',
+  format: winston.format.json(),
+  transports: [new winston.transports.Console()],
+});
 
 /** Fields safe to return from Platform Admin directory APIs. */
 const ADMIN_IDENTITY_SELECT = {
@@ -42,11 +51,17 @@ export type AdminIdentityUser = Prisma.UserGetPayload<{
 
 export type AdminAuditLogRow = {
   id: string;
-  actor_user_id: string;
-  target_user_id: string;
+  actor_user_id: string | null;
+  target_user_id: string | null;
   action: AdminAuditAction;
   created_at: Date;
 };
+
+/** Outcome of User Deletion once the request has been authenticated. */
+export type UserDeletionOutcome =
+  | { status: 'deleted' }
+  | { status: 'incorrect_password' }
+  | { status: 'youtube_sync_live' };
 
 class UserService {
   Users: User[] = [];
@@ -496,6 +511,81 @@ class UserService {
         id,
       },
     });
+  }
+
+  /**
+   * User Deletion: immediate and irreversible removal of the User row. Every
+   * owned relation cascades; Admin Audit Log actor/target are set to null.
+   * Sessions end because the User row is gone. The password is re-verified
+   * here, and the YouTube Connection goes first through YouTube Disconnect
+   * (ADR 0129), which revokes the grant at Google outside any transaction and
+   * is refused while a Sync Run is live (ADR 0092). Every refusal other than
+   * that one — including "never connected" — lets the deletion proceed.
+   * Confirmation mail failure never fails the call.
+   */
+  async deleteUser(
+    userId: string,
+    password: string,
+  ): Promise<UserDeletionOutcome> {
+    const user = await this.getById(userId);
+    if (!user) {
+      throw new UserNotFoundError();
+    }
+
+    const passwordMatches = await bcrypt.compare(password, user.password);
+    if (!passwordMatches) {
+      return { status: 'incorrect_password' };
+    }
+
+    const youtube = await youtubeSyncService.disconnect(userId);
+    if (youtube.ok === false && youtube.code === 'sync_run_live') {
+      return { status: 'youtube_sync_live' };
+    }
+
+    const email = user.email;
+    const displayName =
+      user.name?.trim() || `${user.first_name} ${user.last_name}`;
+
+    // One DELETE: the cascades and the audit-log SET NULL run inside it.
+    await this.prisma.user.delete({ where: { id: userId } });
+
+    await this.sendUserDeletionMail(email, displayName);
+    return { status: 'deleted' };
+  }
+
+  private async sendUserDeletionMail(
+    to: string,
+    displayName: string,
+  ): Promise<void> {
+    const message = renderEmailShell({
+      emailClass: 'transactional',
+      preheader: `Your ${EMAIL_BRAND_NAME} account has been deleted.`,
+      blocks: [
+        { kind: 'heading', text: 'Your account has been deleted' },
+        {
+          kind: 'paragraph',
+          text: `Hi ${displayName}, your ${EMAIL_BRAND_NAME} account and the data it held were permanently deleted at your request. This cannot be undone.`,
+        },
+        {
+          kind: 'paragraph',
+          text: `If you did not make this request, contact the ${EMAIL_BRAND_NAME} team.`,
+        },
+      ],
+    });
+
+    try {
+      await sendEmail(
+        to,
+        `Your ${EMAIL_BRAND_NAME} account has been deleted`,
+        message,
+      );
+    } catch (error) {
+      logErrorWithStack(
+        logger,
+        'Failed to send User Deletion confirmation email',
+        error,
+      );
+    }
   }
 
   async resetPassword(

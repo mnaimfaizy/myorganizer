@@ -29,7 +29,6 @@ import {
   VAULT_WRITE_ERROR_COPY,
 } from '@myorganizer/mobile/feat-vault';
 import {
-  putVaultRecord,
   type SubscriptionRecord,
   type SubscriptionStatus,
 } from '@myorganizer/vault-core/portable';
@@ -76,6 +75,7 @@ import {
   type SubscriptionsStackParamList,
 } from './subscriptionsStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';
+import { subscriptionEdit } from './vaultRecordEdits';
 import { useBarRuleOnScroll } from './useBarRuleOnScroll';
 import { describeVaultLoadError } from './vaultLoadError';
 
@@ -274,28 +274,12 @@ export function SubscriptionDetailScreen(): React.JSX.Element {
     (values: SubscriptionEditValues): void => {
       if (subscription === null) return;
       const now = new Date().toISOString();
-      const next: SubscriptionRecord = {
-        ...(subscription as SubscriptionRecord),
-        status: values.status,
-        amount: values.amount,
-        updatedAt: now,
-      };
-      if (values.nextBillingDate != null) {
-        next.nextBillingDate = values.nextBillingDate;
-      } else {
-        delete next.nextBillingDate;
-      }
-      if (values.status === 'cancelled') {
-        next.cancellationDate = values.cancellationDate;
-        if (values.cancellationReason != null) {
-          next.cancellationReason = values.cancellationReason;
-        } else {
-          delete next.cancellationReason;
-        }
-      }
       // The sheet closes on Save; the edit carries on here as Unconfirmed.
       setEditVisible(false);
-      void push(subscription.id, (envelope) => putVaultRecord(envelope, next));
+      void push(
+        subscription.id,
+        subscriptionEdit(subscription as SubscriptionRecord, values, now),
+      );
     },
     [subscription, push],
   );

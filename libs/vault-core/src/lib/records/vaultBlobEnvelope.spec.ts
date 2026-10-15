@@ -1,5 +1,6 @@
 import {
   isVaultBlobEnvelope,
+  readEnvelopeUnknownFields,
   readVaultBlobRecords,
   readDeletionLog,
   mergeDeletionLogs,
@@ -27,6 +28,29 @@ describe('vaultBlobEnvelope', () => {
 
     it('returns false for undefined', () => {
       expect(isVaultBlobEnvelope(undefined)).toBe(false);
+    });
+  });
+
+  describe('readEnvelopeUnknownFields', () => {
+    it('returns the envelope keys other than records and deletions', () => {
+      const envelope = {
+        records: [{ id: '1' }],
+        deletions: {},
+        schemaHint: 'v2',
+      };
+
+      expect(readEnvelopeUnknownFields(envelope)).toEqual({ schemaHint: 'v2' });
+    });
+
+    it('returns no unknown fields for a bare array or a bare groceries-style payload', () => {
+      expect(readEnvelopeUnknownFields([{ id: '1' }])).toEqual({});
+      expect(
+        readEnvelopeUnknownFields({
+          catalog: [],
+          lists: [],
+          extra: 'not envelope',
+        }),
+      ).toEqual({});
     });
   });
 

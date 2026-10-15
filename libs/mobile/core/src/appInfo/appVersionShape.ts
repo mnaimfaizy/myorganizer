@@ -4,7 +4,7 @@
  * the `.web` file itself.
  */
 export interface AppVersion {
-  /** "1.0" — MARKETING_VERSION / versionName. */
+  /** "1.0.0" — MARKETING_VERSION / versionName. */
   version: string;
   /** "1" — CURRENT_PROJECT_VERSION / versionCode. */
   build: string;

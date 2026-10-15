@@ -41,3 +41,22 @@ export {
   rememberScrollOffset,
 } from './lock/resumePoint';
 export { readAppVersion, type AppVersion } from './appInfo/appVersion';
+export type {
+  BackendTarget,
+  MobileEnvironment,
+} from './environment/environment';
+export { MOBILE_RELEASE_DOWNLOAD_URL } from './environment/environment';
+export { MOBILE_ENVIRONMENT } from './environment/mobileEnvironment';
+export {
+  createClearUserLocalData,
+  type ClearUserLocalData,
+  type UserLocalDataEffects,
+} from './localData/clearUserLocalData';
+export {
+  guardBackendOrigin,
+  isBackendOriginUnchanged,
+  type BackendOriginRecord,
+  type BackendOriginStore,
+} from './localData/backendOriginGuard';
+export { backendOriginStore } from './localData/backendOriginStorage';
+export { rememberLocalDataOwner } from './localData/localDataOwner';

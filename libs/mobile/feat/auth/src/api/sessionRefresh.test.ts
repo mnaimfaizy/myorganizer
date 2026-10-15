@@ -124,6 +124,13 @@ describe('classifyRefreshFailure', () => {
     expect(classifyRefreshFailure({ code: 'ERR_NETWORK' })).toBe('no_response');
   });
 
+  it('reads a 426 answer as the build being below the Version Floor, not a rejection', () => {
+    expect(classifyRefreshFailure({ response: { status: 426 } })).toBe(
+      'below_version_floor',
+    );
+    expect(classifyRefreshFailure(answered(426))).toBe('below_version_floor');
+  });
+
   it('names the two failures this module throws itself', () => {
     expect(classifyRefreshFailure(new NoRefreshTokenError())).toBe(
       'no_refresh_token',
@@ -159,6 +166,10 @@ describe('REFRESH_FAILURE_ENDS_SESSION', () => {
     ).filter((kind) => REFRESH_FAILURE_ENDS_SESSION[kind]);
 
     expect(ending.sort()).toEqual(['no_refresh_token', 'rejected']);
+  });
+
+  it('keeps the Session for a build below the Version Floor', () => {
+    expect(REFRESH_FAILURE_ENDS_SESSION.below_version_floor).toBe(false);
   });
 });
 
@@ -212,6 +223,11 @@ describe('createSessionRefresher', () => {
     ['the server answers 500', 'server_failed', answered(500)],
     ['the server answers 503', 'server_failed', answered(503)],
     ['the server rate-limits', 'server_failed', answered(429)],
+    [
+      'the server refuses this build below the Version Floor',
+      'below_version_floor',
+      answered(426),
+    ],
     ['the answer carries no Access Token', 'malformed_response', {}],
     ['something unforeseen throws', 'unexpected', new Error('boom')],
   ])('when %s', (_name, failure, answer) => {
@@ -374,6 +390,45 @@ describe('installRefreshOn401', () => {
     return { ...h, instance, seen };
   }
 
+  /**
+   * A client with no default Authorization header, whose API answers every
+   * request 401 with the server's own message, as `POST /auth/login` does for
+   * a wrong password. `thrown` collects the errors the adapter produced, so a
+   * test can check the request rejected with the very error the server sent.
+   */
+  function anonymousClient(authorization?: string) {
+    const h = harness([refreshed()]);
+    const thrown: AxiosError[] = [];
+
+    const adapter: AxiosAdapter = async (config) => {
+      const response: AxiosResponse = {
+        status: 401,
+        statusText: '',
+        headers: {},
+        config,
+        data: { message: 'Incorrect email or password!' },
+      };
+      const error = new AxiosError(
+        'Request failed with status code 401',
+        AxiosError.ERR_BAD_REQUEST,
+        config,
+        {},
+        response,
+      );
+      thrown.push(error);
+      throw error;
+    };
+
+    const instance = axios.create({
+      adapter,
+      headers:
+        authorization === undefined ? {} : { Authorization: authorization },
+    });
+    installRefreshOn401(instance, h.refresh);
+
+    return { ...h, instance, thrown };
+  }
+
   it('refreshes on a 401 and replays the request with the new Access Token', async () => {
     const c = client([refreshed('access-2')]);
 
@@ -461,5 +516,41 @@ describe('installRefreshOn401', () => {
 
     await expect(instance.get('/vault')).rejects.toBe(offline);
     expect(h.deps.readRefreshToken).not.toHaveBeenCalled();
+  });
+
+  it('rejects a 401 on a request that carried no Access Token with the server error, without refreshing', async () => {
+    const c = anonymousClient();
+
+    const failure = await c.instance
+      .post('/auth/login', { email: 'user@example.test', password: 'wrong' })
+      .catch((e: unknown) => e);
+
+    expect(failure).toBe(c.thrown[0]);
+    expect((failure as AxiosError).response?.data).toEqual({
+      message: 'Incorrect email or password!',
+    });
+    expect(c.deps.readRefreshToken).not.toHaveBeenCalled();
+    expect(c.deps.requestRefresh).not.toHaveBeenCalled();
+  });
+
+  it('rejects a 401 on a request whose Authorization is an empty Bearer with the original error, without refreshing', async () => {
+    const c = anonymousClient('Bearer ');
+
+    const failure = await c.instance.get('/vault').catch((e: unknown) => e);
+
+    expect(failure).toBe(c.thrown[0]);
+    expect(c.deps.requestRefresh).not.toHaveBeenCalled();
+  });
+
+  it('keeps the Refresh Token and the Session when a request with no Access Token is refused', async () => {
+    const c = anonymousClient();
+
+    await c.instance
+      .post('/auth/login', { email: 'user@example.test', password: 'wrong' })
+      .catch((e: unknown) => e);
+
+    expect(c.keychain.refreshToken).toBe(STORED);
+    expect(c.deps.clearRefreshToken).not.toHaveBeenCalled();
+    expect(c.sessionsEnded()).toBe(0);
   });
 });

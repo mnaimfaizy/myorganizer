@@ -2,6 +2,7 @@ import {
   deleteVaultRecord,
   mergeDeletionLogs,
   readDeletionLog,
+  readEnvelopeUnknownFields,
   type DeletionLog,
   type GroceriesVaultPayload,
   type IdentifiedRecord,
@@ -27,22 +28,27 @@ export type VaultRecordStore = Pick<
 >;
 
 /**
- * The Deletion Log currently stored for `type` — empty when nothing is
- * stored, or when what is stored predates the envelope.
+ * What a save writes back around the records: the Deletion Log currently
+ * stored for `type`, and the envelope keys this build does not know. Both are
+ * empty when nothing is stored, or when what is stored predates the envelope.
  *
  * Read at write time rather than carried in page state, because convergence
  * and the mobile Vault Push both add to the log without passing through the
- * page that is about to save.
+ * page that is about to save. The unknown keys are kept so that a newer
+ * client's envelope fields survive this save (ADR 0114 decision 3).
  */
-async function readStoredDeletionLog(
+async function readStoredLogAndUnknownFields(
   store: VaultRecordStore,
-  type: EditableVaultRecordType,
-) {
+  type: VaultRecordType,
+): Promise<{ unknownFields: Record<string, unknown>; deletions: DeletionLog }> {
   const stored = await store.loadDecryptedData<unknown>({
     type,
     defaultValue: null,
   });
-  return readDeletionLog(stored);
+  return {
+    unknownFields: readEnvelopeUnknownFields(stored),
+    deletions: readDeletionLog(stored),
+  };
 }
 
 /** A deletion to write down in the same save. */
@@ -55,7 +61,8 @@ export interface VaultRecordDeletion {
 
 /**
  * Saves `records` as the whole records half of `type`, with the stored
- * Deletion Log written back beside them.
+ * Deletion Log and any envelope keys this build does not know written back
+ * beside them.
  *
  * A page that saves bare records drops the log, and every deletion another
  * device recorded is resurrected by the next merge with a copy that still
@@ -74,12 +81,15 @@ export async function saveVaultRecords<TRecord extends IdentifiedRecord>(
   records: readonly TRecord[],
   deletion?: VaultRecordDeletion,
 ): Promise<void> {
-  const deletions = await readStoredDeletionLog(store, type);
+  const { unknownFields, deletions } = await readStoredLogAndUnknownFields(
+    store,
+    type,
+  );
   const envelope: VaultBlobEnvelope<unknown> =
     deletion === undefined
-      ? { records, deletions }
+      ? { ...unknownFields, records, deletions }
       : deleteVaultRecord(
-          { records: [...records], deletions },
+          { ...unknownFields, records: [...records], deletions },
           deletion.deletedId,
           deletion.deletedAt ?? new Date().toISOString(),
         );
@@ -128,10 +138,10 @@ export async function saveGroceriesPayload(
   payload: GroceriesVaultPayload,
   deletion?: GroceriesDeletion,
 ): Promise<void> {
-  const stored = await store.loadDecryptedData<unknown>({
-    type: 'groceries',
-    defaultValue: null,
-  });
+  const { unknownFields, deletions } = await readStoredLogAndUnknownFields(
+    store,
+    'groceries',
+  );
   const additions: DeletionLog = {};
   if (deletion !== undefined) {
     const deletedAt = deletion.deletedAt ?? new Date().toISOString();
@@ -140,8 +150,9 @@ export async function saveGroceriesPayload(
     }
   }
   const envelope: VaultBlobEnvelope<GroceriesVaultPayload> = {
+    ...unknownFields,
     records: payload,
-    deletions: mergeDeletionLogs(readDeletionLog(stored), additions),
+    deletions: mergeDeletionLogs(deletions, additions),
   };
   await store.saveEncryptedData({ type: 'groceries', value: envelope });
 }

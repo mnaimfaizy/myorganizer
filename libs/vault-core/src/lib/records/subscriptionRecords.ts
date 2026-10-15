@@ -1,5 +1,6 @@
 import type { CurrencyCode } from './currencyCode';
 import type { IsoDateTimeString } from './contactRecords';
+import type { KnownKeys } from './unknownFields';
 
 export const SubscriptionStatusEnum = {
   Active: 'active',
@@ -80,3 +81,27 @@ export type SubscriptionRecord = {
    */
   updatedAt?: IsoDateTimeString;
 };
+
+/**
+ * Every Subscription key a reader understands, pinned to the type: a field added to
+ * `SubscriptionRecord` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const SUBSCRIPTION_KEYS = {
+  id: true,
+  name: true,
+  startDate: true,
+  endDate: true,
+  status: true,
+  billingCycle: true,
+  amount: true,
+  currency: true,
+  paymentMethod: true,
+  nextBillingDate: true,
+  renewalType: true,
+  cancellationDate: true,
+  cancellationReason: true,
+  tier: true,
+  link: true,
+  updatedAt: true,
+} as const satisfies KnownKeys<SubscriptionRecord>;

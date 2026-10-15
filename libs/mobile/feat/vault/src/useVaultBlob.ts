@@ -69,7 +69,7 @@ export function useVaultBlob(type: VaultBlobType): {
   apply: (edit: VaultBlobEdit) => Promise<boolean>;
   retry: () => Promise<boolean>;
 } {
-  const { masterKey, vaultApi, blobPeers } = useVaultSession();
+  const { masterKey, vaultApi, blobPeers, onWriteFailed } = useVaultSession();
   const [state, setState] = useState<VaultBlobState>(INITIAL_VAULT_BLOB_STATE);
 
   // Read by the controller at the start of each call, so one controller —
@@ -85,6 +85,7 @@ export function useVaultBlob(type: VaultBlobType): {
       getSession: () => sessionRef.current,
       onState: setState,
       peers: blobPeers,
+      onWriteFailed,
     });
   }
   const controller = controllerRef.current;

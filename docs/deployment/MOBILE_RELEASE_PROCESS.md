@@ -33,15 +33,15 @@ The web and backend path is [CI_CD_AND_RELEASE_PROCESS.md](CI_CD_AND_RELEASE_PRO
 
 The repository is public. None of the following ever enters git, an issue, a pull request, or a CI log. Keep each one in the password manager, and keep the files themselves in a signing directory outside the repository (written `<signing-dir>` below).
 
-| Secret                                                 | Used for                              | If it leaks                                                                                             |
-| ------------------------------------------------------ | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Android upload keystore (`.jks`) and its passwords     | Signing the bundle you upload to Play | Ask Google to reset the upload key. Google holds the real app signing key.                              |
-| Apple distribution certificate (`.p12`) and password   | Signing the iOS archive               | Revoke it in the Apple Developer portal and issue a new one.                                            |
-| App Store Connect API key (`.p8`), when CI arrives     | Uploading builds without Xcode        | **The dangerous one.** Someone can push builds to your account. Revoke it immediately.                  |
-| Google Play service account JSON, when CI arrives      | Uploading bundles without the Console | Delete the key in Google Cloud.                                                                         |
-| Reviewer account email, password, and vault passphrase | Store review sign-in                  | Change the password. Keep even the email out of the repo, because a public login name invites guessing. |
+| Secret                                                      | Used for                              | If it leaks                                                                                                                                    |
+| ----------------------------------------------------------- | ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android release signing keystore (`.jks`) and its passwords | Signing every Android release         | Nobody can reset it. A leaked key lets anyone sign an update your Users would install; a lost key means no installed copy can ever be updated. |
+| Apple distribution certificate (`.p12`) and password        | Signing the iOS archive               | Revoke it in the Apple Developer portal and issue a new one.                                                                                   |
+| App Store Connect API key (`.p8`), when CI arrives          | Uploading builds without Xcode        | **The dangerous one.** Someone can push builds to your account. Revoke it immediately.                                                         |
+| Google Play service account JSON, when CI arrives           | Uploading bundles without the Console | Delete the key in Google Cloud.                                                                                                                |
+| Reviewer account email, password, and vault passphrase      | Store review sign-in                  | Change the password. Keep even the email out of the repo, because a public login name invites guessing.                                        |
 
-`debug.keystore` in `apps/mobile/android/app` is the public React Native debug key and is safe to commit. It must never sign a release.
+`debug.keystore` in `apps/mobile/android/app` is the public React Native debug key and is safe to commit. It must never sign a release. `yarn signing-material:check`, which runs in the pre-commit hook and in CI, refuses any other keystore and every store credential.
 
 ## Before you start
 
@@ -90,15 +90,26 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
 
 ### Android
 
-1. Generate an **upload key** into `<signing-dir>`. Never generate it inside the repository.
+The keystore and its password live in 1Password and nowhere else on this Mac. A release build reads them through the 1Password CLI (`op`) for one build only.
+
+1. Install the 1Password CLI (`brew install 1password-cli`) and turn on **Settings → Developer → Integrate with 1Password CLI** in the 1Password app, so `op` unlocks with Touch ID.
+2. In 1Password, create a **Password** item named `MyOrganiser Android release key` and let 1Password generate its password.
+3. Generate the **release signing key** into a temporary `<signing-dir>` outside the repository, pasting that password when `keytool` asks for one. A PKCS12 keystore uses the one password for the keystore and the key.
 
    ```bash
-   keytool -genkeypair -v -storetype PKCS12 -keystore <signing-dir>/upload.jks -alias myorganiser-upload -keyalg RSA -keysize 2048 -validity 10000
+   keytool -genkeypair -v -storetype PKCS12 -keystore <signing-dir>/release.jks -alias myorganiser-release -keyalg RSA -keysize 2048 -validity 10000
    ```
 
-2. Store the keystore file and both passwords in the password manager straight away. Without them you cannot update the app, short of asking Google to reset the upload key.
-3. Point Gradle at it from your **user-level** Gradle properties file in your home directory, never from `apps/mobile/android/gradle.properties`, which is tracked. **This does not work yet.** Today the release build type in `apps/mobile/android/app/build.gradle` signs with the public debug key, as its own "Caution!" comment says. Making it read these properties, and refuse to build a release without them, is the readiness PRD's signing work (#956), which also fixes the property names.
-4. **Play App Signing** is automatic for a new app. You sign uploads with the upload key, and Google signs what users install with a key it holds.
+4. Store it as a 1Password **Document** named `MyOrganiser release keystore`, check it comes back byte for byte, keep one offline backup of `release.jks` away from this Mac, and delete the local copy.
+
+   ```bash
+   op document create <signing-dir>/release.jks --title "MyOrganiser release keystore" --vault Private
+   ```
+
+5. **This key is the app's permanent signing identity** ([ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)). There is no Play App Signing behind it. Android installs an update only when it is signed with the same key as the installed copy. If you lose the keystore or its password, no installed Mobile App can ever be updated in place: every User has to uninstall, losing the copy on their device, and install a new app. That is why it exists in 1Password and in an offline backup.
+6. Build a release with `yarn mobile:release:build` from the repository root. It fetches the keystore into a throwaway folder, runs `./gradlew --no-daemon clean assembleRelease` under `op run`, which hands the password to that build alone and masks it in the output, and deletes the keystore copy whether the build passes or fails. It also clears the native build caches (`.cxx`) first: `gradlew clean` leaves them, and a stale one fails CMake with "Imported target … includes non-existent path". If your vault or item names differ, set `MYORGANISER_OP_VAULT`, `MYORGANISER_OP_KEYSTORE_DOCUMENT`, and `MYORGANISER_OP_KEY_ITEM`.
+
+   The build reads the Gradle properties `MYORGANISER_RELEASE_STORE_FILE`, `MYORGANISER_RELEASE_STORE_PASSWORD`, `MYORGANISER_RELEASE_KEY_ALIAS`, and `MYORGANISER_RELEASE_KEY_PASSWORD`; the command sets them as `ORG_GRADLE_PROJECT_*` variables. `apps/mobile/android/app/build.gradle` signs the release build type with these and nothing else. A release build with any of them missing fails and names the missing properties, and so does one whose properties are set in the tracked `apps/mobile/android/gradle.properties`; it never falls back to the debug key. Setting them in the user-level `~/.gradle/gradle.properties` also works, but leaves the password in a file on disk. Debug builds keep using the debug key.
 
 ### iOS
 
@@ -113,6 +124,7 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
 | Build number                                     | `versionCode` | `CFBundleVersion`            | An integer that only ever goes up and is never reused, not even for a rejected build. |
 
 - The first Mobile Release is `1.0.0`.
+- Always write all three parts. The app sends this version on every request, and while a Version Floor is set the backend refuses one it cannot read, such as `1.0`.
 - Bump the patch for fixes, the minor for features, and the major when the Version Floor must drop an earlier major.
 - Keep the build numbers identical across both platforms, so one number names one build.
 - The `mobile-vX.Y.Z` tag is a **receipt**, as a web Tag is. Apply it only after a store has made that version available, never to trigger a build.
@@ -130,6 +142,27 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
    - Biometric Unlock follows ADR 0108 on a real device of each platform:
      - It accepts a strong biometric only, never the device PIN, pattern, or passcode.
      - It stops working after a fingerprint or face is added or removed, and falls back to the passphrase and Recovery Key without locking the User out.
+
+## Publish to a GitHub Release
+
+A Mobile Release is a signed APK and its SHA-256 checksum on a GitHub Release tagged `mobile-vX.Y.Z`, which anyone may download ([ADR 0127](../adr/0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md)). Nothing is uploaded to a store. Parts 5 to 8 below are kept for reference only.
+
+1. Set the version on both platforms (Part 3), commit it, and push. The tag is created on GitHub, so the commit you build from must already be there.
+2. Build the signed APK with `yarn mobile:release:build` from the repository root (Part 2). It reads the signing key from 1Password; without it the release build fails rather than falling back to the debug key.
+3. Check that every native library is 16 KB aligned: `zipalign -c -P 16 -v 4 app/build/outputs/apk/release/app-release.apk`.
+4. From the repository root, run:
+
+   ```bash
+   yarn mobile:release:publish --version X.Y.Z
+   ```
+
+   It refuses, naming the problem and before writing or sending anything, when the APK is missing, signed with the public debug key or not signed, or built with a different `versionName`; when `mobile-vX.Y.Z` already exists; or when the commit you are on is not on the remote yet. Otherwise it writes `dist/mobile-release/myorganiser-X.Y.Z.apk` and its `.sha256`, creates the tag and its GitHub Release with both files attached, and does **not** mark it latest: the web app's `vX.Y.Z` Release keeps that place. A `mobile-v` tag releases and deploys nothing: no web release workflow matches it, and the production dispatcher, which hears every new tag and branch, skips anything but a `release/v` branch. Pass `--apk <path>` to publish an APK from somewhere else.
+
+   If it stops after creating the tag (an upload failed), the Release exists without both files, and running it again is refused because the tag exists. Finish that Release by hand with `gh release upload mobile-vX.Y.Z dist/mobile-release/myorganiser-X.Y.Z.apk dist/mobile-release/myorganiser-X.Y.Z.apk.sha256`, then do step 5 by hand: set `CURRENT_MOBILE_RELEASE` to `'X.Y.Z'`.
+
+5. The command also sets the download page's version in `libs/web/pages/download/src/lib/mobileRelease.ts`. Commit that change; `https://myorganiser.app/download` shows the new Mobile Release from the next web Release on.
+
+6. Download the APK from the GitHub Release on a phone and install it, over an earlier Mobile Release if there is one. Sign in and use every tab.
 
 ## Part 5: Google Play, first release
 

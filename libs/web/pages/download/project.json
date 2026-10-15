@@ -1,0 +1,7 @@
+{
+  "name": "web-pages-download",
+  "$schema": "../../../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "libs/web/pages/download/src",
+  "projectType": "library",
+  "tags": ["type:page", "scope:web", "tier:agent"]
+}

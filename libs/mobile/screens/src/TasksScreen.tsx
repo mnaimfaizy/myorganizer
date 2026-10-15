@@ -98,6 +98,7 @@ import { TASKS_ROUTES, type TasksStackParamList } from './tasksStack';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
 import { describeVaultLoadError } from './vaultLoadError';
 import { useRememberedScroll } from './useRememberedScroll';
+import { storedTask } from './vaultRecordEdits';
 
 /** Which of the composer's pickers is up. */
 type ComposerMenu = 'priority' | 'context';
@@ -353,7 +354,7 @@ export function TasksScreen(): React.JSX.Element {
       void push(task.id, (envelope) =>
         putVaultRecord(
           envelope,
-          transitionTaskStatus(task as Task, 'done', at),
+          transitionTaskStatus(storedTask(envelope, task), 'done', at),
         ),
       ).then((confirmed) => {
         if (confirmed) setUndo({ message: 'Task done', task });
@@ -371,7 +372,7 @@ export function TasksScreen(): React.JSX.Element {
       void push(task.id, (envelope) =>
         putVaultRecord(
           envelope,
-          transitionTaskStatus(task as Task, 'done', at),
+          transitionTaskStatus(storedTask(envelope, task), 'done', at),
         ),
       ).then((confirmed) => {
         if (confirmed) setUndo({ message: 'Task done', task });
@@ -390,7 +391,9 @@ export function TasksScreen(): React.JSX.Element {
   const restore = useCallback(
     (task: DecryptedTask): void => {
       // Only `updatedAt` moves, because the restore is a real edit of its
-      // own and not a silent no-op.
+      // own and not a silent no-op. Deliberately the Task as it stood when
+      // done or archived, not the envelope's copy: an undo puts back that
+      // moment, Unknown Fields it had included.
       void push(task.id, (envelope) =>
         putVaultRecord(envelope, {
           ...(task as Task),
@@ -419,7 +422,7 @@ export function TasksScreen(): React.JSX.Element {
       void push(task.id, (envelope) =>
         putVaultRecord(
           envelope,
-          transitionTaskStatus(task as Task, 'pending', at),
+          transitionTaskStatus(storedTask(envelope, task), 'pending', at),
         ),
       );
     },
@@ -430,7 +433,7 @@ export function TasksScreen(): React.JSX.Element {
     (task: DecryptedTask): void => {
       void push(task.id, (envelope) =>
         putVaultRecord(envelope, {
-          ...(task as Task),
+          ...storedTask(envelope, task),
           archived: true,
           updatedAt: new Date().toISOString(),
         }),

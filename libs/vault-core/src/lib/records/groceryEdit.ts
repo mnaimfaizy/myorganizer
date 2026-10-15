@@ -1,6 +1,10 @@
 import type { CatalogItem, GroceryList, ListLine } from './grocery';
 import type { IsoDateTimeString } from './contactRecords';
-import { mergeDeletionLogs, type VaultBlobEnvelope } from './vaultBlobEnvelope';
+import {
+  mergeDeletionLogs,
+  readEnvelopeUnknownFields,
+  type VaultBlobEnvelope,
+} from './vaultBlobEnvelope';
 
 /**
  * The edits a Grocery List's own management and a grocery trip make, as
@@ -81,6 +85,7 @@ function overListLines(
   if (nextLines === null) return envelope;
 
   return {
+    ...readEnvelopeUnknownFields(envelope),
     records: {
       ...(envelope.records as object),
       lists: lists.map((entry, i) =>
@@ -108,6 +113,7 @@ function overLists(
   if (nextLists === null) return envelope;
 
   return {
+    ...readEnvelopeUnknownFields(envelope),
     records: { ...(envelope.records as object), lists: nextLists },
     deletions: envelope.deletions,
   };
@@ -193,6 +199,7 @@ export function deleteListLine(
   if (removed === envelope) return envelope;
 
   return {
+    ...readEnvelopeUnknownFields(removed),
     records: removed.records,
     deletions: mergeDeletionLogs(removed.deletions, { [lineId]: deletedAt }),
   };
@@ -252,6 +259,7 @@ export function createCatalogItemAndAddLine(
   const catalog = Array.isArray(records['catalog']) ? records['catalog'] : [];
 
   return {
+    ...readEnvelopeUnknownFields(envelope),
     records: {
       ...records,
       catalog: [...catalog, item],
@@ -326,7 +334,11 @@ export function removeCheckedListLines(
     (log, id) => mergeDeletionLogs(log, { [id]: deletedAt }),
     removed.deletions,
   );
-  return { records: removed.records, deletions };
+  return {
+    ...readEnvelopeUnknownFields(removed),
+    records: removed.records,
+    deletions,
+  };
 }
 
 /**
@@ -349,6 +361,7 @@ export function createGroceryList(
   if (lists.some((entry) => hasId(entry, list.id))) return envelope;
 
   return {
+    ...readEnvelopeUnknownFields(envelope),
     records: { ...records, lists: [...lists, list] },
     deletions: envelope.deletions,
   };
@@ -397,6 +410,7 @@ export function deleteGroceryList(
   if (removed === envelope) return envelope;
 
   return {
+    ...readEnvelopeUnknownFields(removed),
     records: removed.records,
     deletions: mergeDeletionLogs(removed.deletions, { [listId]: deletedAt }),
   };

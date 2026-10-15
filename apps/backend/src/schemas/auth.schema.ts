@@ -36,6 +36,13 @@ export const updatePasswordSchema = z
     }
   });
 
+export const UserDeletionSchema = z
+  .object({
+    password: z.string().min(1, 'Password field is required'),
+    confirmation: z.literal('DELETE'),
+  })
+  .strict();
+
 export const refreshTokenSchema = z.preprocess(
   (val) => (val === undefined || val === null ? {} : val),
   z

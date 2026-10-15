@@ -27,6 +27,7 @@ and it does not carry the Host Apply sequence, which lives once, in
 | `GOOGLE_REDIRECT_URI` | The Staging web address + `/dashboard/youtube/callback`                                                                                                  | `https://myorganiser.app/dashboard/youtube/callback`                                                                                                 |
 | `YOUTUBE_AVAILABLE`   | `true` — Staging's Cloud project stays in Testing and needs no verification                                                                              | `false` until Production's Cloud project is verified ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)) |
 | YouTube cron jobs     | **Not installed** — Staging is QA only                                                                                                                   | Installed ([YouTube integration](../features/youtube-integration.md#cpanel-cron-configuration))                                                      |
+| Version Floor         | `MOBILE_VERSION_FLOOR` empty unless testing a refusal                                                                                                    | `MOBILE_VERSION_FLOOR` empty until a Mobile Release is retired, then the lowest one served                                                           |
 | Bundle upload         | Daily at 16:00 UTC from the newest green `main` commit, and on a dispatch                                                                                | After Deploy Approval on a `release/vX.Y.Z` run                                                                                                      |
 | Host Apply            | Operator-dispatched `Deploy Staging` run. A Cut needs a full dispatch whose backend upload and Host Apply are green; the guard does not read the web job | Runs after Deploy Approval; required green before a Tag                                                                                              |
 
@@ -98,6 +99,9 @@ ROUTER_PREFIX=/api/v1
 # CORS and email links — see the environment table
 CORS_ORIGINS=<frontend origins, comma-separated>
 APP_FRONTEND_URL=<frontend origin>
+
+# Version Floor (ADR 0114) — see the environment table
+MOBILE_VERSION_FLOOR=<lowest Mobile Release served, X.Y.Z; empty turns it off>
 
 # Database
 DATABASE_URL=postgresql://<user>:<pass>@localhost:5432/<db>

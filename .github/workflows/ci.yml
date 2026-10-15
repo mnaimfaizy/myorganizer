@@ -928,6 +928,12 @@ jobs:
       - name: Mobile platform checker contracts
         run: corepack yarn mobile-platform:test
 
+      - name: Signing material checker contracts
+        run: corepack yarn signing-material:test
+
+      - name: Mobile Release publish contracts
+        run: corepack yarn mobile:release:test
+
       - name: Prisma migration history checker contracts
         run: corepack yarn prisma:migrations:test
 
@@ -1081,6 +1087,10 @@ jobs:
 
       - name: Check mobile platform rules
         run: corepack yarn mobile-platform:check
+
+      # Why a committed keystore is unrecoverable: see the checker's header.
+      - name: Check no signing material is committed
+        run: corepack yarn signing-material:check
 
       # The file-reading half of the Prisma migration gate (ADR 0094). The
       # half that needs a database is the "Apply Prisma migrations and check
@@ -1409,3 +1419,8 @@ jobs:
 
       - name: Run live logout spec
         run: corepack yarn nx e2e myorganizer-e2e --grep="logs out against the real backend"
+
+      # User Deletion (#969) against the real API: its own seeded user, so the
+      # logout spec above is unaffected.
+      - name: Run live account deletion spec
+        run: corepack yarn nx e2e myorganizer-e2e --grep="deletes the account against the real backend"

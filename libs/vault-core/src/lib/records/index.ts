@@ -13,6 +13,7 @@ export * from './task';
 export * from './taskMerge';
 export * from './taskOrder';
 export * from './taskTransition';
+export * from './unknownFields';
 export * from './usageLocationOrder';
 export * from './vaultBlobConverge';
 export * from './vaultBlobEdit';

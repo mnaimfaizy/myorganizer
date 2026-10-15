@@ -61,8 +61,14 @@ export type AdminAuditAction = typeof AdminAuditAction[keyof typeof AdminAuditAc
  */
 export interface AdminAuditLogEntry {
     'id': string;
-    'actorUserId': string;
-    'targetUserId': string;
+    /**
+     * Null once the acting User has been removed by User Deletion.
+     */
+    'actorUserId': string | null;
+    /**
+     * Null once the affected User has been removed by User Deletion.
+     */
+    'targetUserId': string | null;
     'action': AdminAuditAction;
     'createdAt': string;
 }
@@ -588,6 +594,26 @@ export interface UserCreationBody {
     'email': string;
     'password': string;
 }
+/**
+ * Body for `DELETE /users/me` (User Deletion).
+ */
+export interface UserDeletionBody {
+    'password': string;
+    'confirmation': UserDeletionBodyConfirmationEnum;
+}
+
+export const UserDeletionBodyConfirmationEnum = {
+    Delete: 'DELETE',
+} as const;
+
+export type UserDeletionBodyConfirmationEnum = typeof UserDeletionBodyConfirmationEnum[keyof typeof UserDeletionBodyConfirmationEnum];
+
+/**
+ * Why `DELETE /users/me` refused a User Deletion (403 or 409).
+ */
+export interface UserDeletionRefusal {
+    'message': string;
+}
 export interface UserLoginBody {
     'email': string;
     'password': string;
@@ -719,6 +745,37 @@ export interface VaultMetaV1 {
 export interface VerifyEmailRequest {
     'token': string;
 }
+/**
+ * HTTP 426: the Mobile App is below this environment\'s Version Floor.
+ */
+export interface VersionFloorRefusal {
+    'code': VersionFloorRefusalCodeEnum;
+    /**
+     * Short and User-safe: tells the User to update the Mobile App.
+     */
+    'message': string;
+    /**
+     * The configured floor as written.
+     */
+    'versionFloor': string;
+    /**
+     * From the X-Client header; null when it could not be read.
+     */
+    'platform': VersionFloorRefusalPlatformEnum | null;
+}
+
+export const VersionFloorRefusalCodeEnum = {
+    BelowVersionFloor: 'below_version_floor',
+} as const;
+
+export type VersionFloorRefusalCodeEnum = typeof VersionFloorRefusalCodeEnum[keyof typeof VersionFloorRefusalCodeEnum];
+export const VersionFloorRefusalPlatformEnum = {
+    Android: 'android',
+    Ios: 'ios',
+} as const;
+
+export type VersionFloorRefusalPlatformEnum = typeof VersionFloorRefusalPlatformEnum[keyof typeof VersionFloorRefusalPlatformEnum];
+
 export interface VideoResponse {
     'id': string;
     'videoId': string;
@@ -2418,6 +2475,115 @@ export class PlatformAdminApi extends BaseAPI {
      */
     public withdrawYouTubeAccess(requestParameters: PlatformAdminApiWithdrawYouTubeAccessRequest, options?: RawAxiosRequestConfig) {
         return PlatformAdminApiFp(this.configuration).withdrawYouTubeAccess(requestParameters.userId, options).then((request) => request(this.axios, this.basePath));
+    }
+}
+
+
+
+/**
+ * UsersApi - axios parameter creator
+ */
+export const UsersApiAxiosParamCreator = function (configuration?: Configuration) {
+    return {
+        /**
+         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+         * @param {UserDeletionBody} userDeletionBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteMe: async (userDeletionBody: UserDeletionBody, options: RawAxiosRequestConfig = {}): Promise<RequestArgs> => {
+            // verify required parameter 'userDeletionBody' is not null or undefined
+            assertParamExists('deleteMe', 'userDeletionBody', userDeletionBody)
+            const localVarPath = `/users/me`;
+            // use dummy base URL string because the URL constructor only accepts absolute URLs.
+            const localVarUrlObj = new URL(localVarPath, DUMMY_BASE_URL);
+            let baseOptions;
+            if (configuration) {
+                baseOptions = configuration.baseOptions;
+            }
+
+            const localVarRequestOptions = { method: 'DELETE', ...baseOptions, ...options};
+            const localVarHeaderParameter = {} as any;
+            const localVarQueryParameter = {} as any;
+
+            // authentication jwt required
+            // http bearer authentication required
+            await setBearerAuthToObject(localVarHeaderParameter, configuration)
+
+            localVarHeaderParameter['Content-Type'] = 'application/json';
+            localVarHeaderParameter['Accept'] = 'application/json';
+
+            setSearchParams(localVarUrlObj, localVarQueryParameter);
+            let headersFromBaseOptions = baseOptions && baseOptions.headers ? baseOptions.headers : {};
+            localVarRequestOptions.headers = {...localVarHeaderParameter, ...headersFromBaseOptions, ...options.headers};
+            localVarRequestOptions.data = serializeDataIfNeeded(userDeletionBody, localVarRequestOptions, configuration)
+
+            return {
+                url: toPathString(localVarUrlObj),
+                options: localVarRequestOptions,
+            };
+        },
+    }
+};
+
+/**
+ * UsersApi - functional programming interface
+ */
+export const UsersApiFp = function(configuration?: Configuration) {
+    const localVarAxiosParamCreator = UsersApiAxiosParamCreator(configuration)
+    return {
+        /**
+         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+         * @param {UserDeletionBody} userDeletionBody 
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        async deleteMe(userDeletionBody: UserDeletionBody, options?: RawAxiosRequestConfig): Promise<(axios?: AxiosInstance, basePath?: string) => AxiosPromise<void>> {
+            const localVarAxiosArgs = await localVarAxiosParamCreator.deleteMe(userDeletionBody, options);
+            const localVarOperationServerIndex = configuration?.serverIndex ?? 0;
+            const localVarOperationServerBasePath = operationServerMap['UsersApi.deleteMe']?.[localVarOperationServerIndex]?.url;
+            return (axios, basePath) => createRequestFunction(localVarAxiosArgs, globalAxios, BASE_PATH, configuration)(axios, localVarOperationServerBasePath || basePath);
+        },
+    }
+};
+
+/**
+ * UsersApi - factory interface
+ */
+export const UsersApiFactory = function (configuration?: Configuration, basePath?: string, axios?: AxiosInstance) {
+    const localVarFp = UsersApiFp(configuration)
+    return {
+        /**
+         * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+         * @param {UsersApiDeleteMeRequest} requestParameters Request parameters.
+         * @param {*} [options] Override http request option.
+         * @throws {RequiredError}
+         */
+        deleteMe(requestParameters: UsersApiDeleteMeRequest, options?: RawAxiosRequestConfig): AxiosPromise<void> {
+            return localVarFp.deleteMe(requestParameters.userDeletionBody, options).then((request) => request(axios, basePath));
+        },
+    };
+};
+
+/**
+ * Request parameters for deleteMe operation in UsersApi.
+ */
+export interface UsersApiDeleteMeRequest {
+    readonly userDeletionBody: UserDeletionBody
+}
+
+/**
+ * UsersApi - object-oriented interface
+ */
+export class UsersApi extends BaseAPI {
+    /**
+     * User Deletion: permanently and immediately deletes the signed-in User and everything they own. Requires the User\'s password and the literal confirmation `DELETE`. Sessions end because the User row is removed.
+     * @param {UsersApiDeleteMeRequest} requestParameters Request parameters.
+     * @param {*} [options] Override http request option.
+     * @throws {RequiredError}
+     */
+    public deleteMe(requestParameters: UsersApiDeleteMeRequest, options?: RawAxiosRequestConfig) {
+        return UsersApiFp(this.configuration).deleteMe(requestParameters.userDeletionBody, options).then((request) => request(this.axios, this.basePath));
     }
 }
 

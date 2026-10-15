@@ -31,6 +31,18 @@ All endpoints are under the backend router prefix (see `ROUTER_PREFIX`).
   - The chosen token must belong to the JWT User
   - Revokes that Refresh Token and clears the refresh cookie
   - Web sends the cookie; mobile sends `refresh_token` in the body
+- `DELETE /users/me` – User Deletion: permanently deletes the signed-in User
+  - Requires JWT. Body: `{ password, confirmation: "DELETE" }` (no other keys)
+  - `422` if the body fails validation; nothing is deleted
+  - `403 { message: "Incorrect password." }` if the password does not match; nothing is deleted.
+    This is deliberately not `401`, which the web client treats as an expired Access Token
+  - `409 { message }` if a YouTube sync is running; nothing is deleted, so retry shortly
+  - The YouTube Connection goes first, through YouTube Disconnect (a Google revoke failure does not block deletion)
+  - `204` on success: one `DELETE` of the User row, inside which all owned data cascades.
+    Sessions end because the User row is gone. The refresh cookie is cleared
+  - Admin Audit Log entries about the User are kept with the User removed from them
+    (`actorUserId` / `targetUserId` become `null`)
+  - A confirmation Transactional Email is sent to the captured address; a send failure does not fail the request
 
 Email verification:
 

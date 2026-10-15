@@ -29,6 +29,7 @@ import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { useLatestBackup } from '../hooks/useLatestBackup';
+import { DeleteAccountSection } from './DeleteAccountSection';
 import { InstallAppSection } from './InstallAppSection';
 
 export function AccountPageClient() {
@@ -283,6 +284,8 @@ export function AccountPageClient() {
           </CardContent>
         </Card>
       )}
+
+      <DeleteAccountSection />
     </div>
   );
 }

@@ -15,6 +15,7 @@ export * from './lib/session';
 export * from './lib/SyncStatusIndicator';
 export * from './lib/syncStatusWidget';
 export * from './lib/UnacknowledgedRecoveryKeyBanner';
+export * from './lib/useExportVault';
 export * from './lib/useLocalVaultRevision';
 export * from './lib/useServerReachability';
 // The two evidence hooks are deliberately not exported. They are called from

@@ -33,6 +33,15 @@ type Envelope = VaultBlobEnvelope<unknown>;
 
 const NETWORK_ERROR = { message: 'Network Error', code: 'ERR_NETWORK' };
 
+// The server refusing a device below the version floor (ADR 0117), as Axios
+// hands it over.
+const FLOOR_REFUSAL = {
+  response: {
+    status: 426,
+    data: { code: 'below_version_floor', message: 'Update required' },
+  },
+};
+
 /**
  * A server holding one Vault Blob, with switches for the two calls. `gate`
  * holds the next read open until the test releases it. `enforceIfMatch`
@@ -46,6 +55,8 @@ function fakeServer(initial: Envelope) {
   const server = {
     failReads: false,
     failWrites: false,
+    refuseReadsWithFloor: false,
+    refuseWritesWithFloor: false,
     enforceIfMatch: false,
     gateNextRead: false,
     releaseRead: (): void => release?.(),
@@ -59,6 +70,7 @@ function fakeServer(initial: Envelope) {
           });
         }
         if (server.failReads) throw NETWORK_ERROR;
+        if (server.refuseReadsWithFloor) throw FLOOR_REFUSAL;
         return {
           data: {
             blob: {
@@ -75,6 +87,7 @@ function fakeServer(initial: Envelope) {
           ifMatch?: string;
         }) => {
           if (server.failWrites) throw NETWORK_ERROR;
+          if (server.refuseWritesWithFloor) throw FLOOR_REFUSAL;
           if (server.enforceIfMatch && request.ifMatch !== `"v${version}"`) {
             throw { response: { status: 409 } };
           }
@@ -106,7 +119,10 @@ const addTask =
     records: [...(envelope.records as unknown[]), record],
   });
 
-function setup(initial: Envelope = { records: [], deletions: {} }): {
+function setup(
+  initial: Envelope = { records: [], deletions: {} },
+  onWriteFailed?: (error: unknown) => void,
+): {
   server: ReturnType<typeof fakeServer>;
   controller: VaultBlobController;
   state: () => VaultBlobState;
@@ -122,6 +138,7 @@ function setup(initial: Envelope = { records: [], deletions: {} }): {
     onState: (next) => {
       latest = next;
     },
+    onWriteFailed,
   });
   return {
     server,
@@ -619,6 +636,136 @@ describe('createVaultBlobController, told of a peer’s confirmed write', () => 
       snapshot: { envelope: { records: [first] }, etag: '"v2"' },
       loading: false,
       loadError: null,
+    });
+  });
+});
+
+describe('createVaultBlobController, refused below the version floor', () => {
+  const first = task('t1', '2026-02-01T00:00:00.000Z');
+
+  it('reverts an edit the server refuses with a 426, and does not report it saved', async () => {
+    const onWriteFailed = jest.fn();
+    const { server, controller, state } = setup(undefined, onWriteFailed);
+    await controller.reload();
+    server.refuseWritesWithFloor = true;
+
+    await expect(controller.apply(addTask(first))).resolves.toBe(false);
+
+    expect(server.envelope()).toMatchObject({ records: [] });
+    expect(state()).toMatchObject({
+      snapshot: { envelope: { records: [] }, etag: '"v1"' },
+      writing: false,
+      writeError: 'failed',
+    });
+    expect(onWriteFailed).toHaveBeenCalledTimes(1);
+    expect(onWriteFailed).toHaveBeenCalledWith(FLOOR_REFUSAL);
+  });
+
+  it('resends the refused edit on retry once the server accepts it', async () => {
+    const { server, controller, state } = setup();
+    await controller.reload();
+    server.refuseWritesWithFloor = true;
+    await controller.apply(addTask(first));
+    server.refuseWritesWithFloor = false;
+
+    await expect(controller.retry()).resolves.toBe(true);
+
+    expect(server.api.putVaultBlob).toHaveBeenCalledTimes(2);
+    expect(server.envelope()).toMatchObject({ records: [first] });
+    expect(state()).toMatchObject({
+      snapshot: { envelope: { records: [first] }, etag: '"v2"' },
+      writeError: null,
+    });
+  });
+
+  it('does not tell of a failure when the edit is saved', async () => {
+    const onWriteFailed = jest.fn();
+    const { controller } = setup(undefined, onWriteFailed);
+    await controller.reload();
+
+    await expect(controller.apply(addTask(first))).resolves.toBe(true);
+
+    expect(onWriteFailed).not.toHaveBeenCalled();
+  });
+
+  it('does not tell of a failure for an edit that was not applied', async () => {
+    const onWriteFailed = jest.fn();
+    const { server, controller } = setup(
+      { records: [first], deletions: {} },
+      onWriteFailed,
+    );
+    await controller.reload();
+
+    await expect(controller.apply((envelope) => envelope)).resolves.toBe(false);
+
+    expect(server.api.putVaultBlob).not.toHaveBeenCalled();
+    expect(onWriteFailed).not.toHaveBeenCalled();
+  });
+
+  it('keeps a reload-sent edit held when its re-send is refused with a 426', async () => {
+    const onWriteFailed = jest.fn();
+    const { server, controller, state } = setup(undefined, onWriteFailed);
+    await controller.reload();
+    server.refuseWritesWithFloor = true;
+    await controller.apply(addTask(first));
+    onWriteFailed.mockClear();
+
+    await expect(controller.reload()).resolves.toBe('held');
+
+    expect(onWriteFailed).toHaveBeenCalledTimes(1);
+    expect(onWriteFailed).toHaveBeenCalledWith(FLOOR_REFUSAL);
+    expect(state()).toMatchObject({
+      snapshot: { envelope: { records: [] }, etag: '"v1"' },
+      writing: false,
+      writeError: 'failed',
+    });
+  });
+
+  it('keeps the held edit and reports the 426 when the reload cannot read', async () => {
+    const onWriteFailed = jest.fn();
+    const { server, controller, state } = setup(undefined, onWriteFailed);
+    await controller.reload();
+    server.refuseWritesWithFloor = true;
+    await controller.apply(addTask(first));
+    server.refuseWritesWithFloor = false;
+    server.refuseReadsWithFloor = true;
+    onWriteFailed.mockClear();
+
+    await expect(controller.reload()).resolves.toBe('held');
+
+    expect(onWriteFailed).toHaveBeenCalledTimes(1);
+    expect(onWriteFailed).toHaveBeenCalledWith(FLOOR_REFUSAL);
+    expect(state()).toMatchObject({
+      snapshot: { envelope: { records: [] }, etag: '"v1"' },
+      loadError: FLOOR_REFUSAL,
+      refreshing: false,
+      loading: false,
+    });
+  });
+
+  it('does not tell of a failure when a reload with nothing held cannot read', async () => {
+    const onWriteFailed = jest.fn();
+    const { server, controller, state } = setup(undefined, onWriteFailed);
+    await controller.reload();
+    server.refuseReadsWithFloor = true;
+
+    await expect(controller.reload()).resolves.toBe('pulled');
+
+    expect(onWriteFailed).not.toHaveBeenCalled();
+    expect(state().loadError).toBe(FLOOR_REFUSAL);
+  });
+
+  it('still reverts and returns false on a 426 when no one is told', async () => {
+    const { server, controller, state } = setup();
+    await controller.reload();
+    server.refuseWritesWithFloor = true;
+
+    await expect(controller.apply(addTask(first))).resolves.toBe(false);
+
+    expect(state()).toMatchObject({
+      snapshot: { envelope: { records: [] }, etag: '"v1"' },
+      writing: false,
+      writeError: 'failed',
     });
   });
 });

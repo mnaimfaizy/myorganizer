@@ -347,4 +347,146 @@ describe('mergeGroceries', () => {
       'gone-remote': T2,
     });
   });
+
+  describe('unknown fields', () => {
+    it('unions envelope and payload unknown fields, keeping local on a shared key', () => {
+      const local = {
+        records: { catalog: [], lists: [], categories: ['local'] },
+        deletions: {},
+        sharedKey: 'local',
+        localOnly: 1,
+      } as VaultBlobEnvelope<unknown>;
+      const remote = {
+        records: {
+          catalog: [],
+          lists: [],
+          categories: ['remote'],
+          theme: 'dark',
+        },
+        deletions: {},
+        sharedKey: 'remote',
+        remoteOnly: 2,
+      } as VaultBlobEnvelope<unknown>;
+
+      const result = mergeGroceries(local, remote);
+
+      expect(result).toMatchObject({
+        sharedKey: 'local',
+        localOnly: 1,
+        remoteOnly: 2,
+      });
+      expect(result.records).toMatchObject({
+        categories: ['local'],
+        theme: 'dark',
+      });
+    });
+
+    it('keeps the unknown fields of the newer Grocery List and unions its lines', () => {
+      const local = groceriesEnvelope(
+        [catalogItem('c1', 'Milk', T1), catalogItem('c2', 'Bread', T1)],
+        [
+          groceryList('list-1', 'Local name', T1, [
+            listLine('line-a', 'c1', T1),
+          ]),
+        ],
+      );
+      const remoteList = {
+        ...groceryList('list-1', 'Remote name', T2, [
+          listLine('line-b', 'c2', T2),
+        ]),
+        futureListField: 'remote',
+      } as GroceryList;
+      const remote = groceriesEnvelope([], [remoteList]);
+
+      const result = mergeGroceries(local, remote);
+
+      expect(result.records.lists).toHaveLength(1);
+      expect(result.records.lists[0]).toMatchObject({
+        id: 'list-1',
+        name: 'Remote name',
+        updatedAt: T2,
+        futureListField: 'remote',
+      });
+      expect(result.records.lists[0].lines.map((line) => line.id)).toEqual([
+        'line-a',
+        'line-b',
+      ]);
+    });
+
+    it('keeps the local Grocery List and its unknown fields when updatedAt ties', () => {
+      const localList = {
+        ...groceryList('list-1', 'Local name', T1),
+        futureListField: 'local',
+      } as GroceryList;
+      const remoteList = {
+        ...groceryList('list-1', 'Remote name', T1),
+        futureListField: 'remote',
+      } as GroceryList;
+
+      const result = mergeGroceries(
+        groceriesEnvelope([], [localList]),
+        groceriesEnvelope([], [remoteList]),
+      );
+
+      expect(result.records.lists).toHaveLength(1);
+      expect(result.records.lists[0]).toMatchObject({
+        name: 'Local name',
+        futureListField: 'local',
+      });
+    });
+
+    it('keeps the unknown fields of the winning Catalog Item and List Line', () => {
+      const local = groceriesEnvelope(
+        [{ ...catalogItem('c1', 'Milk', T1), brand: 'old' } as CatalogItem],
+        [
+          groceryList('list-1', 'Weekly', T1, [
+            { ...listLine('line-a', 'c1', T1), note: 'old' } as ListLine,
+          ]),
+        ],
+      );
+      const remote = groceriesEnvelope(
+        [
+          {
+            ...catalogItem('c1', 'Milk', T2),
+            brand: 'new',
+            sku: 'x',
+          } as CatalogItem,
+        ],
+        [
+          groceryList('list-1', 'Weekly', T1, [
+            {
+              ...listLine('line-a', 'c1', T2),
+              note: 'new',
+              tag: 't',
+            } as ListLine,
+          ]),
+        ],
+      );
+
+      const result = mergeGroceries(local, remote);
+
+      expect(result.records.catalog).toEqual([
+        {
+          id: 'c1',
+          name: 'Milk',
+          category: 'other',
+          createdAt: T1,
+          updatedAt: T2,
+          brand: 'new',
+          sku: 'x',
+        },
+      ]);
+      expect(result.records.lists[0].lines).toEqual([
+        {
+          id: 'line-a',
+          catalogItemId: 'c1',
+          checked: false,
+          createdAt: T1,
+          updatedAt: T2,
+          note: 'new',
+          tag: 't',
+        },
+      ]);
+    });
+  });
 });

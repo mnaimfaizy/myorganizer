@@ -1,3 +1,5 @@
+import type { KnownKeys } from './unknownFields';
+
 export const GROCERY_PREDEFINED_CATEGORIES = [
   'produce',
   'dairy',
@@ -82,3 +84,57 @@ export interface GroceryItem {
   createdAt: string;
   updatedAt: string;
 }
+
+/**
+ * Every Catalog Item key a reader understands, pinned to the type: a field added to
+ * `CatalogItem` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const CATALOG_ITEM_KEYS = {
+  id: true,
+  name: true,
+  category: true,
+  price: true,
+  notes: true,
+  imageUrl: true,
+  links: true,
+  createdAt: true,
+  updatedAt: true,
+} as const satisfies KnownKeys<CatalogItem>;
+
+/**
+ * Every List Line key a reader understands, pinned to the type: a field added to
+ * `ListLine` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const LIST_LINE_KEYS = {
+  id: true,
+  catalogItemId: true,
+  checked: true,
+  amount: true,
+  createdAt: true,
+  updatedAt: true,
+} as const satisfies KnownKeys<ListLine>;
+
+/**
+ * Every Grocery List key a reader understands, pinned to the type: a field added to
+ * `GroceryList` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const GROCERY_LIST_KEYS = {
+  id: true,
+  name: true,
+  lines: true,
+  createdAt: true,
+  updatedAt: true,
+} as const satisfies KnownKeys<GroceryList>;
+
+/**
+ * Every groceries payload key a reader understands, pinned to the type: a field added to
+ * `GroceriesVaultPayload` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const GROCERIES_PAYLOAD_KEYS = {
+  catalog: true,
+  lists: true,
+} as const satisfies KnownKeys<GroceriesVaultPayload>;

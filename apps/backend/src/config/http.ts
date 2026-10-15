@@ -46,6 +46,8 @@ export function createCorsOptions(): CorsOptions {
       'Authorization',
       'If-Match',
       'If-None-Match',
+      // Mobile App identity (ADR 0114); the react-native-web preview sends it from a browser.
+      'X-Client',
     ],
     exposedHeaders: ['ETag'],
   };

@@ -24,6 +24,53 @@ const customConfig = {
 };
 
 /**
+ * The bundle-time switch (PRD #956). Starting Metro with
+ * `MYORGANISER_MOBILE_BACKEND=production` points a debug build at Production
+ * by resolving the environment module's bundleTarget.ts to its
+ * bundleTarget.production.ts sibling. Unset, a debug build talks to the
+ * development machine. A release build talks to Production either way, and no
+ * build carries a runtime switcher. Any other value fails here rather than
+ * bundling a target nobody asked for.
+ */
+const BACKEND_SWITCH = 'MYORGANISER_MOBILE_BACKEND';
+const bundleTargetDir = path.resolve(
+  __dirname,
+  '../../libs/mobile/core/src/environment',
+);
+const BUNDLE_TARGET_FILE = path.join(bundleTargetDir, 'bundleTarget.ts');
+const PRODUCTION_BUNDLE_TARGET_FILE = path.join(
+  bundleTargetDir,
+  'bundleTarget.production.ts',
+);
+
+function bundlesForProduction() {
+  const value = process.env[BACKEND_SWITCH];
+  if (value === undefined || value === '') return false;
+  if (value === 'production') return true;
+  throw new Error(
+    `${BACKEND_SWITCH} must be unset or "production"; got "${value}".`,
+  );
+}
+
+function withBackendSwitch(resolveRequest) {
+  if (!bundlesForProduction()) return resolveRequest;
+  return (context, moduleName, platform) => {
+    const resolution = (resolveRequest ?? context.resolveRequest)(
+      context,
+      moduleName,
+      platform,
+    );
+    if (
+      resolution.type === 'sourceFile' &&
+      resolution.filePath === BUNDLE_TARGET_FILE
+    ) {
+      return { type: 'sourceFile', filePath: PRODUCTION_BUNDLE_TARGET_FILE };
+    }
+    return resolution;
+  };
+}
+
+/**
  * React Native ships a renderer compiled against one exact React version, and
  * React throws at runtime if the `react` it is given differs. React Native
  * 0.87 and the workspace both sit on the same version, so Metro resolves the
@@ -74,6 +121,10 @@ module.exports = withNxMetro(mergeConfig(defaultConfig, customConfig), {
 
   return {
     ...config,
+    resolver: {
+      ...config.resolver,
+      resolveRequest: withBackendSwitch(config.resolver.resolveRequest),
+    },
     watchFolders: isLinuxOrCI
       ? config.watchFolders.filter(
           (folder) => !folder.includes(path.sep + 'node_modules'),

@@ -190,6 +190,35 @@ describe('vaultRecordWrite', () => {
     });
   });
 
+  describe('unknown envelope keys (ADR 0114 decision 3)', () => {
+    test('should keep an unknown envelope key when a deletion is written in the same save', async () => {
+      const records = [
+        { id: 'task-1', title: 'Task 1' },
+        { id: 'task-2', title: 'Task 2' },
+      ];
+      const deletedAt = '2026-01-15T14:30:00.000Z';
+      loadDecryptedDataMock.mockResolvedValue({
+        records: [],
+        deletions: {},
+        futureEnvelopeKey: { schema: 2 },
+      });
+
+      await saveVaultRecords(store, 'tasks', records, {
+        deletedId: 'task-1',
+        deletedAt,
+      });
+
+      expect(saveEncryptedDataMock).toHaveBeenCalledWith({
+        type: 'tasks',
+        value: {
+          futureEnvelopeKey: { schema: 2 },
+          records: [{ id: 'task-2', title: 'Task 2' }],
+          deletions: { 'task-1': deletedAt },
+        },
+      });
+    });
+  });
+
   describe('deleteVaultRecordAndSave', () => {
     const type: EditableVaultRecordType = 'tasks';
     const deletedAt = '2026-01-01T12:00:00.000Z';

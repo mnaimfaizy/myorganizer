@@ -1,4 +1,9 @@
 import { normalizeTasks } from './taskNormalization';
+import {
+  expectSavedEnvelope,
+  storeHolding,
+} from './unknownFieldsRoundTrip.testutil';
+import { saveVaultRecords } from './vaultRecordWrite';
 
 jest.mock('@myorganizer/core', () => ({
   ...jest.requireActual('@myorganizer/core'),
@@ -947,6 +952,146 @@ describe('taskNormalization', () => {
       });
       expect(resultFromNullEnvelope.value).toEqual(resultFromNull.value);
       expect(resultFromNullEnvelope.changed).toBe(resultFromNull.changed);
+    });
+  });
+
+  describe('unknown fields (ADR 0114 decision 3)', () => {
+    const createdAt = '2026-01-01T00:00:00.000Z';
+
+    it('keeps an unknown record field and an unknown envelope key through normalize-then-save', async () => {
+      const stored = {
+        records: [
+          {
+            id: 'task-1',
+            title: 'Renew passport',
+            status: 'pending',
+            priority: 'high',
+            archived: false,
+            createdAt,
+            reminderLead: '2d',
+          },
+        ],
+        deletions: {},
+        futureEnvelopeKey: { schema: 2 },
+      };
+      const { store, saveEncryptedData } = storeHolding(stored);
+
+      const { value } = normalizeTasks(stored);
+      await saveVaultRecords(store, 'tasks', value);
+
+      expectSavedEnvelope(saveEncryptedData, {
+        type: 'tasks',
+        value: {
+          futureEnvelopeKey: { schema: 2 },
+          records: [
+            {
+              id: 'task-1',
+              title: 'Renew passport',
+              status: 'pending',
+              priority: 'high',
+              archived: false,
+              createdAt,
+              reminderLead: '2d',
+            },
+          ],
+          deletions: {},
+        },
+      });
+    });
+
+    it('does not mark changed when the only extra field is unknown', () => {
+      const result = normalizeTasks([
+        {
+          id: 'task-1',
+          title: 'Renew passport',
+          status: 'pending',
+          priority: 'high',
+          archived: false,
+          createdAt,
+          reminderLead: '2d',
+        },
+      ]);
+      expect(result.value[0]).toEqual({
+        id: 'task-1',
+        title: 'Renew passport',
+        status: 'pending',
+        priority: 'high',
+        archived: false,
+        createdAt,
+        reminderLead: '2d',
+      });
+      expect(result.changed).toBe(false);
+    });
+
+    it('still repairs an invalid known field and keeps the unknown field beside it', () => {
+      const result = normalizeTasks([
+        {
+          id: 'task-1',
+          title: 'Renew passport',
+          status: 'paused',
+          priority: 'high',
+          archived: false,
+          createdAt,
+          reminderLead: '2d',
+        },
+      ]);
+      expect(result.value).toEqual([
+        {
+          id: 'task-1',
+          title: 'Renew passport',
+          status: 'pending',
+          priority: 'high',
+          archived: false,
+          createdAt,
+          reminderLead: '2d',
+        },
+      ]);
+      expect(result.changed).toBe(true);
+    });
+
+    it('does not bring back a known field that was dropped as invalid', () => {
+      const result = normalizeTasks([
+        {
+          id: 'task-1',
+          title: 'Renew passport',
+          status: 'pending',
+          priority: 'high',
+          archived: false,
+          createdAt,
+          estimatedMinutes: -5,
+          reminderLead: '2d',
+        },
+      ]);
+      expect(result.value).toEqual([
+        {
+          id: 'task-1',
+          title: 'Renew passport',
+          status: 'pending',
+          priority: 'high',
+          archived: false,
+          createdAt,
+          reminderLead: '2d',
+        },
+      ]);
+      expect(result.value[0]).not.toHaveProperty('estimatedMinutes');
+    });
+
+    it('retires the legacy todo title rather than carrying it as an unknown field', () => {
+      const result = normalizeTasks([
+        {
+          id: 'task-1',
+          title: 'Renew passport',
+          todo: 'Old title',
+          status: 'pending',
+          priority: 'high',
+          archived: false,
+          createdAt,
+          reminderLead: '2d',
+        },
+      ]);
+      expect(result.value[0]).not.toHaveProperty('todo');
+      expect(result.value[0]).toHaveProperty('reminderLead', '2d');
+      expect(result.changed).toBe(false);
     });
   });
 });

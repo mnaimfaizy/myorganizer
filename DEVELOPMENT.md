@@ -304,6 +304,16 @@ Metro can be started on its own when you only need the bundler:
 yarn nx start mobile
 ```
 
+#### Which backend a debug build talks to
+
+A debug build talks to the API and web app on your machine: `localhost:3000` and `localhost:4200`, or `10.0.2.2` from an Android emulator. To point it at Production instead, start Metro with the bundle-time switch, and restart Metro without it to switch back:
+
+```bash
+MYORGANISER_MOBILE_BACKEND=production yarn nx start mobile
+```
+
+A release build talks to Production over HTTPS and ignores the switch; no build has a switcher at runtime. When a launch finds a different backend from the one its local data came from, the app signs out and clears that data first. Device Settings stay.
+
 Do not use `nx run mobile:bundle` as a verification step — see [ADR 0005](docs/adr/0005-react-native-bare-with-nx.md). The verification gate for mobile is lint, typecheck, and format, per [apps/mobile/AGENTS.md](apps/mobile/AGENTS.md).
 
 #### When to re-run `pod install`

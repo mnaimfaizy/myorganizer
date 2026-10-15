@@ -1,5 +1,6 @@
 // @myorganizer/mobile/screens — navigation root + screen composition.
 export { AppLockGate } from './AppLockGate';
+export { VersionFloorGate } from './VersionFloorGate';
 export { BiometricOfferSheet } from './BiometricOfferSheet';
 export {
   BIOMETRIC_FAILED_MESSAGE,

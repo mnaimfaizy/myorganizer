@@ -9,7 +9,12 @@ export {
 } from './auth';
 export { GroceriesPage } from './GroceriesPage';
 export { readDownloadText } from './download';
-export { LIVE_AUTH_EMAIL, LIVE_AUTH_PASSWORD } from './liveAuth';
+export {
+  LIVE_AUTH_EMAIL,
+  LIVE_AUTH_PASSWORD,
+  LIVE_DELETION_EMAIL,
+  LIVE_DELETION_PASSWORD,
+} from './liveAuth';
 export { gotoStable } from './navigation';
 export { setNetworkDown } from './networkOutage';
 export {

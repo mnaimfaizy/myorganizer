@@ -6,6 +6,7 @@ import {
   Post,
   Query,
   Request,
+  Response,
   Route,
   Security,
   Tags,
@@ -21,6 +22,7 @@ import {
   VaultBackupStatus,
 } from '../services/vaultBackupConstants';
 import { ErrorResponse } from './ErrorResponse';
+import { VersionFloorRefusal } from '../types';
 
 export interface RecordVaultBackupRequest {
   event: VaultBackupEvent;
@@ -46,6 +48,7 @@ type ListVaultBackupsResponse = VaultBackupHistoryPage | ErrorResponse;
 @Tags('VaultBackups')
 @Route('/vault/backups')
 @Security('jwt')
+@Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class VaultBackupController extends Controller {
   @Post()
   public async recordBackup(

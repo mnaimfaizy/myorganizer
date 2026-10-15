@@ -42,6 +42,7 @@ import {
 } from './accountScreenLogic';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
 import { useAccountScreenState } from './useAccountScreenState';
+import { UserDeletionSheets } from './UserDeletionSheets';
 
 /** The avatar's side, as the Account sheet draws it. No token carries 56. */
 const AVATAR_SIZE = 56;
@@ -346,6 +347,16 @@ export function AccountScreen({
             />
           </ListSection>
 
+          <ListSection title="Your account" inset>
+            <ListRow
+              title="Delete account"
+              subtitle="Deletes your account and everything stored on the server for it."
+              leadingIcon="trash"
+              chevron
+              onPress={() => accountState.openSheet('deleteAccount')}
+            />
+          </ListSection>
+
           <Button
             label="Log out"
             variant="destructive"
@@ -448,6 +459,11 @@ export function AccountScreen({
         destructive
         onConfirm={() => void accountState.handleLogout()}
         onCancel={accountState.closeSheet}
+      />
+
+      <UserDeletionSheets
+        visible={accountState.sheet === 'deleteAccount'}
+        onClose={accountState.closeSheet}
       />
     </>
   );

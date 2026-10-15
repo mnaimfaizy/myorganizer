@@ -1,3 +1,5 @@
+import type { KnownKeys } from './unknownFields';
+
 export type TaskStatus =
   | 'pending'
   | 'in_progress'
@@ -28,3 +30,23 @@ export interface Task {
    */
   closedAt?: string;
 }
+
+/**
+ * Every Task key a reader understands, pinned to the type: a field added to
+ * `Task` must be added here too. Keys not in this table are unknown fields,
+ * which every writer carries through untouched (ADR 0114 decision 3).
+ */
+export const TASK_KEYS = {
+  id: true,
+  title: true,
+  description: true,
+  status: true,
+  priority: true,
+  context: true,
+  dueDate: true,
+  estimatedMinutes: true,
+  archived: true,
+  createdAt: true,
+  updatedAt: true,
+  closedAt: true,
+} as const satisfies KnownKeys<Task>;

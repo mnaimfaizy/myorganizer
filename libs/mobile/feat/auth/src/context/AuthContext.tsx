@@ -17,11 +17,13 @@ import { saveRefreshToken, clearRefreshToken } from '../storage/keychain';
 import {
   apiClient,
   createAuthApi,
+  createUsersApi,
   refreshSession,
   setAccessToken,
   setTokenRefreshCallback,
 } from '../api/client';
 import { REFRESH_FAILURE_ENDS_SESSION } from '../api/sessionRefresh';
+import { createUserDeletion } from '../api/userDeletion';
 import type { AuthSession, AuthTokens } from '../api/types';
 
 /**
@@ -48,6 +50,12 @@ interface AuthContextValue {
   restore: () => Promise<void>;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /**
+   * User Deletion: deletes the signed-in User on the server, then wipes their
+   * local data through `onLogout` and shows sign-in. Rejects with the
+   * request's error, changing nothing on the device, when the server refuses.
+   */
+  deleteAccount: (password: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -66,11 +74,20 @@ interface AuthProviderProps {
    * not depend on. The app shell supplies it.
    */
   onLogout?: (userId: string) => void | Promise<void>;
+  /**
+   * Whether to restore the Session from the stored Refresh Token on mount.
+   * Defaults to true. False starts signed out without sending anything: the
+   * app shell passes it when the backend origin guard could not clear a
+   * Refresh Token another backend issued, so that token never leaves the
+   * device. The next sign-in replaces it.
+   */
+  restoreOnLaunch?: boolean;
   children: ReactNode;
 }
 
 export function AuthProvider({
   onLogout,
+  restoreOnLaunch = true,
   children,
 }: AuthProviderProps): React.JSX.Element {
   const [status, setStatus] = useState<AuthStatus>('loading');
@@ -126,8 +143,14 @@ export function AuthProvider({
   }, [clearSession]);
 
   useEffect(() => {
-    void restore();
-  }, [restore]);
+    if (restoreOnLaunch) {
+      void restore();
+    } else {
+      setStatus('unauthenticated');
+    }
+    // The flag is fixed for this provider's life: BackendOriginGate decides it
+    // before the provider mounts.
+  }, [restore, restoreOnLaunch]);
 
   const login = useCallback(
     async (email: string, password: string): Promise<void> => {
@@ -189,6 +212,23 @@ export function AuthProvider({
     await clearSession();
   }, [session, clearSession, onLogout]);
 
+  const deleteAccount = useCallback(
+    (password: string): Promise<void> => {
+      const userId = session?.user.id;
+      return createUserDeletion({
+        requestDeletion: async (userDeletionBody) => {
+          await createUsersApi().deleteMe({ userDeletionBody });
+        },
+        // The same teardown Logout runs: the one clear-local-data function.
+        clearLocalData: async () => {
+          if (userId && onLogout) await onLogout(userId);
+        },
+        endSession: clearSession,
+      })(password);
+    },
+    [session, clearSession, onLogout],
+  );
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
@@ -196,8 +236,9 @@ export function AuthProvider({
       restore,
       login,
       logout,
+      deleteAccount,
     }),
-    [status, session, restore, login, logout],
+    [status, session, restore, login, logout, deleteAccount],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

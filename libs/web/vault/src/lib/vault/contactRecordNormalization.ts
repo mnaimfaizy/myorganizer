@@ -11,6 +11,10 @@ import {
   type OrganisationType,
   type Priority,
   type UpdateMethod,
+  ADDRESS_KEYS,
+  MOBILE_NUMBER_KEYS,
+  USAGE_LOCATION_KEYS,
+  withUnknownFields,
 } from '@myorganizer/vault-core';
 
 type NormalizeResult<T> = {
@@ -96,6 +100,16 @@ function parsePriority(value: unknown): Priority {
   return PriorityEnum.Normal;
 }
 
+/**
+ * A Usage Location's known keys as this reader consumes them: its type's
+ * fields plus `changeType`, the legacy name `updateMethod` is read from, which
+ * is migrated rather than carried as an unknown field.
+ */
+const USAGE_LOCATION_READ_KEYS = {
+  ...USAGE_LOCATION_KEYS,
+  changeType: true,
+} as const;
+
 function normalizeUsageLocation(
   value: unknown,
 ): NormalizeResult<UsageLocationRecord | null> {
@@ -134,7 +148,12 @@ function normalizeUsageLocation(
     next.createdAt !== raw.createdAt ||
     next.changedAt !== raw.changedAt;
 
-  return { value: next, changed };
+  // Unknown fields ride along and never mark the result changed (ADR 0114
+  // decision 3).
+  return {
+    value: withUnknownFields(raw, USAGE_LOCATION_READ_KEYS, next),
+    changed,
+  };
 }
 
 export function normalizeAddresses(
@@ -214,7 +233,9 @@ export function normalizeAddresses(
     if (next.createdAt !== raw.createdAt) changed = true;
     if (next.updatedAt !== raw.updatedAt) changed = true;
 
-    normalized.push(next);
+    // Unknown fields ride along and never mark the result changed (ADR 0114
+    // decision 3).
+    normalized.push(withUnknownFields(raw, ADDRESS_KEYS, next));
   }
 
   return { value: normalized, changed };
@@ -283,7 +304,9 @@ export function normalizeMobileNumbers(
     if (next.createdAt !== raw.createdAt) changed = true;
     if (next.updatedAt !== raw.updatedAt) changed = true;
 
-    normalized.push(next);
+    // Unknown fields ride along and never mark the result changed (ADR 0114
+    // decision 3).
+    normalized.push(withUnknownFields(raw, MOBILE_NUMBER_KEYS, next));
   }
 
   return { value: normalized, changed };

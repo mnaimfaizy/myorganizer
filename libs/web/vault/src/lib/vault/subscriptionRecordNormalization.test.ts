@@ -7,6 +7,11 @@ import {
 } from '@myorganizer/vault-core';
 
 import { normalizeSubscriptions } from './subscriptionRecordNormalization';
+import {
+  expectSavedEnvelope,
+  storeHolding,
+} from './unknownFieldsRoundTrip.testutil';
+import { saveVaultRecords } from './vaultRecordWrite';
 
 describe('normalizeSubscriptions', () => {
   beforeEach(() => {
@@ -283,5 +288,50 @@ describe('normalizeSubscriptions', () => {
     const res = normalizeSubscriptions(input);
     expect(res.changed).toBe(false);
     expect(res.value).toEqual(input);
+  });
+
+  describe('unknown fields (ADR 0114 decision 3)', () => {
+    const subscription = {
+      id: 'sub-1',
+      name: 'Streaming',
+      startDate: '2026-01-01T00:00:00.000Z',
+      status: SubscriptionStatusEnum.Active,
+      billingCycle: SubscriptionBillingCycleEnum.Monthly,
+      amount: 12.99,
+      currency: 'AUD',
+      paymentMethod: SubscriptionPaymentMethodEnum.CreditCard,
+      renewalType: SubscriptionRenewalTypeEnum.AutoRenew,
+      tier: SubscriptionTierEnum.Basic,
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      futureSubKey: 'kept',
+    };
+
+    it('keeps an unknown record field through normalize-then-save', async () => {
+      const stored = { records: [subscription], deletions: {} };
+      const { store, saveEncryptedData } = storeHolding(stored);
+
+      const { value } = normalizeSubscriptions(stored);
+      await saveVaultRecords(store, 'subscriptions', value);
+
+      expectSavedEnvelope(saveEncryptedData, {
+        type: 'subscriptions',
+        value: { records: [subscription], deletions: {} },
+      });
+    });
+
+    it('does not mark changed when the only extra field is unknown', () => {
+      const res = normalizeSubscriptions([subscription]);
+      expect(res.value).toEqual([subscription]);
+      expect(res.changed).toBe(false);
+    });
+
+    it('does not bring back an updatedAt that was dropped as unparseable', () => {
+      const res = normalizeSubscriptions([
+        { ...subscription, updatedAt: 'banana' },
+      ]);
+      expect(res.value[0].updatedAt).toBeUndefined();
+      expect(res.value[0]).toHaveProperty('futureSubKey', 'kept');
+      expect(res.changed).toBe(true);
+    });
   });
 });

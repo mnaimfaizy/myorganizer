@@ -55,7 +55,11 @@ import {
 } from '../schemas/auth.schema';
 import { UserSchema } from '../schemas/user.schema';
 import userService from '../services/UserService';
-import { FilteredUserInterface, UserInterface } from '../types';
+import {
+  FilteredUserInterface,
+  UserInterface,
+  VersionFloorRefusal,
+} from '../types';
 import passport from '../utils/passport';
 
 function validateLoginBody(
@@ -101,6 +105,7 @@ function authenticateLocal(
 
 @Tags('Authentication')
 @Route('/auth')
+@Response<VersionFloorRefusal>(426, 'Below the Version Floor')
 export class AuthController extends Controller {
   @Post('/login')
   @Response(200, 'Success')

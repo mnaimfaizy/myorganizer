@@ -55,14 +55,14 @@ model User {
 /// Durable record of Platform Admin mutations on Users.
 model AdminAuditLog {
   id             String           @id @default(cuid())
-  actor_user_id  String
-  target_user_id String
+  actor_user_id  String?
+  target_user_id String?
   action         AdminAuditAction
   created_at     DateTime         @default(now())
   meta           Json?
 
-  actor  User @relation("AdminAuditActor", fields: [actor_user_id], references: [id])
-  target User @relation("AdminAuditTarget", fields: [target_user_id], references: [id])
+  actor  User? @relation("AdminAuditActor", fields: [actor_user_id], references: [id], onDelete: SetNull)
+  target User? @relation("AdminAuditTarget", fields: [target_user_id], references: [id], onDelete: SetNull)
 
   @@index([created_at])
   @@index([actor_user_id])

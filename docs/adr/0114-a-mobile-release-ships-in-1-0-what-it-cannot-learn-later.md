@@ -8,7 +8,9 @@ accepted
 
 Grilled 2026-09-30 while planning the first Mobile Release to Google Play and the App Store.
 
-A Release is live everywhere the moment Host Apply finishes, because every browser loads the latest web app. A Mobile Release is not. Store review and rollout sit between the decision and the User, and every earlier Mobile Release stays installed and in use, possibly for years, against a backend and a web app that keep moving. An installed Mobile App only reacts to what it was built to understand. Any behaviour it lacks cannot be added to it afterwards. It can only be added to the next Mobile Release, and the Users who never update never get it.
+> **Distribution revised by [ADR 0127](0127-a-mobile-release-is-an-android-download-and-ios-is-the-installed-web-app.md).** A Mobile Release is now a signed Android APK downloaded from a GitHub Release, not a Google Play or App Store listing, and iOS Users use the installed web app. Nothing below depends on the store: an installed Mobile App still cannot learn what it was not built with.
+
+A Release is live everywhere the moment Host Apply finishes, because every browser loads the latest web app. A Mobile Release is not. Each User has to download and install it themselves, nothing updates an installed one, and every earlier Mobile Release stays installed and in use, possibly for years, against a backend and a web app that keep moving. An installed Mobile App only reacts to what it was built to understand. Any behaviour it lacks cannot be added to it afterwards. It can only be added to the next Mobile Release, and the Users who never update never get it.
 
 Two failures follow from that, and neither can be fixed after 1.0 ships.
 

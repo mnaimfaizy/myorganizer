@@ -459,6 +459,7 @@ export function useGroceriesVault({
 
         const now = new Date().toISOString();
         const nextPayload: GroceriesVaultPayload = {
+          ...payload,
           catalog: payload.catalog.map((item) =>
             item.id === input.id ? { ...item, ...input, updatedAt: now } : item,
           ),
@@ -486,6 +487,7 @@ export function useGroceriesVault({
 
         const now = new Date().toISOString();
         const nextPayload: GroceriesVaultPayload = {
+          ...payload,
           catalog: payload.catalog,
           lists: payload.lists.map((currentList) =>
             currentList.id === listId
@@ -580,6 +582,7 @@ export function useGroceriesVault({
         };
 
         const nextPayload: GroceriesVaultPayload = {
+          ...payload,
           catalog: nextCatalog,
           lists: payload.lists.map((list) =>
             list.id === listId
@@ -664,6 +667,7 @@ export function useGroceriesVault({
 
         const targetIds = new Set(listIds);
         const nextPayload: GroceriesVaultPayload = {
+          ...payload,
           catalog: nextCatalog,
           lists: payload.lists.map((list) => {
             if (!targetIds.has(list.id)) return list;
@@ -761,6 +765,7 @@ export function useGroceriesVault({
     async (catalogItemId: string) => {
       try {
         const nextPayload: GroceriesVaultPayload = {
+          ...payload,
           catalog: payload.catalog.filter((item) => item.id !== catalogItemId),
           lists: payload.lists.map((list) => {
             const hasLine = list.lines.some(

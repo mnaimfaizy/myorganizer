@@ -1,22 +1,31 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   AuthProvider,
   apiClient,
+  reportRefusedWrite,
   useAuth,
+  versionFloorRefusal,
 } from '@myorganizer/mobile/feat-auth';
 import {
   SensitiveCopyProvider,
   VaultProvider,
   createVaultApi,
-  disableBiometricUnlock,
-  nativeBiometricKeystore,
 } from '@myorganizer/mobile/feat-vault';
-import { forgetResumePoint, useAppearance } from '@myorganizer/mobile/core';
+import {
+  rememberLocalDataOwner,
+  useAppearance,
+} from '@myorganizer/mobile/core';
 import { ThemeProvider } from '@myorganizer/mobile/ui';
-import { AppLockGate, RootNavigator } from '@myorganizer/mobile/screens';
+import {
+  AppLockGate,
+  RootNavigator,
+  VersionFloorGate,
+} from '@myorganizer/mobile/screens';
+import { BackendOriginGate } from './BackendOriginGate';
+import { clearUserLocalData } from './userLocalData';
 
 /**
  * Reads the appearance Device Setting and hands it to the theme. Split out so
@@ -28,9 +37,11 @@ function ThemedApp(): React.JSX.Element {
 
   return (
     <ThemeProvider appearance={appearance}>
-      <AppLockGate>
-        <RootNavigator />
-      </AppLockGate>
+      <VersionFloorGate>
+        <AppLockGate>
+          <RootNavigator />
+        </AppLockGate>
+      </VersionFloorGate>
     </ThemeProvider>
   );
 }
@@ -48,29 +59,39 @@ function UserVaultBoundary({
   children: React.ReactNode;
 }): React.JSX.Element {
   const { user } = useAuth();
+  const userId = user?.id ?? null;
+  // A signed-in User holds local data under this backend origin; the data
+  // guard clears theirs if the origin later changes.
+  useEffect(() => {
+    if (userId) rememberLocalDataOwner(userId);
+  }, [userId]);
   // The vault client shares the auth Axios instance, so its requests carry the
   // bearer token and ride the 401 → refresh interceptor.
   const vaultApi = useMemo(() => createVaultApi(apiClient), []);
 
   return (
-    <VaultProvider vaultApi={vaultApi} userId={user?.id ?? null}>
+    <VaultProvider
+      vaultApi={vaultApi}
+      userId={userId}
+      onWriteFailed={reportRefusedVaultPush}
+    >
       <SensitiveCopyProvider>{children}</SensitiveCopyProvider>
     </VaultProvider>
   );
 }
 
+/** Tells Update required when a refused Vault Push lost the last change. */
+function reportRefusedVaultPush(error: unknown): void {
+  reportRefusedWrite(versionFloorRefusal, error);
+}
+
 export default function App(): React.JSX.Element {
   /**
-   * What Logout takes with it. Both of these belong to the User who is leaving
-   * and to this device: the keystore item holding their Master Key (ADR 0108
-   * decision 3), and the scroll positions of the screens they were reading.
-   *
-   * It is wired here rather than inside either library because this is the
-   * only place that can see both.
+   * What Logout takes with it: the leaving User's local data on this device
+   * (see userLocalData.ts). Device Settings stay.
    */
   const handleLogout = useCallback(async (userId: string): Promise<void> => {
-    forgetResumePoint();
-    await disableBiometricUnlock(nativeBiometricKeystore, userId);
+    await clearUserLocalData([userId]);
   }, []);
 
   return (
@@ -79,11 +100,18 @@ export default function App(): React.JSX.Element {
     // one receives no touches at all on Android.
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <AuthProvider onLogout={handleLogout}>
-          <UserVaultBoundary>
-            <ThemedApp />
-          </UserVaultBoundary>
-        </AuthProvider>
+        <BackendOriginGate>
+          {(guard) => (
+            <AuthProvider
+              onLogout={handleLogout}
+              restoreOnLaunch={guard === 'ready'}
+            >
+              <UserVaultBoundary>
+                <ThemedApp />
+              </UserVaultBoundary>
+            </AuthProvider>
+          )}
+        </BackendOriginGate>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

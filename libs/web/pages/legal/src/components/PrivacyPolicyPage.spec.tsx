@@ -48,7 +48,7 @@ describe('PrivacyPolicyPage', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /is available only to accounts the operator has enabled in MyOrganizer; without that, YouTube is not available to your account/,
+        /is available only to accounts the operator has enabled in MyOrganiser; without that, YouTube is not available to your account/,
       );
       expect(text).toMatch(/is not offered to the public/);
       expect(text).not.toMatch(/personally know/);
@@ -156,16 +156,16 @@ describe('PrivacyPolicyPage', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /Disconnecting revokes MyOrganizer's access at Google and immediately deletes your stored tokens, followed channels, cached uploads, watched marks, and notification and digest settings/,
+        /Disconnecting revokes MyOrganiser's access at Google and immediately deletes your stored tokens, followed channels, cached uploads, watched marks, and notification and digest settings/,
       );
       expect(text).not.toMatch(/kept for 30 days/);
     });
 
-    it("should state revoking MyOrganizer's access at Google stops syncing and deletes the same data within seven days unless the User reconnects", () => {
+    it("should state revoking MyOrganiser's access at Google stops syncing and deletes the same data within seven days unless the User reconnects", () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /If you revoke MyOrganizer's access at Google instead, MyOrganizer stops syncing and deletes the same data within seven days unless you reconnect\./,
+        /If you revoke MyOrganiser's access at Google instead, MyOrganiser stops syncing and deletes the same data within seven days unless you reconnect\./,
       );
     });
 
@@ -173,7 +173,7 @@ describe('PrivacyPolicyPage', () => {
       const { container } = render(<PrivacyPolicyPage />);
       const text = container.textContent || '';
       expect(text).toMatch(
-        /The operator may also withdraw the feature from an account; doing so deletes the same data as a disconnect, revoking MyOrganizer's access at Google and deleting your stored tokens, followed channels, cached uploads, watched marks, and notification and digest settings\./,
+        /The operator may also withdraw the feature from an account; doing so deletes the same data as a disconnect, revoking MyOrganiser's access at Google and deleting your stored tokens, followed channels, cached uploads, watched marks, and notification and digest settings\./,
       );
     });
 
@@ -202,22 +202,21 @@ describe('PrivacyPolicyPage', () => {
   });
 
   describe('Your Rights section', () => {
-    it('should state account deletion is done on request by contacting the operator', () => {
-      const { container } = render(<PrivacyPolicyPage />);
-      const text = container.textContent || '';
-      expect(text).toMatch(/Deleting your account is done on request for now/);
-      expect(text).toMatch(/contact us using the information below/);
-    });
-
-    it('should not claim the User can delete their account at any time or delete Vault data from account settings', () => {
-      const { container } = render(<PrivacyPolicyPage />);
-      const text = container.textContent || '';
+    it('should point account deletion to the self-serve flow and a data copy to the contact route', () => {
+      render(<PrivacyPolicyPage />);
       const rightsSection = screen
         .getByRole('heading', { name: /Your Rights/i, level: 2 })
         .closest('section');
       expect(rightsSection).not.toBeNull();
-      expect(rightsSection?.textContent || '').toMatch(/delete your account/i);
-      expect(rightsSection?.textContent || '').not.toMatch(/at any time/i);
+      const rights = rightsSection?.textContent || '';
+      expect(rights).toMatch(/delete your account as described above/);
+      expect(rights).toMatch(/contact us using the information below/);
+    });
+
+    it('should no longer say deletion is done on request or from account settings', () => {
+      const { container } = render(<PrivacyPolicyPage />);
+      const text = container.textContent || '';
+      expect(text).not.toMatch(/done on request/i);
       expect(text).not.toMatch(/from your account settings/i);
     });
   });

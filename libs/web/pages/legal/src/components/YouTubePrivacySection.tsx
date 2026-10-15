@@ -15,19 +15,19 @@ export function YouTubePrivacySection({
     <section className="mt-6">
       <Heading className="text-base font-semibold">YouTube Integration</Heading>
       <p className="mt-3 text-sm text-muted-foreground">
-        MyOrganizer has an optional YouTube feature. It is a private feature run
+        MyOrganiser has an optional YouTube feature. It is a private feature run
         personally by the operator. It is available only to accounts the
-        operator has enabled in MyOrganizer; without that, YouTube is not
+        operator has enabled in MyOrganiser; without that, YouTube is not
         available to your account. It is not offered to the public.
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
         The feature uses YouTube API Services. If your account has it and you
-        connect your YouTube account through Google OAuth, MyOrganizer requests
+        connect your YouTube account through Google OAuth, MyOrganiser requests
         the{' '}
         <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">
           youtube.readonly
         </code>{' '}
-        scope, which gives MyOrganizer read-only access to your YouTube
+        scope, which gives MyOrganiser read-only access to your YouTube
         subscriptions and the uploads of those channels — with no ability to
         write, delete, or modify anything on YouTube. Google&apos;s handling of
         your data is described in the{' '}
@@ -52,13 +52,13 @@ export function YouTubePrivacySection({
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
         <strong>How we use and share it:</strong> We use this data only to show
-        you new uploads from your channels inside MyOrganizer and, if you opt
+        you new uploads from your channels inside MyOrganiser and, if you opt
         in, to email you a digest of them. We do not sell it, we do not use it
         for advertising, and we do not use it to train artificial intelligence
         or machine learning models. It is stored with our hosting provider, and
         a digest you opted in to is sent through our email delivery provider. It
-        is not shared with anyone else, and no other MyOrganizer user can see
-        it. MyOrganizer&apos;s use and transfer of information received from
+        is not shared with anyone else, and no other MyOrganiser user can see
+        it. MyOrganiser&apos;s use and transfer of information received from
         Google APIs adheres to the{' '}
         <a
           href="https://developers.google.com/terms/api-services-user-data-policy"
@@ -73,7 +73,7 @@ export function YouTubePrivacySection({
       <p className="mt-3 text-sm text-muted-foreground">
         <strong>Revocation and deletion:</strong> You can end this connection at
         any time by disconnecting YouTube from the YouTube page in your
-        dashboard, or by revoking MyOrganizer&apos;s access from your{' '}
+        dashboard, or by revoking MyOrganiser&apos;s access from your{' '}
         <a
           href="https://security.google.com/settings/security/permissions"
           target="_blank"
@@ -82,14 +82,14 @@ export function YouTubePrivacySection({
         >
           Google security settings
         </a>
-        . Disconnecting revokes MyOrganizer&apos;s access at Google and
+        . Disconnecting revokes MyOrganiser&apos;s access at Google and
         immediately deletes your stored tokens, followed channels, cached
         uploads, watched marks, and notification and digest settings. If you
-        revoke MyOrganizer&apos;s access at Google instead, MyOrganizer stops
+        revoke MyOrganiser&apos;s access at Google instead, MyOrganiser stops
         syncing and deletes the same data within seven days unless you
         reconnect. The operator may also withdraw the feature from an account;
         doing so deletes the same data as a disconnect, revoking
-        MyOrganizer&apos;s access at Google and deleting your stored tokens,
+        MyOrganiser&apos;s access at Google and deleting your stored tokens,
         followed channels, cached uploads, watched marks, and notification and
         digest settings.
       </p>
