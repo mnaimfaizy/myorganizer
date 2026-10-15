@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StatusBar, StyleSheet, View } from 'react-native';
 import {
   EmptyState,
   InlineNotice,
@@ -30,6 +30,10 @@ export function UpdateRequiredScreen({
 
   return (
     <Screen>
+      {/* RootNavigator sets the glyph style, and this screen replaces it. */}
+      <StatusBar
+        barStyle={theme.mode === 'dark' ? 'light-content' : 'dark-content'}
+      />
       <View style={[styles.centre, { gap: theme.spacing.lg }]}>
         <EmptyState
           icon="arrowUp"
