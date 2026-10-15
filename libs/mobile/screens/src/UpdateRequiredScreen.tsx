@@ -43,6 +43,7 @@ export function UpdateRequiredScreen({
           actionIcon="external"
           actionIconPosition="trailing"
           onAction={onDownload}
+          style={styles.message}
         />
         {unsavedChange && (
           <InlineNotice
@@ -61,5 +62,10 @@ const styles = StyleSheet.create({
   centre: {
     flex: 1,
     justifyContent: 'center',
+  },
+  // EmptyState grows to fill its parent; held to its content here, the
+  // not-saved notice sits under the button and the two centre together.
+  message: {
+    flexGrow: 0,
   },
 });
