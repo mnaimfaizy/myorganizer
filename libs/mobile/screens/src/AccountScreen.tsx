@@ -350,7 +350,7 @@ export function AccountScreen({
           <ListSection title="Your account" inset>
             <ListRow
               title="Delete account"
-              subtitle="Deletes your account and everything stored on the server for it. Points you to the web for an Escape Copy first."
+              subtitle="Deletes your account and everything stored on the server for it."
               leadingIcon="trash"
               chevron
               onPress={() => accountState.openSheet('deleteAccount')}
