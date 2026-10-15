@@ -7,14 +7,16 @@
 		"requestBodies": {},
 		"responses": {},
 		"schemas": {
-			"AuthUrlResponse": {
+			"YouTubeAcknowledgementResponse": {
 				"properties": {
-					"url": {
-						"type": "string"
+					"acknowledgedAt": {
+						"type": "string",
+						"nullable": true,
+						"description": "ISO time the User accepted the one-time acknowledgement, or null (ADR 0129)."
 					}
 				},
 				"required": [
-					"url"
+					"acknowledgedAt"
 				],
 				"type": "object",
 				"additionalProperties": false
@@ -29,6 +31,38 @@
 					"message"
 				],
 				"type": "object"
+			},
+			"AuthUrlResponse": {
+				"properties": {
+					"url": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"url"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"AcknowledgementRequiredResponse": {
+				"properties": {
+					"message": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string",
+						"enum": [
+							"acknowledgement_required"
+						],
+						"nullable": false
+					}
+				},
+				"required": [
+					"message",
+					"code"
+				],
+				"type": "object",
+				"additionalProperties": false
 			},
 			"StatusResponse": {
 				"properties": {
@@ -100,16 +134,6 @@
 						"type": "object"
 					}
 				]
-			},
-			"DisconnectRequest": {
-				"properties": {
-					"deleteWatchedMarks": {
-						"type": "boolean",
-						"description": "When true, do not preserve Watched — clear/skip ledger. Default false."
-					}
-				},
-				"type": "object",
-				"additionalProperties": false
 			},
 			"SubscriptionResponse": {
 				"properties": {
@@ -553,6 +577,19 @@
 						"nullable": true
 					}
 				},
+				"type": "object",
+				"additionalProperties": false
+			},
+			"YouTubeAccessResponse": {
+				"properties": {
+					"granted": {
+						"type": "boolean",
+						"description": "Whether a Platform Admin has granted the signed-in User YouTube Access (ADR 0129)."
+					}
+				},
+				"required": [
+					"granted"
+				],
 				"type": "object",
 				"additionalProperties": false
 			},
@@ -1342,6 +1379,25 @@
 				"type": "object",
 				"additionalProperties": false
 			},
+			"YouTubeAccessUsageResponse": {
+				"description": "Platform Admin read of the YouTube Access lifetime ceiling (ADR 0129).",
+				"properties": {
+					"everGranted": {
+						"type": "number",
+						"format": "double"
+					},
+					"ceiling": {
+						"type": "number",
+						"format": "double"
+					}
+				},
+				"required": [
+					"everGranted",
+					"ceiling"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
 			"AdminUserIdentity": {
 				"description": "Identity-only User projection for Platform Admin directory APIs.",
 				"properties": {
@@ -1371,6 +1427,10 @@
 					},
 					"emailVerified": {
 						"type": "boolean"
+					},
+					"youtubeAccess": {
+						"type": "boolean",
+						"description": "Whether a Platform Admin currently grants this User YouTube Access (ADR 0129)."
 					}
 				},
 				"required": [
@@ -1381,10 +1441,39 @@
 					"lastName",
 					"role",
 					"disabled",
-					"emailVerified"
+					"emailVerified",
+					"youtubeAccess"
 				],
 				"type": "object",
 				"additionalProperties": false
+			},
+			"YouTubeDisconnectOutcome": {
+				"type": "string",
+				"enum": [
+					"completed",
+					"pending",
+					"not_connected"
+				],
+				"description": "Outcome of the YouTube Disconnect that a withdrawal triggers (ADR 0129)."
+			},
+			"WithdrawYouTubeAccessResponse": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/AdminUserIdentity"
+					},
+					{
+						"properties": {
+							"youtubeDisconnect": {
+								"$ref": "#/components/schemas/YouTubeDisconnectOutcome"
+							}
+						},
+						"required": [
+							"youtubeDisconnect"
+						],
+						"type": "object"
+					}
+				],
+				"description": "Identity after a YouTube Access withdrawal, with the disconnect outcome."
 			},
 			"AdminAuditAction": {
 				"type": "string",
@@ -1394,7 +1483,9 @@
 					"force_logout",
 					"resend_verification",
 					"promote",
-					"demote"
+					"demote",
+					"youtube_access_grant",
+					"youtube_access_withdraw"
 				]
 			},
 			"AdminAuditLogEntry": {
@@ -1462,6 +1553,69 @@
 		"contact": {}
 	},
 	"paths": {
+		"/youtube/acknowledgement": {
+			"get": {
+				"operationId": "GetAcknowledgement",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/YouTubeAcknowledgementResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns the one-time YouTube acknowledgement state for the signed-in User\n(ADR 0129). `acknowledgedAt` is null until the User accepts it.",
+				"tags": [
+					"YouTube"
+				],
+				"security": [
+					{
+						"jwt": [
+							"youtube_access"
+						]
+					}
+				],
+				"parameters": []
+			},
+			"post": {
+				"operationId": "AcceptAcknowledgement",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"anyOf": [
+										{
+											"$ref": "#/components/schemas/YouTubeAcknowledgementResponse"
+										},
+										{
+											"$ref": "#/components/schemas/YouTubeErrorResponse"
+										}
+									]
+								}
+							}
+						}
+					}
+				},
+				"description": "Records the signed-in User's one-time YouTube acknowledgement (ADR 0129).\nThe first accepted time is kept: calling again returns it unchanged.",
+				"tags": [
+					"YouTube"
+				],
+				"security": [
+					{
+						"jwt": [
+							"youtube_access"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/youtube/auth-url": {
 			"get": {
 				"operationId": "GetAuthUrl",
@@ -1476,21 +1630,36 @@
 											"$ref": "#/components/schemas/AuthUrlResponse"
 										},
 										{
+											"$ref": "#/components/schemas/AcknowledgementRequiredResponse"
+										},
+										{
 											"$ref": "#/components/schemas/YouTubeErrorResponse"
 										}
 									]
 								}
 							}
 						}
+					},
+					"409": {
+						"description": "The YouTube acknowledgement has not been accepted yet.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AcknowledgementRequiredResponse"
+								}
+							}
+						}
 					}
 				},
-				"description": "Returns the Google OAuth consent URL for linking YouTube.",
+				"description": "Returns the Google OAuth consent URL for linking YouTube. Refused with 409\nuntil the User has stored the one-time acknowledgement (ADR 0129).",
 				"tags": [
 					"YouTube"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -1529,7 +1698,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": [],
@@ -1581,7 +1752,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -1602,26 +1775,18 @@
 						}
 					}
 				},
-				"description": "Disconnects the user's YouTube account after revoking the token.\nOptionally wipes Watched marks via the request body; preserves them by default.",
+				"description": "Disconnects the user's YouTube account after revoking the token.\nDeletes all YouTube data, including Watched marks; nothing is kept for a reconnect.",
 				"tags": [
 					"YouTube"
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
-				"parameters": [],
-				"requestBody": {
-					"required": false,
-					"content": {
-						"application/json": {
-							"schema": {
-								"$ref": "#/components/schemas/DisconnectRequest"
-							}
-						}
-					}
-				}
+				"parameters": []
 			}
 		},
 		"/youtube/subscriptions": {
@@ -1655,7 +1820,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -1689,7 +1856,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -1723,7 +1892,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -1757,7 +1928,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -1799,7 +1972,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": [
@@ -1860,7 +2035,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": [
@@ -1960,7 +2137,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": [
@@ -2016,7 +2195,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -2050,7 +2231,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": []
@@ -2082,7 +2265,9 @@
 				],
 				"security": [
 					{
-						"jwt": []
+						"jwt": [
+							"youtube_access"
+						]
 					}
 				],
 				"parameters": [],
@@ -2096,6 +2281,33 @@
 						}
 					}
 				}
+			}
+		},
+		"/youtube/access": {
+			"get": {
+				"operationId": "GetAccess",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/YouTubeAccessResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Whether the signed-in User has YouTube Access (ADR 0129). Reachable without\nthe access scope, so the web can hide YouTube from Users without it.",
+				"tags": [
+					"YouTube"
+				],
+				"security": [
+					{
+						"jwt": []
+					}
+				],
+				"parameters": []
 			}
 		},
 		"/youtube/availability": {
@@ -3196,6 +3408,35 @@
 				}
 			}
 		},
+		"/admin/youtube-access": {
+			"get": {
+				"operationId": "GetYouTubeAccessUsage",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/YouTubeAccessUsageResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Users ever granted YouTube Access, and the configured ceiling. Platform Admin only.",
+				"tags": [
+					"Platform Admin"
+				],
+				"security": [
+					{
+						"jwt": [
+							"platform_admin"
+						]
+					}
+				],
+				"parameters": []
+			}
+		},
 		"/admin/users": {
 			"get": {
 				"operationId": "ListUsers",
@@ -3669,6 +3910,136 @@
 					}
 				},
 				"description": "Demote a Platform Admin to a normal User.\nRejects demotion of the last Platform Admin.",
+				"tags": [
+					"Platform Admin"
+				],
+				"security": [
+					{
+						"jwt": [
+							"platform_admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/admin/users/{userId}/youtube-access/grant": {
+			"post": {
+				"operationId": "GrantYouTubeAccess",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/AdminUserIdentity"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"message": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"message"
+									],
+									"type": "object"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"message": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"message"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Grant YouTube Access to a User (ADR 0129). Refused with 409 when the\nlifetime ceiling is reached and this User was never granted before.",
+				"tags": [
+					"Platform Admin"
+				],
+				"security": [
+					{
+						"jwt": [
+							"platform_admin"
+						]
+					}
+				],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "userId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		},
+		"/admin/users/{userId}/youtube-access/withdraw": {
+			"post": {
+				"operationId": "WithdrawYouTubeAccess",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WithdrawYouTubeAccessResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"message": {
+											"type": "string"
+										}
+									},
+									"required": [
+										"message"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Withdraw YouTube Access from a User. A connected User is disconnected from\nYouTube in the same operation; a live Sync Run leaves the disconnect pending.",
 				"tags": [
 					"Platform Admin"
 				],

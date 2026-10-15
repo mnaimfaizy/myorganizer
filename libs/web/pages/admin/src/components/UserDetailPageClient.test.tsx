@@ -5,6 +5,15 @@ jest.mock('../lib/apiClient', () => ({
   createPlatformAdminApi: jest.fn(),
 }));
 
+jest.mock('@myorganizer/web-ui', () => {
+  const actual = jest.requireActual('@myorganizer/web-ui');
+
+  return {
+    ...actual,
+    useToast: jest.fn(),
+  };
+});
+
 jest.mock('next/navigation', () => ({
   useParams: jest.fn(),
 }));
@@ -26,7 +35,8 @@ jest.mock('next/link', () => {
 });
 
 import type { AdminUserIdentity } from '@myorganizer/app-api-client';
-import { render, screen, waitFor } from '@testing-library/react';
+import { useToast } from '@myorganizer/web-ui';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useParams } from 'next/navigation';
 
@@ -35,6 +45,9 @@ import { createPlatformAdminApi } from '../lib/apiClient';
 import { UserDetailPageClient } from './UserDetailPageClient';
 
 const mockGetUserById = jest.fn();
+const mockGetYouTubeAccessUsage = jest.fn();
+const mockGrantYouTubeAccess = jest.fn();
+const mockToast = jest.fn();
 
 const userWithPhone: AdminUserIdentity = {
   id: 'u-2',
@@ -46,6 +59,7 @@ const userWithPhone: AdminUserIdentity = {
   role: 'user',
   disabled: true,
   emailVerified: false,
+  youtubeAccess: false,
 };
 
 const userWithoutPhone: AdminUserIdentity = {
@@ -57,11 +71,17 @@ const userWithoutPhone: AdminUserIdentity = {
   role: 'platform_admin',
   disabled: false,
   emailVerified: true,
+  youtubeAccess: false,
 };
 
+// "YouTube Access" text is a required admin field and button label. Any other
+// YouTube-labelled content (tokens, watched marks, channel data, sync state)
+// is still treated as sensitive.
 const SENSITIVE_PATTERNS = [
   /vault/i,
-  /youtube/i,
+  /youtube(?! access)/i,
+  /refresh token/i,
+  /channel id/i,
   /password/i,
   /ciphertext/i,
   /unlock/i,
@@ -98,9 +118,15 @@ describe('UserDetailPageClient', () => {
     (createPlatformAdminApi as jest.Mock).mockReturnValue({
       listUsers: jest.fn(),
       getUserById: mockGetUserById,
+      getYouTubeAccessUsage: mockGetYouTubeAccessUsage,
+      grantYouTubeAccess: mockGrantYouTubeAccess,
     });
+    (useToast as jest.Mock).mockReturnValue({ toast: mockToast });
     (useParams as jest.Mock).mockReturnValue({ userId: 'u-2' });
     mockGetUserById.mockResolvedValue({ data: userWithPhone });
+    mockGetYouTubeAccessUsage.mockResolvedValue({
+      data: { everGranted: 3, ceiling: 25 },
+    });
   });
 
   it('loads user detail and renders identity fields', async () => {
@@ -181,7 +207,7 @@ describe('UserDetailPageClient', () => {
     expect(mockGetUserById).not.toHaveBeenCalled();
   });
 
-  it('does not surface vault, YouTube, or secret operational fields', async () => {
+  it('does not surface vault, YouTube secret, or operational fields', async () => {
     const secretFieldValues = [
       'SECRET_VAULT_BLOB',
       'ya29.secret-token',
@@ -216,5 +242,88 @@ describe('UserDetailPageClient', () => {
     }
 
     expectNoSensitiveContent(container);
+  });
+
+  it.each([
+    { youtubeAccess: false, expected: 'No' },
+    { youtubeAccess: true, expected: 'Yes' },
+  ])(
+    'shows YouTube Access as $expected when youtubeAccess is $youtubeAccess',
+    async ({ youtubeAccess, expected }) => {
+      mockGetUserById.mockResolvedValue({
+        data: { ...userWithPhone, youtubeAccess },
+      });
+
+      render(<UserDetailPageClient />);
+
+      await waitFor(() => {
+        expect(
+          screen.getByRole('heading', { name: 'Grace Hopper' }),
+        ).toBeInTheDocument();
+      });
+      expectDefinitionValue('YouTube Access', expected);
+    },
+  );
+
+  it('shows the ever-granted count against the ceiling', async () => {
+    render(<UserDetailPageClient />);
+
+    await waitFor(() => {
+      expectDefinitionValue('YouTube Access places used', '3 of 25');
+    });
+    expect(mockGetYouTubeAccessUsage).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows Loading… for places used while the usage call is pending', async () => {
+    mockGetYouTubeAccessUsage.mockReturnValue(new Promise(() => undefined));
+
+    render(<UserDetailPageClient />);
+
+    await waitFor(() => {
+      expectDefinitionValue('YouTube Access places used', 'Loading…');
+    });
+  });
+
+  it('shows Unavailable for places used when the usage call fails and keeps the rest of the page', async () => {
+    mockGetYouTubeAccessUsage.mockRejectedValue(new Error('Network error'));
+
+    render(<UserDetailPageClient />);
+
+    await waitFor(() => {
+      expectDefinitionValue('YouTube Access places used', 'Unavailable');
+    });
+    expectDefinitionValue('Email', 'grace@example.com');
+    expect(
+      screen.getByRole('button', { name: 'Grant YouTube Access' }),
+    ).toBeInTheDocument();
+  });
+
+  it('reloads the ever-granted count after a grant updates the user without a page reload', async () => {
+    const grantedUser = { ...userWithPhone, youtubeAccess: true };
+    mockGrantYouTubeAccess.mockResolvedValue({ data: grantedUser });
+
+    render(<UserDetailPageClient />);
+
+    await waitFor(() => {
+      expectDefinitionValue('YouTube Access places used', '3 of 25');
+    });
+
+    mockGetYouTubeAccessUsage.mockResolvedValue({
+      data: { everGranted: 4, ceiling: 25 },
+    });
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Grant YouTube Access' }),
+    );
+    fireEvent.click(screen.getByRole('button', { name: 'Grant access' }));
+
+    await waitFor(() => {
+      expectDefinitionValue('YouTube Access', 'Yes');
+    });
+    await waitFor(() => {
+      expectDefinitionValue('YouTube Access places used', '4 of 25');
+    });
+    expect(mockGrantYouTubeAccess).toHaveBeenCalledWith({ userId: 'u-2' });
+    expect(mockGetYouTubeAccessUsage).toHaveBeenCalledTimes(2);
   });
 });

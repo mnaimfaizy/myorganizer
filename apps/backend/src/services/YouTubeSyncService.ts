@@ -161,8 +161,9 @@ export function youtubeSyncClaimableWhere(
 }
 
 const DISABLED_VIDEO_RETENTION_MS = 30 * 24 * 60 * 60 * 1000;
-/** Watched Ledger TTL — aligned with disabled-channel retention (ADR 0092). */
-const WATCHED_LEDGER_TTL_MS = DISABLED_VIDEO_RETENTION_MS;
+/** Returned by disconnect when the User has no YouTube Connection. */
+export const NO_YOUTUBE_INTEGRATION_MESSAGE = 'No YouTube integration found.';
+
 export const GOOGLE_PERMISSIONS_URL =
   'https://myaccount.google.com/permissions';
 
@@ -349,10 +350,19 @@ class YouTubeSyncService {
     if (!isRevokedTokenError(error)) {
       return false;
     }
-    await this.prisma.youTubeIntegration.update({
-      where: { userId },
-      data: { status: 'revoked' },
+    // ADR 0129: `revokedAt` records the first moment the Connection became
+    // Revoked. A repeat detection must not restart the seven-day clock, so the
+    // stamp is written only while it is still null.
+    const stamped = await this.prisma.youTubeIntegration.updateMany({
+      where: { userId, revokedAt: null },
+      data: { status: 'revoked', revokedAt: new Date() },
     });
+    if (stamped.count === 0) {
+      await this.prisma.youTubeIntegration.update({
+        where: { userId },
+        data: { status: 'revoked' },
+      });
+    }
     return true;
   }
 
@@ -398,6 +408,8 @@ class YouTubeSyncService {
         token_iv: `${encryptedAccess.iv}:${encryptedRefresh.iv}`,
         token_auth_tag: `${encryptedAccess.authTag}:${encryptedRefresh.authTag}`,
         status: 'connected',
+        // ADR 0129: a reconnect ends the Revoked period and its seven-day clock.
+        revokedAt: null,
       },
     });
 
@@ -428,16 +440,22 @@ class YouTubeSyncService {
     };
   }
 
-  /** Disconnect YouTube integration */
+  /**
+   * Disconnect YouTube integration.
+   *
+   * `expectRevokeFailure` is set by the scheduled sweep (ADR 0129) for a
+   * Connection already Revoked at Google: a failed revocation there is expected,
+   * so it is logged at debug instead of warn. The result is unchanged.
+   */
   async disconnect(
     userId: string,
-    options: { deleteWatchedMarks?: boolean } = {},
+    options: { expectRevokeFailure?: boolean } = {},
   ): Promise<YouTubeDisconnectResult> {
     const integration = await this.prisma.youTubeIntegration.findUnique({
       where: { userId },
     });
     if (!integration) {
-      return { ok: false, message: 'No YouTube integration found.' };
+      return { ok: false, message: NO_YOUTUBE_INTEGRATION_MESSAGE };
     }
 
     if (isAnyYouTubeSyncLive(integration)) {
@@ -447,8 +465,6 @@ class YouTubeSyncService {
         message: YOUTUBE_SYNC_LIVE_MESSAGE,
       };
     }
-
-    const deleteWatchedMarks = options.deleteWatchedMarks === true;
 
     try {
       await this.prisma.$transaction(async (transaction) => {
@@ -460,27 +476,6 @@ class YouTubeSyncService {
         });
         if (!current || isAnyYouTubeSyncLive(current)) {
           throw new YouTubeSyncBecameLiveError();
-        }
-
-        if (deleteWatchedMarks) {
-          await transaction.youTubeWatchedLedger.deleteMany({
-            where: { userId },
-          });
-        } else {
-          const watchedVideos = await transaction.youTubeVideo.findMany({
-            where: { userId, watched: true },
-            select: { videoId: true },
-          });
-          if (watchedVideos.length > 0) {
-            await transaction.youTubeWatchedLedger.createMany({
-              data: watchedVideos.map((video) => ({
-                userId,
-                videoId: video.videoId,
-              })),
-              skipDuplicates: true,
-            });
-          }
-          await this.purgeExpiredWatchedLedgerRows(transaction, userId);
         }
 
         await transaction.youTubeVideo.deleteMany({ where: { userId } });
@@ -513,10 +508,17 @@ class YouTubeSyncService {
       await oauth2Client.revokeToken(refreshToken);
     } catch (error) {
       revokeFailed = true;
-      logger.warn(
-        'Failed to revoke token at Google (may already be revoked)',
-        error,
-      );
+      if (options.expectRevokeFailure) {
+        logger.debug(
+          'Revocation at Google skipped for a Revoked YouTube Connection (already revoked)',
+          error,
+        );
+      } else {
+        logger.warn(
+          'Failed to revoke token at Google (may already be revoked)',
+          error,
+        );
+      }
     }
 
     if (revokeFailed) {
@@ -701,6 +703,19 @@ class YouTubeSyncService {
           },
         });
       } catch (error) {
+        // A revoked or expired grant fails every channel, so it is the connection's
+        // failure, not this channel's. Rethrow it so the caller marks the YouTube
+        // Connection Revoked (ADR 0129) instead of logging it once per channel.
+        if (isRevokedTokenError(error)) {
+          await this.recordSyncState(
+            userId,
+            attemptAt,
+            'failed',
+            getSyncErrorCode(error),
+          );
+          throw error;
+        }
+
         failedChannels++;
         const channelError = getSyncErrorCode(error);
         lastSyncError = channelError;
@@ -1507,12 +1522,6 @@ class YouTubeSyncService {
                 },
               },
       });
-
-      await this.reapplyWatchedFromLedger(
-        transaction,
-        userId,
-        snapshot.map((video) => video.videoId),
-      );
     });
 
     return snapshot.length;
@@ -1598,44 +1607,6 @@ class YouTubeSyncService {
     await this.prisma.youTubeVideo.deleteMany({
       where: { userId, channelId: { in: channelIds } },
     });
-  }
-
-  private purgeExpiredWatchedLedgerRows(
-    transaction: Prisma.TransactionClient,
-    userId: string,
-  ) {
-    return transaction.youTubeWatchedLedger.deleteMany({
-      where: {
-        userId,
-        createdAt: { lt: new Date(Date.now() - WATCHED_LEDGER_TTL_MS) },
-      },
-    });
-  }
-
-  private async reapplyWatchedFromLedger(
-    transaction: Prisma.TransactionClient,
-    userId: string,
-    videoIds: string[],
-  ): Promise<void> {
-    if (videoIds.length > 0) {
-      const ledgerRows = await transaction.youTubeWatchedLedger.findMany({
-        where: { userId, videoId: { in: videoIds } },
-        select: { videoId: true },
-      });
-
-      if (ledgerRows.length > 0) {
-        const reapplyIds = ledgerRows.map((row) => row.videoId);
-        await transaction.youTubeVideo.updateMany({
-          where: { userId, videoId: { in: reapplyIds } },
-          data: { watched: true },
-        });
-        await transaction.youTubeWatchedLedger.deleteMany({
-          where: { userId, videoId: { in: reapplyIds } },
-        });
-      }
-    }
-
-    await this.purgeExpiredWatchedLedgerRows(transaction, userId);
   }
 
   /**

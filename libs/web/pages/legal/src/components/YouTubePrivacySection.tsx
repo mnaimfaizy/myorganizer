@@ -16,8 +16,9 @@ export function YouTubePrivacySection({
       <Heading className="text-base font-semibold">YouTube Integration</Heading>
       <p className="mt-3 text-sm text-muted-foreground">
         MyOrganizer has an optional YouTube feature. It is a private feature run
-        personally by the operator, who offers it only to people they personally
-        know; it is not offered to the public.
+        personally by the operator. It is available only to accounts the
+        operator has enabled in MyOrganizer; without that, YouTube is not
+        available to your account. It is not offered to the public.
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
         The feature uses YouTube API Services. If your account has it and you
@@ -81,12 +82,16 @@ export function YouTubePrivacySection({
         >
           Google security settings
         </a>
-        . Disconnecting revokes MyOrganizer&apos;s access at Google and deletes
-        your stored tokens, followed channels, cached uploads, and digest
-        settings; watched marks are kept for 30 days unless you choose to delete
-        them, as described on the YouTube Data Privacy page. If you revoke
-        access at Google instead, MyOrganizer stops syncing your YouTube data.
-        The operator may also withdraw the feature from an account.
+        . Disconnecting revokes MyOrganizer&apos;s access at Google and
+        immediately deletes your stored tokens, followed channels, cached
+        uploads, watched marks, and notification and digest settings. If you
+        revoke MyOrganizer&apos;s access at Google instead, MyOrganizer stops
+        syncing and deletes the same data within seven days unless you
+        reconnect. The operator may also withdraw the feature from an account;
+        doing so deletes the same data as a disconnect, revoking
+        MyOrganizer&apos;s access at Google and deleting your stored tokens,
+        followed channels, cached uploads, watched marks, and notification and
+        digest settings.
       </p>
       <p className="mt-3 text-sm text-muted-foreground">
         For detailed information about how long we keep your YouTube metadata

@@ -1,12 +1,14 @@
 import { EMAIL_BRAND_NAME, renderEmailShell } from '@myorganizer/email-shell';
 import bcrypt from 'bcrypt';
 import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
+import { getYouTubeAccessCeiling } from '../config/youtube';
 import {
   EmailAlreadyVerifiedError,
   LastPlatformAdminError,
   UserNotFoundError,
   VerificationCooldownError,
   VerificationSendFailedError,
+  YouTubeAccessCeilingReachedError,
 } from '../errors/AdminLifecycleErrors';
 import apiTokens from '../helpers/ApiTokens';
 import { isEmailVerified } from '../helpers/isEmailVerified';
@@ -31,6 +33,7 @@ const ADMIN_IDENTITY_SELECT = {
   role: true,
   disabled: true,
   email_verification_timestamp: true,
+  youtube_access: true,
 } as const;
 
 export type AdminIdentityUser = Prisma.UserGetPayload<{
@@ -282,6 +285,126 @@ class UserService {
       await this.writeAdminAuditLog(tx, actorUserId, targetUserId, 'demote');
       return updated;
     });
+  }
+
+  /**
+   * Grant YouTube Access (ADR 0129). A never-granted User takes one place under
+   * the lifetime ceiling; a previously granted User re-grants for free.
+   * Refused with YouTubeAccessCeilingReachedError when no place is left.
+   */
+  async grantYouTubeAccess(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    await this.requireIdentityUser(targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      // Serialises grants so two concurrent grants cannot both take the last
+      // place. $executeRaw with a constant statement; no interpolation.
+      await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('youtube_access_ceiling'))`;
+
+      const target = await tx.user.findUnique({
+        where: { id: targetUserId },
+        select: { youtube_access_first_granted_at: true },
+      });
+      if (!target) {
+        throw new UserNotFoundError();
+      }
+
+      if (target.youtube_access_first_granted_at === null) {
+        const everGranted = await tx.user.count({
+          where: { youtube_access_first_granted_at: { not: null } },
+        });
+        const ceiling = getYouTubeAccessCeiling();
+        if (everGranted >= ceiling) {
+          throw new YouTubeAccessCeilingReachedError(everGranted, ceiling);
+        }
+      }
+
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: {
+          youtube_access: true,
+          youtube_access_first_granted_at:
+            target.youtube_access_first_granted_at ?? new Date(),
+        },
+        select: ADMIN_IDENTITY_SELECT,
+      });
+      await this.writeAdminAuditLog(
+        tx,
+        actorUserId,
+        targetUserId,
+        'youtube_access_grant',
+      );
+      return updated;
+    });
+  }
+
+  /**
+   * Clear YouTube Access and write the audit row. Does not disconnect YouTube;
+   * YouTubeAccessService.withdrawYouTubeAccess runs the YouTube Disconnect
+   * after this commits.
+   */
+  async withdrawYouTubeAccessGrant(
+    actorUserId: string,
+    targetUserId: string,
+  ): Promise<AdminIdentityUser> {
+    await this.requireIdentityUser(targetUserId);
+
+    return this.prisma.$transaction(async (tx) => {
+      const updated = await tx.user.update({
+        where: { id: targetUserId },
+        data: { youtube_access: false },
+        select: ADMIN_IDENTITY_SELECT,
+      });
+      await this.writeAdminAuditLog(
+        tx,
+        actorUserId,
+        targetUserId,
+        'youtube_access_withdraw',
+      );
+      return updated;
+    });
+  }
+
+  /**
+   * Users ever granted YouTube Access, against the configured ceiling (ADR 0129).
+   */
+  async getYouTubeAccessUsage(): Promise<{
+    everGranted: number;
+    ceiling: number;
+  }> {
+    const everGranted = await this.prisma.user.count({
+      where: { youtube_access_first_granted_at: { not: null } },
+    });
+    return { everGranted, ceiling: getYouTubeAccessCeiling() };
+  }
+
+  /**
+   * When the User accepted the one-time YouTube acknowledgement (ADR 0129), or
+   * null when they have not. Read from the database on every call.
+   */
+  async getYouTubeAcknowledgedAt(userId: string): Promise<Date | null> {
+    const row = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { youtube_acknowledged_at: true },
+    });
+    return row?.youtube_acknowledged_at ?? null;
+  }
+
+  /**
+   * Stores the one-time YouTube acknowledgement (ADR 0129). The write is
+   * conditional on nothing being stored yet, so accepting again never moves the
+   * time. Only the acknowledgement column is written: YouTube Disconnect and
+   * YouTube Access withdrawal or re-grant never clear it.
+   * Returns the stored time, or null when no such User exists.
+   */
+  async acknowledgeYouTube(userId: string): Promise<Date | null> {
+    await this.prisma.user.updateMany({
+      where: { id: userId, youtube_acknowledged_at: null },
+      data: { youtube_acknowledged_at: new Date() },
+    });
+    return this.getYouTubeAcknowledgedAt(userId);
   }
 
   /**

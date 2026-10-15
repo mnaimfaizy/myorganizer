@@ -40,6 +40,7 @@ export function toAdminUserIdentity(
     first_name?: string;
     last_name?: string;
     email_verification_timestamp?: Date | null;
+    youtube_access?: boolean;
   };
   const firstName = (record.first_name ?? '').trim();
   const lastName = (record.last_name ?? '').trim();
@@ -58,5 +59,6 @@ export function toAdminUserIdentity(
     role: resolveRole(record),
     disabled: resolveDisabled(record),
     emailVerified,
+    youtubeAccess: record.youtube_access === true,
   };
 }

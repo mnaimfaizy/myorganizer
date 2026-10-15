@@ -11,11 +11,13 @@ jest.mock('@myorganizer/web-ui', () => ({
   }) => <span {...props}>{children}</span>,
   Button: ({
     children,
+    asChild,
     ...props
   }: import('react').ButtonHTMLAttributes<HTMLButtonElement> & {
+    asChild?: boolean;
     size?: string;
     variant?: string;
-  }) => <button {...props}>{children}</button>,
+  }) => (asChild ? children : <button {...props}>{children}</button>),
 }));
 
 jest.mock('lucide-react', () => ({
@@ -90,6 +92,53 @@ describe('YouTubeVideoPlayer', () => {
     expect(screen.getByTitle('Test Video Title - YouTube video player')).toBe(
       iframe,
     );
+  });
+
+  describe('playing state link placement', () => {
+    const renderPlaying = () => {
+      render(<YouTubeVideoPlayer video={baseVideo} />);
+      fireEvent.click(
+        screen.getByRole('button', { name: /Play Test Video Title/ }),
+      );
+
+      return {
+        frame: screen.getByTestId('youtube-player-frame'),
+        iframe: screen.getByTitle('Test Video Title - YouTube video player'),
+        link: screen.getByRole('link', { name: /Open on YouTube/ }),
+      };
+    };
+
+    it('should keep the Open on YouTube link outside the player frame while playing', () => {
+      const { frame, iframe, link } = renderPlaying();
+
+      expect(frame.contains(iframe)).toBe(true);
+      expect(frame.children).toHaveLength(1);
+      expect(frame.firstElementChild).toBe(iframe);
+      expect(frame.contains(link)).toBe(false);
+    });
+
+    it('should keep the link href, new-tab target and rel while playing', () => {
+      const { link } = renderPlaying();
+
+      expect(link.getAttribute('href')).toBe(
+        `https://www.youtube.com/watch?v=${encodeURIComponent(baseVideo.videoId)}`,
+      );
+      expect(link.getAttribute('target')).toBe('_blank');
+      expect(link.getAttribute('rel')).toBe('noopener noreferrer');
+    });
+
+    it('should keep the link keyboard reachable after the iframe in document order', () => {
+      const { iframe, link } = renderPlaying();
+
+      expect(
+        iframe.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING,
+      ).toBeTruthy();
+      expect(link.tabIndex).not.toBe(-1);
+
+      link.focus();
+
+      expect(document.activeElement).toBe(link);
+    });
   });
 
   it('should send the YouTube IFrame API handshake and progress requests to the privacy origin', async () => {

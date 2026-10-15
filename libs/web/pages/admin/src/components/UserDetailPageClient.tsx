@@ -1,6 +1,9 @@
 'use client';
 
-import type { AdminUserIdentity } from '@myorganizer/app-api-client';
+import type {
+  AdminUserIdentity,
+  YouTubeAccessUsageResponse,
+} from '@myorganizer/app-api-client';
 import { Button } from '@myorganizer/web-ui';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
@@ -29,6 +32,17 @@ function UserIdentityField({ label, value }: UserIdentityFieldProps) {
   );
 }
 
+function formatYouTubeAccessPlaces(
+  usage: YouTubeAccessUsageResponse | null,
+  usageFailed: boolean,
+): string {
+  if (usage) {
+    return `${usage.everGranted} of ${usage.ceiling}`;
+  }
+
+  return usageFailed ? 'Unavailable' : 'Loading…';
+}
+
 export function UserDetailPageClient() {
   const params = useParams();
   const userId =
@@ -38,6 +52,23 @@ export function UserDetailPageClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [notFound, setNotFound] = useState(false);
+  const [youtubeUsage, setYouTubeUsage] =
+    useState<YouTubeAccessUsageResponse | null>(null);
+  const [youtubeUsageFailed, setYouTubeUsageFailed] = useState(false);
+
+  const youtubeAccess = user?.youtubeAccess;
+
+  const loadYouTubeUsage = useCallback(async () => {
+    try {
+      const api = createPlatformAdminApi();
+      const response = await api.getYouTubeAccessUsage();
+      setYouTubeUsage(response.data);
+      setYouTubeUsageFailed(false);
+    } catch {
+      setYouTubeUsage(null);
+      setYouTubeUsageFailed(true);
+    }
+  }, []);
 
   const loadUser = useCallback(async (id: string) => {
     setLoading(true);
@@ -70,6 +101,14 @@ export function UserDetailPageClient() {
 
     void loadUser(userId);
   }, [loadUser, userId]);
+
+  useEffect(() => {
+    if (youtubeAccess === undefined) {
+      return;
+    }
+
+    void loadYouTubeUsage();
+  }, [loadYouTubeUsage, youtubeAccess]);
 
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
@@ -108,6 +147,17 @@ export function UserDetailPageClient() {
             <UserIdentityField
               label="Email verified"
               value={formatBooleanLabel(user.emailVerified)}
+            />
+            <UserIdentityField
+              label="YouTube Access"
+              value={formatBooleanLabel(user.youtubeAccess)}
+            />
+            <UserIdentityField
+              label="YouTube Access places used"
+              value={formatYouTubeAccessPlaces(
+                youtubeUsage,
+                youtubeUsageFailed,
+              )}
             />
           </dl>
 

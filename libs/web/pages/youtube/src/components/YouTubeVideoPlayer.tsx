@@ -408,33 +408,37 @@ export function YouTubeVideoPlayer({
   }
 
   if (isPlaying) {
+    // Nothing may sit in front of the embedded player (YouTube Required Minimum
+    // Functionality), so the link lives in a row beneath the frame, not over it.
+    // The frame is 16:9 by default; when the caller gives the outer element an
+    // explicit height, `flex-auto` lets the frame grow into the remaining space
+    // while the link row keeps its height.
     return (
-      <div
-        className={cn(
-          'relative aspect-video w-full overflow-hidden bg-black',
-          className,
-        )}
-      >
-        <iframe
-          ref={iframeRef}
-          src={embedUrl}
-          title={`${video.title} - YouTube video player`}
-          className="h-full w-full border-0"
-          tabIndex={0}
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-          allowFullScreen
-          onLoad={handleIframeLoad}
-          onError={handleIframeError}
-        />
-        <a
-          href={youtubeWatchUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="absolute right-2 top-2 z-10 inline-flex items-center gap-1 rounded bg-black/70 px-2 py-1 text-[11px] font-medium text-white backdrop-blur-sm transition-opacity hover:bg-black/90 focus:outline-none focus:ring-2 focus:ring-white"
+      <div className={cn('flex w-full flex-col', className)}>
+        <div
+          data-testid="youtube-player-frame"
+          className="relative min-h-0 w-full flex-auto aspect-video overflow-hidden bg-black"
         >
-          <ExternalLink className="h-3 w-3" />
-          Open on YouTube
-        </a>
+          <iframe
+            ref={iframeRef}
+            src={embedUrl}
+            title={`${video.title} - YouTube video player`}
+            className="h-full w-full border-0"
+            tabIndex={0}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            onLoad={handleIframeLoad}
+            onError={handleIframeError}
+          />
+        </div>
+        <div className="flex shrink-0 justify-end p-2">
+          <Button asChild variant="outline" size="sm">
+            <a href={youtubeWatchUrl} target="_blank" rel="noopener noreferrer">
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open on YouTube
+            </a>
+          </Button>
+        </div>
       </div>
     );
   }

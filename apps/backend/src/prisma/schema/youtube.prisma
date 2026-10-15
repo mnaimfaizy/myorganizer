@@ -16,6 +16,8 @@ model YouTubeIntegration {
   lastChannelSyncStatus   String    @default("never")
   /// Error code from the latest Channel Sync; null on success. Read-time interruption is not persisted. See ADR 0096.
   lastChannelSyncError    String?
+  /// When this YouTube Connection became Revoked. Cleared on reconnect. A connection Revoked for seven days or more ends in a YouTube Disconnect. See ADR 0129.
+  revokedAt               DateTime?
   createdAt               DateTime  @default(now())
   updatedAt               DateTime  @updatedAt
 
@@ -145,20 +147,4 @@ model YouTubeWorkerLease {
   /// Last userId processed in this pass; null means "start from the top".
   cursor     String?
   updatedAt  DateTime @updatedAt
-}
-
-/// Ledger of Watched video ids that outlives YouTube disconnect. Unused rows
-/// expire after 30 days; applied rows are removed on reconnect reapply. Not
-/// vault-backed.
-model YouTubeWatchedLedger {
-  id        String   @id @default(cuid())
-  userId    String
-  videoId   String
-  createdAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, videoId])
-  @@index([userId])
-  @@index([createdAt])
 }

@@ -179,8 +179,8 @@ export function vaultMetaMatches(stored, minted) {
 
 /**
  * What on a stored QA Account's User row is off the fixture: any of
- * `password`, `verification`, `disabled`. Empty when a seed has nothing to
- * write, which is what makes a second run change nothing.
+ * `password`, `verification`, `disabled`, `youtube_access`. Empty when a seed
+ * has nothing to write, which is what makes a second run change nothing.
  */
 export function qaUserDrift({ user, passwordMatches }) {
   const drift = [];
@@ -189,6 +189,9 @@ export function qaUserDrift({ user, passwordMatches }) {
     drift.push('verification');
   }
   if (user.disabled) drift.push('disabled');
+  if (!user.youtube_access || !user.youtube_access_first_granted_at) {
+    drift.push('youtube_access');
+  }
   return drift;
 }
 

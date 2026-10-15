@@ -1,17 +1,13 @@
-import { Controller, Get, Query, Request, Route, Security, Tags } from 'tsoa';
+import { Get, Query, Request, Route, Security, Tags } from 'tsoa';
 import { Request as ExRequest } from 'express';
-import {
-  ForbiddenError,
-  UnauthorizedError,
-  requirePlatformAdmin,
-} from '../guards/AuthGuard';
+import { PlatformAdminControllerBase } from './PlatformAdminControllerBase';
 import userService from '../services/UserService';
 import { AdminAuditLogEntry } from '../types';
 
 @Tags('Platform Admin')
 @Route('/admin/audit-logs')
 @Security('jwt', ['platform_admin'])
-export class AdminAuditLogController extends Controller {
+export class AdminAuditLogController extends PlatformAdminControllerBase {
   /**
    * List recent Admin Audit Log entries (newest first). Platform Admin only.
    */
@@ -29,21 +25,5 @@ export class AdminAuditLogController extends Controller {
       action: row.action,
       createdAt: row.created_at,
     }));
-  }
-
-  private assertPlatformAdmin(req: ExRequest): void {
-    try {
-      requirePlatformAdmin(req);
-    } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        this.setStatus(401);
-        throw err;
-      }
-      if (err instanceof ForbiddenError) {
-        this.setStatus(403);
-        throw err;
-      }
-      throw err;
-    }
   }
 }

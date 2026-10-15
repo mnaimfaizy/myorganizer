@@ -241,6 +241,7 @@ describe('AdminUsersController (HTTP integration)', () => {
           role: 'user',
           disabled: false,
           emailVerified: true,
+          youtubeAccess: false,
         },
       ]);
     });
@@ -282,6 +283,7 @@ describe('AdminUsersController (HTTP integration)', () => {
           'lastName',
           'name',
           'role',
+          'youtubeAccess',
         ].sort(),
       );
       for (const field of sensitiveFields) {
@@ -333,6 +335,7 @@ describe('AdminUsersController (HTTP integration)', () => {
         role: 'user',
         disabled: false,
         emailVerified: true,
+        youtubeAccess: false,
       });
       for (const field of sensitiveFields) {
         expect(res.body).not.toHaveProperty(field);

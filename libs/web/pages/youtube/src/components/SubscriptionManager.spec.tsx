@@ -184,4 +184,15 @@ describe('SubscriptionManager', () => {
     });
     expect(privacyLink).toHaveAttribute('href', '/youtube/data-privacy');
   });
+
+  it('should state Disconnect deletes Watched marks and that no Watched status is kept for 30 days', () => {
+    render(<SubscriptionManager {...defaultProps} />);
+    expect(
+      screen.getByText(/Disconnect deletes .*Watched marks/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/kept for 30 days/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/unless you choose to delete/),
+    ).not.toBeInTheDocument();
+  });
 });

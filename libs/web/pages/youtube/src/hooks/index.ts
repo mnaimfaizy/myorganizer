@@ -382,19 +382,66 @@ export function useYouTubeConnect() {
     window.location.href = data.url;
   }, []);
 
-  const disconnect = useCallback(
-    async (options?: { deleteWatchedMarks?: boolean }) => {
-      return apiFetch<YouTubeDisconnectResponse>('/disconnect', {
-        method: 'DELETE',
-        body: JSON.stringify({
-          deleteWatchedMarks: options?.deleteWatchedMarks === true,
-        }),
-      });
-    },
-    [],
-  );
+  const disconnect = useCallback(async () => {
+    return apiFetch<YouTubeDisconnectResponse>('/disconnect', {
+      method: 'DELETE',
+    });
+  }, []);
 
   return { connect, disconnect };
+}
+
+export interface YouTubeAcknowledgementState {
+  /** `null` until the first read succeeds, and after a failed read. */
+  acknowledged: boolean | null;
+  /** True until the first read settles. */
+  loading: boolean;
+  error: string | null;
+  /**
+   * Stores the one-time acknowledgement (ADR 0129). Rejects if the server does
+   * not store it, so the caller can keep the connect action usable.
+   */
+  accept: () => Promise<void>;
+}
+
+/**
+ * The User's one-time acknowledgement before a first connect (ADR 0129).
+ *
+ * The server refuses the authorization address until the acknowledgement is
+ * stored, so a failed read is treated as not acknowledged by the caller.
+ */
+export function useYouTubeAcknowledgement(): YouTubeAcknowledgementState {
+  const [acknowledged, setAcknowledged] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetch_ = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await apiFetch<{ acknowledgedAt: string | null }>(
+        '/acknowledgement',
+      );
+      setAcknowledged(Boolean(data.acknowledgedAt));
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void fetch_();
+  }, [fetch_]);
+
+  const accept = useCallback(async () => {
+    await apiFetch<{ acknowledgedAt: string }>('/acknowledgement', {
+      method: 'POST',
+    });
+    setAcknowledged(true);
+  }, []);
+
+  return { acknowledged, loading, error, accept };
 }
 
 /**

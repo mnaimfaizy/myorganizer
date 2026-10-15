@@ -218,7 +218,7 @@ Production YouTube is a personal-use feature, granted per User by a Platform Adm
 
 > **Testing mode is not an option for production.** Google expires every authorization made in Testing seven days after consent, so every YouTube Connection goes Revoked weekly.
 
-> **MyOrganizer is the only gate.** Google no longer checks who connects on a published project, so a User can connect only if a Platform Admin has granted them YouTube Access. Keep `YOUTUBE_AVAILABLE` unset or `false` in production until that gate has shipped (PRD #1143).
+> **MyOrganizer is the only gate.** Google no longer checks who connects on a published project, so a User can connect only if a Platform Admin has granted them YouTube Access ([ADR 0129](../adr/0129-youtube-is-a-personal-use-feature-granted-per-user.md)). Grant it per User from the admin console; `YOUTUBE_ACCESS_CEILING` (default 25) caps how many Users can ever be granted, well below Google's limit. Before turning `YOUTUBE_AVAILABLE` on, grant access to every User who should keep an existing YouTube Connection — the scheduled sync disconnects connections whose User has no access.
 
 ---
 

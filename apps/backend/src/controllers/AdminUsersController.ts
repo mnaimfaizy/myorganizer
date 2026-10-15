@@ -1,5 +1,4 @@
 import {
-  Controller,
   Get,
   Path,
   Post,
@@ -19,20 +18,18 @@ import {
   UserNotFoundError,
   VerificationCooldownError,
   VerificationSendFailedError,
+  YouTubeAccessCeilingReachedError,
 } from '../errors/AdminLifecycleErrors';
-import {
-  ForbiddenError,
-  UnauthorizedError,
-  requirePlatformAdmin,
-} from '../guards/AuthGuard';
+import { PlatformAdminControllerBase } from './PlatformAdminControllerBase';
 import { toAdminUserIdentity } from '../helpers/filterUser';
+import youtubeAccessService from '../services/YouTubeAccessService';
 import userService from '../services/UserService';
-import { AdminUserIdentity } from '../types';
+import { AdminUserIdentity, WithdrawYouTubeAccessResponse } from '../types';
 
 @Tags('Platform Admin')
 @Route('/admin/users')
 @Security('jwt', ['platform_admin'])
-export class AdminUsersController extends Controller {
+export class AdminUsersController extends PlatformAdminControllerBase {
   /**
    * List/search Users (identity fields only). Platform Admin only.
    */
@@ -216,17 +213,53 @@ export class AdminUsersController extends Controller {
     }
   }
 
-  private assertPlatformAdmin(req: ExRequest) {
+  /**
+   * Grant YouTube Access to a User (ADR 0129). Refused with 409 when the
+   * lifetime ceiling is reached and this User was never granted before.
+   */
+  @Post('{userId}/youtube-access/grant')
+  @Response(404, 'User not found')
+  @Response(409, 'YouTube Access ceiling reached')
+  async grantYouTubeAccess(
+    @Request() req: ExRequest,
+    @Path() userId: string,
+    @Res() notFound: TsoaResponse<404, { message: string }>,
+    @Res() conflict: TsoaResponse<409, { message: string }>,
+  ): Promise<AdminUserIdentity> {
+    const actor = this.assertPlatformAdmin(req);
     try {
-      return requirePlatformAdmin(req);
+      const user = await userService.grantYouTubeAccess(actor.id, userId);
+      return toAdminUserIdentity(user);
     } catch (err) {
-      if (err instanceof UnauthorizedError) {
-        this.setStatus(401);
-        throw err;
+      if (err instanceof UserNotFoundError) {
+        return notFound(404, { message: err.message });
       }
-      if (err instanceof ForbiddenError) {
-        this.setStatus(403);
-        throw err;
+      if (err instanceof YouTubeAccessCeilingReachedError) {
+        return conflict(409, { message: err.message });
+      }
+      throw err;
+    }
+  }
+
+  /**
+   * Withdraw YouTube Access from a User. A connected User is disconnected from
+   * YouTube in the same operation; a live Sync Run leaves the disconnect pending.
+   */
+  @Post('{userId}/youtube-access/withdraw')
+  @Response(404, 'User not found')
+  async withdrawYouTubeAccess(
+    @Request() req: ExRequest,
+    @Path() userId: string,
+    @Res() notFound: TsoaResponse<404, { message: string }>,
+  ): Promise<WithdrawYouTubeAccessResponse> {
+    const actor = this.assertPlatformAdmin(req);
+    try {
+      const { user, youtubeDisconnect } =
+        await youtubeAccessService.withdrawYouTubeAccess(actor.id, userId);
+      return { ...toAdminUserIdentity(user), youtubeDisconnect };
+    } catch (err) {
+      if (err instanceof UserNotFoundError) {
+        return notFound(404, { message: err.message });
       }
       throw err;
     }

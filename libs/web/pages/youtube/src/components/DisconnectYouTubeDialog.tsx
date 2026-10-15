@@ -1,13 +1,10 @@
-'use client';
-
-import { Checkbox, ConfirmDeleteDialog, Label } from '@myorganizer/web-ui';
-import { useCallback, useId, useState } from 'react';
+import { ConfirmDeleteDialog } from '@myorganizer/web-ui';
 
 export interface DisconnectYouTubeDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** Called when the user confirms. Receives whether they opted to delete Watched marks. Must throw on failure so ConfirmDeleteDialog stays open. */
-  onConfirm: (deleteWatchedMarks: boolean) => Promise<void>;
+  /** Called when the user confirms. Must throw on failure so ConfirmDeleteDialog stays open. */
+  onConfirm: () => Promise<void>;
   /** Error message to show inside the dialog (role="alert"). Cleared by parent when dialog closes or confirm starts. */
   error?: string | null;
 }
@@ -18,61 +15,31 @@ export function DisconnectYouTubeDialog({
   onConfirm,
   error,
 }: DisconnectYouTubeDialogProps) {
-  const [deleteWatchedMarks, setDeleteWatchedMarks] = useState(false);
-  const deleteWatchedMarksCheckboxId = useId();
-
-  const handleOpenChange = useCallback(
-    (nextOpen: boolean) => {
-      if (!nextOpen) {
-        setDeleteWatchedMarks(false);
-      }
-      onOpenChange(nextOpen);
-    },
-    [onOpenChange],
-  );
-
-  const handleConfirm = useCallback(async () => {
-    await onConfirm(deleteWatchedMarks);
-  }, [deleteWatchedMarks, onConfirm]);
-
   return (
     <ConfirmDeleteDialog
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
       title="Disconnect YouTube?"
       description={
         <>
-          This removes your Followed Channels, Cached Uploads, notification and
+          Disconnecting revokes MyOrganizer&apos;s access and deletes your
+          Followed Channels, Cached Uploads, Watched marks, notification and
           digest settings, and OAuth tokens from MyOrganizer. Watched marks are
-          kept for 30 days unless you choose to delete them below.
+          deleted and will not return if you reconnect.
         </>
       }
       confirmLabel="Disconnect"
-      onConfirm={handleConfirm}
+      onConfirm={onConfirm}
     >
-      <div className="space-y-3 py-2">
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id={deleteWatchedMarksCheckboxId}
-            checked={deleteWatchedMarks}
-            onCheckedChange={(checked) =>
-              setDeleteWatchedMarks(checked === true)
-            }
-          />
-          <Label htmlFor={deleteWatchedMarksCheckboxId}>
-            Also delete my Watched marks
-          </Label>
+      {error && (
+        <div
+          role="alert"
+          aria-live="assertive"
+          className="py-2 text-sm text-destructive"
+        >
+          {error}
         </div>
-        {error && (
-          <div
-            role="alert"
-            aria-live="assertive"
-            className="text-sm text-destructive"
-          >
-            {error}
-          </div>
-        )}
-      </div>
+      )}
     </ConfirmDeleteDialog>
   );
 }

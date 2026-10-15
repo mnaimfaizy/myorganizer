@@ -7,6 +7,8 @@ const AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   resend_verification: 'Resend verification',
   promote: 'Promote',
   demote: 'Demote',
+  youtube_access_grant: 'Grant YouTube Access',
+  youtube_access_withdraw: 'Withdraw YouTube Access',
 };
 
 export function formatAuditAction(action: AdminAuditAction): string {

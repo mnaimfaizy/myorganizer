@@ -14,9 +14,10 @@ jest.mock('@myorganizer/core', () => ({
   getApiBaseUrl: () => mockGetApiBaseUrl(),
 }));
 
-import { act, renderHook } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import {
   YouTubeRequestError,
+  useYouTubeAcknowledgement,
   useYouTubeConnect,
   useYouTubeSyncStatus,
 } from './index';
@@ -198,7 +199,7 @@ describe('useYouTubeConnect / apiFetch error paths', () => {
   });
 
   describe('happy disconnect', () => {
-    it('H7: DELETE /youtube/disconnect with deleteWatchedMarks true', async () => {
+    it('H7: DELETE /youtube/disconnect with no request body and returns the parsed response', async () => {
       fetchMock.mockImplementation(() =>
         Promise.resolve(
           mockResponse({
@@ -209,16 +210,14 @@ describe('useYouTubeConnect / apiFetch error paths', () => {
       );
 
       const disconnect = renderDisconnect();
-      const body = await disconnect({ deleteWatchedMarks: true });
+      const body = await disconnect();
 
       expect(body).toEqual({ ok: true, message: 'disconnected' });
       expect(fetchMock).toHaveBeenCalledTimes(1);
       const [url, init] = fetchMock.mock.calls[0];
       expect(String(url)).toBe('http://api.test/youtube/disconnect');
       expect(init?.method).toBe('DELETE');
-      expect(JSON.parse(String(init?.body))).toEqual({
-        deleteWatchedMarks: true,
-      });
+      expect(init?.body).toBeUndefined();
     });
   });
 });
@@ -695,5 +694,118 @@ describe('useYouTubeSyncStatus triggers (#753)', () => {
 
     // Should still return true because PUT response showed a run did work
     expect(ran).toBe(true);
+  });
+});
+
+describe('useYouTubeAcknowledgement (ADR 0129)', () => {
+  const acknowledgementUrl = 'http://api.test/youtube/acknowledgement';
+  const fetchMock = jest.fn<
+    Promise<Response>,
+    [RequestInfo | URL, RequestInit?]
+  >();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetAccessToken.mockReturnValue('test-token');
+    mockGetApiBaseUrl.mockReturnValue('http://api.test');
+    mockRefresh.mockResolvedValue(undefined);
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  afterEach(() => {
+    fetchMock.mockReset();
+  });
+
+  it('reads acknowledged as true when acknowledgedAt is stored', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        mockResponse({
+          status: 200,
+          body: { acknowledgedAt: '2026-10-01T10:00:00.000Z' },
+        }),
+      ),
+    );
+
+    const { result } = renderHook(() => useYouTubeAcknowledgement());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.acknowledged).toBe(true);
+    expect(result.current.error).toBeNull();
+    expect(fetchMock.mock.calls[0][0]).toBe(acknowledgementUrl);
+  });
+
+  it('reads acknowledged as false when acknowledgedAt is null', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        mockResponse({ status: 200, body: { acknowledgedAt: null } }),
+      ),
+    );
+
+    const { result } = renderHook(() => useYouTubeAcknowledgement());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.acknowledged).toBe(false);
+    expect(result.current.error).toBeNull();
+  });
+
+  it('leaves acknowledged null with an error when the read fails', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(mockResponse({ status: 500, body: {} })),
+    );
+
+    const { result } = renderHook(() => useYouTubeAcknowledgement());
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.acknowledged).toBeNull();
+    expect(result.current.error).toBe('Request failed: 500');
+  });
+
+  it('accept POSTs the acknowledgement and flips acknowledged to true', async () => {
+    fetchMock.mockImplementation((_url, init) =>
+      Promise.resolve(
+        init?.method === 'POST'
+          ? mockResponse({
+              status: 200,
+              body: { acknowledgedAt: '2026-10-14T09:00:00.000Z' },
+            })
+          : mockResponse({ status: 200, body: { acknowledgedAt: null } }),
+      ),
+    );
+
+    const { result } = renderHook(() => useYouTubeAcknowledgement());
+    await waitFor(() => expect(result.current.acknowledged).toBe(false));
+
+    await act(async () => {
+      await result.current.accept();
+    });
+
+    expect(result.current.acknowledged).toBe(true);
+    const postCall = fetchMock.mock.calls.find(
+      ([, init]) => init?.method === 'POST',
+    );
+    expect(postCall?.[0]).toBe(acknowledgementUrl);
+  });
+
+  it('accept rejects with the server error and leaves acknowledged false', async () => {
+    fetchMock.mockImplementation((_url, init) =>
+      Promise.resolve(
+        init?.method === 'POST'
+          ? mockResponse({ status: 500, body: { message: 'Save failed' } })
+          : mockResponse({ status: 200, body: { acknowledgedAt: null } }),
+      ),
+    );
+
+    const { result } = renderHook(() => useYouTubeAcknowledgement());
+    await waitFor(() => expect(result.current.acknowledged).toBe(false));
+
+    await act(async () => {
+      await expect(result.current.accept()).rejects.toMatchObject({
+        name: 'YouTubeRequestError',
+        message: 'Save failed',
+        status: 500,
+      });
+    });
+
+    expect(result.current.acknowledged).toBe(false);
   });
 });
