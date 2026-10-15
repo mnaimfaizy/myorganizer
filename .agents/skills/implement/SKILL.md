@@ -56,7 +56,7 @@ Pick domain workflow skills when they apply:
 - Prisma runbook (read by PrismaWriter) → `prisma-migration-workflow`
 - YouTube integration → `youtube-integration-workflow`
 
-Respect MyOrganizer structure: thin Next.js route wrappers in `apps/myorganizer`, page logic in `libs/web/pages/**`, shared code in `libs/**`.
+Respect MyOrganizer structure: thin Next.js route wrappers in `apps/web`, page logic in `libs/web/pages/**`, shared code in `libs/**`.
 
 ## Validation loop
 

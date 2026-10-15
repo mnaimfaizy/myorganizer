@@ -9,7 +9,7 @@ import {
 /**
  * Offline service worker end-to-end (ADR 0127, PRD #1114).
  *
- * The worker is hand-written in apps/myorganizer/public/sw.js. It holds only
+ * The worker is hand-written in apps/web/public/sw.js. It holds only
  * the offline page and the static files it needs, and answers a navigation
  * that fails with that page. It never answers an API request. Registration is
  * production-only: the dev server must not register a worker at all.

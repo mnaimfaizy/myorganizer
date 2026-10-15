@@ -34,7 +34,7 @@ function createWorkspace(t) {
 
   write(
     workspace,
-    'apps/myorganizer/tailwind.config.js',
+    'apps/web/tailwind.config.js',
     `module.exports = {
   content: [],
   theme: {
@@ -50,7 +50,7 @@ function createWorkspace(t) {
   );
   write(
     workspace,
-    'apps/myorganizer/src/app/global.css',
+    'apps/web/src/app/global.css',
     `@config "../../tailwind.config.js";
 @import 'tailwindcss';
 

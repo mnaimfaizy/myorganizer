@@ -58,22 +58,17 @@ function createZipFromDir({ dir, outFile }) {
 
 // Next's default distDir, inside the app: `distDir` may not leave the project
 // directory, so the build no longer writes to dist/ (ADR 0083).
-const appDir = path.join(workspaceRoot, 'apps', 'myorganizer');
+const appDir = path.join(workspaceRoot, 'apps', 'web');
 const nextDir = path.join(appDir, '.next');
 const standaloneDir = path.join(nextDir, 'standalone');
 const staticDir = path.join(nextDir, 'static');
 
-const deployRoot = path.join(
-  workspaceRoot,
-  'dist',
-  'deploy',
-  'myorganizer-web',
-);
+const deployRoot = path.join(workspaceRoot, 'dist', 'deploy', 'web');
 
 if (!exists(standaloneDir)) {
   throw new Error(
     `Expected Next standalone output at: ${standaloneDir}. ` +
-      `Ensure apps/myorganizer/next.config.js has output: 'standalone' and re-run the build.`,
+      `Ensure apps/web/next.config.js has output: 'standalone' and re-run the build.`,
   );
 }
 
@@ -185,7 +180,7 @@ fs.writeFileSync(
   path.join(deployRoot, 'package.json'),
   JSON.stringify(
     {
-      name: 'myorganizer-web',
+      name: 'web',
       private: true,
       scripts: {
         start: 'node server.js',
@@ -292,11 +287,11 @@ fs.writeFileSync(
 // Optional: create a zip if `zip` exists on the system.
 // (Windows users might not have it; docs cover using File Explorer/7zip instead.)
 try {
-  run(`zip -r myorganizer-web.zip .`, deployRoot);
-  log(`Created archive: ${path.join(deployRoot, 'myorganizer-web.zip')}`);
+  run(`zip -r web.zip .`, deployRoot);
+  log(`Created archive: ${path.join(deployRoot, 'web.zip')}`);
 } catch {
   try {
-    const outFile = path.join(deployRoot, 'myorganizer-web.zip');
+    const outFile = path.join(deployRoot, 'web.zip');
     await createZipFromDir({ dir: deployRoot, outFile });
     log(`Created archive: ${outFile}`);
   } catch (err) {

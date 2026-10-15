@@ -32,7 +32,7 @@ typography, radius, shadow). Based on the **Secure Modernism** spec in
   primitive, once per colour mode. Adding a Semantic Role is the only way to add a
   web colour utility — the Tailwind configs read roles as `hsl(var(--role))` —
   but it is not sufficient: a utility also needs the role named in
-  `apps/myorganizer/tailwind.config.js`. A role with no entry there is a slot
+  `apps/web/tailwind.config.js`. A role with no entry there is a slot
   nothing on the web resolves yet, which is a legitimate state.
 
 The **Mobile App theme reads roles, not primitives** (`roleLight` / `roleDark`).

@@ -213,7 +213,7 @@ function changedProjects(base: string, head: string): string[] {
 /**
  * The Nx projects a slice affects: the projects whose own files changed PLUS every
  * transitive dependent. This is the correct scope for TYPE and TEST gates — a type
- * error introduced in `web-pages-dashboard` surfaces when `myorganizer` compiles,
+ * error introduced in `web-pages-dashboard` surfaces when `web` compiles,
  * and that consumer's own files never changed.
  *
  * Computed on the HOST, not in the gate container: the gate bind-mounts only the
@@ -1715,7 +1715,7 @@ function preserveInterruptedSlice(
 // Disable entirely with SLICE_GATE=off.
 //
 // The default targets mirror what CI enforces on the eventual PR (`nx affected -t
-// lint`, `nx affected -t test`, `nx build myorganizer|backend`), so a gate-green
+// lint`, `nx affected -t test`, `nx build web|backend`), so a gate-green
 // slice is not one that fails the moment it is pushed. `build` is what typechecks
 // this repo — there is no `typecheck` target — and it is the step that catches a
 // slice whose types do not compile against its consumers.

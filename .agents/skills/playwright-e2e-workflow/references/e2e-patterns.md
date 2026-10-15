@@ -289,7 +289,7 @@ A controlled React form drops values typed before hydration: `fill()` writes to 
 React state stays empty and the form submits blank. Neither `networkidle` nor a sleep observes
 hydration. Probe it with an interaction whose visible result is pure client state, and retry the
 click — a pre-hydration click is dropped. `waitForLoginFormInteractive` in
-`apps/myorganizer-e2e/src/e2e/helpers/auth.ts` is the worked example.
+`apps/web-e2e/src/e2e/helpers/auth.ts` is the worked example.
 
 ```typescript
 await expect(async () => {

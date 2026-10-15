@@ -38,13 +38,13 @@ comes first); Production relies on the rule. See
 ## The bundle
 
 ```bash
-yarn package:myorganizer:web
+yarn package:web
 ```
 
-Produces `dist/deploy/myorganizer-web/`:
+Produces `dist/deploy/web/`:
 
-1. Next.js built with `output: 'standalone'` through the Nx `myorganizer:package`
-   target (`tools/scripts/package-myorganizer-web.mjs`).
+1. Next.js built with `output: 'standalone'` through the Nx `web:package`
+   target (`tools/scripts/package-web.mjs`).
 2. A deploy-only `package.json` generated from `.next/standalone/node_modules`.
 3. `.next/` and `public/` copied alongside.
 4. A Linux-safe root `server.js` (avoids Windows path issues), and
@@ -58,7 +58,7 @@ the API endpoint does not need a rebuild. `NEXT_PUBLIC_API_BASE_URL` is still
 honoured as a build-time fallback for local development.
 
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` (Vault Cloud Backup) is **not** a cPanel runtime
-variable. Next inlines it when CI runs `yarn package:myorganizer:web`. Set it
+variable. Next inlines it when CI runs `yarn package:web`. Set it
 as the GitHub Environment **variable** of the same name on `production` before
 that package step; putting it only in this Node.js app panel leaves the baked
 bundle unchanged. The value is sticky after first production enable — see
@@ -166,7 +166,7 @@ a bundle on the host; a second run queues behind it.
    `WEB_ORIGIN` and `API_ORIGIN` and fails when they differ. That is a rule of
    thumb, not the Public Suffix List: it is wrong for a two-label suffix such
    as `co.uk`.
-2. **Package** with `yarn package:myorganizer:web`, the build id set to the
+2. **Package** with `yarn package:web`, the build id set to the
    commit.
 3. **Plan.** Decides `restart` or `install-owed`. The host cannot be asked what
    is installed, so the run infers it from two requests: `/deploy-state.json`,
@@ -266,7 +266,7 @@ host's.
 Instead, an operator appends a block **once per environment**, by hand, to the
 host's existing `.htaccess` in the web app's document root — at the bottom,
 below the host's managed blocks, changing nothing above it. Copy the block from
-[`apps/myorganizer/deploy/sw-headers.htaccess`](../../apps/myorganizer/deploy/sw-headers.htaccess);
+[`apps/web/deploy/sw-headers.htaccess`](../../apps/web/deploy/sw-headers.htaccess);
 it lives outside `public/`, so it is never uploaded. It is not reproduced here
 on purpose: the two values are stated in `next.config.js`, in that snippet, and
 in the probe's constants, and `yarn staging-web:test` fails when they fall out
@@ -346,4 +346,4 @@ panel. Re-check `/sw.js` after changing the app's settings in the panel.
 
 - cPanel **Metrics** → Resource Usage.
 - External uptime monitoring on `https://myorganiser.app`.
-- Keep a copy of the last deployed `dist/deploy/myorganizer-web/` bundle.
+- Keep a copy of the last deployed `dist/deploy/web/` bundle.

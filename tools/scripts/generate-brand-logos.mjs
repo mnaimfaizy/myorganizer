@@ -11,7 +11,7 @@
  * the mark and the wordmark sit on the 244 × 52 canvas, and fails if it
  * cannot find a value it reads.
  *
- * Writes apps/myorganizer/public/images/:
+ * Writes apps/web/public/images/:
  * - logo-shield.svg — the README logo on a light page; wordmark in the light
  *   `foreground` role's colour.
  * - logo-shield-dark.svg — the README logo on a dark page; wordmark in the
@@ -47,7 +47,7 @@ const fromRoot = (path) => resolve(repoRoot, path);
 
 const APP_LOGO = 'libs/web/ui/src/lib/components/AppLogo/AppLogo.tsx';
 const TOKENS = 'libs/design-tokens/src/generated/tokens.ts';
-const IMAGES_DIR = 'apps/myorganizer/public/images';
+const IMAGES_DIR = 'apps/web/public/images';
 
 export const BRAND_NAME = 'MyOrganiser';
 

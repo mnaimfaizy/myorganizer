@@ -9,7 +9,7 @@
     },
     {
       "name": "frontend",
-      "command": "PORT=4200 corepack yarn start:myorganizer"
+      "command": "PORT=4200 corepack yarn start:web"
     }
   ]
 }

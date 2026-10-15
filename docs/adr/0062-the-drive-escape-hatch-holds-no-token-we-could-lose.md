@@ -75,7 +75,7 @@ where the User can see it rot.
 
 Service Workers do not rescue the cycle and should not be attempted for this purpose. Periodic
 Background Sync needs an installed PWA and there is no manifest or service worker in
-`apps/myorganizer` at all; it is Chromium-only, so Safari and iOS are excluded outright; and a
+`apps/web` at all; it is Chromium-only, so Safari and iOS are excluded outright; and a
 service worker has no DOM and cannot open a popup, so `initTokenClient` could not run inside one
 even if all of that were solved. The gap is closed at both ends.
 

@@ -1,11 +1,11 @@
-# Testing `apps/myorganizer`
+# Testing `apps/web`
 
-Jest unit/integration · `babel-jest` + `jsdom` env · `yarn nx test myorganizer`
+Jest unit/integration · `babel-jest` + `jsdom` env · `yarn nx test web`
 
 ## Config summary
 
 ```ts
-// apps/myorganizer/jest.config.ts
+// apps/web/jest.config.ts
 transform: {
   '^(?!.*\\.(js|jsx|ts|tsx|css|json)$)': '@nx/react/plugins/jest',
   '^.+\\.[tj]sx?$': ['babel-jest', { presets: ['@nx/next/babel'] }],
@@ -19,12 +19,12 @@ The Next.js app uses **babel-jest** with the `@nx/next/babel` preset and implici
 ## File naming
 
 ```
-apps/myorganizer/src/app/<route>/SomePage.spec.tsx
+apps/web/src/app/<route>/SomePage.spec.tsx
 ```
 
 ## App wrappers are thin — test the page library instead
 
-Route files under `apps/myorganizer/src/app/**` are intentionally thin (metadata + composition only).
+Route files under `apps/web/src/app/**` are intentionally thin (metadata + composition only).
 **Test the page library** (`libs/web/pages/<route>`, see [web-pages.md](./web-pages.md)) — it holds all the actual logic.
 
 ## Mocking patterns
@@ -41,6 +41,6 @@ See the [Nx lazy-loading & `jest.mock()` ordering rule](../README.md#nx-lazy-loa
 ## Commands
 
 ```bash
-yarn nx test myorganizer
-yarn nx lint myorganizer
+yarn nx test web
+yarn nx lint web
 ```

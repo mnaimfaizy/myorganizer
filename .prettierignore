@@ -34,7 +34,7 @@ docs/vault/lifecycle.html
 tools/assets/dc-runtime
 apps/backend/src/swagger/swagger.json
 apps/backend/src/swagger/swagger.yaml
-apps/myorganizer/next-env.d.ts
+apps/web/next-env.d.ts
 libs/api-specs/src/api-specs.openapi.yaml
 libs/app-api-client/src
 

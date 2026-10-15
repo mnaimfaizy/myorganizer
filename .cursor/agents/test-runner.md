@@ -22,9 +22,9 @@ execution and diagnosis; the static gate already passed.
 
 ## E2E Files — Never Execute
 
-If the test file path is under `apps/myorganizer-e2e/`, do NOT run `yarn nx e2e`. Instead:
+If the test file path is under `apps/web-e2e/`, do NOT run `yarn nx e2e`. Instead:
 
-1. Note the PR comment to post: _"E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e myorganizer-e2e`"_
+1. Note the PR comment to post: _"E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e web-e2e`"_
 2. Apply label `needs-e2e-review` to the PR via `gh pr edit --add-label needs-e2e-review` if the gh CLI is available.
 3. Return `NEEDS_HUMAN_REVIEW` verdict immediately.
 

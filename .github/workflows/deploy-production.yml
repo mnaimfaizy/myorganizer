@@ -348,7 +348,7 @@ jobs:
           # copies. Empty means the card shows "not configured"; there is
           # no YouTube-style availability switch. See issue #751.
           NEXT_PUBLIC_GOOGLE_CLIENT_ID: ${{ vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID }}
-        run: corepack yarn package:myorganizer:web
+        run: corepack yarn package:web
 
       - name: Deploy frontend to cPanel (production)
         uses: samkirkland/ftp-deploy-action@110f9186c050f71550953127052e77650219c287 # v4.4.0
@@ -356,6 +356,6 @@ jobs:
           server: ${{ secrets.FTP_PROD_HOST }}
           username: ${{ secrets.FTP_PROD_FRONTEND_USERNAME }}
           password: ${{ secrets.FTP_PROD_FRONTEND_PASSWORD }}
-          local-dir: ./dist/deploy/myorganizer-web/
+          local-dir: ./dist/deploy/web/
           server-dir: ${{ secrets.FTP_PROD_FRONTEND_DIR }}
           timeout: 300000

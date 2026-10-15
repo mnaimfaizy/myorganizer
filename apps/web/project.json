@@ -1,7 +1,7 @@
 {
-  "name": "myorganizer",
+  "name": "web",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/myorganizer",
+  "sourceRoot": "apps/web",
   "projectType": "application",
   "tags": ["type:app", "scope:web", "tier:agent"],
   "targets": {
@@ -10,7 +10,7 @@
       "options": {
         "cwd": "{workspaceRoot}",
         "commands": [
-          "node -e \"const fs=require('fs'); const path=require('path'); fs.rmSync(path.resolve('apps/myorganizer/.next'), { recursive: true, force: true });\""
+          "node -e \"const fs=require('fs'); const path=require('path'); fs.rmSync(path.resolve('apps/web/.next'), { recursive: true, force: true });\""
         ],
         "parallel": false
       }
@@ -35,8 +35,8 @@
         "cwd": "{workspaceRoot}",
         "parallel": false,
         "commands": [
-          "yarn nx run myorganizer:build",
-          "node tools/scripts/package-myorganizer-web.mjs"
+          "yarn nx run web:build",
+          "node tools/scripts/package-web.mjs"
         ]
       }
     }

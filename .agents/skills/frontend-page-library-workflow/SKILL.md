@@ -9,11 +9,11 @@ description: "Use when adding or changing frontend pages, dashboard flows, forms
 
 - Adding a new frontend page or dashboard route
 - Changing page logic, form handling, or data fetching for an existing route
-- Refactoring logic between `apps/myorganizer` wrappers and `libs/web/pages/*`
+- Refactoring logic between `apps/web` wrappers and `libs/web/pages/*`
 
 ## Core Rules
 
-- Keep `apps/myorganizer/src/app/**` files thin. They should handle routing, metadata, and composition only.
+- Keep `apps/web/src/app/**` files thin. They should handle routing, metadata, and composition only.
 - Put page logic, schemas, forms, and helpers in `libs/web/pages/<route>`.
 - Prefer the generated API client when it already supports the backend endpoint.
 - For new forms, use React Hook Form and Zod.
@@ -34,7 +34,7 @@ description: "Use when adding or changing frontend pages, dashboard flows, forms
 
 ## Checkpoints
 
-- If business logic or shared helpers ended up under `apps/myorganizer/src/app/**`, move them out.
+- If business logic or shared helpers ended up under `apps/web/src/app/**`, move them out.
 - If the code bypasses the generated client without a good reason, reconsider.
 - If a shared helper is being added under the app instead of `libs/**`, move it.
 
@@ -44,13 +44,13 @@ description: "Use when adding or changing frontend pages, dashboard flows, forms
   - `yarn nx test <affected-page-lib>`
   - `yarn nx lint <affected-project>`
 - If the user flow changed materially, run focused Playwright coverage:
-  - `yarn nx e2e myorganizer-e2e --ui`
+  - `yarn nx e2e web-e2e --ui`
 
 ## Key References
 
 - `README.md`
 - `AGENTS.md`
-- `apps/myorganizer/AGENTS.md`
+- `apps/web/AGENTS.md`
 - `libs/web/pages/AGENTS.md`
 - `libs/app-api-client/AGENTS.md`
-- `apps/myorganizer-e2e/AGENTS.md`
+- `apps/web-e2e/AGENTS.md`

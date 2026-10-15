@@ -6,7 +6,7 @@ accepted
 
 ## Context
 
-`gotoStable` in `apps/myorganizer-e2e/src/e2e/helpers/navigation.ts` wraps `page.goto` for specs
+`gotoStable` in `apps/web-e2e/src/e2e/helpers/navigation.ts` wraps `page.goto` for specs
 that hard-navigate after login or between dashboard routes. It retries up to three times when
 Playwright aborts with a message that includes both `Navigation to` and
 `is interrupted by another navigation`, waits for `domcontentloaded` on the interrupting
@@ -73,7 +73,7 @@ navigation. Engine-internal errors are not that class and must not be folded int
 
 ## Consequences
 
-- Contributors changing `apps/myorganizer-e2e/src/e2e/helpers/navigation.ts` must not widen retries
+- Contributors changing `apps/web-e2e/src/e2e/helpers/navigation.ts` must not widen retries
   to engine-internal errors without a new ADR. The allowlist is intentional, not an oversight left
   from #688.
 - WebKit engine-internal flakes may still appear in nightly runs. They will surface as test-level

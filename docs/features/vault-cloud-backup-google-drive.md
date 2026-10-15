@@ -190,9 +190,9 @@ a second logo:
 | Enabled API                | YouTube Data API v3                     | Google Drive API                                         |
 | Client extras              | Authorized redirect URIs                | Authorized JavaScript origins; leave redirect URIs empty |
 
-The logo to upload is `apps/myorganizer/public/images/google-oauth-app-logo.png`
+The logo to upload is `apps/web/public/images/google-oauth-app-logo.png`
 (square PNG, 120 × 120, under 1 MB — Google's Branding spec). It is the same
-shield as `apps/myorganizer/src/app/icon.svg`. Do not invent a Drive-only mark
+shield as `apps/web/src/app/icon.svg`. Do not invent a Drive-only mark
 or use a Google Drive icon.
 
 1. **Google Auth platform → Branding** → fill:
@@ -313,7 +313,7 @@ anyone who relied on Drive as their Escape Copy destination.
   short-lived and those environments are not the User's Escape Copy home.
 - Recording a new Client ID in the GitHub `production` Environment variable
   is the production cutover. Because the value is inlined at build time,
-  the next `yarn package:myorganizer:web` in
+  the next `yarn package:web` in
   [Deploy Production](../deployment/CI_CD_AND_RELEASE_PROCESS.md) is what
   ships it.
 
@@ -338,7 +338,7 @@ Drive has no YouTube-style production availability flag.
 The same file also reads `window.__MYORG_GOOGLE_CLIENT_ID__` when the
 build-time variable is absent. That fallback exists so Playwright can
 enable the card without rebuilding
-([vault-cloud-backup.spec.ts](../../apps/myorganizer-e2e/src/e2e/vault-cloud-backup.spec.ts)).
+([vault-cloud-backup.spec.ts](../../apps/web-e2e/src/e2e/vault-cloud-backup.spec.ts)).
 It is **not** a production configuration path. Do not inject the production
 client id through `window` on a hosted origin.
 
@@ -351,16 +351,16 @@ unavailable. The configuration messages above are shown only once the policy
 permits cloud backup. A locked Vault does **not** hide the card: cloud backup
 moves Ciphertext and needs no Master Key.
 
-For Next.js to pick up the variable, restart `corepack yarn start:myorganizer`
+For Next.js to pick up the variable, restart `corepack yarn start:web`
 after editing `.env`. `NEXT_PUBLIC_*` values are inlined at build time.
 
 > **Ops — where to set it.**
 >
-> | Environment | Where the value lives                                                                                                                | Notes                                                                                                                                                                                    |
-> | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-> | Local       | `.env` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`                                                                                             | Testing-project client is fine; may share YouTube's.                                                                                                                                     |
-> | Staging     | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `staging` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md))    | Testing-project client. Add the Staging web address as an Authorized JavaScript origin. Injected when CI runs `yarn package:myorganizer:web`, as for Production.                         |
-> | Production  | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `production` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md)) | Dedicated Drive client. Injected when CI runs `yarn package:myorganizer:web`. Setting it only in the cPanel Node.js app panel does nothing — the value is already baked into the bundle. |
+> | Environment | Where the value lives                                                                                                                | Notes                                                                                                                                                                        |
+> | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | Local       | `.env` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`                                                                                             | Testing-project client is fine; may share YouTube's.                                                                                                                         |
+> | Staging     | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `staging` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md))    | Testing-project client. Add the Staging web address as an Authorized JavaScript origin. Injected when CI runs `yarn package:web`, as for Production.                         |
+> | Production  | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `production` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md)) | Dedicated Drive client. Injected when CI runs `yarn package:web`. Setting it only in the cPanel Node.js app panel does nothing — the value is already baked into the bundle. |
 >
 > Changing the production value after Users have copies in `appDataFolder`
 > is a [sticky-client](#sticky-client-id) event, not a routine rotate.
@@ -385,7 +385,7 @@ a repo gate: the value is not an artifact a checker can compare.
 
 What _is_ in git — `.env.example` declaring the name, and
 `deploy-production.yml` injecting `vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID` into
-`yarn package:myorganizer:web` — is already visible to review. A dedicated
+`yarn package:web` — is already visible to review. A dedicated
 checker that only confirmed that one YAML line still would not catch the
 operator failure that matters (the value stored as a Secret instead of a
 Variable, or never set), so it would assert a fact that has never broken a
@@ -433,7 +433,7 @@ libs/web/vault-ui/src/lib/CloudBackupCard.tsx
 ```
 
 The Next.js route wrapper at
-[apps/myorganizer/src/app/dashboard/vault/page.tsx](../../apps/myorganizer/src/app/dashboard/vault/page.tsx)
+[apps/web/src/app/dashboard/vault/page.tsx](../../apps/web/src/app/dashboard/vault/page.tsx)
 is intentionally minimal — it just re-exports `VaultPage` from the
 `@myorganizer/web-pages/vault` library.
 
@@ -446,7 +446,7 @@ The page is reachable from:
 
 Two old routes redirect here permanently:
 `/dashboard/vault-export` and `/dashboard/account/vault` (see
-[apps/myorganizer/next.config.js](../../apps/myorganizer/next.config.js)).
+[apps/web/next.config.js](../../apps/web/next.config.js)).
 
 ---
 

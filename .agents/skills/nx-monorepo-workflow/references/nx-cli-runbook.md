@@ -198,8 +198,8 @@ yarn nx graph --affected
 | Library project name | kebab-case             | `web-pages-todos`              |
 | Library directory    | `libs/<domain>/<name>` | `libs/web/pages/<name>`        |
 | Import path alias    | `@myorganizer/<scope>` | `@myorganizer/web-pages/todos` |
-| App project name     | kebab-case             | `myorganizer`, `backend`       |
-| App directory        | `apps/<name>`          | `apps/myorganizer`             |
+| App project name     | kebab-case             | `web`, `backend`               |
+| App directory        | `apps/<name>`          | `apps/web`                     |
 | Component name       | PascalCase             | `TodoList`                     |
 
 ---

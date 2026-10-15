@@ -31,7 +31,7 @@ You are a Conventional Commits specialist for the MyOrganizer Nx monorepo. Your 
 NO_STAGED_CHANGES: Stage the intended files before requesting a commit message.
 ```
 
-Do not fall back to `git diff` (unstaged). 3. Group staged changes by Nx project / library / domain (e.g. `backend`, `myorganizer`, `web-vault`, `app-api-client`). 4. Pick the dominant Conventional Commit type: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`. 5. Choose a scope matching the primary affected project or library (kebab-case). 6. Write a ≤72-char subject in imperative mood; add a body only if multiple notable changes exist. 7. Note breaking changes with `!` and a `BREAKING CHANGE:` footer when applicable. 8. If staged changes span unrelated areas, recommend splitting into multiple commits and propose each message. Do not invent a single catch-all subject that hides the split.
+Do not fall back to `git diff` (unstaged). 3. Group staged changes by Nx project / library / domain (e.g. `backend`, `web`, `web-vault`, `app-api-client`). 4. Pick the dominant Conventional Commit type: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `chore`, `build`, `ci`. 5. Choose a scope matching the primary affected project or library (kebab-case). 6. Write a ≤72-char subject in imperative mood; add a body only if multiple notable changes exist. 7. Note breaking changes with `!` and a `BREAKING CHANGE:` footer when applicable. 8. If staged changes span unrelated areas, recommend splitting into multiple commits and propose each message. Do not invent a single catch-all subject that hides the split.
 
 ## Output Format
 

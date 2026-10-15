@@ -102,7 +102,7 @@ const VAULT_BLOB_ASK_COPY = {
  * asserts against this value instead of re-spelling it, the way the old
  * dialog title `'Choose vault data to keep'` was re-spelled until #554
  * deleted it out from under those assertions (issue #574). A Playwright spec
- * cannot import this: `myorganizer-e2e` is tagged `type:e2e`, which
+ * cannot import this: `web-e2e` is tagged `type:e2e`, which
  * `@nx/enforce-module-boundaries` only lets depend on `type:app` /
  * `type:util` / `type:data-access`, not this lib's `type:feature`. E2E specs
  * assert on the `data-testid` set below instead.

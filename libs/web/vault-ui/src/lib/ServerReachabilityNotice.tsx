@@ -115,7 +115,7 @@ export function ServerReachabilityNotice({
         two elements and fails strict mode. Assert against the `data-testid`
         attributes on this component, not its copy. The same duplication in the
         toaster's announcer is what
-        `apps/myorganizer-e2e/src/e2e/vault-recovery-key-rotation.spec.ts` had
+        `apps/web-e2e/src/e2e/vault-recovery-key-rotation.spec.ts` had
         to add `{ exact: true }` for.
       */}
       <p className="sr-only" role="status" aria-live="polite">

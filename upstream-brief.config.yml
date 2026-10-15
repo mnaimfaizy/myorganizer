@@ -46,7 +46,7 @@ script_globs:
   - tools/scripts/check-mobile-platform.mjs
 
 source_globs:
-  - apps/myorganizer/src/**/*.{ts,tsx}
+  - apps/web/src/**/*.{ts,tsx}
   - apps/backend/src/**/*.{ts,js}
   - apps/mobile/src/**/*.{ts,tsx}
   - libs/web/ui/src/**/*.{ts,tsx}

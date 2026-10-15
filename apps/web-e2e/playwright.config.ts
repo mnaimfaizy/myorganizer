@@ -20,7 +20,7 @@ const useDevServer = Boolean(process.env['E2E_DEV_SERVER']);
  * ever reuse one started for the mode asking.
  *
  * Sharing 4200 meant the dev loop would happily adopt a leftover production
- * server — or the one behind `yarn start:myorganizer` — and report a pass in
+ * server — or the one behind `yarn start:web` — and report a pass in
  * seconds without ever compiling the working tree. Distinguishing them by
  * inspecting the running server would be a heuristic against Next.js
  * internals; a port is a fact.
@@ -116,10 +116,10 @@ export default defineConfig({
    * no longer matches what CI runs.
    *
    * The production branch builds before it serves. `next start` serves
-   * whatever `apps/myorganizer/.next` already holds and never rebuilds it, so a
+   * whatever `apps/web/.next` already holds and never rebuilds it, so a
    * bare `next start` happily tests a stale bundle — a build three days older
    * than the branch under test read as "the feature does not exist", costing an
-   * afternoon of misdiagnosis. The inferred `myorganizer:start` target depends
+   * afternoon of misdiagnosis. The inferred `web:start` target depends
    * on `build`, so the task graph enforces the build (ADR 0083). Nx caches it,
    * so this is a no-op when nothing changed, and CI (which builds in its own
    * step) hits that cache rather than paying twice. The dev branch runs `dev`,
@@ -128,15 +128,15 @@ export default defineConfig({
   webServer: liveBackendWebServers(
     {
       command: useDevServer
-        ? `corepack yarn nx run myorganizer:dev --port=${port}`
-        : `corepack yarn nx run myorganizer:start --port=${port}`,
+        ? `corepack yarn nx run web:dev --port=${port}`
+        : `corepack yarn nx run web:start --port=${port}`,
       url: baseURL,
       /**
        * Reuse is a dev-loop convenience, never a production-run one.
        *
        * Playwright skips `command` entirely when something already answers on
        * `url` — including the build above. Whatever is on the port gets tested
-       * instead, and a `yarn start:myorganizer` dev server left running answers
+       * instead, and a `yarn start:web` dev server left running answers
        * exactly like the production build would, so a run that reports itself as
        * production silently is not one. That is the stale-bundle failure again,
        * one layer up: the suite tests something other than what it claims, and

@@ -506,7 +506,7 @@ jobs:
           # puts in the HTML it renders. That is how the probe below, and the
           # `select` job of the next run, tell which build is answering.
           WEB_BUILD_ID: ${{ needs.select.outputs.sha }}
-        run: corepack yarn package:myorganizer:web
+        run: corepack yarn package:web
 
       # Refuses a bundle that carries public/.htaccess, then decides `restart`
       # or `install-owed` and writes public/deploy-state.json into the bundle. The host has no shell to ask, so the script infers
@@ -522,11 +522,11 @@ jobs:
           node .deploy-tools/tools/scripts/staging-web-deploy.mjs plan \
             --web-origin "$WEB_ORIGIN" \
             --sha "$HEAD_SHA" \
-            --bundle dist/deploy/myorganizer-web
+            --bundle dist/deploy/web
           # The packager also zips the bundle for a manual upload. Deleted
           # rather than excluded: setting the FTP action's `exclude` replaces
           # its default exclusions instead of adding to them.
-          rm -f dist/deploy/myorganizer-web/myorganizer-web.zip
+          rm -f dist/deploy/web/web.zip
 
       # Pinned by check-deploy-pipeline.mjs: the `exclude` below must keep
       # `**/.htaccess`.
@@ -536,7 +536,7 @@ jobs:
           server: ${{ secrets.FTP_HOST }}
           username: ${{ secrets.FTP_FRONTEND_USERNAME }}
           password: ${{ secrets.FTP_FRONTEND_PASSWORD }}
-          local-dir: ./dist/deploy/myorganizer-web/
+          local-dir: ./dist/deploy/web/
           server-dir: ${{ secrets.FTP_FRONTEND_DIR }}
           timeout: 300000
           # The web app's document root on the host is this bundle's public/
@@ -580,7 +580,7 @@ jobs:
       # Green only when the running process answers from this build. A static
       # file would only say the bundle is uploaded. Then /sw.js must carry its
       # two headers, which on this host come from a block in the host's own
-      # .htaccess, appended once from apps/myorganizer/deploy/sw-headers.htaccess.
+      # .htaccess, appended once from apps/web/deploy/sw-headers.htaccess.
       - name: Probe the running build
         if: ${{ steps.plan.outputs.action == 'restart' }}
         env:

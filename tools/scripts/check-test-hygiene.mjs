@@ -35,7 +35,7 @@ const USAGE = `Usage:
   node tools/scripts/check-test-hygiene.mjs [--json] --staged
 
 Runs the mechanical (non-judgment) TestReviewer checklist items against Jest
-test files. E2E specs under apps/myorganizer-e2e are skipped — they have their
+test files. E2E specs under apps/web-e2e are skipped — they have their
 own rules in .agents/skills/playwright-e2e-workflow/references/e2e-patterns.md.
 `;
 
@@ -353,10 +353,7 @@ async function inspect(file) {
 }
 
 function isE2E(file) {
-  return path
-    .normalize(file)
-    .replace(/\\/g, '/')
-    .includes('apps/myorganizer-e2e/');
+  return path.normalize(file).replace(/\\/g, '/').includes('apps/web-e2e/');
 }
 
 function collectGitFiles(mode) {

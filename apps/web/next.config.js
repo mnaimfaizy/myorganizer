@@ -8,7 +8,7 @@
  **/
 const nextConfig = {
   // cPanel-friendly Node deployment, on every environment (ADR 0128).
-  // Produces .next/standalone, which `yarn package:myorganizer:web` turns into
+  // Produces .next/standalone, which `yarn package:web` turns into
   // a bundle that runs with `node server.js`.
   output: 'standalone',
   // The running process puts its build id in the HTML it renders. Staging's

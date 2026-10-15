@@ -11,7 +11,7 @@ export default function manifest(): MetadataRoute.Manifest {
     // Confirmed: a signed-out visitor landing here is caught by
     // DashboardGuard (libs/web/pages/dashboard/src/components/DashboardGuard.tsx),
     // which redirects to /login; a successful login then sends them to
-    // /dashboard (apps/myorganizer/src/app/(auth)/login/page.tsx). The icon
+    // /dashboard (apps/web/src/app/(auth)/login/page.tsx). The icon
     // never dead-ends, and nothing new was added to make that true — no
     // Next.js proxy/middleware (ADR 0019).
     start_url: '/dashboard',

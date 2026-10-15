@@ -46,22 +46,22 @@ React Native ships no bundled documentation — verify an export against the ins
 - Use Node and Corepack-managed Yarn.
 - Install with `corepack yarn install --immutable`.
 - Start local services with `docker-compose up -d`.
-- Start apps with `yarn start:backend` and `yarn start:myorganizer`.
+- Start apps with `yarn start:backend` and `yarn start:web`.
 
 ## Cursor Cloud specific instructions
 
 The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh` replace `docker-compose up -d` with native services.
 
 - If a service is down, re-run `bash .cursor/start.sh` (idempotent; it does not reinstall dependencies). It starts PostgreSQL on **5453** and MailHog (**SMTP 1453 / UI 8453**), applies Prisma migrations, and seeds the QA Accounts.
-- The backend serves on `:3000` and the frontend on `:4200`, pinned on the Nx `dev` target in `apps/myorganizer/project.json`.
+- The backend serves on `:3000` and the frontend on `:4200`, pinned on the Nx `dev` target in `apps/web/project.json`.
 - Verify email flows via MailHog at `http://localhost:8453`. Login and refresh require a verified email: register → read the verification email → verify → login. To skip that, use a QA Account: `yarn qa:accounts` prints the values.
-- `next dev` rewrites `apps/myorganizer/AGENTS.md` (its `nextjs-agent-rules` block); do not commit that incidental change unless it is the point of your work.
+- `next dev` rewrites `apps/web/AGENTS.md` (its `nextjs-agent-rules` block); do not commit that incidental change unless it is the point of your work.
 
 ## Commands
 
-- Build: `yarn build:backend`, `yarn build:myorganizer`.
+- Build: `yarn build:backend`, `yarn build:web`.
 - Test one Jest project: `yarn nx test <project-name>`.
-- E2E: `yarn nx e2e myorganizer-e2e`.
+- E2E: `yarn nx e2e web-e2e`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write` rewrites uncommitted files. `yarn format:check --all` fails when Prettier would change any file in the tree; without `--all`, Nx checks only the files changed since `main`.
 - A `git commit` runs `.husky/pre-commit` only when Husky is installed (`postinstall` sets `core.hooksPath`). Without `node_modules` the commit succeeds with no checker run, so that success is not evidence. CI runs `yarn format:check --all`.
@@ -75,7 +75,7 @@ The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh
 
 ## Architecture
 
-- Keep `apps/myorganizer/src/app/**` as thin Next.js route wrappers.
+- Keep `apps/web/src/app/**` as thin Next.js route wrappers.
 - Put page logic in `libs/web/pages/<route>` and shared code in `libs/**`.
 - After adding or removing an app, a top-level lib, or a `/dashboard/*` route, update `README.md` and run `yarn readme:check`. Keep the README a front door: versions live in `TECH_STACK.md`, scripts in `package.json`, env vars in `.env.example` — link, do not restate.
 - Use path aliases from `tsconfig.base.json`.
@@ -195,7 +195,7 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix. 
 ## Do Not
 
 - Do not introduce `package-lock.json` or `pnpm-lock.yaml` changes.
-- Do not put app-local shared helpers under `apps/myorganizer/src/lib/**`.
+- Do not put app-local shared helpers under `apps/web/src/lib/**`.
 - Do not store vault plaintext on the server or add plaintext task APIs.
 - Do not hand-edit generated API client code.
 - Do not commit secrets or production credentials, and do not paste them into chat, logs, or issue bodies. This covers vault plaintext, JWT and session cookies, SMTP credentials, and environment file values. Redact instead — `Authorization: <REDACTED>` and similar. If redacted output is not enough to diagnose a problem, say so and ask rather than pasting the real value.

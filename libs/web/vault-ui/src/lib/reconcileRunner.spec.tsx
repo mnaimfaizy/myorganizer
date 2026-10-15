@@ -1089,7 +1089,7 @@ describe('VaultReconcileRunner', () => {
 });
 
 /**
- * The `myorganizer-e2e` Playwright specs cannot import
+ * The `web-e2e` Playwright specs cannot import
  * VAULT_STANDOFF_DIALOG_TEST_ID (module boundary, see its doc comment) — they
  * hold their own copy of the literal instead. A hardcoded copy that drifts
  * silently is exactly how issue #574 happened the first time, so this reads
@@ -1099,9 +1099,9 @@ describe('VaultReconcileRunner', () => {
  */
 describe('E2E specs stay pinned to the whole-Vault standoff testid (issue #574)', () => {
   const E2E_SPEC_PATHS = [
-    'apps/myorganizer-e2e/src/e2e/groceries-vault-sync-convergence.spec.ts',
-    'apps/myorganizer-e2e/src/e2e/tasks-vault-sync-convergence.spec.ts',
-    'apps/myorganizer-e2e/src/e2e/tasks-vault-sync-delete-propagation.spec.ts',
+    'apps/web-e2e/src/e2e/groceries-vault-sync-convergence.spec.ts',
+    'apps/web-e2e/src/e2e/tasks-vault-sync-convergence.spec.ts',
+    'apps/web-e2e/src/e2e/tasks-vault-sync-delete-propagation.spec.ts',
   ];
 
   test.each(E2E_SPEC_PATHS)(

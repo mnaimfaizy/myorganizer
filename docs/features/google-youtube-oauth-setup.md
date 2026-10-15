@@ -39,7 +39,7 @@ This is the only API required. The integration uses the `youtube.readonly` scope
    - **App name:** `MyOrganizer` (or your app name)
    - **User support email:** your email address
    - **App logo (optional):** the same 120 × 120 PNG as Drive —
-     `apps/myorganizer/public/images/google-oauth-app-logo.png`. Production
+     `apps/web/public/images/google-oauth-app-logo.png`. Production
      Drive uses App name `MyOrganizer Vault Backup` on its own project; do
      not put `drive.appdata` on this YouTube consent screen.
 4. Click **Next**.

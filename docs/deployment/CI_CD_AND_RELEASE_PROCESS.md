@@ -28,7 +28,7 @@ This repo uses GitHub Actions for CI/CD.
   - `select` picks the commit every later job checks out. A dispatch deploys the commit it was dispatched at. A scheduled run takes the newest `main` commit whose `CI` run is green and deploys it, unless it stops or fails first. It stops green when there is no such commit, when the commit predates the Staging web deploy, when the Staging web app already serves it, or when the web app or the backend holds a newer commit that a dispatch put there (the schedule never rolls Staging back). It **fails** when the Staging web address does not answer (or `WEB_ORIGIN` is unset), when Staging serves the commit but `/sw.js` lacks its two headers, when an earlier run already uploaded the commit but the web app is not serving it, or when the Actions API cannot be read. Nothing is uploaded on a stop or a failure. See [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
   - Packages backend via `yarn package:backend:api` and uploads `dist/deploy/backend-api/`.
   - `host-apply` runs on a dispatch only — see [Host Apply](#host-apply-staging--production).
-  - `deploy-frontend` packages the web app via `yarn package:myorganizer:web`, uploads `dist/deploy/myorganizer-web/`, restarts the app by uploading `tmp/restart.txt`, and probes the running build — see [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
+  - `deploy-frontend` packages the web app via `yarn package:web`, uploads `dist/deploy/web/`, restarts the app by uploading `tmp/restart.txt`, and probes the running build — see [Web app on cPanel](CPANEL_WEB_HOSTING.md#how-a-staging-deploy-goes-live).
 
 - `.github/workflows/deploy-production.yml` (name: `Deploy Production (manual)`)
   - `workflow_dispatch` only — started either by a person or by `dispatch-production-deploy.yml`.
@@ -36,7 +36,7 @@ This repo uses GitHub Actions for CI/CD.
   - `deploy-backend` and `deploy-frontend` declare `environment: production`, so the run **pauses for required-reviewer approval** before either touches production.
   - Packages backend + frontend and uploads:
     - `dist/deploy/backend-api/`
-    - `dist/deploy/myorganizer-web/`
+    - `dist/deploy/web/`
 
 - `.github/workflows/dispatch-production-deploy.yml` (name: `Dispatch Production Deploy (latest release)`)
   - Fires on `create` of a `release/vX.Y.Z` branch, and on manual dispatch.
@@ -177,7 +177,7 @@ Web app (cPanel FTP/FTPS, same `FTP_HOST`):
 
 Web app **build-time** (GitHub Environment **variable** on `staging`, not a secret):
 
-- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — Vault Cloud Backup GIS client for Staging (the Testing-project client). Read at the `yarn package:myorganizer:web` step, as for Production. Empty leaves the vault page on _"Cloud backup is not configured"_.
+- `NEXT_PUBLIC_GOOGLE_CLIENT_ID` — Vault Cloud Backup GIS client for Staging (the Testing-project client). Read at the `yarn package:web` step, as for Production. Empty leaves the vault page on _"Cloud backup is not configured"_.
 
 ### Production (release/\*)
 
@@ -203,7 +203,7 @@ not secrets — the value is public and inlined into the browser bundle):
   [Vault Cloud Backup](../features/vault-cloud-backup-google-drive.md).
 
 `deploy-production.yml` passes this variable into the
-`yarn package:myorganizer:web` step. Setting it only on the cPanel Node.js
+`yarn package:web` step. Setting it only on the cPanel Node.js
 app does not change an already-built bundle.
 
 ### Host Apply (Staging & Production)

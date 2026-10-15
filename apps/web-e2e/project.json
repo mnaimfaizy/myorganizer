@@ -1,10 +1,10 @@
 {
-  "name": "myorganizer-e2e",
+  "name": "web-e2e",
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
-  "sourceRoot": "apps/myorganizer-e2e/src",
+  "sourceRoot": "apps/web-e2e/src",
   "tags": ["type:e2e", "scope:web", "tier:agent"],
-  "implicitDependencies": ["myorganizer"],
-  "// targets": "to see all targets run: nx show project myorganizer-e2e --web",
+  "implicitDependencies": ["web"],
+  "// targets": "to see all targets run: nx show project web-e2e --web",
   "targets": {
     "e2e": {
       "cache": false,
@@ -34,9 +34,9 @@
         "cwd": "{workspaceRoot}",
         "parallel": false,
         "commands": [
-          "npx nx run myorganizer-e2e:e2e",
-          "npx nx run myorganizer-e2e:e2e-firefox",
-          "npx nx run myorganizer-e2e:e2e-webkit"
+          "npx nx run web-e2e:e2e",
+          "npx nx run web-e2e:e2e-firefox",
+          "npx nx run web-e2e:e2e-webkit"
         ]
       }
     }

@@ -2,7 +2,7 @@
 
 ## Scope
 
-One Nx React library per frontend route/page, imported by thin wrappers in `apps/myorganizer/src/app/**`.
+One Nx React library per frontend route/page, imported by thin wrappers in `apps/web/src/app/**`.
 
 ## Commands
 

@@ -218,10 +218,10 @@ The development server features:
 
 ```bash
 # From the root directory
-yarn start:myorganizer
+yarn start:web
 
 # Or using Nx directly
-yarn nx dev myorganizer
+yarn nx dev web
 
 # The frontend will be available at http://localhost:4200
 ```
@@ -245,7 +245,7 @@ yarn start:backend
 **Terminal 2 - Frontend:**
 
 ```bash
-yarn start:myorganizer
+yarn start:web
 ```
 
 ### Starting the Mobile App (iOS)
@@ -380,7 +380,7 @@ For more than one line on a project, read the `AGENTS.md` (and, where one exists
 
 MyOrganizer enforces a simple rule for the Next.js App Router:
 
-- Files under `apps/myorganizer/src/app/**` are **thin route wrappers** only.
+- Files under `apps/web/src/app/**` are **thin route wrappers** only.
 - All page/domain logic lives in Nx libraries under `libs/web/pages/<route>/`.
 
 Next.js request conventions (`proxy.ts`, async request APIs, do not suggest `next lint`) live in [AGENTS.md](./AGENTS.md). Package versions live in [TECH_STACK.md](./TECH_STACK.md). Do not add a Next.js Proxy unless a ticket explicitly asks — [ADR 0019](./docs/adr/0019-nextjs-proxy-is-not-a-session-layer.md).
@@ -389,7 +389,7 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 
 ### What goes where
 
-- Route wrappers: `apps/myorganizer/src/app/<route>/page.tsx`
+- Route wrappers: `apps/web/src/app/<route>/page.tsx`
   - Keep minimal: route segment wiring, metadata, and importing the page component from the library.
 - Page implementation: `libs/web/pages/<route>/src/**`
   - Actual React components, data fetching (via generated client), form logic, and page-specific helpers.
@@ -400,7 +400,7 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 
 1. Create a new React library under `libs/web/pages/<route>/` with import path `@myorganizer/web-pages/<route>`.
 2. Export the page entry from the library’s `src/index.ts`.
-3. Add a thin wrapper at `apps/myorganizer/src/app/<route>/page.tsx` that renders/exports the library page.
+3. Add a thin wrapper at `apps/web/src/app/<route>/page.tsx` that renders/exports the library page.
 
 Examples of existing page libraries:
 
@@ -574,7 +574,7 @@ yarn nx run-many -t lint
 
 # Lint specific project
 yarn nx lint backend
-yarn nx lint myorganizer
+yarn nx lint web
 
 # Auto-fix linting issues in one project
 yarn nx lint backend --fix
@@ -714,10 +714,10 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    # Run specific tests
    yarn nx test backend
-   yarn nx test myorganizer
+   yarn nx test web
 
    # Run E2E tests
-   yarn nx e2e myorganizer-e2e
+   yarn nx e2e web-e2e
 
    # Check code quality
    yarn format:write
@@ -832,7 +832,7 @@ yarn nx run-many -t test
 
 # Run tests for specific project
 yarn nx test backend
-yarn nx test myorganizer
+yarn nx test web
 yarn nx test web-ui
 
 # Run tests in watch mode
@@ -900,23 +900,23 @@ describe('Button', () => {
 
 ### E2E Testing
 
-End-to-end tests use Playwright and are located in `apps/myorganizer-e2e`.
+End-to-end tests use Playwright and are located in `apps/web-e2e`.
 
 ```bash
 # Run E2E tests
-yarn nx e2e myorganizer-e2e
+yarn nx e2e web-e2e
 
 # Run E2E tests in UI mode (interactive)
-yarn nx e2e myorganizer-e2e --ui
+yarn nx e2e web-e2e --ui
 
 # Run E2E tests for CI
-yarn nx e2e-ci myorganizer-e2e
+yarn nx e2e-ci web-e2e
 ```
 
 **Writing E2E Tests**:
 
 ```typescript
-// apps/myorganizer-e2e/src/example.spec.ts
+// apps/web-e2e/src/example.spec.ts
 import { test, expect } from '@playwright/test';
 
 test('user can log in', async ({ page }) => {
@@ -936,7 +936,7 @@ test('user can log in', async ({ page }) => {
 ```bash
 # Generate coverage report
 yarn nx test backend --coverage
-yarn nx test myorganizer --coverage
+yarn nx test web --coverage
 
 # View coverage in browser
 # Reports are in coverage/ directory
@@ -976,23 +976,23 @@ node main.js
 
 ```bash
 # Build frontend
-yarn build:myorganizer
+yarn build:web
 
 # Or using Nx
-yarn nx build myorganizer
+yarn nx build web
 
-# Output is in apps/myorganizer/.next/
+# Output is in apps/web/.next/
 ```
 
 **Running Production Build**:
 
 ```bash
 # Builds (or restores the build from cache), then runs `next start`
-yarn start:myorganizer:prod
+yarn start:web:prod
 ```
 
-To produce the self-hosted deploy bundle in `dist/deploy/myorganizer-web/`, run
-`yarn nx run myorganizer:package`.
+To produce the self-hosted deploy bundle in `dist/deploy/web/`, run
+`yarn nx run web:package`.
 
 ### Building Storybook
 

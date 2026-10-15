@@ -73,7 +73,7 @@ way, so nothing is lost.
 Previously there were 6. The 4 authored ones were all Playwright specs that hit a genuine
 `tree-sitter-typescript` bug — `Parameters<import('@playwright/test').Page['goto']>[1]`, an
 import-type in type-argument position — in a `gotoStable` helper duplicated verbatim across 7 specs.
-Extracting it to `apps/myorganizer-e2e/src/e2e/helpers/navigation.ts` removed the duplication and
+Extracting it to `apps/web-e2e/src/e2e/helpers/navigation.ts` removed the duplication and
 cleared the parse errors as a side effect.
 
 Two caveats worth keeping:

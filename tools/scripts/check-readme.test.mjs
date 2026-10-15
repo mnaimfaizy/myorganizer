@@ -30,7 +30,7 @@ function writeReadme(workspace, diagramContent, prose = '') {
 const IN_SYNC_DIAGRAM = [
   '├── apps/',
   '│   ├── backend/',
-  '│   └── myorganizer/',
+  '│   └── web/',
   '├── libs/',
   '│   ├── core/',
   '│   └── auth/',
@@ -39,7 +39,7 @@ const IN_SYNC_DIAGRAM = [
 
 function createInSyncTree(workspace) {
   createDirectory(workspace, 'apps/backend');
-  createDirectory(workspace, 'apps/myorganizer');
+  createDirectory(workspace, 'apps/web');
   createDirectory(workspace, 'libs/core');
   createDirectory(workspace, 'libs/auth');
 }
@@ -60,7 +60,7 @@ test('passes when diagram and filesystem are in sync', (t) => {
   const diagram = [
     '├── apps/',
     '│   ├── backend/',
-    '│   └── myorganizer/',
+    '│   └── web/',
     '├── libs/',
     '│   ├── core/',
     '│   └── auth/',
@@ -68,7 +68,7 @@ test('passes when diagram and filesystem are in sync', (t) => {
   ].join('\n');
   writeReadme(workspace, diagram);
   createDirectory(workspace, 'apps/backend');
-  createDirectory(workspace, 'apps/myorganizer');
+  createDirectory(workspace, 'apps/web');
   createDirectory(workspace, 'libs/core');
   createDirectory(workspace, 'libs/auth');
 
@@ -84,14 +84,14 @@ test('rejects a stale app entry in the diagram (reverse direction check)', (t) =
     '├── apps/',
     '│   ├── backend/',
     '│   ├── deleted-app/',
-    '│   └── myorganizer/',
+    '│   └── web/',
     '├── libs/',
     '│   └── core/',
     '└── tools/',
   ].join('\n');
   writeReadme(workspace, diagram);
   createDirectory(workspace, 'apps/backend');
-  createDirectory(workspace, 'apps/myorganizer');
+  createDirectory(workspace, 'apps/web');
   createDirectory(workspace, 'libs/core');
 
   const result = runChecker(workspace);
@@ -133,13 +133,13 @@ test('rejects a missing app from the diagram (forward direction check)', (t) => 
   ].join('\n');
   writeReadme(workspace, diagram);
   createDirectory(workspace, 'apps/backend');
-  createDirectory(workspace, 'apps/myorganizer');
+  createDirectory(workspace, 'apps/web');
   createDirectory(workspace, 'libs/core');
 
   const result = runChecker(workspace);
 
   assert.equal(result.status, 1);
-  assert.match(result.stderr, /apps\/myorganizer exists but is missing/);
+  assert.match(result.stderr, /apps\/web exists but is missing/);
 });
 
 test('rejects a missing lib from the diagram (forward direction check)', (t) => {
@@ -262,7 +262,7 @@ test('rejects a /dashboard route the app router does not serve', (t) => {
   const workspace = createWorkspace(t);
   writeReadme(workspace, IN_SYNC_DIAGRAM, '\nVisit /dashboard/todo to plan.\n');
   createInSyncTree(workspace);
-  createDirectory(workspace, 'apps/myorganizer/src/app/dashboard/vault');
+  createDirectory(workspace, 'apps/web/src/app/dashboard/vault');
 
   const result = runChecker(workspace);
 
@@ -281,7 +281,7 @@ test('accepts a /dashboard route the app router serves', (t) => {
     '\nVisit /dashboard/vault to plan.\n',
   );
   createInSyncTree(workspace);
-  createDirectory(workspace, 'apps/myorganizer/src/app/dashboard/vault');
+  createDirectory(workspace, 'apps/web/src/app/dashboard/vault');
 
   const result = runChecker(workspace);
 

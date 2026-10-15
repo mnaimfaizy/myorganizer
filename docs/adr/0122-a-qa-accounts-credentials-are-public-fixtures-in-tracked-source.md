@@ -16,7 +16,7 @@ That had three costs:
 
 Issue #1004 tracks the change.
 
-The repository already commits sign-in fixtures for the live logout Playwright spec (`apps/myorganizer-e2e/src/e2e/helpers/liveAuth.ts`), and every vault spec carries its passphrase as a literal.
+The repository already commits sign-in fixtures for the live logout Playwright spec (`apps/web-e2e/src/e2e/helpers/liveAuth.ts`), and every vault spec carries its passphrase as a literal.
 
 ## Decision
 

@@ -262,7 +262,7 @@ test('skips a negative existence claim', (t) => {
   write(
     repo.workspace,
     'AGENTS.md',
-    'This app has no `apps/myorganizer/src/proxy.ts`.\n',
+    'This app has no `apps/web/src/proxy.ts`.\n',
   );
   commitAll(repo);
 
@@ -308,7 +308,7 @@ test('skips fenced code, placeholders, CLI flags, and identifiers with no nearby
       'import { missing } from "libs/does-not-exist/gone.ts";',
       '```',
       '',
-      'Globs: `libs/**` and `apps/myorganizer/src/app/**`.',
+      'Globs: `libs/**` and `apps/web/src/app/**`.',
     ].join('\n'),
   );
   commitAll(repo);

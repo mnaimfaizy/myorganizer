@@ -12,7 +12,7 @@ Mobile App theme. Two were not: `tailwind-preset.js` and `tailwind-preset.native
 generated, committed, and imported by nothing.
 
 Both were documented as live. The library README asserted the web preset was consumed by
-`apps/myorganizer/tailwind.config.js`. [ADR 0008](0008-mobile-styling-stylesheet-theme.md) asserted
+`apps/web/tailwind.config.js`. [ADR 0008](0008-mobile-styling-stylesheet-theme.md) asserted
 the native preset fed the Mobile App theme. Neither was true — the theme reads the generated TS
 constants, and neither Tailwind config had a `presets` key at all.
 

@@ -7,7 +7,7 @@
 // A documented command is a claim about the workspace: "this project has this target." The
 // claim rots when a target is renamed or was never there, and nothing notices, because prose is
 // not executed. `DEVELOPMENT.md` taught `yarn nx run backend:type-check` and
-// `yarn nx run myorganizer:type-check`; neither target has ever existed (issue #980). It is the
+// `yarn nx run web:type-check`; neither target has ever existed (issue #980). It is the
 // fourth time: the `eslint:lint` target name (#426), the TestReviewer false PASS in ADR 0036,
 // and a stale Agent Guide command (#830) were each found by somebody running the command by
 // hand. `docs:commands:check` reads the same blocks but asserts only that a path exists.

@@ -13,7 +13,7 @@
 # ahead of the host's Node 22.13 — always AFTER a clean compile and typecheck,
 # which is what made it read as a code failure. It hit the agent sandbox too, not
 # just the gate: both run builds inside a bind-mounted worktree. Since ADR 0083 the
-# web app builds with plain `next build` into `apps/myorganizer/.next`, which no
+# web app builds with plain `next build` into `apps/web/.next`, which no
 # longer makes that copy; the pin stays until something verifies no other build
 # step reaches a recursive cpSync onto the mount.
 #

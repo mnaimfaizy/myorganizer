@@ -1,8 +1,8 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="apps/myorganizer/public/images/logo-shield-dark.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="apps/myorganizer/public/images/logo-shield.svg" />
-    <img src="apps/myorganizer/public/images/logo-shield.svg" alt="MyOrganiser logo" width="220" />
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/images/logo-shield-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="apps/web/public/images/logo-shield.svg" />
+    <img src="apps/web/public/images/logo-shield.svg" alt="MyOrganiser logo" width="220" />
   </picture>
 </p>
 
@@ -94,7 +94,7 @@ Then start the apps in separate terminals:
 
 ```sh
 yarn start:backend       # http://localhost:3000 — API docs at /docs
-yarn start:myorganizer   # http://localhost:4200
+yarn start:web   # http://localhost:4200
 ```
 
 [DEVELOPMENT.md](DEVELOPMENT.md) covers everything past this point: architecture, testing, running
@@ -108,10 +108,10 @@ the mobile app, and the agent workflows.
 myorganizer/
 ├── apps/
 │   ├── backend/          # Express + TSOA REST API, Prisma, PostgreSQL
-│   ├── myorganizer/      # Next.js web client (App Router — route wrappers only)
+│   ├── web/              # Next.js web client (App Router — route wrappers only)
 │   ├── mobile/           # React Native client
 │   ├── escape-copy-reader/ # Standalone offline vault Escape Copy reader (one HTML file)
-│   └── myorganizer-e2e/  # Playwright end-to-end tests
+│   └── web-e2e/          # Playwright end-to-end tests
 ├── libs/
 │   ├── api-specs/        # OpenAPI spec, synced from TSOA decorators
 │   ├── app-api-client/   # Generated API client — never edit by hand
@@ -130,9 +130,9 @@ myorganizer/
 └── tools/                # Build, release, and repo-guard scripts
 ```
 
-The web app enforces a strict thin-wrapper rule: `apps/myorganizer/src/app/**` holds routing,
+The web app enforces a strict thin-wrapper rule: `apps/web/src/app/**` holds routing,
 metadata, and layout composition only, and every page's logic lives in `libs/web/pages/<route>/`.
-Shared code belongs in `libs/**`, never in `apps/myorganizer/src/lib/**`.
+Shared code belongs in `libs/**`, never in `apps/web/src/lib/**`.
 A web library's folder under `libs/web/` records its scope; its import alias (`@myorganizer/web-ui`,
 `@myorganizer/web-vault`, …) is stable and does not follow the folder.
 

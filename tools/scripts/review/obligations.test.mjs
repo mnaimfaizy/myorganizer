@@ -705,7 +705,7 @@ test('#657: a bare window.confirm fires the destructive-confirmation obligation'
       'destructive-confirmation-names-what-it-mutates',
       diff(
         '--- a/x',
-        '+++ b/apps/myorganizer/src/app/vault-export/page.tsx',
+        '+++ b/apps/web/src/app/vault-export/page.tsx',
         '@@ -0,0 +88,1 @@',
         "+    if (!window.confirm('Importing will replace your current local vault data. Continue?')) return;",
       ),
@@ -719,7 +719,7 @@ test('#525: a FormControl fires the slot obligation', () => {
       'slot-injected-props-land-on-the-control',
       diff(
         '--- a/x',
-        '+++ b/apps/myorganizer/src/app/(auth)/signup/page.tsx',
+        '+++ b/apps/web/src/app/(auth)/signup/page.tsx',
         '@@ -0,0 +40,2 @@',
         '+              <FormControl>',
         '+                <div className="relative">',
@@ -1006,8 +1006,8 @@ test('an enum-shaped line outside the guarded definition does not fire the fan-o
   assert.deepEqual(
     enumFanoutSites(
       diff(
-        '--- a/apps/myorganizer/src/a.ts',
-        '+++ b/apps/myorganizer/src/a.ts',
+        '--- a/apps/web/src/a.ts',
+        '+++ b/apps/web/src/a.ts',
         '@@ -0,0 +1,1 @@',
         "+    Groceries: 'groceries',",
       ),
@@ -1034,7 +1034,7 @@ test('the fan-out obligation fires on every enum enum:fanout:check guards', asyn
       `${guard.enum}: a member added in ${guard.definedIn} does not fire`,
     );
     // A consumer naming two members, anywhere the checker would scan it.
-    for (const root of [...guard.valueRoots, 'apps/myorganizer/src/']) {
+    for (const root of [...guard.valueRoots, 'apps/web/src/']) {
       const file = `${root}consumer.ts`;
       assert.equal(
         enumFanoutSites(
@@ -1098,7 +1098,7 @@ test('#537: a test listing members as fixtures is not a site, so one finding ans
   // contradicting themselves and void the replay.
   for (const file of [
     'libs/web-vault/src/lib/vault/vaultExportImportHardened.test.ts',
-    'apps/myorganizer/src/a.spec.tsx',
+    'apps/web/src/a.spec.tsx',
   ])
     assert.deepEqual(
       enumFanoutSites(
@@ -1160,8 +1160,8 @@ test('a member value outside the value roots does not fire', () => {
   assert.deepEqual(
     generatedSites(
       diff(
-        '--- a/apps/myorganizer/src/a.ts',
-        '+++ b/apps/myorganizer/src/a.ts',
+        '--- a/apps/web/src/a.ts',
+        '+++ b/apps/web/src/a.ts',
         '@@ -0,0 +1,1 @@',
         '+  const pending = project.tasks.filter(Boolean);',
       ),

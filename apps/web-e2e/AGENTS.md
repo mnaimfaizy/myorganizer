@@ -6,9 +6,9 @@ Playwright end-to-end tests for the MyOrganizer frontend.
 
 ## Commands
 
-- Chromium: `yarn nx e2e myorganizer-e2e`.
-- Interactive: `yarn nx e2e myorganizer-e2e --ui`.
-- Cross-browser targets: `myorganizer-e2e:e2e-firefox`, `myorganizer-e2e:e2e-webkit`, `myorganizer-e2e:e2e-all`.
+- Chromium: `yarn nx e2e web-e2e`.
+- Interactive: `yarn nx e2e web-e2e --ui`.
+- Cross-browser targets: `web-e2e:e2e-firefox`, `web-e2e:e2e-webkit`, `web-e2e:e2e-all`.
 
 ## How the app is served
 
@@ -18,7 +18,7 @@ a local pass means the same thing a CI pass does ([ADR 0050](../../docs/adr/0050
 For the fast edit-run loop, opt out:
 
 ```sh
-E2E_DEV_SERVER=1 yarn nx e2e myorganizer-e2e
+E2E_DEV_SERVER=1 yarn nx e2e web-e2e
 ```
 
 That boots the dev server instead. It is quicker, but it no longer matches CI — dev-only
@@ -26,18 +26,18 @@ behaviour (unminified bundles, `NODE_ENV` branches, the Next.js dev overlay) is 
 production-only failures will not reproduce. Reach for it while iterating, not to confirm a fix.
 
 The production command builds before it serves, and must keep doing so. `next start` serves
-whatever `apps/myorganizer/.next` already holds and never rebuilds it, so a suite that only
+whatever `apps/web/.next` already holds and never rebuilds it, so a suite that only
 serves would test a stale bundle: a build predating the branch under test reports every new
 feature as a missing element, which reads as a broken spec rather than a stale build. The
-production command is `nx run myorganizer:start`, and the inferred `start` target depends on
+production command is `nx run web:start`, and the inferred `start` target depends on
 `build`, so the task graph enforces the build (ADR 0083); Nx caches it, so the guard costs nothing
 when nothing changed. Do not replace it with a bare `next start`. If a spec fails as though the
-code it exercises does not exist, check that `apps/myorganizer/.next/BUILD_ID` is newer than the
+code it exercises does not exist, check that `apps/web/.next/BUILD_ID` is newer than the
 work before believing the spec.
 
 For the same reason a production run never reuses a server already on the port. Playwright skips
 the whole `command` — the build included — when something answers on `url`, and a
-`yarn start:myorganizer` dev server answers exactly like the production build would, so the run
+`yarn start:web` dev server answers exactly like the production build would, so the run
 would report itself as production while testing something else. If a production run stops with
 `http://localhost:4200 is already used`, that is this guard: stop the server holding the port and
 re-run, rather than setting `reuseExistingServer: true`.
@@ -61,7 +61,7 @@ for manual work on 4200.
 
 ## CI lanes
 
-- **Blocking** — Chromium, on pull requests that `nx affected` says touch `myorganizer-e2e`,
+- **Blocking** — Chromium, on pull requests that `nx affected` says touch `web-e2e`,
   split across 3 shards in `.github/workflows/ci.yml`. Keeps `retries: 2` and passes on retry.
   The live logout spec is a fourth job, `e2e-live-logout`, not one of the shards.
 - **Nightly** — all three browsers as a matrix in `.github/workflows/nightly-e2e.yml`, run with

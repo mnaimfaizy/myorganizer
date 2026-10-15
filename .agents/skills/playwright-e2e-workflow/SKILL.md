@@ -9,7 +9,7 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-
 
 ## Use This Skill When
 
-- Adding or changing Playwright tests in `apps/myorganizer-e2e`
+- Adding or changing Playwright tests in `apps/web-e2e`
 - Validating critical route flows after frontend or auth changes
 - Debugging browser behavior that is hard to cover with unit tests alone
 
@@ -27,10 +27,10 @@ Canonical chain when planning is required: **E2EPlanner → TestScaffold → Tes
 
 **In autonomous contexts (sandcastle, CI without a human in the loop), E2E tests must never be executed:**
 
-- DO NOT run `yarn nx e2e myorganizer-e2e`. Playwright requires browser, server, and human visual verification.
+- DO NOT run `yarn nx e2e web-e2e`. Playwright requires browser, server, and human visual verification.
 - After TestScaffold completes, delegate to TestReviewer in structural-only mode (`tsc --noEmit` + `eslint` + selector/API rule check).
 - TestReviewer will return `E2E_NEEDS_HUMAN_REVIEW: true`.
-- Post a PR comment: _"E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e myorganizer-e2e`"_
+- Post a PR comment: _"E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e web-e2e`"_
 - Apply label `needs-e2e-review` to the PR.
 
 **In human-in-the-loop sessions (interactive, human present), follow the full procedure below (and execute browsers only when the human is present).**
@@ -70,7 +70,7 @@ Verify these before starting E2E planning — if not met, recommend a PR to comp
    - `Open questions` in the plan carry a stated working assumption. Resolve them with the human before implementation when the assumption changes what gets asserted.
 5. **Keep the test deterministic and focused** on the changed behavior.
 6. **Test on all browsers** during implementation — run on Chromium, Firefox, and WebKit before marking as complete.
-7. **Use `yarn nx e2e myorganizer-e2e --ui`** only when the normal run is not enough to debug.
+7. **Use `yarn nx e2e web-e2e --ui`** only when the normal run is not enough to debug.
 8. **Follow the detailed [Playwright e2e runbook](./references/runbook.md)** for selector rules, mocking boundaries, validation, and repo references.
 
 ## References

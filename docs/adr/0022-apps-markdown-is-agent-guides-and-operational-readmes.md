@@ -1,6 +1,6 @@
 # Markdown under `apps/` is Agent Guides and Operational READMEs only
 
-Feature write-ups, design notes, component trees, and ticket close-outs next to Next.js routes go stale (nothing links to them, and they drift from the code) and fight the thin-wrapper rule: `apps/myorganizer/src/app/**` is routing and layout, not a docs tree. Decisions, UI rules, and auth behaviour already have homes in `docs/adr/`, `docs/ui/`, and `docs/authentication/`.
+Feature write-ups, design notes, component trees, and ticket close-outs next to Next.js routes go stale (nothing links to them, and they drift from the code) and fight the thin-wrapper rule: `apps/web/src/app/**` is routing and layout, not a docs tree. Decisions, UI rules, and auth behaviour already have homes in `docs/adr/`, `docs/ui/`, and `docs/authentication/`.
 
 ## Decision
 

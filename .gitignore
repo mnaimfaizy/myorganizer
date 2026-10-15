@@ -79,7 +79,7 @@ Thumbs.db
 # Next.js
 .next
 out
-apps/myorganizer/next-env.d.ts
+apps/web/next-env.d.ts
 
 # Database
 .database

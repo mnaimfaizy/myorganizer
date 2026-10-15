@@ -7,7 +7,7 @@
 // `docs/features/README.md` carries a "Features Index" table naming each
 // product feature. This slugifies each name ("Mobile Numbers" ->
 // "mobile-numbers") and checks it bidirectionally against the top-level
-// directories Next.js actually serves under `apps/myorganizer/src/app/dashboard`:
+// directories Next.js actually serves under `apps/web/src/app/dashboard`:
 //
 // 1. Every indexed feature must map to a real route.
 // 2. Every real route (except those explicitly excluded) must have an index entry.
@@ -29,9 +29,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 const FEATURE_INDEX = resolve(process.argv[2] ?? 'docs/features/README.md');
-const DASHBOARD_ROOT = resolve(
-  process.argv[3] ?? 'apps/myorganizer/src/app/dashboard',
-);
+const DASHBOARD_ROOT = resolve(process.argv[3] ?? 'apps/web/src/app/dashboard');
 const EXCLUSIONS_CONFIG = resolve(
   process.argv[4] ?? 'tools/config/feature-index-exclusions.json',
 );

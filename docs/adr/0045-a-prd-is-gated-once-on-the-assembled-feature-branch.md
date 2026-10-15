@@ -11,7 +11,7 @@ accepted. Amends [0010](0010-sandcastle-local-only-integration.md). Amended by [
 PRD #446 demonstrated it twice in one night. Wave 1's two slices both failed the gate, so neither integrated, so the driver aborted and waves 2 and 3 never ran. Six slices of planned work, three dispatch runs, roughly forty sub-agent invocations, and **nothing integrated**. Neither failure was the code:
 
 1. `nx show projects --affected` was invoked without `--json`, so the gate could not parse the project graph and failed closed on every slice.
-2. `NX EACCES, Permission denied 'dist/apps/myorganizer/public'` — a Node 22.17 `cpSync` regression on Docker bind mounts, hit after the build had already compiled and typechecked.
+2. `NX EACCES, Permission denied 'dist/apps/web/public'` — a Node 22.17 `cpSync` regression on Docker bind mounts, hit after the build had already compiled and typechecked.
 
 Both were environment faults in the gate itself. Under fail-closed-and-abort, a bug in the verifier is indistinguishable from a bug in the work, and it costs the entire PRD. This matters specifically because these runs happen overnight: the maintainer is asleep, cannot triage, and wakes to a run that stopped hours in with nothing to show.
 

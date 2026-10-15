@@ -26,7 +26,7 @@ const repoRoot = join(here, '..', '..', '..');
 const SVG_SOURCE = join(
   repoRoot,
   'apps',
-  'myorganizer',
+  'web',
   'public',
   'images',
   'logo-email.svg',

@@ -45,8 +45,8 @@ export const PLAN_INSTALL_OWED = 'install-owed';
 
 /**
  * The two headers `/sw.js` must carry (ADR 0127), stated three times: here,
- * in `apps/myorganizer/next.config.js` for a host that renders through
- * Next.js, and in the snippet `apps/myorganizer/deploy/sw-headers.htaccess`,
+ * in `apps/web/next.config.js` for a host that renders through
+ * Next.js, and in the snippet `apps/web/deploy/sw-headers.htaccess`,
  * which an operator appends once to the host's own `.htaccess` where
  * `public/` is served from disk. The test suite reads both files and fails
  * when either stops containing these exact values.
@@ -71,7 +71,7 @@ export const STATE_NONE = 'none';
 export const STATE_UNREADABLE = 'unreadable';
 
 /** The file a commit must carry to produce a build named after it. */
-export const BUILD_ID_CONFIG = 'apps/myorganizer/next.config.js';
+export const BUILD_ID_CONFIG = 'apps/web/next.config.js';
 export const BUILD_ID_VARIABLE = 'WEB_BUILD_ID';
 
 const COMMIT = /^[0-9a-f]{40}$/;
@@ -237,7 +237,7 @@ export const SCHEDULE_OUTCOMES = Object.freeze({
     failed: true,
     summary:
       'Staging serves that commit, but `/sw.js` does not carry its two headers. ' +
-      "Append the block from `apps/myorganizer/deploy/sw-headers.htaccess` to the host's `.htaccess`. Nothing was uploaded.",
+      "Append the block from `apps/web/deploy/sw-headers.htaccess` to the host's `.htaccess`. Nothing was uploaded.",
   },
 });
 
@@ -330,7 +330,7 @@ export function assertBundleKeepsHostHtaccess(bundleFiles) {
   if (normalized.includes(BUNDLE_HTACCESS)) {
     throw new StagingWebDeployRefusal(
       `the bundle contains ${BUNDLE_HTACCESS}. The host's document root is that folder and holds the host's own .htaccess; uploading this one would overwrite it and take the app down. ` +
-        'Remove it from apps/myorganizer/public. Nothing was uploaded.',
+        'Remove it from apps/web/public. Nothing was uploaded.',
     );
   }
 }

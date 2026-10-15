@@ -21,7 +21,7 @@ You are a static code reviewer for the MyOrganizer Nx monorepo. Your job is to f
 1. Clarify scope from the prompt; default to the targeted project/library only.
 2. Scan for repo-specific anti-patterns from `.github/copilot-instructions.md` and `AGENTS.md`:
    - `any` usage, `@ts-ignore`, `console.log`, raw SQL, plaintext vault data, plaintext Todo APIs.
-   - Shared logic placed under `apps/myorganizer/src/lib/**` (should be in `libs/**`).
+   - Shared logic placed under `apps/web/src/lib/**` (should be in `libs/**`).
    - Hand-edited generated code in `libs/app-api-client` or Prisma client.
    - Missing Zod validation at API boundaries.
    - Direct API calls bypassing `@myorganizer/app-api-client`.

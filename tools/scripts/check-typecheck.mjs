@@ -61,8 +61,8 @@ const PRODUCTION_CONFIG_NAMES = [
 
 // The production program of a project that has none of the above. A Next.js
 // app keeps its one program in `tsconfig.json` because that is the file
-// `next build` reads, so apps/myorganizer has no `tsconfig.app.json`, and
-// apps/myorganizer-e2e has no other config at all. Matching only the suffixed
+// `next build` reads, so apps/web has no `tsconfig.app.json`, and
+// apps/web-e2e has no other config at all. Matching only the suffixed
 // names compiled the web app's specs and nothing else (#1060).
 //
 // It is a fallback, not a fourth name: beside a production config,
