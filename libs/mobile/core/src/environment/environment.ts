@@ -30,6 +30,13 @@ export interface MobileEnvironment {
 export const PRODUCTION_API_ORIGIN = 'https://api.myorganiser.app';
 export const PRODUCTION_WEB_APP_ORIGIN = 'https://myorganiser.app';
 
+/**
+ * Where a User downloads the current Mobile Release: the Production web app's
+ * download page (built in #1115), in every build. Update required links here,
+ * and a debug build's local web app has no release to offer.
+ */
+export const MOBILE_RELEASE_DOWNLOAD_URL = `${PRODUCTION_WEB_APP_ORIGIN}/download`;
+
 const API_VERSION_PATH = '/api/v1';
 const LOCAL_API_PORT = 3000;
 const LOCAL_WEB_APP_PORT = 4200;

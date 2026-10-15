@@ -93,6 +93,13 @@ export function createVaultBlobController(params: {
   onState: (state: VaultBlobState) => void;
   /** The other controllers to tell, and hear from. None when omitted. */
   peers?: VaultBlobPeers;
+  /**
+   * Told what stopped an edit reaching the server — a failed push, or a
+   * reload that could not send the held edit. The edit is already reverted
+   * and never reported as saved; this is for a caller that has to say more,
+   * as Update required does after a 426 (ADR 0117).
+   */
+  onWriteFailed?: (error: unknown) => void;
 }): VaultBlobController {
   let state = INITIAL_VAULT_BLOB_STATE;
   let busy = false;
@@ -145,12 +152,16 @@ export function createVaultBlobController(params: {
         },
       });
       const settled = settleVaultBlobPull(result);
+      if (result.outcome === 'send-failed')
+        params.onWriteFailed?.(result.error);
       if (!settled.held) held = null;
       set({ snapshot: result.snapshot, writeError: settled.writeError });
       if (result.outcome === 'sent') publish(type, masterKey, result.snapshot);
       return settled.outcome;
     } catch (err) {
       set({ loadError: err });
+      // The read failed, so the held edit was not sent either.
+      if (unsent) params.onWriteFailed?.(err);
       return unsent ? 'held' : 'pulled';
     } finally {
       busy = false;
@@ -190,6 +201,7 @@ export function createVaultBlobController(params: {
     } catch (err) {
       held = { edit, edited };
       set({ snapshot: base, writeError: classifyWriteError(err) });
+      params.onWriteFailed?.(err);
       return false;
     } finally {
       busy = false;

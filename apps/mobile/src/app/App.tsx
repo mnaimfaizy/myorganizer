@@ -5,7 +5,9 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import {
   AuthProvider,
   apiClient,
+  reportRefusedWrite,
   useAuth,
+  versionFloorRefusal,
 } from '@myorganizer/mobile/feat-auth';
 import {
   SensitiveCopyProvider,
@@ -17,7 +19,11 @@ import {
   useAppearance,
 } from '@myorganizer/mobile/core';
 import { ThemeProvider } from '@myorganizer/mobile/ui';
-import { AppLockGate, RootNavigator } from '@myorganizer/mobile/screens';
+import {
+  AppLockGate,
+  RootNavigator,
+  VersionFloorGate,
+} from '@myorganizer/mobile/screens';
 import { BackendOriginGate } from './BackendOriginGate';
 import { clearUserLocalData } from './userLocalData';
 
@@ -31,9 +37,11 @@ function ThemedApp(): React.JSX.Element {
 
   return (
     <ThemeProvider appearance={appearance}>
-      <AppLockGate>
-        <RootNavigator />
-      </AppLockGate>
+      <VersionFloorGate>
+        <AppLockGate>
+          <RootNavigator />
+        </AppLockGate>
+      </VersionFloorGate>
     </ThemeProvider>
   );
 }
@@ -62,10 +70,19 @@ function UserVaultBoundary({
   const vaultApi = useMemo(() => createVaultApi(apiClient), []);
 
   return (
-    <VaultProvider vaultApi={vaultApi} userId={userId}>
+    <VaultProvider
+      vaultApi={vaultApi}
+      userId={userId}
+      onWriteFailed={reportRefusedVaultPush}
+    >
       <SensitiveCopyProvider>{children}</SensitiveCopyProvider>
     </VaultProvider>
   );
+}
+
+/** Tells Update required when a refused Vault Push lost the last change. */
+function reportRefusedVaultPush(error: unknown): void {
+  reportRefusedWrite(versionFloorRefusal, error);
 }
 
 export default function App(): React.JSX.Element {

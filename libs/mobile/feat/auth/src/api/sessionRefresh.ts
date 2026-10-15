@@ -14,6 +14,7 @@ import {
 } from '@myorganizer/auth/portable';
 import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import type { AuthTokens, FilteredUserInterface } from './types';
+import { isVersionFloorRefusal } from './versionFloor';
 
 /**
  * Why a refresh did not produce an Access Token.
@@ -21,6 +22,9 @@ import type { AuthTokens, FilteredUserInterface } from './types';
  * - `rejected` — the server answered, and the answer was no: this Refresh
  *   Token does not obtain an Access Token (invalid, expired, retired by
  *   Logout or Force Logout, a Disabled User, an Unverified User).
+ * - `below_version_floor` — the server refused this build of the app as
+ *   older than the Version Floor (426), before reading the Refresh Token.
+ *   Says nothing about the Session; the app shows Update required instead.
  * - `no_refresh_token` — the keychain holds nothing to present. There is no
  *   Restorable Session; the User is a Guest.
  * - `no_response` — the request got no answer: offline, DNS, timeout, a
@@ -32,6 +36,7 @@ import type { AuthTokens, FilteredUserInterface } from './types';
  */
 export type RefreshFailureKind =
   | 'rejected'
+  | 'below_version_floor'
   | 'no_refresh_token'
   | 'no_response'
   | 'server_failed'
@@ -52,6 +57,7 @@ export type RefreshFailureKind =
  */
 export const REFRESH_FAILURE_ENDS_SESSION = {
   rejected: true,
+  below_version_floor: false,
   no_refresh_token: true,
   no_response: false,
   server_failed: false,
@@ -88,7 +94,7 @@ export class MalformedRefreshResponseError extends Error {
  * Reads the error's shape — an HTTP status, or the absence of a response on
  * an Axios error — and never its message.
  *
- * Every 4xx other than 408 and 429 is `rejected`, not only 401 and 403:
+ * Every 4xx other than 408, 426 and 429 is `rejected`, not only 401 and 403:
  * `/auth/refresh` answers an expired or undecodable Refresh Token with 404
  * and an unusable body with 422, and none of those gets a different answer on
  * a second ask.
@@ -99,6 +105,11 @@ export function classifyRefreshFailure(error: unknown): RefreshFailureKind {
   }
   if (error instanceof MalformedRefreshResponseError) {
     return 'malformed_response';
+  }
+  // A 4xx, but not a ruling on the Refresh Token: ending the Session over it
+  // would sign the User out of a build they are about to replace.
+  if (isVersionFloorRefusal(error)) {
+    return 'below_version_floor';
   }
 
   const shape = error as {

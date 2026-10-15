@@ -45,6 +45,7 @@ export type {
   BackendTarget,
   MobileEnvironment,
 } from './environment/environment';
+export { MOBILE_RELEASE_DOWNLOAD_URL } from './environment/environment';
 export { MOBILE_ENVIRONMENT } from './environment/mobileEnvironment';
 export {
   createClearUserLocalData,

@@ -124,6 +124,13 @@ describe('classifyRefreshFailure', () => {
     expect(classifyRefreshFailure({ code: 'ERR_NETWORK' })).toBe('no_response');
   });
 
+  it('reads a 426 answer as the build being below the Version Floor, not a rejection', () => {
+    expect(classifyRefreshFailure({ response: { status: 426 } })).toBe(
+      'below_version_floor',
+    );
+    expect(classifyRefreshFailure(answered(426))).toBe('below_version_floor');
+  });
+
   it('names the two failures this module throws itself', () => {
     expect(classifyRefreshFailure(new NoRefreshTokenError())).toBe(
       'no_refresh_token',
@@ -159,6 +166,10 @@ describe('REFRESH_FAILURE_ENDS_SESSION', () => {
     ).filter((kind) => REFRESH_FAILURE_ENDS_SESSION[kind]);
 
     expect(ending.sort()).toEqual(['no_refresh_token', 'rejected']);
+  });
+
+  it('keeps the Session for a build below the Version Floor', () => {
+    expect(REFRESH_FAILURE_ENDS_SESSION.below_version_floor).toBe(false);
   });
 });
 
@@ -212,6 +223,11 @@ describe('createSessionRefresher', () => {
     ['the server answers 500', 'server_failed', answered(500)],
     ['the server answers 503', 'server_failed', answered(503)],
     ['the server rate-limits', 'server_failed', answered(429)],
+    [
+      'the server refuses this build below the Version Floor',
+      'below_version_floor',
+      answered(426),
+    ],
     ['the answer carries no Access Token', 'malformed_response', {}],
     ['something unforeseen throws', 'unexpected', new Error('boom')],
   ])('when %s', (_name, failure, answer) => {

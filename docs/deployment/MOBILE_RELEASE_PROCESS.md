@@ -121,6 +121,7 @@ Order matters. Google has the longer clock, and Apple's yearly fee starts on the
 | Build number                                     | `versionCode` | `CFBundleVersion`            | An integer that only ever goes up and is never reused, not even for a rejected build. |
 
 - The first Mobile Release is `1.0.0`.
+- Always write all three parts. The app sends this version on every request, and while a Version Floor is set the backend refuses one it cannot read, such as `1.0`.
 - Bump the patch for fixes, the minor for features, and the major when the Version Floor must drop an earlier major.
 - Keep the build numbers identical across both platforms, so one number names one build.
 - The `mobile-vX.Y.Z` tag is a **receipt**, as a web Tag is. Apply it only after a store has made that version available, never to trigger a build.

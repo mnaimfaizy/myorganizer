@@ -1,6 +1,7 @@
 import { AuthenticationApi, Configuration } from '@myorganizer/app-api-client';
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
-import { MOBILE_ENVIRONMENT } from '@myorganizer/mobile/core';
+import { Platform } from 'react-native';
+import { MOBILE_ENVIRONMENT, readAppVersion } from '@myorganizer/mobile/core';
 import {
   clearRefreshToken,
   getRefreshToken,
@@ -12,6 +13,11 @@ import {
   type RefreshOutcome,
 } from './sessionRefresh';
 import type { AuthTokens } from './types';
+import {
+  buildClientHeader,
+  createVersionFloorStore,
+  installVersionFloor,
+} from './versionFloor';
 
 // Debug builds reach the development machine and release builds reach
 // Production; the environment module decides which.
@@ -34,6 +40,22 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+/**
+ * Whether the backend has refused this build as below the Version Floor. The
+ * app shows Update required once it is set (ADR 0114 decision 1).
+ */
+export const versionFloorRefusal = createVersionFloorStore();
+
+// Every request names this build — the version the native bundle reports and
+// the platform — so the backend can refuse one below the Version Floor.
+const versionFloorWiring = {
+  clientHeader: buildClientHeader(
+    readAppVersion()?.version ?? null,
+    Platform.OS,
+  ),
+  onRefused: () => versionFloorRefusal.report(),
+};
+
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_PATH,
   headers: {
@@ -51,13 +73,16 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// The refresh goes out on bare `axios`, not `apiClient`: it carries no Access
-// Token, and a 401 answering it must reach the classifier as a rejection
-// rather than re-enter the refresh-on-401 interceptor below.
+// The refresh goes out on its own Axios instance, not `apiClient`: it carries
+// no Access Token, and a 401 answering it must reach the classifier as a
+// rejection rather than re-enter the refresh-on-401 interceptor below. It
+// still names this build, and a 426 answering it is still a refusal.
+const refreshClient = axios.create();
+installVersionFloor(refreshClient, versionFloorWiring);
 const refreshApi = new AuthenticationApi(
   new Configuration({ basePath: BASE_PATH }),
   BASE_PATH,
-  axios,
+  refreshClient,
 );
 
 /**
@@ -87,6 +112,8 @@ export const refreshSession: () => Promise<RefreshOutcome> =
     },
   });
 
+// A 426 never starts a refresh: the 401 interceptor passes it through.
+installVersionFloor(apiClient, versionFloorWiring);
 installRefreshOn401(apiClient, refreshSession);
 
 export function createAuthApi(): AuthenticationApi {

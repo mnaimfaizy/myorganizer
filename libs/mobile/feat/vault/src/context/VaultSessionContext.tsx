@@ -119,6 +119,8 @@ interface VaultSessionValue {
    * what keeps one Vault Unlock's writes out of the next.
    */
   blobPeers: VaultBlobPeers;
+  /** Told what stopped an edit reaching the server; see {@link VaultProviderProps}. */
+  onWriteFailed?: (error: unknown) => void;
 }
 
 const VaultSessionContext = createContext<VaultSessionValue | null>(null);
@@ -137,6 +139,11 @@ interface VaultProviderProps {
    * a harness can supply a fake.
    */
   keystore?: BiometricKeystore;
+  /**
+   * Told what stopped an edit under this provider reaching the server, after
+   * the edit is reverted. Read once, when each screen's controller is made.
+   */
+  onWriteFailed?: (error: unknown) => void;
   children: ReactNode;
 }
 
@@ -144,6 +151,7 @@ export function VaultProvider({
   vaultApi,
   userId,
   keystore = nativeBiometricKeystore,
+  onWriteFailed,
   children,
 }: VaultProviderProps): React.JSX.Element {
   const [status, setStatus] = useState<VaultStatus>('locked');
@@ -355,6 +363,7 @@ export function VaultProvider({
       lock,
       biometric,
       blobPeers,
+      onWriteFailed,
     }),
     [
       status,
@@ -368,6 +377,7 @@ export function VaultProvider({
       lock,
       biometric,
       blobPeers,
+      onWriteFailed,
     ],
   );
 
