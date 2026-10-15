@@ -25,8 +25,13 @@
 // that points at a Gradle cache folder since removed fails CMake with
 // "Imported target … includes non-existent path".
 //
-// Exit = Gradle's exit code. Exit 2 = could not start (1Password CLI missing
-// or not signed in, the keystore document not found).
+// It does not ask `op whoami` first: with the 1Password app integration,
+// `whoami` reports "not signed in" until a command has unlocked a session,
+// and it never asks for Touch ID itself. Fetching the keystore is what
+// unlocks, so its own error is the one reported.
+//
+// Exit = Gradle's exit code. Exit 2 = could not start (1Password CLI missing,
+// the keystore document not readable).
 import { execFileSync, spawnSync } from 'node:child_process';
 import {
   chmodSync,
@@ -69,20 +74,17 @@ if (!existsSync(join(ANDROID_DIR, 'gradlew'))) {
   );
 }
 
+// The terminal is passed through, so the Touch ID prompt is tied to it.
 const op = (args) =>
   execFileSync('op', args, {
     encoding: 'utf8',
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['inherit', 'pipe', 'pipe'],
   });
 
 try {
-  op(['whoami']);
-} catch (error) {
-  fail(
-    error.code === 'ENOENT'
-      ? 'the 1Password CLI (op) is not installed: brew install 1password-cli.'
-      : 'the 1Password CLI is not signed in. Unlock the 1Password app with "Integrate with 1Password CLI" turned on (Settings → Developer), then run this again.',
-  );
+  op(['--version']);
+} catch {
+  fail('the 1Password CLI (op) is not installed: brew install 1password-cli.');
 }
 
 /** The `.cxx` native build caches of the app and of every Android package. */
@@ -145,7 +147,11 @@ try {
     ]);
   } catch (error) {
     throw new Error(
-      `could not read the document "${keystoreDocument}" from the vault "${vault}": ${error.stderr?.trim() || error.message}`,
+      [
+        `could not read the document "${keystoreDocument}" from the vault "${vault}".`,
+        `1Password said: ${error.stderr?.trim() || error.message}`,
+        'Check the 1Password app is unlocked with Settings → Developer → "Integrate with 1Password CLI" on, and that the document and vault names match (MYORGANISER_OP_VAULT, MYORGANISER_OP_KEYSTORE_DOCUMENT).',
+      ].join('\n'),
     );
   }
 
