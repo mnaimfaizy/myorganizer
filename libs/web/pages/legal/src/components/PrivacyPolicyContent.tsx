@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 
+import { PrivacyAccountDeletionSection } from './PrivacyAccountDeletionSection';
+import { PrivacyMobileAppSection } from './PrivacyMobileAppSection';
+
 export interface PrivacyPolicyContentProps {
   /** Section heading level: h2 on the standalone page, h3 inside a dialog. */
   headingLevel?: 'h2' | 'h3';
@@ -20,15 +23,18 @@ export function PrivacyPolicyContent({
       <section className="mt-6">
         <Heading className="text-base font-semibold">Overview</Heading>
         <p className="mt-3 text-sm text-muted-foreground">
-          MyOrganizer is a personal organizer app that helps you manage tasks,
-          addresses, contacts, grocery lists, and other personal information.
-          Most of your personal content is stored in an end-to-end encrypted
-          Vault: the server stores only the encrypted version and cannot read
-          your actual data. Your account data — such as your email address and
-          authentication credentials — is stored unencrypted to operate your
-          account.
+          MyOrganizer is a personal organizer that helps you manage tasks,
+          addresses, contacts, grocery lists, and other personal information, on
+          the web and in the MyOrganizer Mobile App. Your personal content is
+          kept in a Vault that is end-to-end encrypted: it is encrypted on your
+          device with a key only you can unlock, and our servers store only the
+          encrypted version, which we cannot read. Your account data — such as
+          your name and email address — is stored unencrypted, because we need
+          it to operate your account.
         </p>
       </section>
+
+      <PrivacyMobileAppSection headingLevel={Heading} linkTarget={linkTarget} />
 
       <section className="mt-6">
         <Heading className="text-base font-semibold">
@@ -76,9 +82,11 @@ export function PrivacyPolicyContent({
         <Heading className="text-base font-semibold">Account Data</Heading>
         <p className="mt-3 text-sm text-muted-foreground">
           We collect and store the information you provide when creating and
-          managing your account, including your email address, password hash,
-          and profile information. This data is necessary to authenticate you
-          and operate your account.
+          managing your account: your name, your email address, a hash of your
+          password (never the password itself), and a User ID that identifies
+          your account. We use this data only to sign you in and operate your
+          account — not for advertising or tracking — and we do not sell or
+          share it.
         </p>
       </section>
 
@@ -93,13 +101,16 @@ export function PrivacyPolicyContent({
         </p>
       </section>
 
+      <PrivacyAccountDeletionSection headingLevel={Heading} />
+
       <section className="mt-6">
         <Heading className="text-base font-semibold">Your Rights</Heading>
         <p className="mt-3 text-sm text-muted-foreground">
           You have the right to access, update, and delete your account and
-          associated data at any time. You can export or delete your Vault data
-          from your account settings. To request a complete copy of your data or
-          to request deletion, contact us using the information below.
+          associated data at any time. You can export your Vault data from the
+          Vault page on the web, and delete your account as described above. To
+          request a complete copy of your data, or for help deleting it, contact
+          us using the information below.
         </p>
       </section>
 
