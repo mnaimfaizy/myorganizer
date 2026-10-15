@@ -29,4 +29,4 @@ ELv2 does not forbid charging for a copy of the source. That edge is accepted: t
 
 - Adding MIT back to the badge, footer, or `package.json` is a license change, not a docs fix.
 - The copyright holder can still operate a hosted service or offer a separate commercial grant; ELv2 restricts licensees, not the owner.
-- Implementation of this ADR is `LICENSE`, `NOTICE`, and aligning the README, `package.json`, backend README, and generated OpenAPI license field (issue [#320](https://github.com/mnaimfaizy/myorganizer/issues/320)).
+- Implementation of this ADR is `LICENSE`, `NOTICE`, and aligning the README, `package.json`, backend README, and generated OpenAPI license field (issue [#320](https://github.com/mnaimfaizy/myorganiser/issues/320)).

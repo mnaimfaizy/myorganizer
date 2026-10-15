@@ -4,7 +4,7 @@
 
 accepted
 
-Supersedes decision 2 of [ADR 0114](0114-a-mobile-release-ships-in-1-0-what-it-cannot-learn-later.md). The rest of ADR 0114 stands. Tracked by [#956](https://github.com/mnaimfaizy/myorganizer/issues/956).
+Supersedes decision 2 of [ADR 0114](0114-a-mobile-release-ships-in-1-0-what-it-cannot-learn-later.md). The rest of ADR 0114 stands. Tracked by [#956](https://github.com/mnaimfaizy/myorganiser/issues/956).
 
 ## Context
 

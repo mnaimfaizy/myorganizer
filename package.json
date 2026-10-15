@@ -87,6 +87,8 @@
     "docs:commands:test": "node --test tools/scripts/check-doc-commands.test.mjs",
     "docs:file-refs:check": "node tools/scripts/check-doc-file-refs.mjs",
     "docs:file-refs:test": "node --test tools/scripts/check-doc-file-refs.test.mjs",
+    "product-name:check": "node tools/scripts/check-product-name.mjs",
+    "product-name:test": "node --test tools/scripts/check-product-name.test.mjs",
     "docs:nx-targets:check": "node tools/scripts/check-doc-nx-targets.mjs",
     "docs:nx-targets:test": "node --test tools/scripts/check-doc-nx-targets.test.mjs",
     "enum:fanout:check": "node tools/scripts/check-enum-fanout.mjs",

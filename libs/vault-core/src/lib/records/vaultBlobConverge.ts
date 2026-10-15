@@ -84,7 +84,7 @@ function overRecords<TRecord>(
  * a sixth type fails to compile here until somebody decides how it
  * converges. It cannot inherit a strategy from whichever arm an `else`
  * happened to be — the shape that destroyed grocery Ciphertext in
- * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512).
+ * [#512](https://github.com/mnaimfaizy/myorganiser/issues/512).
  *
  * The table says which strategy, never when to apply it. Each runtime decides
  * that in exactly one place: `convergeVaultBlob` on web, `converge` in

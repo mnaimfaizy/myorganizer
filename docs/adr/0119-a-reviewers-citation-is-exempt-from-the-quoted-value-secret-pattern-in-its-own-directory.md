@@ -21,7 +21,7 @@ with no report. Reproduced against the hook: the same payload with a short value
 hook also refused a shell command carrying the line, and refused the author's first attempt to
 reproduce the defect in this session — so the defect is not the reviewer's alone.
 
-[Issue #887](https://github.com/mnaimfaizy/myorganizer/issues/887) set out four options and
+[Issue #887](https://github.com/mnaimfaizy/myorganiser/issues/887) set out four options and
 recommended none:
 
 1. Exempt the reviewer's directory from content scanning.

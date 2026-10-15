@@ -19,7 +19,7 @@ accepted
 ## Consequences
 
 - Process: [`.agents/skills/release-and-deploy-workflow/SKILL.md`](../../.agents/skills/release-and-deploy-workflow/SKILL.md). Vocabulary: [`CONTEXT.md`](../../CONTEXT.md) § Release & Deploy.
-- The required-reviewer rule lives in GitHub repo settings, **not** in this repo. It is not code-reviewable and can be removed without a PR. Verify it with `gh api repos/mnaimfaizy/myorganizer/environments/production --jq '.protection_rules'`.
+- The required-reviewer rule lives in GitHub repo settings, **not** in this repo. It is not code-reviewable and can be removed without a PR. Verify it with `gh api repos/mnaimfaizy/myorganiser/environments/production --jq '.protection_rules'`.
 - `dispatch-production-deploy.yml` fires on branch creation, so the approval prompt can appear **before** CI has gone green on `release/vX.Y.Z`. Check CI before approving; the pipeline does not check it for you.
 - Renaming the dispatcher matters: its old name, `Deploy Production (latest release)`, read as though the workflow itself deployed. It only dispatches.
 

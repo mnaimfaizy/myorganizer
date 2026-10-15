@@ -243,7 +243,7 @@ async function decryptSection(options: {
  * whose job is to leave nothing behind
  * ([ADR 0053](../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  * That is the same omission that dropped Tasks from the hardened export path
- * in [#537](https://github.com/mnaimfaizy/myorganizer/issues/537).
+ * in [#537](https://github.com/mnaimfaizy/myorganiser/issues/537).
  *
  * Nothing is written and nothing is sent. Opening an Escape Copy twice is
  * exactly as safe as opening it once.

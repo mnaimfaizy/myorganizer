@@ -70,8 +70,8 @@ Before you begin, ensure you have the following installed on your system:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/mnaimfaizy/myorganizer.git
-   cd myorganizer
+   git clone https://github.com/mnaimfaizy/myorganiser.git
+   cd myorganiser
    ```
 
 2. **Install Dependencies**
@@ -631,7 +631,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 1. **Navigate to the Repository**
 
-   Go to https://github.com/mnaimfaizy/myorganizer/issues
+   Go to https://github.com/mnaimfaizy/myorganiser/issues
 
 2. **Click "New Issue"**
 
@@ -689,9 +689,9 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    ```bash
    # Fork the repository on GitHub, then:
-   git clone https://github.com/YOUR_USERNAME/myorganizer.git
-   cd myorganizer
-   git remote add upstream https://github.com/mnaimfaizy/myorganizer.git
+   git clone https://github.com/YOUR_USERNAME/myorganiser.git
+   cd myorganiser
+   git remote add upstream https://github.com/mnaimfaizy/myorganiser.git
    ```
 
 2. **Create a Feature Branch**
@@ -1299,7 +1299,7 @@ yarn husky install
 
 If you encounter issues not covered in this guide:
 
-1. Check existing [GitHub Issues](https://github.com/mnaimfaizy/myorganizer/issues)
+1. Check existing [GitHub Issues](https://github.com/mnaimfaizy/myorganiser/issues)
 2. Search the documentation
 3. Review recent Pull Requests for similar changes
 4. Create a new issue with detailed information

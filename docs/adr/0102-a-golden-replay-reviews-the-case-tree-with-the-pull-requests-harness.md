@@ -1,6 +1,6 @@
 # A golden replay reviews the case tree with the pull request's harness
 
-Golden replay run [35833576958](https://github.com/mnaimfaizy/myorganizer/actions/runs/35833576958)
+Golden replay run [35833576958](https://github.com/mnaimfaizy/myorganiser/actions/runs/35833576958)
 (pull request #884) missed `release-bump-leaves-generated-client-stale` by suppressing its expected
 finding, and the suppression rested on a quotation from the wrong tree. Asked whether
 `openapi:check` covers the incident head `8175cb6`, the reviewer Read and Grepped

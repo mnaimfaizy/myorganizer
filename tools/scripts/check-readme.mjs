@@ -72,7 +72,7 @@ const LIBS_IGNORED = new Set(['graphify-out']);
 const documentedIn = (section, name) =>
   new RegExp(`^\\s*[│├└─\\s]*${name}/`, 'm').test(section);
 
-const layout = readme.match(/```\s*\nmyorganizer\/([\s\S]*?)```/);
+const layout = readme.match(/```\s*\nmyorganiser\/([\s\S]*?)```/);
 if (!layout) fail('no repository layout diagram found in README.md');
 const diagram = layout[1];
 

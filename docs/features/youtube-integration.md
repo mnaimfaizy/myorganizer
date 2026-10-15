@@ -211,7 +211,7 @@ seconds while the run is live, which is how the page shows progress and how it
 learns that a run it did not start (cron, another tab) has finished. For a run the
 User started, the `PUT` response is also a completion signal: a run that finishes
 before the first poll sees it live still refreshes the lists
-([#753](https://github.com/mnaimfaizy/myorganizer/issues/753)). The response
+([#753](https://github.com/mnaimfaizy/myorganiser/issues/753)). The response
 counts as a run only when its status is one that did work and its attempt stamp
 moved past the one read just before the request, because a lost claim answers with
 an earlier run's stored status. Either path refreshes the lists at most once per

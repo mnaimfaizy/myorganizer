@@ -150,7 +150,7 @@ the flag was the only thing standing between a dismissal and the next opportunit
 
 [ADR 0066](0066-a-convergence-pass-runs-freely-and-only-the-question-is-suppressed.md) separates the
 pass from the question and puts the pass on window focus, which is what lets a passphrase changed
-elsewhere reach an open tab at all ([#596](https://github.com/mnaimfaizy/myorganizer/issues/596)).
+elsewhere reach an open tab at all ([#596](https://github.com/mnaimfaizy/myorganiser/issues/596)).
 Under that trigger the two acts come apart: a dismissal that sets nothing returns at the next focus
 event, which can be seconds later. That is nagging, and it is not what this ADR meant.
 
@@ -185,7 +185,7 @@ the salt alone, is ordered first so it wins the first-match scan, and is pinned 
 `undecryptable-remote` before it gets here". That is true only where this device has unsent changes.
 On the clean path — nothing unsent locally, the server's Ciphertext differs — convergence takes the
 remote copy without decrypting anything and without asking, which is
-[#571](https://github.com/mnaimfaizy/myorganizer/issues/571). A trade this ADR accepted knowingly was
+[#571](https://github.com/mnaimfaizy/myorganiser/issues/571). A trade this ADR accepted knowingly was
 accepted partly on the strength of a check that does not run in the ordinary background case. The
 sentence should be read as describing the dirty path only, and
 [ADR 0067](0067-a-vault-blob-is-never-taken-across-a-vault-identity.md) closes the gap it names.

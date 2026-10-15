@@ -269,7 +269,7 @@ const RECONCILE_MAY_START_AFTER_CLAIM_EVIDENCE = {
  * Claim Evidence settles.
  *
  * The trigger is the revision rather than the removal that prompted it
- * ([#628](https://github.com/mnaimfaizy/myorganizer/issues/628)). A removal, an
+ * ([#628](https://github.com/mnaimfaizy/myorganiser/issues/628)). A removal, an
  * import and a convergence-replacement all leave this device holding something
  * other than what it held a moment ago, all three already move the revision,
  * and a fourth door added later moves it without having to remember this runner
@@ -282,7 +282,7 @@ const RECONCILE_MAY_START_AFTER_CLAIM_EVIDENCE = {
  * server holding that owner's Vault Meta is exactly the condition under which
  * the claim would have fired silently. The User then met an offer to replace
  * their Vault with itself
- * ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673)). The same
+ * ([#673](https://github.com/mnaimfaizy/myorganiser/issues/673)). The same
  * discipline ADR 0066's decision point 4 applies to the create control applies
  * here to the download: no answer is acted on while the question is out. Once
  * it settles, each answer says what the pass does — a claim leaves an owned

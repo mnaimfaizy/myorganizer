@@ -18,7 +18,7 @@
  *   - `libs/web/pages/vault` — the page suites that drive a real handle.
  *
  * The last three arrived here from their own near-identical `src/test-setup.ts`
- * copies in [#865](https://github.com/mnaimfaizy/myorganizer/issues/865). Those
+ * copies in [#865](https://github.com/mnaimfaizy/myorganiser/issues/865). Those
  * files are gone; do not reintroduce a per-project copy.
  *
  * Referenced by path from each project's `jest.config.ts` rather than imported,

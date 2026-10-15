@@ -1,17 +1,17 @@
 # Issue tracker: GitHub
 
-Issues and PRDs for this repo live as GitHub issues in **`mnaimfaizy/myorganizer`**. Use the `gh` CLI for all operations.
+Issues and PRDs for this repo live as GitHub issues in **`mnaimfaizy/myorganiser`**. Use the `gh` CLI for all operations.
 
 ## Conventions
 
 - **Create an issue**: `gh issue create --title "..." --body "..."`. Use a heredoc for multi-line bodies.
-- **Read an issue**: `gh issue view <number> --repo mnaimfaizy/myorganizer --comments`
-- **List issues**: `gh issue list --repo mnaimfaizy/myorganizer --state open --json number,title,body,labels,comments`
-- **Comment on an issue**: `gh issue comment <number> --repo mnaimfaizy/myorganizer --body "..."`
-- **Apply / remove labels**: `gh issue edit <number> --repo mnaimfaizy/myorganizer --add-label "..."` / `--remove-label "..."`
-- **Close**: `gh issue close <number> --repo mnaimfaizy/myorganizer --comment "..."`
+- **Read an issue**: `gh issue view <number> --repo mnaimfaizy/myorganiser --comments`
+- **List issues**: `gh issue list --repo mnaimfaizy/myorganiser --state open --json number,title,body,labels,comments`
+- **Comment on an issue**: `gh issue comment <number> --repo mnaimfaizy/myorganiser --body "..."`
+- **Apply / remove labels**: `gh issue edit <number> --repo mnaimfaizy/myorganiser --add-label "..."` / `--remove-label "..."`
+- **Close**: `gh issue close <number> --repo mnaimfaizy/myorganiser --comment "..."`
 
-`gh` infers the repo from `git remote` when run inside a clone, but prefer `--repo mnaimfaizy/myorganizer` when scripting.
+`gh` infers the repo from `git remote` when run inside a clone, but prefer `--repo mnaimfaizy/myorganiser` when scripting.
 
 ## Pull requests as a triage surface
 
@@ -27,11 +27,11 @@ GitHub shares one number space across issues and PRs, so a bare `#42` may be eit
 
 ## When a skill says "publish to the issue tracker"
 
-Create a GitHub issue in `mnaimfaizy/myorganizer`.
+Create a GitHub issue in `mnaimfaizy/myorganiser`.
 
 ## When a skill says "fetch the relevant ticket"
 
-Run `gh issue view <number> --repo mnaimfaizy/myorganizer --comments`.
+Run `gh issue view <number> --repo mnaimfaizy/myorganiser --comments`.
 
 For PRD issues, also read labels — PRDs are tagged `prd`.
 

@@ -46,7 +46,7 @@ import {
  * the meta follows from that rather than standing on its own.
  *
  * Reading it as a passphrase change is what
- * [#578](https://github.com/mnaimfaizy/myorganizer/issues/578) was: the User
+ * [#578](https://github.com/mnaimfaizy/myorganiser/issues/578) was: the User
  * was told their passphrase had changed elsewhere and offered a button that
  * would adopt the other vault's wrapping over this device's Ciphertext,
  * leaving every Vault Blob here encrypted under a key nothing here can

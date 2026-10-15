@@ -2,7 +2,7 @@
   {
     "type": "system",
     "subtype": "init",
-    "cwd": "/home/runner/work/myorganizer/myorganizer"
+    "cwd": "/home/runner/work/myorganiser/myorganiser"
   },
   {
     "type": "rate_limit_event",

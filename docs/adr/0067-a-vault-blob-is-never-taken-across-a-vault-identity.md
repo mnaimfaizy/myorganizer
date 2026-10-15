@@ -9,7 +9,7 @@ accepted
 `convergeVaultBlob` is the single primitive every Vault Blob decision goes through — Vault Push, Vault
 Pull, and Vault Reconcile all enter here, which is deliberate:
 [ADR 0054](0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md) put the decision in one
-place, and [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) is what happens when it lives
+place, and [#512](https://github.com/mnaimfaizy/myorganiser/issues/512) is what happens when it lives
 in two.
 
 It has two paths, and only one of them is guarded.
@@ -26,7 +26,7 @@ Master Key, and the clean path writes it into the Local Vault under this device'
 per [ADR 0057](0057-vault-meta-converges-separately-and-never-silently.md), which never swaps a
 wrapping on the strength of a data answer. The result is that readable local Ciphertext is replaced by
 bytes this device cannot open, with no prompt, no way back, and a Sync Bookmark now asserting the two
-sides agree ([#571](https://github.com/mnaimfaizy/myorganizer/issues/571)).
+sides agree ([#571](https://github.com/mnaimfaizy/myorganiser/issues/571)).
 
 What selects between the guarded path and the unguarded one is whether this device happened to have
 unsent changes — which has nothing to do with the hazard. The same destruction is reachable from the
@@ -114,7 +114,7 @@ entire Vault one type at a time. CONTEXT.md already holds that this question is 
 never per-record" — and Vault Reconcile already raises it there.
 
 **Fixing it inside Vault Reconcile**, where the old whole-Vault byte comparison used to catch this
-before [#554](https://github.com/mnaimfaizy/myorganizer/issues/554) deleted it, rebuilds the second
+before [#554](https://github.com/mnaimfaizy/myorganiser/issues/554) deleted it, rebuilds the second
 decision site that slice existed to remove.
 
 ## Consequences
@@ -147,7 +147,7 @@ that question is a dialog that stays on screen until it is answered. `settleVaul
 identity from the returned result, so the record was written after the answer. A User who left the
 dialog up, or dismissed it and never came back, recorded nothing. The sync status therefore kept
 reading this device's own stale observation and reported `synced`, while Vault Blobs were being
-refused behind it ([#691](https://github.com/mnaimfaizy/myorganizer/issues/691)).
+refused behind it ([#691](https://github.com/mnaimfaizy/myorganiser/issues/691)).
 
 That is exactly the outcome decision point 6 calls load-bearing and this ADR exists to prevent: a
 refusal that is safe and invisible. Worse, it is invisible precisely for the User who has been shown

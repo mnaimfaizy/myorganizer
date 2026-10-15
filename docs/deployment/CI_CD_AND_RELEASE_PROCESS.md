@@ -141,7 +141,7 @@ Behavior:
 Verify it is still in place:
 
 ```sh
-gh api repos/mnaimfaizy/myorganizer/environments/production --jq '.protection_rules'
+gh api repos/mnaimfaizy/myorganiser/environments/production --jq '.protection_rules'
 ```
 
 Expect a `required_reviewers` rule alongside the `branch_policy` rule. This lives in repo settings,

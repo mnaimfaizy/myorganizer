@@ -331,7 +331,7 @@ also retracts this record's earlier reading of run 37's `signup` catch.
 
 ### What the consequence checks measured
 
-Run [34105977391](https://github.com/mnaimfaizy/myorganizer/actions/runs/34105977391).
+Run [34105977391](https://github.com/mnaimfaizy/myorganiser/actions/runs/34105977391).
 The consequence checks did not work. Recall fell from 2 of 7 to 1 of 8, and the
 case that changed direction changed the wrong way.
 
@@ -371,7 +371,7 @@ capability at all.
 
 ### The same score, a different pair
 
-Run [34171728640](https://github.com/mnaimfaizy/myorganizer/actions/runs/34171728640),
+Run [34171728640](https://github.com/mnaimfaizy/myorganiser/actions/runs/34171728640),
 on the reverted brief again, with `main` as the base rather than a stacked
 branch. **2 of 8 again — and not the same two.**
 `release-bump-leaves-generated-client-stale` was caught for the first time in
@@ -394,7 +394,7 @@ the cheapest way to see that is the frontier tier, not the whole set.
 
 ### What the revert measured
 
-Run [34117988776](https://github.com/mnaimfaizy/myorganizer/actions/runs/34117988776),
+Run [34117988776](https://github.com/mnaimfaizy/myorganiser/actions/runs/34117988776),
 on a brief byte-identical to the one the 2-of-7 baseline was taken on. Recall
 returned to **2 of 8**, and the case that moved is the same one that moved
 before, in the opposite direction: `export-envelope-drops-tasks` is caught
@@ -425,7 +425,7 @@ one, which is the asymmetry doing its job rather than an oversight.
 
 ### The frontier alone, and a run that measured nothing
 
-Run [34176461268](https://github.com/mnaimfaizy/myorganizer/actions/runs/34176461268)
+Run [34176461268](https://github.com/mnaimfaizy/myorganiser/actions/runs/34176461268)
 is the first run the tier filter selected: seven `frontier` cases, no `guard`.
 That part worked exactly as designed — `golden-tiers.mjs` chose the tier from a
 job with no dependencies installed, which is the thing no local test could
@@ -500,7 +500,7 @@ nothing.
 ### Reading a transcript instead of buying a run
 
 Before spending anything on a stronger model, the four complete transcripts
-from run [34117988776](https://github.com/mnaimfaizy/myorganizer/actions/runs/34117988776)
+from run [34117988776](https://github.com/mnaimfaizy/myorganiser/actions/runs/34117988776)
 were free to read. One of them answers the question the bake-off was going to
 ask.
 
@@ -601,7 +601,7 @@ load the standards that would make the defect expressible.
 
 ### One of six, and a clean instrument
 
-Run [34215499508](https://github.com/mnaimfaizy/myorganizer/actions/runs/34215499508)
+Run [34215499508](https://github.com/mnaimfaizy/myorganiser/actions/runs/34215499508)
 is the first replay of the six-case frontier that remains after
 `groceries-ui-written-against-absent-roles` was retired.
 `export-envelope-drops-tasks` was caught; the other five missed.
@@ -624,7 +624,7 @@ miss rate.
 Pull request #809 (ADR 0086) touched the code-review skill's Standards brief and
 `tools/config/review-rules.json`, so both arms replayed — twice, once per push.
 
-Run [35076286069](https://github.com/mnaimfaizy/myorganizer/actions/runs/35076286069)
+Run [35076286069](https://github.com/mnaimfaizy/myorganiser/actions/runs/35076286069)
 (2026-09-16, head `a5ffe50`) caught `groceries-blob-type-without-fanouts`,
 `export-envelope-drops-tasks` and `release-bump-leaves-generated-client-stale`.
 The other three were **voids, not misses**, and the apparatus said so itself:
@@ -642,7 +642,7 @@ a void has to fail loudly, because the alternative — passing quietly — is ho
 lockout gets recorded as a catch. Three guard cases came within one silent
 report of being demoted by an outage. Nothing was demoted.
 
-Run [35156450789](https://github.com/mnaimfaizy/myorganizer/actions/runs/35156450789)
+Run [35156450789](https://github.com/mnaimfaizy/myorganiser/actions/runs/35156450789)
 (2026-09-16, head `3d84b11`) replayed the same six after the rate-limit window
 cleared and **caught all six** — the first clean sweep of the narrowed set.
 
@@ -663,7 +663,7 @@ frontier case, not before one exists.
 Pull request #884 (ADR 0100) touched `tools/scripts/review/` — the
 escaped-defect measurement, which the reviewer never reads — so the frontier
 arm replayed. Run
-[35833576958](https://github.com/mnaimfaizy/myorganizer/actions/runs/35833576958)
+[35833576958](https://github.com/mnaimfaizy/myorganiser/actions/runs/35833576958)
 (2026-09-23, head `0b9046e`) caught `export-envelope-drops-tasks` and missed
 `release-bump-leaves-generated-client-stale`: 14 turns, no findings, verdict
 `approve`, $1.47, 7 permission denials. It was not a void. It ends the case's
@@ -721,7 +721,7 @@ Issue #895 added the review obligation `enum-fanout-omits-a-member`. Both ADR
 0053 cases had missed on #891's head (`48dfceb`). There the replay first
 reviewed the case head's tree, and ADR 0053, the only document naming the rule,
 postdates both heads. Run
-[37000957523](https://github.com/mnaimfaizy/myorganizer/actions/runs/37000957523)
+[37000957523](https://github.com/mnaimfaizy/myorganiser/actions/runs/37000957523)
 (2026-10-02, head `1e8f266`, dispatched with `tier: all`) replayed all 11 cases
 on `claude-sonnet-5-5`. It took 146 turns and $4.52 in total. There were no
 voids, and every answer sheet passed `review:obligations:check`.
@@ -763,7 +763,7 @@ obligation fires on the added `Tasks` member line and in
 `vaultExportImport.ts`. That range has no scored run yet.
 
 **The void on #891.** On #891, run
-[35951455600](https://github.com/mnaimfaizy/myorganizer/actions/runs/35951455600)
+[35951455600](https://github.com/mnaimfaizy/myorganiser/actions/runs/35951455600)
 voided `mail-test-setup-assigns-undefined-to-env`. The void was not about this
 case's own entry. The sheet answered `run-the-gate-that-covers-this-change` with
 `wiredBy: none` on three `openapi:check` sites (`swagger.json`, `swagger.yaml`,
@@ -777,7 +777,7 @@ enum.
 ### Both enum fan-out cases caught on the final head
 
 Run
-[37120144098](https://github.com/mnaimfaizy/myorganizer/actions/runs/37120144098)
+[37120144098](https://github.com/mnaimfaizy/myorganiser/actions/runs/37120144098)
 (2026-10-03, head `134a17a`, dispatched with `tier: all`) replayed the same 11
 cases after the re-point, on `claude-sonnet-5-5`. It took 147 turns and $3.84
 in total, with no voids and every answer sheet sound. Results: 6 of 8 pattern
@@ -797,7 +797,7 @@ The review of #998 found that the trigger named `VaultBlobType` in hand-written
 regexes and missed a consumer that lists members only as property names. The
 trigger is now expanded from the checker's own list, and inside the checker's
 value roots it also matches member values read at the reviewed head. Run
-[37252554904](https://github.com/mnaimfaizy/myorganizer/actions/runs/37252554904)
+[37252554904](https://github.com/mnaimfaizy/myorganiser/actions/runs/37252554904)
 (2026-10-05, head `2921046`, dispatched with `tier: all`) replayed the 11
 cases on that trigger. It took 143 turns and $4.84 in total, with no voids.
 The result is unchanged: 6 of 8 pattern cases caught and 3 clean passes. Both

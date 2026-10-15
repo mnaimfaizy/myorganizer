@@ -21,7 +21,7 @@ description: 'Use when the user asks to create a standalone GitHub issue for an 
 
 - Always delegate issue creation work to the `IssueCreator` custom agent.
 - If the request is a planned feature, PRD, spec, or grill publish, **stop** and load `to-prd` instead. Do not call IssueCreator.
-- The target repository is `mnaimfaizy/myorganizer`. If the context is ambiguous or the user references a different repo, confirm the owner/repo with the user before delegating.
+- The target repository is `mnaimfaizy/myorganiser`. If the context is ambiguous or the user references a different repo, confirm the owner/repo with the user before delegating.
 - The sub-agent must not invent missing facts. If details are incomplete, it must ask for clarification first. If the user does not provide required details after one clarification prompt, return `UNSUCCESS: insufficient details`.
 - The sub-agent must check for duplicate issues before creating a new one. A near match is defined as: any open or closed issue sharing ≥2 significant title keywords or matching the core intent. Present up to 3 candidates and require the user to confirm before proceeding. If the user confirms an existing issue is a duplicate, return `UNSUCCESS: duplicate of <issue-url>` and do not create a new issue.
 - Use the repository template at `.github/ISSUE_TEMPLATE/ai-task-or-bug.md` as the source format. If the template file is missing, the GitHub API is unreachable, or the agent lacks write permissions, return `UNSUCCESS: <specific reason>`.
@@ -32,7 +32,7 @@ description: 'Use when the user asks to create a standalone GitHub issue for an 
 
 ## Workflow
 
-1. Confirm the target repository is `mnaimfaizy/myorganizer`; ask user to confirm if context is ambiguous.
+1. Confirm the target repository is `mnaimfaizy/myorganiser`; ask user to confirm if context is ambiguous.
 2. Delegate to `IssueCreator` with all known issue context (title hint, bug/feature type, body details, labels, target area).
 3. Let `IssueCreator` perform:
    - duplicate search and user confirmation (presenting up to 3 near matches by title keyword overlap)

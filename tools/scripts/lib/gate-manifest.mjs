@@ -172,6 +172,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'product-name:check',
+    npmScript: 'product-name:check',
+    script: 'tools/scripts/check-product-name.mjs',
+    args: [],
+  },
+  {
     id: 'enum:fanout:check',
     npmScript: 'enum:fanout:check',
     script: 'tools/scripts/check-enum-fanout.mjs',

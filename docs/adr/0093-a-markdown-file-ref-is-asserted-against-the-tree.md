@@ -1,10 +1,10 @@
 # A Markdown file-ref is asserted against the tree; frozen history is exempted by name
 
-PR [#743](https://github.com/mnaimfaizy/myorganizer/pull/743) copied the name `migrationRunner`
+PR [#743](https://github.com/mnaimfaizy/myorganiser/pull/743) copied the name `migrationRunner`
 from issue #290 into an addendum on [ADR 0014](0014-component-pipeline-guardrails.md). No such
 module exists; the file is `libs/web/vault-ui/src/lib/reconcileRunner.tsx`.
 `yarn docs:commands:check` does not read inline backticks, so nothing failed until code review
-([#744](https://github.com/mnaimfaizy/myorganizer/issues/744)).
+([#744](https://github.com/mnaimfaizy/myorganiser/issues/744)).
 
 ## Status
 

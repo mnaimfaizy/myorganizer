@@ -39,7 +39,7 @@ const stepBlock = (job, name) => {
   return next === -1 ? rest : rest.slice(0, next);
 };
 
-const RUN_URL = 'https://github.com/mnaimfaizy/myorganizer/actions/runs/1';
+const RUN_URL = 'https://github.com/mnaimfaizy/myorganiser/actions/runs/1';
 
 // Two lines as Yarn 4.13 printed them for this repository on 2026-10-08.
 const NDJSON = [

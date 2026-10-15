@@ -33,7 +33,7 @@ WHERE t.type = 'todos'
 
 ### Exit record (issue #841, 2026-09-19)
 
-Operator record on the cleanup issue: [ADR 0003 exit record — 2026-09-19](https://github.com/mnaimfaizy/myorganizer/issues/841#issuecomment-5740823613). The table below is a durable copy of that comment, not a substitute for it.
+Operator record on the cleanup issue: [ADR 0003 exit record — 2026-09-19](https://github.com/mnaimfaizy/myorganiser/issues/841#issuecomment-5740823613). The table below is a durable copy of that comment, not a substitute for it.
 
 | Predicate                                 | Environment | Result     | Recorded by |
 | ----------------------------------------- | ----------- | ---------- | ----------- |
@@ -47,7 +47,7 @@ Predicate (2) was waived, not met. No release carried the warning before the rem
 
 - **Coexist**: keep `Todo` as a lightweight quick-capture entry point and add `Task` as a separate richer entity. Rejected because both represent "a thing to do" — two features with the same semantic purpose creates confusion and splits the user's attention.
 - **Leave the original "confidence is high" clause.** Rejected. It is not a predicate. Nothing in the tree can become true or false because of it, so the plumbing cannot be retired and cannot be proven necessary either.
-- **A calendar sunset with no query.** Rejected. A date can fire while unmigrated server rows still exist. That is silent, permanent loss of Ciphertext — the failure [ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md) forbids and that [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) already paid for in groceries.
+- **A calendar sunset with no query.** Rejected. A date can fire while unmigrated server rows still exist. That is silent, permanent loss of Ciphertext — the failure [ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md) forbids and that [#512](https://github.com/mnaimfaizy/myorganiser/issues/512) already paid for in groceries.
 - **Keep the path permanently.** Rejected. `'todos'` is a member of `VaultBlobType` and therefore of `VAULT_BLOB_FIELDS` ([ADR 0053](0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)). Every fan-out pays for a type nothing writes. Retirement was the original consequence; this amendment only makes it checkable.
 - **Gate only on "no `'todos'` rows at all".** Rejected as the _start_ condition. After a successful migrate, `saveTasks` writes `'tasks'` and does not have to delete `'todos'`, so migrated users commonly still hold a leftover `'todos'` row. That leftover is not the data-loss case. The data-loss case is `'todos'` with no `'tasks'`. Total `'todos'` row count reaching zero is a _post-condition of the cleanup_ (leftover delete included), not the signal that cleanup may begin.
 - **A new ADR that supersedes this one.** Rejected. The decision is still "Tasks replaces Todos". Only the exit criterion was undecidable. Amend, do not replace.

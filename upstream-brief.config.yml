@@ -60,7 +60,7 @@ brief_dir: docs/research
 # arrived labelled as something it was not.
 issue:
   tracker: github
-  repository: mnaimfaizy/myorganizer
+  repository: mnaimfaizy/myorganiser
   labels:
     research: research
     hitl: type:hitl

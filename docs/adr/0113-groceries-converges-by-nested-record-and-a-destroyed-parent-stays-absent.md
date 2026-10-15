@@ -4,7 +4,7 @@
 
 accepted
 
-Supersedes the Groceries sentence in [ADR 0054](0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md) and the Groceries example in decision 4 of [ADR 0107](0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md). The rest of both stands. Tracked as [#769](https://github.com/mnaimfaizy/myorganizer/issues/769).
+Supersedes the Groceries sentence in [ADR 0054](0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md) and the Groceries example in decision 4 of [ADR 0107](0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md). The rest of both stands. Tracked as [#769](https://github.com/mnaimfaizy/myorganiser/issues/769).
 
 ## Context
 

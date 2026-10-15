@@ -7,7 +7,7 @@
  * rather than as a second convergence. Nothing here decides between sending,
  * taking, merging and asking; it decides only *when* to ask that question and
  * *for which type*. Deciding it twice is what
- * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) was.
+ * [#512](https://github.com/mnaimfaizy/myorganiser/issues/512) was.
  *
  * The queue holds types, never payloads. Ten rapid saves to one type mark it
  * once, and the drain reads whatever the Local Vault holds at that moment, so

@@ -23,8 +23,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml">
-    <img src="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <a href="https://github.com/mnaimfaizy/myorganiser/actions/workflows/ci.yml">
+    <img src="https://github.com/mnaimfaizy/myorganiser/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
   <a href="https://myorganiser.app">
     <img src="https://img.shields.io/badge/demo-live-brightgreen" alt="Live Demo" />
@@ -81,8 +81,8 @@ browser — no build step, no network, no server:
 and Docker for local Postgres and MailHog.
 
 ```sh
-git clone https://github.com/mnaimfaizy/myorganizer.git
-cd myorganizer
+git clone https://github.com/mnaimfaizy/myorganiser.git
+cd myorganiser
 corepack enable
 cp .env.example .env          # fill in database credentials and JWT secrets
 corepack yarn install --immutable
@@ -105,7 +105,7 @@ the mobile app, and the agent workflows.
 ## Repository layout
 
 ```
-myorganizer/
+myorganiser/
 ├── apps/
 │   ├── backend/          # Express + TSOA REST API, Prisma, PostgreSQL
 │   ├── web/              # Next.js web client (App Router — route wrappers only)

@@ -41,7 +41,7 @@ of primitives can only ever be light.
 
 The Neutral Ramp is deliberately **not** exposed as Tailwind utilities. Dark mode
 cannot be expressed without an ordered greyscale, but a second elevation vocabulary
-next to the roles is what [issue #632](https://github.com/mnaimfaizy/myorganizer/issues/632)
+next to the roles is what [issue #632](https://github.com/mnaimfaizy/myorganiser/issues/632)
 was about. See [ADR 0065](../../docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md).
 
 Dark mode is shipped on mobile and not yet on the web: the Mobile App theme

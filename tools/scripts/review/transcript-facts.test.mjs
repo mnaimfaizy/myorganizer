@@ -769,7 +769,7 @@ test('each axis records the files it opened and the files it diffed by path', ()
     [
       'Read',
       {
-        file_path: `/home/runner/work/myorganizer/myorganizer/.github/workflows/deploy.yml`,
+        file_path: `/home/runner/work/myorganiser/myorganiser/.github/workflows/deploy.yml`,
       },
     ],
     [

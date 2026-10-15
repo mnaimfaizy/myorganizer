@@ -7,10 +7,10 @@ accepted
 The implicit-flow provider this ADR keeps is shipped, and so is the honest vocabulary it asks for:
 Linked / Not linked / Reconnect Needed, the age of the newest Escape Copy on the vault page, and an
 Escape Copy Age Limit in place of `daily`/`weekly`/`monthly`
-([#514](https://github.com/mnaimfaizy/myorganizer/issues/514)). The standalone reader that makes the
+([#514](https://github.com/mnaimfaizy/myorganiser/issues/514)). The standalone reader that makes the
 property useful does not exist yet
 ([ADR 0064](0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md),
-[#792](https://github.com/mnaimfaizy/myorganizer/issues/792)).
+[#792](https://github.com/mnaimfaizy/myorganiser/issues/792)).
 
 ## Context
 
@@ -25,7 +25,7 @@ holds it in memory only, and the backend never sees it. The two can even share o
 OAuth client.
 
 Read as engineering, the implicit flow looks like the weaker choice, and
-[#514](https://github.com/mnaimfaizy/myorganizer/issues/514) said so precisely: tokens last about an
+[#514](https://github.com/mnaimfaizy/myorganiser/issues/514) said so precisely: tokens last about an
 hour, there is no refresh token, `canRunSilently()` depends on a live Google session through a
 mechanism sitting in the path of third-party-cookie deprecation, and a scheduled backup therefore
 degrades to "whenever the user happens to have the tab open and Google happens to co-operate". The
@@ -36,7 +36,7 @@ It has not caught up on purpose, and the reason is not about tokens at all. It i
 feature is _for_.
 
 Vault Cloud Backup is not the durability mechanism for a User's data. Since per-record convergence
-landed ([#544](https://github.com/mnaimfaizy/myorganizer/issues/544),
+landed ([#544](https://github.com/mnaimfaizy/myorganiser/issues/544),
 [ADR 0054](0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md)), the server already
 holds every Vault Blob and the Vault Meta as Ciphertext, pushed as the ordinary consequence of an
 edit, converged per record, and sufficient to bootstrap a new device from a sign-in and a
@@ -65,7 +65,7 @@ durability mechanism, which it stopped being when convergence landed.
 
 ## Consequences
 
-Three of the four constraints [#514](https://github.com/mnaimfaizy/myorganizer/issues/514) raises
+Three of the four constraints [#514](https://github.com/mnaimfaizy/myorganiser/issues/514) raises
 are accepted rather than fixed, and that acceptance has to be visible in the product rather than
 buried here. A cycle that cannot promise a clock must not use the words `daily`, `weekly`,
 `monthly`; a link that was never tested must not be reported as `connected`

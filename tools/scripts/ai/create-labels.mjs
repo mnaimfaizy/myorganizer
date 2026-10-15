@@ -7,7 +7,7 @@ import {
   provisionLabels,
 } from '../lib/github-labels.mjs';
 
-const REPO = 'mnaimfaizy/myorganizer';
+const REPO = 'mnaimfaizy/myorganiser';
 const LABELS = provisionLabels(loadGithubLabelCatalog());
 
 function run(args) {

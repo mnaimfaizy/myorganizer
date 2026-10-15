@@ -81,7 +81,7 @@ HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to 
 2. **Fetch the PRD Issue**
 
    ```sh
-   gh issue view <prd-issue-number> --repo mnaimfaizy/myorganizer
+   gh issue view <prd-issue-number> --repo mnaimfaizy/myorganiser
    ```
 
    Read the full body. Note the feature name and all Implementation Decisions.
@@ -132,7 +132,7 @@ HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to 
 
    ```sh
    gh issue create \
-     --repo mnaimfaizy/myorganizer \
+     --repo mnaimfaizy/myorganiser \
      --title "[Slice] <Feature Name>: <short description>" \
      --label "ready-for-agent" \
      --label "type:afk" \
@@ -190,7 +190,7 @@ HITL note: `type:hitl` is separate from `status:blocked`. HITL needs a human to 
 
    ```sh
    gh issue edit <prd-issue-number> \
-     --repo mnaimfaizy/myorganizer \
+     --repo mnaimfaizy/myorganiser \
      --body "<updated PRD body with slice links>"
    ```
 

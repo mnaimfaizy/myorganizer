@@ -4,7 +4,7 @@
  * the latest reader version.
  */
 export const ESCAPE_COPY_READER_RELEASES_URL =
-  'https://github.com/mnaimfaizy/myorganizer/releases/latest';
+  'https://github.com/mnaimfaizy/myorganiser/releases/latest';
 
 /**
  * Filename of the self-contained HTML reader that decrypts and displays

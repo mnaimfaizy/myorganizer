@@ -12,7 +12,7 @@ Local Vault, a wrapping cannot be verified without the passphrase it was derived
 never happens without an explicit answer and `convergeVaultMeta` structurally cannot write.
 
 Nothing settled the other direction, and the result was that no local wrapping change ever left the
-device that made it ([#589](https://github.com/mnaimfaizy/myorganizer/issues/589)). The only Vault
+device that made it ([#589](https://github.com/mnaimfaizy/myorganiser/issues/589)). The only Vault
 Meta write was Vault Reconcile's, guarded by "the server holds no Vault Meta at all", so once the
 server held one nothing ever replaced it.
 
@@ -84,7 +84,7 @@ handler chooses between can at least be decrypted and compared.
 The salt becomes load-bearing in a new way. `changePassphrase` re-derives from the salt the Vault
 already has, which is what keeps a rotation legible as a rotation. A future change that minted a
 fresh salt would make this device's own rotation read as a _different vault_
-([#578](https://github.com/mnaimfaizy/myorganizer/issues/578) pointing the other way), and pushing
+([#578](https://github.com/mnaimfaizy/myorganiser/issues/578) pointing the other way), and pushing
 there would leave the server's Ciphertext guarded by a key it was not encrypted under. The pinned
 `VAULT_META_CHANGE_PUSHABLE` table refuses that, and is checked before the base comparison rather
 than after it: a server holding a separately initialized Vault is not a stale base to be caught up,

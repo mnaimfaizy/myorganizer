@@ -19,7 +19,7 @@ then has to remember to delete.
 
 ## Getting it, and verifying it
 
-The reader is attached to every [GitHub Release](https://github.com/mnaimfaizy/myorganizer/releases)
+The reader is attached to every [GitHub Release](https://github.com/mnaimfaizy/myorganiser/releases)
 as two assets:
 
 | Asset                                 | What it is                          |

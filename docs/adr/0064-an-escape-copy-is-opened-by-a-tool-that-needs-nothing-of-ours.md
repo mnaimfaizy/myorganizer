@@ -6,7 +6,7 @@ accepted
 
 The decision is made and the tool exists. The distribution question this ADR originally left open
 is answered below, in "Distribution", from the grilling recorded on
-[#792](https://github.com/mnaimfaizy/myorganizer/issues/792) (2026-09-19).
+[#792](https://github.com/mnaimfaizy/myorganiser/issues/792) (2026-09-19).
 
 ## Context
 

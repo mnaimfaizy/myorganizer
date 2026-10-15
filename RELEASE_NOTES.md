@@ -2,7 +2,7 @@
 
 Date: 2026-09-27
 
-Compare: https://github.com/mnaimfaizy/myorganizer/compare/v1.0.0...v1.1.0
+Compare: https://github.com/mnaimfaizy/myorganiser/compare/v1.0.0...v1.1.0
 
 ## Added
 

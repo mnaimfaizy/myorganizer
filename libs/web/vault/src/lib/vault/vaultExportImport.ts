@@ -493,7 +493,7 @@ export async function importVault(
     // clear leaves an older Vault carrying an unmoved server's ETag — the
     // state that pushes a User's newer data away
     // ([ADR 0063](../../../../../docs/adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md),
-    // [#617](https://github.com/mnaimfaizy/myorganizer/issues/617)).
+    // [#617](https://github.com/mnaimfaizy/myorganiser/issues/617)).
     options.handle.forgetSyncBookmarks();
     options.handle.saveVault(staged);
 

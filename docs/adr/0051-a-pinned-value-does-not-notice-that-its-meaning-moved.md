@@ -16,7 +16,7 @@ Master Key unwrap and never deleted by that adoption.
 The page was wrong in the way that costs the most: it named a real key that really exists, so a
 developer following it found an answer rather than an error. An empty unsuffixed slot reads as
 "this User has no Vault", and a populated one reads as "here is my Vault" when it may be somebody
-else's ciphertext ([#511](https://github.com/mnaimfaizy/myorganizer/issues/511)).
+else's ciphertext ([#511](https://github.com/mnaimfaizy/myorganiser/issues/511)).
 
 `yarn vault:pages:check` passed the entire time. It asserted `page.storageKey ===
 VAULT_STORAGE_KEY`, and `VAULT_STORAGE_KEY` is still `'myorganiser_vault_v1'` — because that
@@ -32,7 +32,7 @@ a manifest field the gate reads on every commit.
 The obvious tightening — "require a page claiming `storageKey` to also declare the owner-scoped
 composition" — could not have been written while the ADR 0047 work was in flight, because it would
 have failed on `main`, correctly, for as long as the page was stale. That sequencing constraint is
-now discharged: [#507](https://github.com/mnaimfaizy/myorganizer/pull/507) merged on 2026-08-26.
+now discharged: [#507](https://github.com/mnaimfaizy/myorganiser/pull/507) merged on 2026-08-26.
 
 ## Decision
 
@@ -90,7 +90,7 @@ claim, trading a wrong assertion for no assertion.
   to declare instead, so the retirement does not depend on anyone remembering it.
 - `libs/mobile/feat/vault/src/constants.ts:1` declares its own `VAULT_STORAGE_KEY` at the same
   value. It has no consumers — mobile never persists a Local Vault (ADR 0047, Consequences;
-  [#485](https://github.com/mnaimfaizy/myorganizer/issues/485)) — and the vault pages describe the
+  [#485](https://github.com/mnaimfaizy/myorganiser/issues/485)) — and the vault pages describe the
   web constant only. Naming mobile on those pages would imply a mobile Local Vault exists.
 - This does not make semantic drift generally detectable, and the rule should not be read as
   claiming so. It converts one class of it — a name that splits in two — from invisible into a

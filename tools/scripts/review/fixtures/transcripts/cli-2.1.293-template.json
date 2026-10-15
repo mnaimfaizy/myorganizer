@@ -2,7 +2,7 @@
   {
     "type": "system",
     "subtype": "init",
-    "cwd": "/home/runner/work/myorganizer/myorganizer",
+    "cwd": "/home/runner/work/myorganiser/myorganiser",
     "claude_code_version": "2.1.293",
     "model": "claude-sonnet-5-5"
   },
@@ -17,7 +17,7 @@
           "id": "toolu_01FmAH3euwomuGdVGGrZ8oyN",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/spec.json"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/spec.json"
           }
         }
       ]
@@ -54,7 +54,7 @@
           "id": "toolu_01JvHZDJWkAFWFi4f8FsyLyA",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/STANDARDS_BRIEF.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/STANDARDS_BRIEF.md"
           }
         }
       ]
@@ -88,7 +88,7 @@
           "id": "toolu_018FgWtW14zkHNoRyLfBmG6Z",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/CODING_STANDARDS.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/CODING_STANDARDS.md"
           }
         }
       ]
@@ -142,7 +142,7 @@
           "id": "toolu_018sRTqbbHVowwCykoDjEXLJ",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/.claude/projects/-home-runner-work-myorganizer-myorganizer/8264f749-9a9b-46e2-85f0-03ec05aa598d/tool-results/b2kawno5q.txt"
+            "file_path": "/home/runner/.claude/projects/-home-runner-work-myorganiser-myorganiser/8264f749-9a9b-46e2-85f0-03ec05aa598d/tool-results/b2kawno5q.txt"
           }
         }
       ]
@@ -194,7 +194,7 @@
           "name": "Grep",
           "input": {
             "pattern": "SKILL\\.md:\\d+|pastes|paste ",
-            "path": "/home/runner/work/myorganizer/myorganizer/docs/review/finding-lifecycle.html"
+            "path": "/home/runner/work/myorganiser/myorganiser/docs/review/finding-lifecycle.html"
           }
         }
       ]
@@ -246,7 +246,7 @@
           "name": "Grep",
           "input": {
             "pattern": "pastes|paste the|pasted",
-            "path": "/home/runner/work/myorganizer/myorganizer"
+            "path": "/home/runner/work/myorganiser/myorganiser"
           }
         }
       ]
@@ -281,7 +281,7 @@
           "name": "Grep",
           "input": {
             "pattern": "^2\\. \\*\\*Issue references|The diff command is|^Each axis runs|exposes \\(step 4\\)|it \\(`AGENTS.md`, Branch naming\\)",
-            "path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SKILL.md"
+            "path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SKILL.md"
           }
         }
       ]
@@ -328,7 +328,7 @@
           "id": "toolu_016vwTpKA12k2JBf7o5PPapj",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SPEC_BRIEF.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SPEC_BRIEF.md"
           }
         }
       ]
@@ -345,7 +345,7 @@
           "id": "toolu_01SWwWtpaNwx7eA3MnY6DoXm",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/spec.json"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/spec.json"
           }
         }
       ]
@@ -396,7 +396,7 @@
           "id": "toolu_013Zt6yy5yEpSyHCfVBqHxPT",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SKILL.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SKILL.md"
           }
         }
       ]
@@ -447,7 +447,7 @@
           "id": "toolu_0193JxvCTBUrYGwDLYhj8WgT",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/STANDARDS_BRIEF.md",
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/STANDARDS_BRIEF.md",
             "limit": 100
           }
         }
@@ -478,7 +478,7 @@
           "id": "toolu_015mtDjjdk8Br1AwzsNUJKs5",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/obligations.json"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/obligations.json"
           }
         }
       ]
@@ -495,7 +495,7 @@
           "id": "toolu_01NXySheKkTqx9zAFdtXzdRW",
           "name": "Write",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/report.json",
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/report.json",
             "content": "<trimmed>"
           }
         }

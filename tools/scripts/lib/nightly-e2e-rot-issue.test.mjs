@@ -72,7 +72,7 @@ test('findOpenRotIssue matches the fixed title and skips pull requests', () => {
 });
 
 test('the recovery comment names the green run', () => {
-  const runUrl = 'https://github.com/mnaimfaizy/myorganizer/actions/runs/1';
+  const runUrl = 'https://github.com/mnaimfaizy/myorganiser/actions/runs/1';
   const closed = recoveryComment({
     action: 'close',
     runUrl,

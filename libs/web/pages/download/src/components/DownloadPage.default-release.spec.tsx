@@ -22,7 +22,7 @@ describe('DownloadPage default version from CURRENT_MOBILE_RELEASE', () => {
     expect(screen.queryByTestId('android-no-release')).not.toBeInTheDocument();
     expect(screen.getByTestId('android-download-link')).toHaveAttribute(
       'href',
-      'https://github.com/mnaimfaizy/myorganizer/releases/download/mobile-v9.9.9/myorganiser-9.9.9.apk',
+      'https://github.com/mnaimfaizy/myorganiser/releases/download/mobile-v9.9.9/myorganiser-9.9.9.apk',
     );
   });
 });

@@ -92,7 +92,7 @@ _To be populated by to-issues._
 
    ```sh
    gh issue create \
-     --repo mnaimfaizy/myorganizer \
+     --repo mnaimfaizy/myorganiser \
      --title "[PRD] <Feature Name>" \
      --label "prd" \
      --label "ready-for-agent" \

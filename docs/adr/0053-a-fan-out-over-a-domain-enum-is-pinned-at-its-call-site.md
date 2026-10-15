@@ -7,7 +7,7 @@ accepted
 ## Context
 
 A keep-server reconcile destroyed a User's grocery ciphertext
-([#512](https://github.com/mnaimfaizy/myorganizer/issues/512)). The cause was not a wrong value.
+([#512](https://github.com/mnaimfaizy/myorganiser/issues/512)). The cause was not a wrong value.
 `vaultMigration.ts` handled five of the six `VaultBlobType` members by hand, in four separate
 branches, and Groceries was in none of them. Every gate passed. Every type checked.
 
@@ -22,7 +22,7 @@ when a member is missing. `Partial<Record<VaultBlobType, T>>` does not, and neit
 if-chain over `key === VaultBlobType.X`, nor a list assembled from six `if` statements. All three
 shapes were live in the vault when this was written, and one of them —
 `envelopeFromLocalVault` — had been silently dropping the Tasks blob from every hardened export
-since the day it was written ([#537](https://github.com/mnaimfaizy/myorganizer/issues/537)). The
+since the day it was written ([#537](https://github.com/mnaimfaizy/myorganiser/issues/537)). The
 export succeeded. The file downloaded. The Tasks came back empty on restore.
 
 Three tightenings were considered and two rejected:

@@ -1,11 +1,11 @@
 # A Prisma migration is gated on the tree and against a database, and the cheap half says so
 
 Release v0.4.0 shipped with four migrations that were never applied, found only when somebody
-ran `prisma migrate status` by hand ([#437](https://github.com/mnaimfaizy/myorganizer/issues/437)).
-A later `/code-review` on [#745](https://github.com/mnaimfaizy/myorganizer/pull/745) raised the
+ran `prisma migrate status` by hand ([#437](https://github.com/mnaimfaizy/myorganiser/issues/437)).
+A later `/code-review` on [#745](https://github.com/mnaimfaizy/myorganiser/pull/745) raised the
 same gap from the other end: nothing in `.husky`, `.github/workflows`, or the `gates:run`
 manifest read `apps/backend/src/prisma/**` as anything but source to reformat
-([#748](https://github.com/mnaimfaizy/myorganizer/issues/748)). The only line touching it was
+([#748](https://github.com/mnaimfaizy/myorganiser/issues/748)). The only line touching it was
 `.husky/pre-commit`'s `prisma format`, which rewrites the schema and asserts nothing — per
 [ADR 0074](0074-a-gate-suppresses-a-finding-only-if-something-runs-it.md) there was not even a
 checker to wire.

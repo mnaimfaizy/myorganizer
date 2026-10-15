@@ -16,7 +16,7 @@
  * staler question and is aborted rather than waited on
  * ([ADR 0088](../../../../../docs/adr/0088-a-vault-pull-pass-has-a-budget-and-is-superseded-never-queued.md),
  * decision 1). What this replaced was a promise chain, and the chain is what
- * [#697](https://github.com/mnaimfaizy/myorganizer/issues/697) is about: a pass
+ * [#697](https://github.com/mnaimfaizy/myorganiser/issues/697) is about: a pass
  * whose request never settled never settled the chain either, so every later
  * check waited behind it for the life of the tab, with no error and no retry.
  *

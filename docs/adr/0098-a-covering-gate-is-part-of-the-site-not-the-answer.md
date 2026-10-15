@@ -1,7 +1,7 @@
 # A Covering Gate is part of the site, not part of the answer
 
 Golden Replay run 47 missed `release-bump-leaves-generated-client-stale`
-([#734](https://github.com/mnaimfaizy/myorganizer/issues/734)). The obligation
+([#734](https://github.com/mnaimfaizy/myorganiser/issues/734)). The obligation
 `run-the-gate-that-covers-this-change` fired on the correct site and was answered:
 
 ```
@@ -12,7 +12,7 @@ wiredBy:   ".github/workflows/ci.yml:705"
 ```
 
 Every part of that is true. Line 705 does invoke `deploy:pages:check`; the citation added by
-[#727](https://github.com/mnaimfaizy/myorganizer/issues/727) read the line back from the tree and
+[#727](https://github.com/mnaimfaizy/myorganiser/issues/727) read the line back from the tree and
 matched it; `defectWhen` correctly did not fire, because the gate **is** wired.
 
 The incident is about a different gate. A version bump in `package.json` is embedded into the
@@ -69,7 +69,7 @@ with itself.
 `coveringGate` takes a single script name. Not a list, and not optional with a sentinel for
 "nothing covers this."
 
-The consequence is deliberate. [#734](https://github.com/mnaimfaizy/myorganizer/issues/734)
+The consequence is deliberate. [#734](https://github.com/mnaimfaizy/myorganiser/issues/734)
 raises the question of how a derived mechanism tells _"no gate covers this artifact"_ apart from
 _"no map entry exists"_ — which are not the same fact. Requiring the field makes the second state
 **unrepresentable**: a trigger without a Covering Gate is rejected by the loader, so the only
@@ -162,7 +162,7 @@ question and is not answered by this ADR.
   agreement.
 - The reviewer does one less thing per site and has one less way to be wrong. The turn it spent
   choosing a gate is returned to the budget tracked in
-  [#732](https://github.com/mnaimfaizy/myorganizer/issues/732).
+  [#732](https://github.com/mnaimfaizy/myorganiser/issues/732).
 - A new trigger path costs a judgment it did not cost before: its author must name the Covering
   Gate, or build one.
 - **The golden case is not the completion signal, and must not be used as one.** The defect is a

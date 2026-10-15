@@ -1,6 +1,6 @@
 # A path pointer in a merged ADR is corrected, not exempted
 
-Issue [#165](https://github.com/mnaimfaizy/myorganizer/issues/165) moves the four flat web
+Issue [#165](https://github.com/mnaimfaizy/myorganiser/issues/165) moves the four flat web
 libraries — web-ui, web-vault, web-vault-ui, and web-youtube — under `libs/web/`. Ten merged
 ADRs (0014, 0026, 0027, 0039, 0047, 0051, 0052, 0053, 0057, 0093) name those libraries by path,
 and `yarn docs:file-refs:check` ([ADR 0093](0093-a-markdown-file-ref-is-asserted-against-the-tree.md))

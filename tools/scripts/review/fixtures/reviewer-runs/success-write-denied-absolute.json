@@ -2,7 +2,7 @@
   {
     "type": "system",
     "subtype": "init",
-    "cwd": "/home/runner/work/myorganizer/myorganizer"
+    "cwd": "/home/runner/work/myorganiser/myorganiser"
   },
   {
     "type": "rate_limit_event",
@@ -23,28 +23,28 @@
         "tool_name": "Bash",
         "tool_use_id": "toolu_fixture",
         "tool_input": {
-          "command": "cd /home/runner/work/myorganizer/myorganizer/tmp/code-review/worktree && grep -l review .github/workflows/*.yml"
+          "command": "cd /home/runner/work/myorganiser/myorganiser/tmp/code-review/worktree && grep -l review .github/workflows/*.yml"
         }
       },
       {
         "tool_name": "Write",
         "tool_use_id": "toolu_fixture",
         "tool_input": {
-          "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/obligations.answers.json"
+          "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/obligations.answers.json"
         }
       },
       {
         "tool_name": "Write",
         "tool_use_id": "toolu_fixture",
         "tool_input": {
-          "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/_permtest.json"
+          "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/_permtest.json"
         }
       },
       {
         "tool_name": "Write",
         "tool_use_id": "toolu_fixture",
         "tool_input": {
-          "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/report.json"
+          "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/report.json"
         }
       }
     ]

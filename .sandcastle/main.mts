@@ -60,7 +60,7 @@ import {
   judgeRunOutcome,
 } from '../tools/scripts/lib/sandcastle-outcome.mjs';
 
-const REPO = 'mnaimfaizy/myorganizer';
+const REPO = 'mnaimfaizy/myorganiser';
 const SANDBOX_IMAGE = 'sandcastle:myorganiser';
 
 dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });

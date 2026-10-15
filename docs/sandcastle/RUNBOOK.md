@@ -75,8 +75,8 @@ Windows-native dispatch (from PowerShell, repo on `D:\`) works but is ~29 min/in
 4. `gh auth login` (or `export GH_TOKEN=...`) inside the distro.
 5. **Clone onto ext4** and run from there:
    ```bash
-   git clone git@github.com:mnaimfaizy/myorganizer.git ~/projects/myorganizer
-   cd ~/projects/myorganizer
+   git clone git@github.com:mnaimfaizy/myorganiser.git ~/projects/myorganiser
+   cd ~/projects/myorganiser
    ```
    Keep your `D:\` checkout for IDE editing; the WSL2 clone is only for dispatch. The feature
    branch is built **locally** in this clone (never pushed during dispatch), so `git fetch origin`

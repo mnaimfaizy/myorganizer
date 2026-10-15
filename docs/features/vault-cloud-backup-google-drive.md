@@ -85,7 +85,7 @@ mechanism offered alongside the manual file-based one:
 In production the two features use separate Cloud projects, so Drive backup
 never waits on YouTube's sensitive-scope verification
 ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
-The YouTube production project is created in [#848](https://github.com/mnaimfaizy/myorganizer/issues/848);
+The YouTube production project is created in [#848](https://github.com/mnaimfaizy/myorganiser/issues/848);
 the Drive production project is created here — do not reuse or duplicate that
 YouTube project. Development and staging may share one Testing-project client
 (it just needs both **Authorized redirect URIs** _and_ **Authorized JavaScript
@@ -161,7 +161,7 @@ things on every token request:
 | Development / staging | Shared **Testing** project with YouTube ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)) | Weekly reconnect is accepted there. One Web client can hold YouTube redirect URIs _and_ Drive JavaScript origins.                                      |
 | Production            | **Dedicated Drive project** (this issue)                                                                                                | Consent, publishing, and quota belong to the project. `drive.appdata` is non-sensitive and must not wait on YouTube's `youtube.readonly` verification. |
 
-[#848](https://github.com/mnaimfaizy/myorganizer/issues/848) creates the production
+[#848](https://github.com/mnaimfaizy/myorganiser/issues/848) creates the production
 **YouTube** project. It does not create this Drive project. Do not put
 `drive.appdata` on the YouTube production consent screen, and do not invent a
 second Drive production project beside the one this runbook describes.
@@ -273,7 +273,7 @@ the wrong client ID is wired up — check `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 ## Production Google application
 
 This is operator work in Google Cloud Console. The repository cannot create
-the project. [#848](https://github.com/mnaimfaizy/myorganizer/issues/848) is
+the project. [#848](https://github.com/mnaimfaizy/myorganiser/issues/848) is
 the YouTube production project; this section is the Drive one.
 
 1. Create a Cloud project (name e.g. `MyOrganiser Vault Backup`).
@@ -367,7 +367,7 @@ after editing `.env`. `NEXT_PUBLIC_*` values are inlined at build time.
 
 ### Why there is no ADR 0043 gate
 
-[#751](https://github.com/mnaimfaizy/myorganizer/issues/751) asked whether any
+[#751](https://github.com/mnaimfaizy/myorganiser/issues/751) asked whether any
 fact here is worth an [ADR 0043](../adr/0043-gates-assert-facts.md) Assertion
 Gate, or whether this stays operational and documented only. The 2026-09-18
 triage chose **ops + docs**: no new checker, and no YouTube-style availability

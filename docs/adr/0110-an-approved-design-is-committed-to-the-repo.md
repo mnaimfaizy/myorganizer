@@ -8,7 +8,7 @@ Extends [ADR 0041](0041-internal-notes-have-homes.md) with one more home: approv
 
 ## Context
 
-Mobile App v1 ([PRD #908](https://github.com/mnaimfaizy/myorganizer/issues/908)) was designed in a Claude Design canvas: 142 artboards covering every page, state, and platform difference, approved before any code was written. Its ten slices were then built by Sandcastle agents, and the app they produced scored between 3 and 6 out of 10 against the canvas when it was audited. [The investigation](../research/2026-09-30-mobile-v1-agents-built-without-the-approved-design.md) traced most of that drift to one fact: **no agent ever saw the design.**
+Mobile App v1 ([PRD #908](https://github.com/mnaimfaizy/myorganiser/issues/908)) was designed in a Claude Design canvas: 142 artboards covering every page, state, and platform difference, approved before any code was written. Its ten slices were then built by Sandcastle agents, and the app they produced scored between 3 and 6 out of 10 against the canvas when it was audited. [The investigation](../research/2026-09-30-mobile-v1-agents-built-without-the-approved-design.md) traced most of that drift to one fact: **no agent ever saw the design.**
 
 - Every slice issue carried the design as one line — "Design approved: the `3 · Tasks` page of the [Mobile v1 canvas](https://claude.ai/artifact/NQEpyQyfkqKrTEBHmm3ehj) (version 14). Build to it." The link is a private claude.ai artifact. A sandboxed agent has no claude.ai login, so the link opens nothing.
 - What the issue text did transcribe was a handful of numbers. Copy, layout, empty states, press states, and platform differences existed only in the canvas, and the agents invented them.

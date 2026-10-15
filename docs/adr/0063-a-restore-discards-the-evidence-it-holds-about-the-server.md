@@ -5,9 +5,9 @@
 accepted
 
 Both decisions are implemented. A restore clears Sync Bookmarks since
-[#617](https://github.com/mnaimfaizy/myorganizer/issues/617), the defect this ADR is the reasoning
+[#617](https://github.com/mnaimfaizy/myorganiser/issues/617), the defect this ADR is the reasoning
 for. A restore from Google Drive is confirmed through the same dialog as a file import, showing the
-copy's age, since [#514](https://github.com/mnaimfaizy/myorganizer/issues/514).
+copy's age, since [#514](https://github.com/mnaimfaizy/myorganiser/issues/514).
 
 ## Context
 
@@ -44,7 +44,7 @@ has not moved. What moved is the device's own data, and a bookmark says nothing 
 0058's "cannot go stale in that direction" is true and describes a different direction than the one
 a whole-vault replacement travels in.
 
-This is the shape of [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) again — a
+This is the shape of [#512](https://github.com/mnaimfaizy/myorganiser/issues/512) again — a
 whole-vault operation meeting a per-record engine — arriving through a path #512's fix did not
 cover.
 
@@ -72,7 +72,7 @@ is deliberately not live — under
 [ADR 0062](0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md) it may be months old by
 design — and merging a months-old snapshot record by record would resurrect records deleted since,
 which is the failure the Deletion Log
-([#546](https://github.com/mnaimfaizy/myorganizer/issues/546)) exists to prevent. Convergence is the
+([#546](https://github.com/mnaimfaizy/myorganiser/issues/546)) exists to prevent. Convergence is the
 wrong instrument for a snapshot precisely because it is the right one for a replica.
 
 **Making restore offline-only**, available solely through the standalone reader

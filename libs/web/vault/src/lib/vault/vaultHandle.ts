@@ -174,7 +174,7 @@ export type VaultHandle = LocalVaultAccess & {
    * ETag still matches the unmoved server, and the conditional push that was
    * meant to refuse an unseen overwrite waves the older Ciphertext straight
    * through ([ADR 0063](../../../../../docs/adr/0063-a-restore-discards-the-evidence-it-holds-about-the-server.md),
-   * [#617](https://github.com/mnaimfaizy/myorganizer/issues/617)).
+   * [#617](https://github.com/mnaimfaizy/myorganiser/issues/617)).
    *
    * Dropping the evidence is what makes that safe, and it adds no new
    * behaviour to rely on: a device holding no bookmark is the case
@@ -358,7 +358,7 @@ export function createVaultHandle(options: {
     // silent, and the silence was load-bearing in the wrong direction — the
     // gate kept a newly minted Recovery Key on screen only because its status
     // had gone stale, so the first reader to consult storage live withheld the
-    // very screen the key is shown on ([#667](https://github.com/mnaimfaizy/myorganizer/issues/667)).
+    // very screen the key is shown on ([#667](https://github.com/mnaimfaizy/myorganiser/issues/667)).
     //
     // Reported after `initialize` resolves, so the write has landed before any
     // reader is told to look again — the same ordering every other door here

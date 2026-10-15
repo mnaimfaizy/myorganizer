@@ -88,7 +88,7 @@ type VaultSessionContextValue = {
    * focus. Created once per owner beside `syncQueue`, so `VaultPullRunner`
    * no longer builds its own — one instance per owner is also what removes
    * the double pass two instances cost
-   * ([#616](https://github.com/mnaimfaizy/myorganizer/issues/616)). Exposed
+   * ([#616](https://github.com/mnaimfaizy/myorganiser/issues/616)). Exposed
    * for a sync status reading the same way `syncQueue` is (ADR 0088,
    * decision 7).
    */
@@ -106,7 +106,7 @@ type VaultSessionContextValue = {
    * Unclaimed Local Vault until it settles, and `VaultReconcileRunner`, which
    * starts no pass over one until it settles — a pass that read `unclaimed` as
    * absent downloaded the server's wrapping ahead of the claim
-   * ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673); ADR 0066's
+   * ([#673](https://github.com/mnaimfaizy/myorganiser/issues/673); ADR 0066's
    * amendment).
    */
   claimEvidence: VaultClaimEvidenceState;

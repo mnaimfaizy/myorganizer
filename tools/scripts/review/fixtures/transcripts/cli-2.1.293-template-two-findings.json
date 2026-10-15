@@ -2,7 +2,7 @@
   {
     "type": "system",
     "subtype": "init",
-    "cwd": "/home/runner/work/myorganizer/myorganizer",
+    "cwd": "/home/runner/work/myorganiser/myorganiser",
     "claude_code_version": "2.1.293",
     "model": "claude-sonnet-5-5"
   },
@@ -17,7 +17,7 @@
           "id": "toolu_01EfTRjVmjXYBJXsR9ufgPSV",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/spec.json"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/spec.json"
           }
         }
       ]
@@ -54,7 +54,7 @@
           "id": "toolu_01VboZ5JNTtr2HdFLZJjg2uG",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/STANDARDS_BRIEF.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/STANDARDS_BRIEF.md"
           }
         }
       ]
@@ -91,7 +91,7 @@
           "id": "toolu_0192G8XjknC3YVXccq8JTJQN",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/obligations.json"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/obligations.json"
           }
         }
       ]
@@ -125,7 +125,7 @@
           "id": "toolu_01PnqxpHGtrpyxtcMxk3F35v",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/CODING_STANDARDS.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/CODING_STANDARDS.md"
           }
         }
       ]
@@ -142,7 +142,7 @@
           "id": "toolu_014FJZib3uVmsNaYV56weLqe",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SPEC_BRIEF.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SPEC_BRIEF.md"
           }
         }
       ]
@@ -159,7 +159,7 @@
           "id": "toolu_01VihPG73YKMFS73pgaTeUvy",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/spec.json"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/spec.json"
           }
         }
       ]
@@ -210,7 +210,7 @@
           "id": "toolu_01VCVkqTQhzDHF7q1VSTCzxn",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/.claude/projects/-home-runner-work-myorganizer-myorganizer/b10f023d-028d-4911-aafd-fe640709dd1d/tool-results/baqe6wce3.txt",
+            "file_path": "/home/runner/.claude/projects/-home-runner-work-myorganiser-myorganiser/b10f023d-028d-4911-aafd-fe640709dd1d/tool-results/baqe6wce3.txt",
             "offset": 30,
             "limit": 700
           }
@@ -246,7 +246,7 @@
           "id": "toolu_017vz2t3QSmuvGgJqGc1pa8Y",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tools/scripts/review/transcript-facts.mjs"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tools/scripts/review/transcript-facts.mjs"
           }
         }
       ]
@@ -365,7 +365,7 @@
           "id": "toolu_01TB5dhbC5A1MXVisA7xV14U",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tools/scripts/review/transcript-facts.mjs"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tools/scripts/review/transcript-facts.mjs"
           }
         }
       ]
@@ -416,7 +416,7 @@
           "id": "toolu_015mio9cDqyPb3KmSQuKHhnD",
           "name": "Bash",
           "input": {
-            "command": "grep -rn \"review:validate\\|validate-review-report\" /home/runner/work/myorganizer/myorganizer/.github /home/runner/work/myorganizer/myorganizer/tools/scripts --include=*.yml --include=*.mjs -l"
+            "command": "grep -rn \"review:validate\\|validate-review-report\" /home/runner/work/myorganiser/myorganiser/.github /home/runner/work/myorganiser/myorganiser/tools/scripts --include=*.yml --include=*.mjs -l"
           }
         }
       ]
@@ -433,7 +433,7 @@
           "id": "toolu_01QRZFe5ECSPtgjd8JRNQnYN",
           "name": "Bash",
           "input": {
-            "command": "grep -n \"id: reviewer\\|uses: ./.github/actions/code-reviewer\\|facts-file\" /home/runner/work/myorganizer/myorganizer/.github/workflows/code-review.yml"
+            "command": "grep -n \"id: reviewer\\|uses: ./.github/actions/code-reviewer\\|facts-file\" /home/runner/work/myorganiser/myorganiser/.github/workflows/code-review.yml"
           }
         }
       ]
@@ -467,7 +467,7 @@
           "id": "toolu_01FYWbHgRMpsboHsSrhJrNri",
           "name": "Bash",
           "input": {
-            "command": "grep -n \"validate\" /home/runner/work/myorganizer/myorganizer/.github/workflows/review-golden-replay.yml"
+            "command": "grep -n \"validate\" /home/runner/work/myorganiser/myorganiser/.github/workflows/review-golden-replay.yml"
           }
         }
       ]
@@ -537,7 +537,7 @@
           "id": "toolu_0123cpBaM1bRvB8hd38tsCfg",
           "name": "Write",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/report.json",
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/report.json",
             "content": "{\n  \"schemaVersion\": 4,\n  \"base\": \"3a9bbfddf825a92849fa03adcd13f377347c8e73\",\n  \"head\": \"b5f2888e522d266b1feffc70462061baa04f9018\",\n  \"tier\": \"review:human\",\n  \"spec\": { \"kind\": \"issue\", \"ref\": \"#1031\", \"foundBy\": \"branch\" },\n  \"standardsSources\": [\"CODING_STANDARDS.md\"],\n  \"executed\": [\n    \"node tools/scripts/check-review-rules.mjs\",\n    \"node --test tools/scripts/review/transcript-facts.test.mjs tools/scripts/review/run-facts.test.mjs tools/scripts/review/run-facts-wiring.test.mjs tools/scripts/check-review-rules.test.mjs\",\n    \"git diff 3a9bbfddf825a92849fa03adcd13f377347c8e73...HEAD --stat\",\n    \"git diff 3a9bbfddf825a92849fa03adcd13f377347c8e73...HEAD -- .agents/skills/code-review/SKILL.md .github tools/scripts/review/schema.mjs tools/scripts/review/validate-review-report.mjs tools/scripts/review/render-review-report.mjs tools/scripts/review/read-transcript-facts.mjs package.json\",\n    \"git diff 3a9bbfddf825a92849fa03adcd13f377347c8e73...HEAD -- .github tools/scripts/review/schema.mjs tools/scripts/review/validate-review-report.mjs tools/scripts/review/read-transcript-facts.mjs package.json\",\n    \"git diff 3a9bbfddf825a92849fa03adcd13f377347c8e73...HEAD -- tools/scripts/review/render-review-report.mjs\"\n  ],\n  \"suppressed\": { \"redundant\": 0 },\n  \"model\": \"claude-sonnet-5-5\",\n  \"durationMs\": 30000,\n  \"findings\": [\n    {\n      \"axis\": \"standards\",\n      \"severity\": \"nit\",\n      \"summary\": \"The axes object schema is written out twice, in RunFactsSchema and RunFactsSummarySchema\",\n      \"ruleId\": \"smell-duplicated-code\",\n      \"source\": \"smell-baseline\",\n      \"rule\": \"Duplicated Code: the same logic shape in more than one hunk or file. Extract the shared shape.\",\n      \"evidence\": {\n        \"kind\": \"inferred\",\n        \"reasoning\": \"RunFactsSchema and RunFactsSummarySchema in tools/scripts/review/schema.mjs both declare `z.strictObject({ standards: AxisFactsSchema, spec: AxisFactsSchema }).nullable()`. A third axis would need both edited. A single named `AxesFactsSchema` would remove the repeat.\"\n      },\n      \"location\": {\n        \"file\": \"tools/scripts/review/schema.mjs\",\n        \"startLine\": 470,\n        \"endLine\": 512,\n        \"headSha\": \"b5f2888e522d266b1feffc70462061baa04f9018\"\n      },\n      \"remedy\": \"Extract one `AxesFactsSchema` constant and use it in both schemas.\",\n      \"confidence\": \"medium\"\n    },\n    {\n      \"axis\": \"spec\",\n      \"severity\": \"nit\",\n      \"summary\": \"The review comment's duration display was reformatted from ms to human units, which the spec did not ask for\",\n      \"ruleId\": \"spec-behaviour-not-asked-for\",\n      \"source\": \"#1031\",\n      \"rule\": \"The published comment gains: the Standards Sources opened, a fixed note that root `AGENTS.md` and `CLAUDE.md` are loaded by the harness and not listed, tool-call counts per axis, and the CLI version.\",\n      \"evidence\": {\n        \"kind\": \"cited\",\n        \"sourceKind\": \"spec\",\n        \"quote\": \"The published comment gains: the Standards Sources opened, a fixed note that root `AGENTS.md` and `CLAUDE.md` are loaded by the harness and not listed, tool-call counts per axis, and the CLI version.\",\n        \"untrusted\": true\n      },\n      \"location\": {\n        \"file\": \"tools/scripts/review/render-review-report.mjs\",\n        \"startLine\": 38,\n        \"endLine\": 58,\n        \"headSha\": \"b5f2888e522d266b1feffc70462061baa04f9018\"\n      },\n      \"remedy\": \"Keep the raw `N ms` figure, or record the display change in its own issue.\",\n      \"confidence\": \"medium\"\n    }\n  ]\n}\n"
           }
         }

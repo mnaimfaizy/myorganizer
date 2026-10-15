@@ -15,7 +15,7 @@ That granularity decides the convergence model on its own. Under per-blob last-w
 added on a laptop and a different Task added on a phone are two writes to the same Vault Blob, so
 one of them is not conflicted — it is destroyed. That is the ordinary two-device case, not a race,
 and it is the case
-[#513](https://github.com/mnaimfaizy/myorganizer/issues/513) exists to fix. A model whose
+[#513](https://github.com/mnaimfaizy/myorganiser/issues/513) exists to fix. A model whose
 first-order behaviour is losing the User's data is not a smaller version of the right answer.
 
 Merging cannot happen on the server, which holds `{version, iv, ciphertext}` and no key. It happens

@@ -8,7 +8,7 @@ accepted
 
 `.github/workflows/ci.yml` had no e2e job. Because nothing ran the Playwright suite, a fixture
 collection error introduced in `c2702d9` aborted the entire run for days with no signal, and 13
-underlying test failures sat behind it undetected for months ([#506](https://github.com/mnaimfaizy/myorganizer/issues/506)).
+underlying test failures sat behind it undetected for months ([#506](https://github.com/mnaimfaizy/myorganiser/issues/506)).
 The suite was repaired, but nothing yet stops it rotting again — which is what this decision is for.
 
 Two facts shape the answer.

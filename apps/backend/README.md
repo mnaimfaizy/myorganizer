@@ -90,7 +90,7 @@ Note: The repo sets `package.json.engines.node` to `>=22.0.0`.
 
    ```bash
    git clone <repository-url>
-   cd myorganizer
+   cd myorganiser
    ```
 
 2. **Install dependencies**:

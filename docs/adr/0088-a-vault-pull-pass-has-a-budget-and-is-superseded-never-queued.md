@@ -10,7 +10,7 @@ accepted
 passes at once would race two conditional reads and merges for the same Vault Blob Type. The chain
 absorbs rejection — `tail.then(pass, pass)` — so a failed pass does not block the next. A pass that
 never _settles_ does: `tail` never settles either, and every later `requestCheck` waits behind it for
-the life of the tab ([#697](https://github.com/mnaimfaizy/myorganizer/issues/697)).
+the life of the tab ([#697](https://github.com/mnaimfaizy/myorganiser/issues/697)).
 
 The route #697 considered — a pass parked on a dialog, as in #691 — is closed: the pull path's prompt
 always defers and cannot await a User. The route left open is the network. The generated API client
