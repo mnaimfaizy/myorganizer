@@ -8,16 +8,10 @@ import {
 } from '@myorganiser/auth';
 import {
   ServerUnreachableNotice,
-  useRetryOnReconnect,
+  useRetryableCheck,
 } from '@myorganiser/web-ui';
 import { useRouter } from 'next/navigation';
-import {
-  type ReactNode,
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
 
 import { isPlatformAdmin } from '../lib/isPlatformAdmin';
 
@@ -30,21 +24,9 @@ type GuardState = 'checking' | 'ready' | 'unavailable';
 export default function AdminGuard({ children }: AdminGuardProps) {
   const router = useRouter();
   const [state, setState] = useState<GuardState>('checking');
-  const [retrying, setRetrying] = useState(false);
-  // Bumped by a retry. Each bump re-runs the outbound check below.
-  const [attempt, setAttempt] = useState(0);
-  const inFlightRef = useRef(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function ensurePlatformAdmin() {
-      const outcome = await resolveOutboundGuard(authSession);
-      inFlightRef.current = false;
-      setRetrying(false);
-
-      if (cancelled) return;
-
+  const handleOutcome = useCallback(
+    (outcome: Awaited<ReturnType<typeof resolveOutboundGuard>>) => {
       if (outcome.kind === 'redirect_login') {
         setState('checking');
         router.replace('/login');
@@ -62,23 +44,15 @@ export default function AdminGuard({ children }: AdminGuardProps) {
         setState('checking');
         router.replace('/dashboard');
       }
-    }
+    },
+    [router],
+  );
 
-    void ensurePlatformAdmin();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [router, attempt]);
-
-  const retry = useCallback(() => {
-    if (inFlightRef.current) return;
-    inFlightRef.current = true;
-    setRetrying(true);
-    setAttempt((count) => count + 1);
-  }, []);
-
-  useRetryOnReconnect(state === 'unavailable', retry);
+  const { retry, retrying } = useRetryableCheck(
+    () => resolveOutboundGuard(authSession),
+    handleOutcome,
+    { retryOnReconnect: state === 'unavailable' },
+  );
 
   // Once the shell is shown or the server is unreachable, a Session ended by a
   // refused refresh or by another window signing out must stop the shell
