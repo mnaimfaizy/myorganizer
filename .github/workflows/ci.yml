@@ -846,10 +846,25 @@ jobs:
       - name: Lint coverage checker contracts
         run: corepack yarn lint:coverage:test
 
+      # Project names, roots, and targets. `backend:generate-types` only writes
+      # the Prisma client, and no Nx plugin infers a project or target from
+      # that output, so this file stays valid for the checkers after generate.
+      # Review Tier is a separate workflow and its only graph consumer, so it
+      # still builds its own. Each checker used to spawn `nx graph` itself;
+      # that build is the slow part (ADR 0043 records the lint checker at 19s).
+      # One graph for the three checkers in this job that read it (issue #1061).
+      # A missing or mistyped path fails the checker; it does not rebuild.
+      # The path goes through GITHUB_ENV because job-level `env` cannot read the
+      # `runner` context: `${{ runner.temp }}` there rejects the whole workflow.
+      - name: Build the Nx project graph
+        run: |
+          echo "NX_GRAPH_FILE=$RUNNER_TEMP/nx-graph.json" >> "$GITHUB_ENV"
+          corepack yarn nx graph --file "$RUNNER_TEMP/nx-graph.json"
+
       # Asserts every project Nx can lint is reachable as `lint`, the target the
       # lint job selects. Five projects were outside it until #426.
       - name: Check lint gate coverage
-        run: corepack yarn lint:coverage:check
+        run: corepack yarn lint:coverage:check "$NX_GRAPH_FILE"
 
       - name: Nx graph loader contracts
         run: corepack yarn nx-graph:test
@@ -871,8 +886,10 @@ jobs:
 
       # Compiles each project's production and spec programs. Nothing ran
       # TypeScript in CI before this, so two type errors had reached main.
+      # The graph was built above; this step needs the generated Prisma client,
+      # not a second graph.
       - name: Typecheck all projects
-        run: corepack yarn typecheck:check
+        run: corepack yarn typecheck:check "$NX_GRAPH_FILE"
 
       - name: Check libs markdown allowlist
         run: corepack yarn libs:markdown:check
@@ -915,9 +932,10 @@ jobs:
 
       # Asserts every `nx run <project>:<target>` and `nx <target> <project>` in
       # tracked Markdown resolves in the project graph. DEVELOPMENT.md taught two
-      # targets that never existed until #980. Needs the graph, so CI only.
+      # targets that never existed until #980. Reads the graph built once above,
+      # so CI only — Husky does not run it.
       - name: Check documented Nx targets resolve
-        run: corepack yarn docs:nx-targets:check
+        run: corepack yarn docs:nx-targets:check "$NX_GRAPH_FILE"
 
       - name: Enum fan-out checker contracts
         run: corepack yarn enum:fanout:test

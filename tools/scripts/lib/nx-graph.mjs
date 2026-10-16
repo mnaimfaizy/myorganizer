@@ -5,8 +5,11 @@
 // `nx show project` per project. `nx graph --file` gives that in a single call.
 //
 // The graph path is overridable so a checker can be exercised against a fixture
-// without an Nx workspace. When we generate the graph ourselves the temp
-// directory is ours to remove, on every path — hence the returned `cleanup`.
+// without an Nx workspace. CI's Test job builds one file and passes it to
+// lint coverage, typecheck, and documented Nx targets (issue #1061); omitting
+// the path still generates a graph, which is how a local run and Review Tier
+// work. When the path is omitted the temp directory is removed on every path,
+// including a failed `nx graph` or a file that is not JSON.
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
