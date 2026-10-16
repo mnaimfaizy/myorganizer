@@ -178,6 +178,55 @@ test('a match inside node_modules does not count', () => {
   );
 });
 
+test('discovers and reads an .mjs Tailwind config', () => {
+  withWorkspace(
+    {
+      ...PASSING,
+      'libs/web/other/tailwind.config.mjs':
+        'export default { content: ["./src/**/*.tsx"] };\n',
+    },
+    (r) => {
+      assert.equal(r.status, 1);
+      assert.match(
+        r.stderr,
+        /libs\/web\/other\/tailwind\.config\.mjs: content glob "\.\/src\/\*\*\/\*\.tsx"/,
+      );
+    },
+  );
+});
+
+test('exits 2 on a TypeScript Tailwind config instead of skipping it', () => {
+  withWorkspace(
+    {
+      ...PASSING,
+      'libs/web/other/tailwind.config.ts':
+        'export default { content: ["./src/**/*.tsx"] };\n',
+    },
+    (r) => {
+      assert.equal(r.status, 2);
+      assert.match(
+        r.stderr,
+        /libs\/web\/other\/tailwind\.config\.ts: a TypeScript Tailwind config cannot be evaluated/,
+      );
+    },
+  );
+});
+
+test('discovers a Storybook main file with any JS/TS extension', () => {
+  withWorkspace(
+    {
+      ...PASSING,
+      'libs/web/other/.storybook/main.mts': storybookMain([
+        '../src/**/*.stories.tsx',
+      ]),
+    },
+    (r) => {
+      assert.equal(r.status, 1);
+      assert.match(r.stderr, /libs\/web\/other\/\.storybook\/main\.mts/);
+    },
+  );
+});
+
 test('discovers a second Storybook config without editing the checker', () => {
   withWorkspace(
     {

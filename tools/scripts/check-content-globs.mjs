@@ -36,21 +36,28 @@
 // way too, which is what both configs here rely on (`../../libs/**`).
 //
 // Configs are found by walking `apps/` and `libs/`: any `.storybook/main.*`
-// and any `tailwind.config.*`, so a new Storybook or Tailwind setup is checked
-// without editing this file.
+// and any `tailwind.config.*` with a JavaScript or TypeScript extension
+// (`.js`, `.cjs`, `.mjs`, `.ts`, `.cts`, `.mts`), so a new Storybook or
+// Tailwind setup is checked without editing this file. A Storybook main file
+// is read as text, so every extension is checked. A Tailwind config is
+// evaluated to read `content`: `.js`/`.cjs` through `require`, `.mjs` through
+// `import()`. Plain Node cannot evaluate a TypeScript Tailwind config, so one
+// is found and fails the run with exit 2 rather than being skipped — a config
+// this gate cannot read is a config it cannot vouch for.
 //
 // Exit 0 = every glob matches. Exit 1 = at least one glob matches no file.
 // Exit 2 = the check could not run (no configs found, or a config's globs
-// could not be read).
+// could not be read, including a TypeScript Tailwind config).
 import { readdirSync, readFileSync } from 'node:fs';
 import { glob } from 'node:fs/promises';
 import { createRequire } from 'node:module';
 import { basename, dirname, join, relative } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const ROOTS = ['apps', 'libs'];
 const SKIP_DIRS = new Set(['node_modules', 'dist', '.nx', 'coverage']);
-const STORYBOOK_MAIN = /^main\.(ts|js|mjs|cjs)$/;
-const TAILWIND_CONFIG = /^tailwind\.config\.(js|cjs)$/;
+const STORYBOOK_MAIN = /^main\.[cm]?[jt]s$/;
+const TAILWIND_CONFIG = /^tailwind\.config\.[cm]?[jt]s$/;
 
 /** Every `.storybook/main.*` and `tailwind.config.*` under the roots. */
 export function findConfigs(cwd) {
@@ -147,6 +154,24 @@ export function contentGlobs(config) {
     .filter((glob) => !glob.startsWith('!'));
 }
 
+/**
+ * The evaluated export of a Tailwind config. Throws for a TypeScript config,
+ * which plain Node cannot evaluate.
+ */
+export async function loadTailwindConfig(file) {
+  if (/\.[cm]?ts$/.test(file)) {
+    throw new Error(
+      'a TypeScript Tailwind config cannot be evaluated by this gate;' +
+        ' use .js, .cjs or .mjs',
+    );
+  }
+  if (file.endsWith('.mjs')) {
+    const mod = await import(pathToFileURL(file).href);
+    return mod.default ?? mod;
+  }
+  return createRequire(import.meta.url)(file);
+}
+
 /** The first file `pattern` matches from `cwd`, or null. */
 export async function firstMatch(pattern, cwd) {
   for await (const path of glob(pattern, {
@@ -161,7 +186,6 @@ export async function firstMatch(pattern, cwd) {
 async function main() {
   const cwd = process.cwd();
   const printOnly = process.argv.includes('--print');
-  const require = createRequire(import.meta.url);
 
   const fail = (msg) => {
     console.error(`content-globs: ${msg}`);
@@ -186,7 +210,7 @@ async function main() {
   for (const file of tailwind) {
     let globs;
     try {
-      globs = contentGlobs(require(file));
+      globs = contentGlobs(await loadTailwindConfig(file));
     } catch (err) {
       fail(`${relative(cwd, file)}: ${err.message}`);
     }
