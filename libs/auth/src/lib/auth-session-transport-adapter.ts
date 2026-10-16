@@ -113,8 +113,8 @@ export function createAuthSessionTransportAdapter(
 
         originalRequest._retry = true;
 
-        // The replay sits outside the try so that only a failed *refresh* can
-        // clear the Session. It already behaved that way — `return promise`
+        // The replay sits outside the try so that only a rejected *refresh*
+        // can clear the Session. It already behaved that way — `return promise`
         // inside a try is not awaited there, so the replay's rejection never
         // reached the catch — but that is a subtlety one `await` would undo.
         // Writing `return await instance(...)` here would start signing Users
@@ -133,12 +133,14 @@ export function createAuthSessionTransportAdapter(
           // a burst of 401s ends the Session once.
           const firstToSeeFailure = refreshInFlight !== null;
           refreshInFlight = null;
-          storage.clearSession();
-          // Signalled only for a refusal by the server. A refresh that never
-          // got an answer still clears above, as it always has (#1082), but
-          // it does not announce that the Session ended.
-          if (firstToSeeFailure && isRefreshRejectedByServer(refreshErr)) {
-            sessionEnded?.emit({ reason: 'refresh_rejected' });
+          // Only a refusal by the server ends the Session. A refresh that got
+          // no answer, a 5xx, 408 or 429 keeps it (#1082): the request rejects
+          // with the refresh's own error and the next 401 asks again.
+          if (isRefreshRejectedByServer(refreshErr)) {
+            storage.clearSession();
+            if (firstToSeeFailure) {
+              sessionEnded?.emit({ reason: 'refresh_rejected' });
+            }
           }
           return Promise.reject(refreshErr);
         }

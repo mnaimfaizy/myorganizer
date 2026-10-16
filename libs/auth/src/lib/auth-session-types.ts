@@ -25,9 +25,16 @@ export type SessionSnapshot =
   | { status: 'restorable' }
   | { status: 'guest' };
 
+/**
+ * - `session_cleared`: nothing to restore, or the server refused the refresh;
+ *   storage is cleared.
+ * - `not_restored`: the refresh could not be completed (no response, 5xx, 408,
+ *   429). The Restorable Session is kept so a later attempt can restore it.
+ */
 export type RestoreSessionOutcome =
   | { kind: 'authenticated' }
-  | { kind: 'session_cleared' };
+  | { kind: 'session_cleared' }
+  | { kind: 'not_restored' };
 
 export type SignOutOutcome = { kind: 'signed_out' };
 

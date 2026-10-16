@@ -12,7 +12,7 @@ Frontend authentication utilities, token storage, Axios setup, refresh-on-401, a
 
 - Preserve access-token storage keys and refresh-cookie behavior.
 - Keep requests credential-aware where refresh cookies are required.
-- Clear session state when refresh fails.
+- Clear session state only when the server refuses a refresh (`isRefreshRejectedByServer`); a refresh that could not be completed keeps it.
 
 ## Portable Entry Point
 

@@ -12,7 +12,7 @@
 - Access token goes to `localStorage` only when remember-me is enabled.
 - Otherwise the access token goes to `sessionStorage`.
 - Non-auth requests use `withCredentials: true` so refresh cookies flow correctly.
-- Refresh failure clears session state.
+- A refresh the server refused clears session state; one that could not be completed (no response, 5xx, 408, 429) keeps it.
 - Email verification gating and resend cooldown behavior stay intact unless the feature is explicitly being redesigned.
 
 ## Change Workflow

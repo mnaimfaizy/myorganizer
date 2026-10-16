@@ -1,8 +1,8 @@
 /**
  * Why a signed-in Session ended without this window asking for it.
  *
- * - `refresh_rejected`: the server answered a token refresh with HTTP 401 or
- *   403, so the Session cannot be continued.
+ * - `refresh_rejected`: the server refused a token refresh (see
+ *   {@link isRefreshRejectedByServer}), so the Session cannot be continued.
  * - `signed_out_elsewhere`: another window of this browser signed out and
  *   removed the user the windows share.
  *
@@ -49,8 +49,21 @@ export function createSessionEndedSignal(): SessionEndedSignal {
 }
 
 /**
- * Whether a failed token refresh was a refusal by the server (HTTP 401 or
- * 403) rather than a failure to reach it.
+ * Client-error statuses that are not a ruling on the Refresh Token: the server
+ * gave up waiting for the request (408) or is rate-limiting this client (429).
+ * Both pass on their own.
+ */
+const TRANSIENT_CLIENT_ERROR_STATUSES: readonly number[] = [408, 429];
+
+/**
+ * Whether a failed token refresh was a refusal by the server rather than a
+ * refresh that could not be completed.
+ *
+ * A refusal is any 4xx other than 408 and 429, mirroring mobile's status rule
+ * (`classifyRefreshFailure`): `/auth/refresh` answers a missing, invalid or
+ * retired Refresh Token with 401, an Unverified User with 403 and an unusable
+ * body with 422, and none of those gets a different answer on a second ask.
+ * No response at all, a 5xx, 408 or 429 says nothing about the Session (#1082).
  *
  * Reads the status structurally instead of through `axios.isAxiosError` so a
  * network failure — an error with no `response` at all — can never be taken
@@ -61,5 +74,10 @@ export function isRefreshRejectedByServer(error: unknown): boolean {
   const response = (error as { response?: unknown }).response;
   if (typeof response !== 'object' || response === null) return false;
   const status = (response as { status?: unknown }).status;
-  return status === 401 || status === 403;
+  return (
+    typeof status === 'number' &&
+    status >= 400 &&
+    status < 500 &&
+    !TRANSIENT_CLIENT_ERROR_STATUSES.includes(status)
+  );
 }
