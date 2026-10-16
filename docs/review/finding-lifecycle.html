@@ -1071,7 +1071,7 @@
               <circle class="tipdot" cx="612" cy="608" r="4" />
               <text class="title" x="342" y="626">Concurrency</text>
               <text x="342" y="646">one group per PR, supersede cancels</text>
-              <text class="src" x="342" y="664">ci.yml:16</text>
+              <text class="src" x="342" y="664">ci.yml:18</text>
             </g>
             <path class="flow ci" d="M 500 600 C 560 500, 620 400, 700 340" />
 
@@ -1188,7 +1188,7 @@
         <dd id="note-ci-concurrency">
           One concurrency group per Pull Request, so a superseded run is
           cancelled &mdash; the existing workflow already does this at
-          <code>ci.yml:16</code>.
+          <code>ci.yml:18</code>.
         </dd>
         <dt>checks</dt>
         <dd id="note-checks">
@@ -1199,9 +1199,9 @@
           <code>Authoritative Lockfile Policy</code>, <code>Secure Install
           Review</code>, <code>Prepare Dependency Cache</code>,
           <code>Setup Affected Context</code>, <code>Lint</code>,
-          <code>Test</code> (<code>ci.yml:23, :142, :411, :543, :621, :673</code>). The
+          <code>Test</code> (<code>ci.yml:25, :144, :413, :545, :623, :675</code>). The
           <code>Test</code> job sets <code>DATABASE_URL</code>
-          (<code>ci.yml:699</code>) and starts a throwaway Postgres service for
+          (<code>ci.yml:701</code>) and starts a throwaway Postgres service for
           migrate deploy/diff; affected Jest still runs against mocks without
           needing that service &mdash; which is why the Reviewer's
           <code>executed</code> evidence is feasible in CI, in the same
@@ -1811,35 +1811,35 @@
         "file": "AGENTS.md",
         "start": "Format: `<type>/<issue-number>-<short-slug>`. The issue number comes **first**, right after the"
       },
-      "ci.yml:16": {
+      "ci.yml:18": {
         "file": ".github/workflows/ci.yml",
         "start": "cancel-in-progress: true"
       },
-      "ci.yml:23": {
+      "ci.yml:25": {
         "file": ".github/workflows/ci.yml",
         "start": "name: Authoritative Lockfile Policy"
       },
-      "ci.yml:142": {
+      "ci.yml:144": {
         "file": ".github/workflows/ci.yml",
         "start": "name: Secure Install Review"
       },
-      "ci.yml:411": {
+      "ci.yml:413": {
         "file": ".github/workflows/ci.yml",
         "start": "name: Prepare Dependency Cache"
       },
-      "ci.yml:543": {
+      "ci.yml:545": {
         "file": ".github/workflows/ci.yml",
         "start": "name: Setup Affected Context"
       },
-      "ci.yml:621": {
+      "ci.yml:623": {
         "file": ".github/workflows/ci.yml",
         "start": "name: Lint"
       },
-      "ci.yml:673": {
+      "ci.yml:675": {
         "file": ".github/workflows/ci.yml",
         "start": "name: Test"
       },
-      "ci.yml:699": {
+      "ci.yml:701": {
         "file": ".github/workflows/ci.yml",
         "start": "DATABASE_URL: postgresql://postgres@localhost:5432/myorganiser"
       },

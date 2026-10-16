@@ -1,5 +1,7 @@
 name: Monthly Agent Model Audit
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 on:
   schedule:
     - cron: '17 8 1 * *'
@@ -16,7 +18,7 @@ concurrency:
 jobs:
   audit:
     name: Check model assignments and catalogs
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:

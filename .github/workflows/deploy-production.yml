@@ -1,5 +1,7 @@
 name: Deploy Production (manual)
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 on:
   workflow_dispatch:
     inputs:
@@ -25,7 +27,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
 
     outputs:
@@ -88,7 +90,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') }}
     name: Prepare Dependency Cache
     needs: validate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -123,7 +125,7 @@ jobs:
   deploy-backend:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') && !inputs.apply_only }}
     needs: [validate, prepare-dependencies]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: production
 
@@ -176,7 +178,7 @@ jobs:
   host-apply:
     needs: [validate, deploy-backend]
     if: ${{ always() && needs.validate.result == 'success' && startsWith(github.ref, 'refs/heads/release/') && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: production
 
@@ -288,7 +290,7 @@ jobs:
   deploy-frontend:
     if: ${{ startsWith(github.ref, 'refs/heads/release/') && !inputs.apply_only }}
     needs: [validate, prepare-dependencies, deploy-backend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     environment: production
 

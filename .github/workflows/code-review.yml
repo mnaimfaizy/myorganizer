@@ -1,5 +1,7 @@
 name: Code Review
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 # The `/code-review` skill, run in CI (ADR 0070, ADR 0071). The same skill,
 # the same JSON contract, the same validator and renderer as the terminal;
 # only the plumbing differs:
@@ -125,7 +127,7 @@ jobs:
   # job below sees one shape regardless of how it was asked for.
   context:
     name: Review Context
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # Two filters, both cheap enough to run before a runner is claimed: a
     # comment starts a run only when it is on a pull request and is the
@@ -228,7 +230,7 @@ jobs:
 
   review:
     name: Agent Review Ran
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     needs: context
     if: needs.context.outputs.run == 'true'
@@ -569,7 +571,7 @@ jobs:
   # clean run were the same green tick.
   verdict:
     name: Agent Verdict
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [context, review]
     if: needs.review.result == 'success' && needs.review.outputs.skip != 'true'
@@ -601,7 +603,7 @@ jobs:
   # barred, and the reply fallback stands.
   publish:
     name: Publish Review
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     needs: [context, review]
     # `cancelled` belongs with `skipped`, not with `failure`: a reviewer that was

@@ -1,5 +1,7 @@
 name: CI
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 on:
   pull_request:
     branches:
@@ -21,7 +23,7 @@ permissions:
 jobs:
   authoritative-lockfile-policy:
     name: Authoritative Lockfile Policy
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Skip outside pull requests
@@ -77,7 +79,7 @@ jobs:
   dependency-review:
     name: Dependency Review
     if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
 
     steps:
       - name: Check dependency review API availability
@@ -140,7 +142,7 @@ jobs:
 
   secure-install-review:
     name: Secure Install Review
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: authoritative-lockfile-policy
 
     # Read by the two Report Audit jobs below. A failed job still publishes its
@@ -230,7 +232,7 @@ jobs:
   # neither report job runs.
   report-audit-failure:
     name: Report Audit Failure
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: secure-install-review
     if: ${{ failure() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.secure-install-review.outputs.audit_outcome == 'failure' }}
 
@@ -322,7 +324,7 @@ jobs:
   # label, commented on and left open when it carries one.
   report-audit-success:
     name: Report Audit Success
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: secure-install-review
     if: ${{ success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && needs.secure-install-review.outputs.audit_outcome == 'success' }}
 
@@ -409,7 +411,7 @@ jobs:
 
   prepare-dependencies:
     name: Prepare Dependency Cache
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: secure-install-review
 
@@ -444,7 +446,7 @@ jobs:
 
   chromatic:
     name: Publish to Chromatic
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: prepare-dependencies
 
@@ -541,7 +543,7 @@ jobs:
 
   setup:
     name: Setup Affected Context
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: prepare-dependencies
 
@@ -619,7 +621,7 @@ jobs:
 
   lint:
     name: Lint
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: setup
 
@@ -671,7 +673,7 @@ jobs:
 
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     needs: setup
 
@@ -1144,9 +1146,15 @@ jobs:
       - name: Test affected projects
         run: corepack yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
 
+      - name: Workflow runner image contracts
+        run: corepack yarn runner-image:test
+
+      - name: Check workflow jobs pin ubuntu-24.04
+        run: corepack yarn runner-image:check
+
   e2e:
     name: E2E Chromium (shard ${{ matrix.shard }}/3)
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     # Pull requests only: the same commits ran this seconds earlier on the PR,
     # and the nightly workflow covers `main`. See ADR 0050.
@@ -1230,7 +1238,7 @@ jobs:
 
   e2e-report:
     name: E2E Report
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     if: ${{ !cancelled() && needs.e2e.result != 'skipped' }}
     needs:
@@ -1277,7 +1285,7 @@ jobs:
 
   build-backend:
     name: Build Backend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}
     needs:
@@ -1323,7 +1331,7 @@ jobs:
 
   build-frontend:
     name: Build Frontend
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'web') }}
     needs:
@@ -1367,7 +1375,7 @@ jobs:
   # the shard times out. This job runs only the live logout spec.
   e2e-live-logout:
     name: E2E live logout
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'web-e2e') }}
     needs:
