@@ -27,6 +27,7 @@ The on-demand command catalogue for the root [Agent Guide](../../AGENTS.md#comma
 
 - Design token drift check: `yarn design-tokens:check` (rebuilds `libs/design-tokens/src/generated` from `tokens.json` and asserts the tree did not move). See [ADR 0098](../adr/0098-a-covering-gate-is-part-of-the-site-not-the-answer.md).
 - Tailwind themed-utility check: `yarn tailwind:classes:check` (compiles the real app stylesheet and fails any colour, spacing, or radius class that resolves to no CSS; `--print` lists what was scanned). See [ADR 0065](../adr/0065-tokens-json-is-the-single-source-of-web-colour.md).
+- Storybook and Tailwind glob check: `yarn content-globs:check` (asserts every `stories` glob in a `.storybook/main.*` and every `content` glob in a `tailwind.config.*` under `apps/` and `libs/` matches at least one file, naming the glob and its config; it does not assert that every story file is reached, skips negated content globs, and does not read CSS `@source` directives; `--print` lists each glob with its first match; reached by `yarn gates:run`; `yarn content-globs:test` covers it).
 
 ## House Explainer Pages
 

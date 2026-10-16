@@ -190,6 +190,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'content-globs:check',
+    npmScript: 'content-globs:check',
+    script: 'tools/scripts/check-content-globs.mjs',
+    args: [],
+  },
+  {
     id: 'mobile-platform:check',
     npmScript: 'mobile-platform:check',
     script: 'tools/scripts/check-mobile-platform.mjs',
