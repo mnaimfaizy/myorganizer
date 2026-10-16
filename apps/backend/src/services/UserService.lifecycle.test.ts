@@ -707,5 +707,33 @@ describe('UserService lifecycle', () => {
       await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
       expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
     });
+
+    test('resolves null without looking up a User for a validly signed token whose payload is a string', async () => {
+      const refreshToken = jwt.sign('user-1', refreshSecret);
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    test('resolves null without looking up a User for a validly signed token with no userId claim', async () => {
+      const refreshToken = jwt.sign({ sub: 'user-1' }, refreshSecret);
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    test('resolves null without looking up a User for a validly signed token whose userId is not a string', async () => {
+      const refreshToken = jwt.sign({ userId: 42 }, refreshSecret);
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    test('resolves null without looking up a User for a validly signed token whose userId is an empty string', async () => {
+      const refreshToken = jwt.sign({ userId: '' }, refreshSecret);
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
   });
 });

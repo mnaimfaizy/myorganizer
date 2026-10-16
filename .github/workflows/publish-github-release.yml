@@ -1,5 +1,7 @@
 name: Publish GitHub Release
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 on:
   push:
     tags:
@@ -20,7 +22,7 @@ concurrency:
 
 jobs:
   publish:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:

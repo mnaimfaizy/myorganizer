@@ -1,5 +1,7 @@
 name: Nightly E2E
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 # The rot detector (ADR 0050). The blocking lane in ci.yml runs Chromium on
 # affected pull requests; this runs every browser against `main` where nobody
 # is waiting, so it can afford to be strict.
@@ -22,7 +24,7 @@ permissions:
 jobs:
   e2e:
     name: E2E ${{ matrix.browser }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
 
     strategy:
@@ -105,7 +107,7 @@ jobs:
   # nightly would then have to interpret.
   report-failure:
     name: Report Failure
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: e2e
     if: ${{ failure() && github.event_name == 'schedule' }}
 
@@ -204,7 +206,7 @@ jobs:
   # tools/scripts/lib/nightly-e2e-rot-issue.mjs.
   report-success:
     name: Report Success
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: e2e
     if: ${{ success() && github.event_name == 'schedule' }}
 

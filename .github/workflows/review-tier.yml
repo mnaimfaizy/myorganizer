@@ -1,5 +1,7 @@
 name: Review Tier
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 # Computes the Review Tier of a Pull Request from its diff (ADR 0070). The job
 # output is the truth; the label the second step applies is a display of it,
 # and downstream jobs read the output, never the label (item 3).
@@ -19,7 +21,7 @@ concurrency:
 jobs:
   classify:
     name: Review Tier
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
 
     outputs:

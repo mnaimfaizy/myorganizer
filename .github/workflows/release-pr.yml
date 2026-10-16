@@ -1,5 +1,7 @@
 name: Release PR (auto)
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 on:
   push:
     branches:
@@ -16,7 +18,7 @@ concurrency:
 
 jobs:
   create-pr:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:

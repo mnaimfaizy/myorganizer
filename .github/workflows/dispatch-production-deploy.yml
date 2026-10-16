@@ -1,5 +1,7 @@
 name: Dispatch Production Deploy (latest release)
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 on:
   workflow_dispatch:
   create:
@@ -15,7 +17,7 @@ concurrency:
 jobs:
   dispatch:
     if: ${{ github.event_name == 'workflow_dispatch' || (github.event_name == 'create' && github.event.ref_type == 'branch' && startsWith(github.event.ref, 'release/v')) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
 
     steps:
