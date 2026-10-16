@@ -1,3 +1,12 @@
+// ts-node compiles this file against the nearest tsconfig, which inherits
+// `types: []` from `tsconfig.mobile.json` (ADR 0120). Nx runs Jest with this
+// directory as its cwd, so that is the config it finds. The directive admits
+// Node types into that compilation. The native programs exclude this file;
+// `tsconfig.spec.json` already lists `node` because Jest runs on Node. Putting
+// `node` on a program that runs on Hermes would admit `process` there.
+// `apps/mobile/jest.config.ts` carries the same directive.
+/// <reference types="node" />
+
 // Jest sets NODE_ENV only when it is not already set, and Nx loads the
 // workspace dotenv file into every task environment. This project sets the
 // React Native preset and so does not inherit the workspace
