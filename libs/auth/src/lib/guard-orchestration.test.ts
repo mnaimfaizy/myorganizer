@@ -75,6 +75,17 @@ describe('guard-orchestration', () => {
       expect(result).toEqual({ kind: 'show_guest' });
     });
 
+    it('returns show_guest when the restore could not be completed', async () => {
+      mockSession.getSnapshot.mockReturnValue({ status: 'restorable' });
+      mockSession.restoreSession.mockResolvedValue({
+        kind: 'not_restored',
+      });
+
+      const result = await resolveInboundGuard(mockSession);
+
+      expect(result).toEqual({ kind: 'show_guest' });
+    });
+
     it('skips restore when authenticated snapshot found', async () => {
       mockSession.getSnapshot.mockReturnValue({ status: 'authenticated' });
 
@@ -127,6 +138,17 @@ describe('guard-orchestration', () => {
       mockSession.getSnapshot.mockReturnValue({ status: 'restorable' });
       mockSession.restoreSession.mockResolvedValue({
         kind: 'session_cleared',
+      });
+
+      const result = await resolveOutboundGuard(mockSession);
+
+      expect(result).toEqual({ kind: 'redirect_login' });
+    });
+
+    it('returns redirect_login when the restore could not be completed', async () => {
+      mockSession.getSnapshot.mockReturnValue({ status: 'restorable' });
+      mockSession.restoreSession.mockResolvedValue({
+        kind: 'not_restored',
       });
 
       const result = await resolveOutboundGuard(mockSession);
