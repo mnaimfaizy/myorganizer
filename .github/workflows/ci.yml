@@ -925,6 +925,9 @@ jobs:
       - name: Tailwind class checker contracts
         run: corepack yarn tailwind:classes:test
 
+      - name: Content glob checker contracts
+        run: corepack yarn content-globs:test
+
       - name: Mobile platform checker contracts
         run: corepack yarn mobile-platform:test
 
@@ -1071,6 +1074,11 @@ jobs:
       # utility that paints nothing ships without a build error (issue #632).
       - name: Check Tailwind colour utilities resolve
         run: corepack yarn tailwind:classes:check
+
+      # A Storybook stories glob or Tailwind content glob that matches nothing
+      # drops stories or classes without an error (issue #898).
+      - name: Check Storybook and Tailwind globs match files
+        run: corepack yarn content-globs:check
 
       # A bare `react-native/…` subpath import is deprecated at 0.80 with
       # removal planned; browser globals are scanned in all mobile source, and
