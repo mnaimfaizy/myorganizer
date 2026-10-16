@@ -157,10 +157,8 @@ export function describeEnrolmentFailure(
  * What to show the User about an attempt that did not unlock, or `null` when
  * there is nothing to say.
  *
- * A cancellation is `null` on purpose and is the whole of ADR 0108 decision
- * 2's "the screen waits": a User who dismissed the prompt did so deliberately
- * and is already looking at the passphrase field. Telling them they cancelled
- * is an error message for a non-error.
+ * A cancellation is `null` here because it is not a notice: it gets the quiet
+ * line under the hero button instead (see `biometricAttemptFeedback`).
  */
 export function describeBiometricAttempt(
   attempt: BiometricUnlockAttempt,
@@ -174,4 +172,29 @@ export function describeBiometricAttempt(
     case 'failed':
       return BIOMETRIC_FAILED_MESSAGE;
   }
+}
+
+/** What the Unlock screen shows after a biometric attempt. */
+export interface BiometricAttemptFeedback {
+  /** Whether the quiet line under the hero button shows (Unlock · Cancelled). */
+  cancelled: boolean;
+  /** The notice for an attempt that went wrong, or `null`. */
+  notice: string | null;
+}
+
+/**
+ * What the Unlock screen shows after `attempt`, however the prompt was raised.
+ *
+ * A cancellation gets the quiet line whether the User pressed the button or
+ * dismissed the prompt raised automatically on arrival (#950). Either way the
+ * line names the method and points at the passphrase, so a User who dismissed
+ * a prompt they did not ask for is told what just happened and what is left.
+ */
+export function biometricAttemptFeedback(
+  attempt: BiometricUnlockAttempt,
+): BiometricAttemptFeedback {
+  return {
+    cancelled: attempt.outcome === 'cancelled',
+    notice: describeBiometricAttempt(attempt),
+  };
 }

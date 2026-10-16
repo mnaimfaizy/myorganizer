@@ -16,8 +16,8 @@ import {
   useTheme,
 } from '@myorganiser/mobile/ui';
 import {
+  biometricAttemptFeedback,
   biometricCopyFor,
-  describeBiometricAttempt,
   type BiometricMethodCopy,
 } from './biometricUnlockMessages';
 import {
@@ -105,8 +105,8 @@ function noticeFor(failure: UnlockFailure): UnlockNotice | null {
  * Biometric Unlock is additive and never a gate (ADR 0108 decision 2): where
  * it is on, the prompt is raised once the moment this screen appears — on a
  * cold start and again after an Auto-Lock — and a User who dismisses it is
- * left on exactly the screen they would have seen otherwise, with both typed
- * secrets in front of them and the button still there to try again.
+ * left with both typed secrets in front of them, the button still there to try
+ * again, and a quiet line under it saying the check was cancelled.
  */
 export function UnlockScreen(): React.JSX.Element {
   const { unlock, unlockWithRecoveryKey, biometric, lockReason } =
@@ -145,31 +145,24 @@ export function UnlockScreen(): React.JSX.Element {
    * deriving state shown here would be the interface claiming work that
    * never happened.
    *
-   * A cancellation says so only when the User pressed the button: the prompt
-   * raised on arrival that they dismissed was their answer, and the screen
-   * simply waits (Entry · Locked, step 4). One they asked for and then
-   * dismissed gets the quiet line under the button (Unlock · Cancelled).
+   * A cancellation gets the quiet line under the button (Unlock · Cancelled)
+   * whether the User pressed it or dismissed the prompt raised on arrival
+   * (#950).
    */
-  const attemptBiometricUnlock = useCallback(
-    async (askedByUser: boolean): Promise<void> => {
-      if (checkingBiometrics.current) return;
-      checkingBiometrics.current = true;
-      setBioCancelled(false);
-      setBioNotice(null);
-      setNotice(null);
-      try {
-        const attempt = await biometric.unlock();
-        if (attempt.outcome === 'cancelled') {
-          setBioCancelled(askedByUser);
-          return;
-        }
-        setBioNotice(describeBiometricAttempt(attempt));
-      } finally {
-        checkingBiometrics.current = false;
-      }
-    },
-    [biometric],
-  );
+  const attemptBiometricUnlock = useCallback(async (): Promise<void> => {
+    if (checkingBiometrics.current) return;
+    checkingBiometrics.current = true;
+    setBioCancelled(false);
+    setBioNotice(null);
+    setNotice(null);
+    try {
+      const feedback = biometricAttemptFeedback(await biometric.unlock());
+      setBioCancelled(feedback.cancelled);
+      setBioNotice(feedback.notice);
+    } finally {
+      checkingBiometrics.current = false;
+    }
+  }, [biometric]);
 
   // Once per appearance of this screen, and only once the keystore has
   // answered and there is a connection to unlock over. A ref rather than
@@ -180,7 +173,7 @@ export function UnlockScreen(): React.JSX.Element {
     if (promptRaised.current) return;
     if (biometric.state !== 'on' || offline) return;
     promptRaised.current = true;
-    void attemptBiometricUnlock(false);
+    void attemptBiometricUnlock();
   }, [biometric.state, offline, attemptBiometricUnlock]);
 
   /**
@@ -335,7 +328,7 @@ export function UnlockScreen(): React.JSX.Element {
         biometricCopy={biometricCopyFor(biometric.method)}
         biometricCancelled={bioCancelled}
         biometricNotice={bioNotice}
-        onBiometric={() => void attemptBiometricUnlock(true)}
+        onBiometric={() => void attemptBiometricUnlock()}
         onSubmit={() => void handlePassphraseSubmit()}
         onUseRecoveryKey={() => {
           clearFeedback();

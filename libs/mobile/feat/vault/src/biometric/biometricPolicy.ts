@@ -47,8 +47,8 @@ export type BiometricUnlockAttempt =
   | { outcome: 'unlocked'; masterKey: Uint8Array }
   /**
    * The User dismissed the prompt. The stored key is untouched, the Unlock
-   * screen waits, and the passphrase and the Recovery Key are still there
-   * (ADR 0108 decision 2).
+   * screen says the check was cancelled, and the passphrase and the Recovery
+   * Key are still there (ADR 0108 decision 2).
    */
   | { outcome: 'cancelled' }
   /**
