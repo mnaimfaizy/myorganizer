@@ -189,12 +189,18 @@ export interface BiometricAttemptFeedback {
  * dismissed the prompt raised automatically on arrival (#950). Either way the
  * line names the method and points at the passphrase, so a User who dismissed
  * a prompt they did not ask for is told what just happened and what is left.
+ *
+ * `leftApp` is whether the app went to the background while the prompt was
+ * up. The OS takes the prompt down then and reports it as a cancellation, but
+ * the User cancelled nothing, so the screen says nothing and simply waits
+ * with the button there to try again.
  */
 export function biometricAttemptFeedback(
   attempt: BiometricUnlockAttempt,
+  leftApp: boolean,
 ): BiometricAttemptFeedback {
   return {
-    cancelled: attempt.outcome === 'cancelled',
+    cancelled: attempt.outcome === 'cancelled' && !leftApp,
     notice: describeBiometricAttempt(attempt),
   };
 }

@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Linking, Platform, StyleSheet, View } from 'react-native';
+import { AppState, Linking, Platform, StyleSheet, View } from 'react-native';
 import { describeAutoLock, useAutoLockDelay } from '@myorganiser/mobile/core';
 import { useAuth, WEB_APP_URL } from '@myorganiser/mobile/feat-auth';
 import { useVaultSession } from '@myorganiser/mobile/feat-vault';
@@ -147,7 +147,10 @@ export function UnlockScreen(): React.JSX.Element {
    *
    * A cancellation gets the quiet line under the button (Unlock · Cancelled)
    * whether the User pressed it or dismissed the prompt raised on arrival
-   * (#950).
+   * (#950) — but not when the app went to the background while the prompt
+   * was up, because then the OS took it down and the User cancelled nothing.
+   * The subscription is read directly rather than through `useAppState`: an
+   * effect runs after a render, and the attempt can settle before one.
    */
   const attemptBiometricUnlock = useCallback(async (): Promise<void> => {
     if (checkingBiometrics.current) return;
@@ -155,11 +158,20 @@ export function UnlockScreen(): React.JSX.Element {
     setBioCancelled(false);
     setBioNotice(null);
     setNotice(null);
+    let leftApp = AppState.currentState === 'background';
+    const subscription = AppState.addEventListener('change', (next) => {
+      if (next === 'background') leftApp = true;
+    });
     try {
-      const feedback = biometricAttemptFeedback(await biometric.unlock());
+      const attempt = await biometric.unlock();
+      const feedback = biometricAttemptFeedback(
+        attempt,
+        leftApp || AppState.currentState === 'background',
+      );
       setBioCancelled(feedback.cancelled);
       setBioNotice(feedback.notice);
     } finally {
+      subscription.remove();
       checkingBiometrics.current = false;
     }
   }, [biometric]);
