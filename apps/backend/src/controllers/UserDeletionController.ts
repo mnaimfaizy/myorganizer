@@ -44,10 +44,9 @@ export class UserDeletionController extends Controller {
     @Body() requestBody: UserDeletionBody,
     @Res() respond: TsoaResponse<403 | 409, UserDeletionRefusal>,
   ): Promise<void> {
-    // Validated here rather than with @ValidateBody: that decorator answers an
-    // invalid body without throwing, and a request that deleted nothing must
-    // never look like a success. ValidateError is answered with 422 by the
-    // app's tsoa error handler.
+    // Validated here rather than with @ValidateBody so password + DELETE
+    // confirmation stay next to deleteUser refusals. ValidateError is answered
+    // with 422 by the app's tsoa error handler.
     const parsed = UserDeletionSchema.safeParse(requestBody);
     if (!parsed.success) {
       throw new ValidateError(

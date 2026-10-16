@@ -1,8 +1,7 @@
 // Function parameter Decorator Factory
 
-import express from 'express';
+import { ValidateError } from 'tsoa';
 import { ZodError, ZodSchema } from 'zod';
-import { BaseError } from '../helpers/BaseError';
 
 export type ZodIssueDetails = Record<
   string,
@@ -48,23 +47,25 @@ export function ValidateBody(validationSchema: ZodSchema) {
       const bodyCandidates: number[] =
         Reflect.getOwnMetadata('Body', target, propertyKey) || [];
       if (bodyCandidates.length === 0) {
-        const result = BaseError.createInvalidArgumentError({
-          message: 'missing body parameter',
-          value: { parameter: 'missing_parameter' },
-        } as unknown as Record<string, { message: string; value: string }>);
-        express.response.status(422);
-        return result;
+        throw new ValidateError(
+          {
+            missing_parameter: {
+              message: 'missing body parameter',
+              value: 'missing_parameter',
+            },
+          },
+          'Validation Failed',
+        );
       }
       const bodyIndex = bodyCandidates[0] as number;
       // we've found the body in the list of parameters
       // now we check if its payload is valid against the passed Zod schema
       const check = await validationSchema.safeParseAsync(args[bodyIndex]);
       if (!check.success) {
-        const validationErrors = BaseError.createInvalidArgumentError(
+        throw new ValidateError(
           zodIssuesToDetails(check.error),
+          'Validation Failed',
         );
-        express.response.status(422);
-        return validationErrors;
       }
       // the payload checkout!
       // Call the original method with the arguments
