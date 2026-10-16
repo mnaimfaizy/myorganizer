@@ -631,7 +631,7 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       expect(res.body).toEqual({ message: 'Unauthorized' });
     });
 
-    test('returns 404 and issues no tokens when the refresh token belongs to a deleted User', async () => {
+    test('returns 401 when the service resolves null for a refresh token belonging to a deleted User', async () => {
       const userService = require('../services/UserService').default;
       const apiTokens = require('../helpers/ApiTokens').default;
 
@@ -641,18 +641,56 @@ describe('Auth HTTP routes (HTTP integration)', () => {
         .post('/auth/refresh')
         .set('Cookie', ['refresh_cookie=refresh-token-1']);
 
-      expect(res.status).toBe(404);
-      expect(res.body).toEqual({ message: 'User not found' });
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Invalid or expired refresh token' });
       expect(res.body.token).toBeUndefined();
       expect(apiTokens.createTokens).not.toHaveBeenCalled();
 
       const setCookie = asSetCookieHeaders(res.headers['set-cookie']);
       expect(
-        setCookie.some(
-          (cookie) =>
-            cookie.startsWith('refresh_cookie=') &&
-            !cookie.startsWith('refresh_cookie=;'),
-        ),
+        setCookie.some((cookie) => cookie.startsWith('refresh_cookie=')),
+      ).toBe(false);
+    });
+
+    test('returns 401 when the service resolves null for a refresh token sent in the body', async () => {
+      const userService = require('../services/UserService').default;
+      const apiTokens = require('../helpers/ApiTokens').default;
+
+      userService.refreshToken.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .send({ refresh_token: 'expired-token-1' });
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Invalid or expired refresh token' });
+      expect(userService.refreshToken).toHaveBeenCalledWith('expired-token-1');
+      expect(apiTokens.createTokens).not.toHaveBeenCalled();
+
+      const setCookie = asSetCookieHeaders(res.headers['set-cookie']);
+      expect(
+        setCookie.some((cookie) => cookie.startsWith('refresh_cookie=')),
+      ).toBe(false);
+    });
+
+    test('returns 401 when the service resolves null for a malformed refresh cookie', async () => {
+      const userService = require('../services/UserService').default;
+      const apiTokens = require('../helpers/ApiTokens').default;
+
+      userService.refreshToken.mockResolvedValueOnce(null);
+
+      const res = await request(app)
+        .post('/auth/refresh')
+        .set('Cookie', ['refresh_cookie=not-a-jwt']);
+
+      expect(res.status).toBe(401);
+      expect(res.body).toEqual({ message: 'Invalid or expired refresh token' });
+      expect(userService.refreshToken).toHaveBeenCalledWith('not-a-jwt');
+      expect(apiTokens.createTokens).not.toHaveBeenCalled();
+
+      const setCookie = asSetCookieHeaders(res.headers['set-cookie']);
+      expect(
+        setCookie.some((cookie) => cookie.startsWith('refresh_cookie=')),
       ).toBe(false);
     });
   });

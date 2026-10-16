@@ -201,14 +201,12 @@ export class AuthController extends Controller {
   @Post('/refresh')
   @Response(401, 'Unauthorized')
   @Response(403, 'Email not verified')
-  @Response(404, 'User not found')
   @Response<ValidateErrorJSON>(422, 'Validation Failed')
   @ValidateBody(refreshTokenSchema)
   async refreshToken(
     @Request() req: ExRequest,
     @Res() unauthorized: TsoaResponse<401, { message: string }>,
     @Res() forbidden: TsoaResponse<403, { message: string }>,
-    @Res() notFound: TsoaResponse<404, { message: string }>,
     @Body() requestBody?: RefreshTokenBody,
   ): Promise<{
     token: string;
@@ -224,7 +222,7 @@ export class AuthController extends Controller {
 
     const user = await userService.refreshToken(refresh_token);
     if (user instanceof Error || !user) {
-      return notFound(404, { message: 'User not found' });
+      return unauthorized(401, { message: 'Invalid or expired refresh token' });
     }
 
     if ((user as { disabled?: boolean }).disabled) {

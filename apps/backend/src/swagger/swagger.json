@@ -3567,24 +3567,6 @@
 							}
 						}
 					},
-					"404": {
-						"description": "",
-						"content": {
-							"application/json": {
-								"schema": {
-									"properties": {
-										"message": {
-											"type": "string"
-										}
-									},
-									"required": [
-										"message"
-									],
-									"type": "object"
-								}
-							}
-						}
-					},
 					"422": {
 						"description": "Validation Failed",
 						"content": {
