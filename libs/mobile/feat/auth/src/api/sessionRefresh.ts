@@ -95,9 +95,9 @@ export class MalformedRefreshResponseError extends Error {
  * an Axios error — and never its message.
  *
  * Every 4xx other than 408, 426 and 429 is `rejected`, not only 401 and 403:
- * `/auth/refresh` answers an expired or undecodable Refresh Token with 404
- * and an unusable body with 422, and none of those gets a different answer on
- * a second ask.
+ * `/auth/refresh` answers an unusable body with 422, and an older server
+ * answered an expired or undecodable Refresh Token with 404; none of those
+ * gets a different answer on a second ask.
  */
 export function classifyRefreshFailure(error: unknown): RefreshFailureKind {
   if (error instanceof NoRefreshTokenError) {

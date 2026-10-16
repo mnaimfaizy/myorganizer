@@ -1,4 +1,11 @@
-import { beforeEach, describe, expect, jest, test } from '@jest/globals';
+import {
+  afterEach,
+  beforeEach,
+  describe,
+  expect,
+  jest,
+  test,
+} from '@jest/globals';
 import jwt from 'jsonwebtoken';
 
 import {
@@ -633,30 +640,72 @@ describe('UserService lifecycle', () => {
   });
 
   describe('refreshToken', () => {
-    test('resolves null for a correctly signed refresh token whose User row is gone', async () => {
-      const previousSecret = process.env.REFRESH_JWT_SECRET;
-      process.env.REFRESH_JWT_SECRET = 'refresh-key-01';
+    const refreshSecret = 'refresh-key-01';
+    let previousSecret: string | undefined;
+    let errorSpy: jest.SpiedFunction<typeof console.error>;
 
-      try {
-        const refreshToken = jwt.sign(
-          { userId: 'user-deleted-1' },
-          'refresh-key-01',
-        );
-        mockPrisma.user.findUnique.mockResolvedValue(null);
+    beforeEach(() => {
+      previousSecret = process.env.REFRESH_JWT_SECRET;
+      process.env.REFRESH_JWT_SECRET = refreshSecret;
+      errorSpy = jest
+        .spyOn(console, 'error')
+        .mockImplementation(() => undefined);
+    });
 
-        await expect(
-          userService.refreshToken(refreshToken),
-        ).resolves.toBeNull();
-        expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
-          where: { id: 'user-deleted-1' },
-        });
-      } finally {
-        if (previousSecret === undefined) {
-          delete process.env.REFRESH_JWT_SECRET;
-        } else {
-          process.env.REFRESH_JWT_SECRET = previousSecret;
-        }
+    afterEach(() => {
+      errorSpy.mockRestore();
+      if (previousSecret === undefined) {
+        delete process.env.REFRESH_JWT_SECRET;
+      } else {
+        process.env.REFRESH_JWT_SECRET = previousSecret;
       }
+    });
+
+    test('resolves the User for a valid refresh token signed with the refresh secret', async () => {
+      const user = { id: 'user-1', email: 'target@example.com' };
+      const refreshToken = jwt.sign({ userId: 'user-1' }, refreshSecret);
+      mockPrisma.user.findUnique.mockResolvedValueOnce(user);
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toEqual(
+        user,
+      );
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+      });
+    });
+
+    test('resolves null for a correctly signed refresh token whose User row is gone', async () => {
+      const refreshToken = jwt.sign(
+        { userId: 'user-deleted-1' },
+        refreshSecret,
+      );
+      mockPrisma.user.findUnique.mockResolvedValueOnce(null);
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).toHaveBeenCalledWith({
+        where: { id: 'user-deleted-1' },
+      });
+    });
+
+    test('resolves null without looking up a User for an expired refresh token', async () => {
+      const refreshToken = jwt.sign({ userId: 'user-1' }, refreshSecret, {
+        expiresIn: -10,
+      });
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    test('resolves null without looking up a User for a malformed refresh token', async () => {
+      await expect(userService.refreshToken('not-a-jwt')).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
+    });
+
+    test('resolves null without looking up a User for a token signed with a different secret', async () => {
+      const refreshToken = jwt.sign({ userId: 'user-1' }, 'other-refresh-key');
+
+      await expect(userService.refreshToken(refreshToken)).resolves.toBeNull();
+      expect(mockPrisma.user.findUnique).not.toHaveBeenCalled();
     });
   });
 });
