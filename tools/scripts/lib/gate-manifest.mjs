@@ -136,6 +136,12 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'runner-image:check',
+    npmScript: 'runner-image:check',
+    script: 'tools/scripts/check-runner-image.mjs',
+    args: [],
+  },
+  {
     id: 'agents:sync:check (subagents)',
     npmScript: 'agents:sync:check',
     script: 'tools/scripts/sync-subagents.mjs',

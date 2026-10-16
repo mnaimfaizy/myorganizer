@@ -1146,6 +1146,12 @@ jobs:
       - name: Test affected projects
         run: corepack yarn nx affected -t test --base=${{ needs.setup.outputs.nx_base }} --head=${{ needs.setup.outputs.nx_head }}
 
+      - name: Workflow runner image contracts
+        run: corepack yarn runner-image:test
+
+      - name: Check workflow jobs pin ubuntu-24.04
+        run: corepack yarn runner-image:check
+
   e2e:
     name: E2E Chromium (shard ${{ matrix.shard }}/3)
     runs-on: ubuntu-24.04

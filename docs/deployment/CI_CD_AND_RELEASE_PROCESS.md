@@ -10,7 +10,7 @@ The repository is `mnaimfaizy/myorganiser`. It was renamed from the old "-izer" 
 
 ## Runner image
 
-Every job sets `runs-on: ubuntu-24.04`. The floating `ubuntu-latest` label begins moving from Ubuntu 24.04 to Ubuntu 26.04 on 2026-10-19 and finishes by 2026-11-19 ([actions/runner-images#14748](https://github.com/actions/runner-images/issues/14748)). During that window the label is not one image, so the workflows pin the image they already run on.
+Every job sets `runs-on: ubuntu-24.04` (`yarn runner-image:check`). The floating `ubuntu-latest` label begins moving from Ubuntu 24.04 to Ubuntu 26.04 on 2026-10-19 and finishes by 2026-11-19 ([actions/runner-images#14748](https://github.com/actions/runner-images/issues/14748)). During that window the label is not one image, so the workflows pin the image they already run on.
 
 Ubuntu 26.04 is not a drop-in replacement for this repo yet. `@playwright/test` is 1.57.0, and Playwright cannot install browser dependencies on Ubuntu 26.04 before 1.61 ([microsoft/playwright#40117](https://github.com/microsoft/playwright/issues/40117)). The e2e jobs in `ci.yml` and `nightly-e2e.yml` run `playwright install --with-deps`, so they would fail on the new image. The 26.04 image already has Docker, so the `postgres:16` service containers still start, and the OpenSSH client, so the deploy SSH steps still have a client. `ci.yml` installs Java 21 with `actions/setup-java` and does not use the image's default JDK. Code review and golden replay set `DATABASE_URL` so Prisma can load its config; both images ship PostgreSQL with the service disabled, and neither workflow starts it.
 
