@@ -1,6 +1,6 @@
 import { EMAIL_BRAND_NAME, renderEmailShell } from '@myorganiser/email-shell';
 import bcrypt from 'bcrypt';
-import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
+import { JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import winston from 'winston';
 import { getYouTubeAccessCeiling } from '../config/youtube';
 import {
@@ -727,16 +727,19 @@ class UserService {
     const decodedToken = decodeToken(
       refreshToken,
       process.env.REFRESH_JWT_SECRET as string,
-    ) as JwtPayload;
+    );
 
-    if (
-      decodedToken instanceof Error ||
-      decodeToken instanceof JsonWebTokenError
-    ) {
+    // decodeToken returns verify errors rather than throwing, and jwt.verify
+    // yields a bare string for a string payload, so only an object carrying a
+    // non-empty string userId may reach the User lookup.
+    if (decodedToken instanceof Error || typeof decodedToken !== 'object') {
       return null;
     }
 
-    const { userId } = decodedToken;
+    const { userId } = decodedToken as JwtPayload;
+    if (typeof userId !== 'string' || userId === '') {
+      return null;
+    }
 
     const user = await this.prisma.user.findUnique({
       where: {
