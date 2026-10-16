@@ -1,3 +1,4 @@
+import { EMAIL_BRAND_NAME } from '@myorganiser/email-shell';
 import nodemailer from 'nodemailer';
 import winston from 'winston';
 import sendEmail, { EmailMessage, MailAttachment } from './EmailService';
@@ -69,7 +70,10 @@ describe('EmailService', () => {
       expect(mailOptions.text).toBe('Welcome');
       expect(mailOptions.to).toBe('user@example.com');
       expect(mailOptions.subject).toBe('Welcome');
-      expect(mailOptions.from).toBe('noreply@example.com');
+      expect(mailOptions.from).toEqual({
+        name: EMAIL_BRAND_NAME,
+        address: 'noreply@example.com',
+      });
     });
 
     it('should not include attachments field when none are provided', async () => {
@@ -185,7 +189,7 @@ describe('EmailService', () => {
       expect(mockSendMail).toHaveBeenCalledTimes(1);
     });
 
-    it('should use configured email sender', async () => {
+    it('should use configured email sender under the brand name', async () => {
       process.env.EMAIL_SENDER = 'custom-sender@example.com';
 
       const message: EmailMessage = {
@@ -196,7 +200,38 @@ describe('EmailService', () => {
       await sendEmail('user@example.com', 'Subject', message);
 
       const mailOptions = mockSendMail.mock.calls[0][0];
-      expect(mailOptions.from).toBe('custom-sender@example.com');
+      expect(mailOptions.from).toEqual({
+        name: EMAIL_BRAND_NAME,
+        address: 'custom-sender@example.com',
+      });
+    });
+
+    it('should pass an already-named EMAIL_SENDER through unchanged', async () => {
+      process.env.EMAIL_SENDER = 'Ops <ops@example.com>';
+
+      const message: EmailMessage = {
+        html: '<p>Test</p>',
+        text: 'Test',
+      };
+
+      await sendEmail('user@example.com', 'Subject', message);
+
+      const mailOptions = mockSendMail.mock.calls[0][0];
+      expect(mailOptions.from).toBe('Ops <ops@example.com>');
+    });
+
+    it('should leave from undefined when EMAIL_SENDER is unset', async () => {
+      delete process.env.EMAIL_SENDER;
+
+      const message: EmailMessage = {
+        html: '<p>Test</p>',
+        text: 'Test',
+      };
+
+      await sendEmail('user@example.com', 'Subject', message);
+
+      const mailOptions = mockSendMail.mock.calls[0][0];
+      expect(mailOptions.from).toBeUndefined();
     });
   });
 
