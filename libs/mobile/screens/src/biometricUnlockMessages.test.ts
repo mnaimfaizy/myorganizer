@@ -4,6 +4,7 @@ import type {
 } from '@myorganiser/mobile/feat-vault';
 import {
   BIOMETRIC_METHOD_COPY,
+  biometricAttemptFeedback,
   biometricCopyFor,
   describeBiometricAttempt,
   describeEnrolmentFailure,
@@ -104,6 +105,65 @@ describe('biometricUnlockMessages.ts', () => {
     it('BIOMETRIC_FAILED_MESSAGE is defined and non-empty', () => {
       expect(BIOMETRIC_FAILED_MESSAGE).toBeDefined();
       expect(BIOMETRIC_FAILED_MESSAGE.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('biometricAttemptFeedback', () => {
+    it('shows the cancelled line and no notice for a cancelled attempt', () => {
+      const result = biometricAttemptFeedback({ outcome: 'cancelled' }, false);
+
+      expect(result).toEqual({ cancelled: true, notice: null });
+    });
+
+    it('shows nothing for a cancellation while the app was in the background', () => {
+      const result = biometricAttemptFeedback({ outcome: 'cancelled' }, true);
+
+      expect(result).toEqual({ cancelled: false, notice: null });
+    });
+
+    it('shows neither for an attempt that unlocked', () => {
+      const result = biometricAttemptFeedback(
+        { outcome: 'unlocked', masterKey: new Uint8Array(32) },
+        false,
+      );
+
+      expect(result).toEqual({ cancelled: false, notice: null });
+    });
+
+    it('shows the failure notice and no cancelled line for a failed attempt', () => {
+      const result = biometricAttemptFeedback(
+        { outcome: 'failed', error: new Error('Test error') },
+        false,
+      );
+
+      expect(result).toEqual({
+        cancelled: false,
+        notice: BIOMETRIC_FAILED_MESSAGE,
+      });
+    });
+
+    it('still shows the failure notice when the app was in the background', () => {
+      const result = biometricAttemptFeedback(
+        { outcome: 'failed', error: new Error('Test error') },
+        true,
+      );
+
+      expect(result.notice).toBe(BIOMETRIC_FAILED_MESSAGE);
+    });
+
+    it('shows the unavailable notice and no cancelled line when biometrics changed', () => {
+      const result = biometricAttemptFeedback(
+        { outcome: 'unavailable', reason: 'invalidated' },
+        false,
+      );
+
+      expect(result.cancelled).toBe(false);
+      expect(result.notice).toBe(
+        describeBiometricAttempt({
+          outcome: 'unavailable',
+          reason: 'invalidated',
+        }),
+      );
     });
   });
 
