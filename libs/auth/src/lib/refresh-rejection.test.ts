@@ -1,4 +1,4 @@
-import { isRefreshRejectedByServer } from './session-ended-signal';
+import { isRefreshRejectedByServer } from './refresh-rejection';
 
 describe('isRefreshRejectedByServer', () => {
   function withStatus(status: unknown): unknown {

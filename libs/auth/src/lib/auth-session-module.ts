@@ -25,9 +25,9 @@ import {
   buildLoginUserBody,
   buildRefreshTokenRequest,
 } from './refresh-client-contract';
+import { isRefreshRejectedByServer } from './refresh-rejection';
 import {
   createSessionEndedSignal,
-  isRefreshRejectedByServer,
   type SessionEndedListener,
   type SessionEndedSignal,
 } from './session-ended-signal';

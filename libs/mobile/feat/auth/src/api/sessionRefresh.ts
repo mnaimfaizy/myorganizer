@@ -10,6 +10,7 @@ import type {
 } from '@myorganiser/app-api-client';
 import {
   buildRefreshTokenRequest,
+  isRefreshRejectedByServer,
   resolveRefreshTokenAfterRefresh,
 } from '@myorganiser/auth/portable';
 import type { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
@@ -65,13 +66,6 @@ export const REFRESH_FAILURE_ENDS_SESSION = {
   unexpected: false,
 } as const satisfies Record<RefreshFailureKind, boolean>;
 
-/**
- * Client-error statuses that are not a ruling on the Refresh Token: the
- * server gave up waiting for the request (408) or is rate-limiting this
- * client (429). Both pass on their own.
- */
-const TRANSIENT_CLIENT_ERROR_STATUSES: readonly number[] = [408, 429];
-
 /** Thrown when the keychain holds no Refresh Token to present. */
 export class NoRefreshTokenError extends Error {
   constructor() {
@@ -94,10 +88,9 @@ export class MalformedRefreshResponseError extends Error {
  * Reads the error's shape — an HTTP status, or the absence of a response on
  * an Axios error — and never its message.
  *
- * Every 4xx other than 408, 426 and 429 is `rejected`, not only 401 and 403:
- * `/auth/refresh` answers an unusable body with 422, and an older server
- * answered an expired or undecodable Refresh Token with 404; none of those
- * gets a different answer on a second ask.
+ * Which statuses are `rejected` is the rule the web shares,
+ * `isRefreshRejectedByServer` — every 4xx other than 408 and 429. The Version
+ * Floor refusal (426) is sorted out first, because that rule would count it.
  */
 export function classifyRefreshFailure(error: unknown): RefreshFailureKind {
   if (error instanceof NoRefreshTokenError) {
@@ -107,27 +100,22 @@ export function classifyRefreshFailure(error: unknown): RefreshFailureKind {
     return 'malformed_response';
   }
   // A 4xx, but not a ruling on the Refresh Token: ending the Session over it
-  // would sign the User out of a build they are about to replace.
+  // would sign the User out of a build they are about to replace. Must run
+  // before `isRefreshRejectedByServer`, which would count it as a refusal.
   if (isVersionFloorRefusal(error)) {
     return 'below_version_floor';
   }
+  if (isRefreshRejectedByServer(error)) {
+    return 'rejected';
+  }
 
   const shape = error as {
-    response?: { status?: unknown };
+    response?: unknown;
     isAxiosError?: unknown;
     code?: unknown;
   } | null;
 
   if (shape?.response) {
-    const status = shape.response.status;
-    if (
-      typeof status === 'number' &&
-      status >= 400 &&
-      status < 500 &&
-      !TRANSIENT_CLIENT_ERROR_STATUSES.includes(status)
-    ) {
-      return 'rejected';
-    }
     return 'server_failed';
   }
 
