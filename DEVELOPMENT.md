@@ -190,6 +190,14 @@ docker-compose down
 docker-compose down -v
 ```
 
+**Containers from before the product rename.** [ADR 0132](docs/adr/0132-one-product-name-aligned-while-there-were-no-users.md) renamed the database service, the network and every container. A machine set up earlier still runs the old containers, and the old database container holds port 5453, so a plain `docker-compose up -d` fails on the port clash. Recreate once with:
+
+```bash
+docker-compose up -d --remove-orphans
+```
+
+`--remove-orphans` removes the containers whose service no longer exists and starts `myorganiser_db`, `myorganiser_mailhog` and `myorganiser_pgadmin` in their place. Your data is kept: the database still mounts the same `.database/` folder.
+
 **Services included**:
 
 - **PostgreSQL** (myorganiser_db): Database server on port 5453
@@ -1109,6 +1117,15 @@ docker-compose up -d
 # View logs
 docker-compose logs -f myorganiser_db
 ```
+
+**Problem**: `Bind for 0.0.0.0:5453 failed: port is already allocated` after pulling the product rename
+
+```bash
+# Solution: remove the containers created before the rename, keeping your data
+docker-compose up -d --remove-orphans
+```
+
+See [Starting Dependencies (Docker)](#starting-dependencies-docker).
 
 ### Database Issues
 
