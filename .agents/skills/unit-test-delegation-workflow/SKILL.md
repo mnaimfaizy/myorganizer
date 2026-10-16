@@ -1,6 +1,6 @@
 ---
 name: unit-test-delegation-workflow
-description: 'Use when a task requires creating or updating Jest unit tests, Jest integration tests, React hook/component integration tests, or specific Jest test cases in MyOrganizer. Delegate implementation to TestScaffold with a behavior matrix and review for correctness, scope, mock hygiene, duplicate output, and validation results.'
+description: 'Use when a task requires creating or updating Jest unit tests, Jest integration tests, React hook/component integration tests, or specific Jest test cases in MyOrganiser. Delegate implementation to TestScaffold with a behavior matrix and review for correctness, scope, mock hygiene, duplicate output, and validation results.'
 argument-hint: 'Requirement summary + source path(s) + test type + expected behaviors'
 ---
 
@@ -14,7 +14,7 @@ Policy: [`docs/adr/0012-tiered-quality-gates.md`](../../../docs/adr/0012-tiered-
 - Existing Jest unit or integration tests need to be updated for changed behavior.
 - A React hook/component integration suite needs to verify local workflows, state transitions, and mocked collaborator calls.
 
-Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/myorganizer-e2e`.
+Use `.agents/skills/playwright-e2e-workflow/SKILL.md` for Playwright specs in `apps/web-e2e`.
 
 **Mobile App**: which Jest lane you are in is decided by the project, not by what the spec imports.
 

@@ -1,5 +1,5 @@
-import type { Task } from '@myorganizer/vault-core';
-import { sortTasksByPriorityDueDateCreated } from '@myorganizer/vault-core';
+import type { Task } from '@myorganiser/vault-core';
+import { sortTasksByPriorityDueDateCreated } from '@myorganiser/vault-core';
 
 /** Priority, then due date, then created — the order vault-core's
  * `sortTasksByPriorityDueDateCreated` shares with every mobile Tasks group. */

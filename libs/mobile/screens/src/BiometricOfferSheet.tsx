@@ -3,19 +3,19 @@ import { StyleSheet, View } from 'react-native';
 import {
   hasOfferedBiometricUnlock,
   markBiometricUnlockOffered,
-} from '@myorganizer/mobile/core';
-import { useAuth } from '@myorganizer/mobile/feat-auth';
+} from '@myorganiser/mobile/core';
+import { useAuth } from '@myorganiser/mobile/feat-auth';
 import {
   mayEnableBiometricUnlock,
   useVaultSession,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   BottomSheet,
   Button,
   InlineNotice,
   Text,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   biometricCopyFor,
   describeEnrolmentFailure,

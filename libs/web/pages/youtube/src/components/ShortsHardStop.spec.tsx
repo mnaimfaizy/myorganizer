@@ -1,7 +1,7 @@
 /* eslint-disable import/first */
 import '@testing-library/jest-dom';
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ children, ...props }: any) => (
     <button {...props}>{children}</button>
   ),

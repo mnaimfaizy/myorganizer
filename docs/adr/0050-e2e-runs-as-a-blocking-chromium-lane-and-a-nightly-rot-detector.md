@@ -8,7 +8,7 @@ accepted
 
 `.github/workflows/ci.yml` had no e2e job. Because nothing ran the Playwright suite, a fixture
 collection error introduced in `c2702d9` aborted the entire run for days with no signal, and 13
-underlying test failures sat behind it undetected for months ([#506](https://github.com/mnaimfaizy/myorganizer/issues/506)).
+underlying test failures sat behind it undetected for months ([#506](https://github.com/mnaimfaizy/myorganiser/issues/506)).
 The suite was repaired, but nothing yet stops it rotting again — which is what this decision is for.
 
 Two facts shape the answer.
@@ -33,7 +33,7 @@ The repository is public, so Actions minutes are free. Wall-clock is the only bu
 **Two lanes with different jobs, different strictness, and different costs.**
 
 - **Blocking lane** — Chromium only, on `pull_request`, gated on `nx affected` containing
-  `myorganizer-e2e` (matching the existing `build-frontend` pattern). Split across **3 shards** plus a
+  `web-e2e` (matching the existing `build-frontend` pattern). Split across **3 shards** plus a
   `merge-reports` job, keeping the CI critical path near its current ~7 minutes. Keeps `retries: 2`
   and **passes on retry**.
 - **Nightly lane** — all three browsers as a **matrix over browsers** (not shards), on cron
@@ -46,9 +46,9 @@ The repository is public, so Actions minutes are free. Wall-clock is the only bu
   recovered and leave it open. `workflow_dispatch` does neither.
 
 **The app is served from a production build.** `webServer.command` becomes
-`nx run myorganizer:serve:production`, **including locally**, with `E2E_DEV_SERVER=1` as a documented
+`nx run web:serve:production`, **including locally**, with `E2E_DEV_SERVER=1` as a documented
 opt-out for fast iteration. (Since [ADR 0083](0083-a-declared-target-is-debt-only-on-an-executor-nx-deprecated.md)
-the target is the inferred `myorganizer:start`, which depends on `build`.)
+the target is the inferred `web:start`, which depends on `build`.)
 
 **Browsers are installed per lane** — `playwright install --with-deps chromium` in the blocking lane,
 all three only in the nightly. Browser binaries are **not** cached, per Playwright's guidance that
@@ -97,7 +97,7 @@ debt visible rather than silently absorbed. Expect follow-up fixes in the first 
 goes live. The debt is tracked separately.
 
 A naive local `yarn nx e2e` is now slower, because it builds the app. `E2E_DEV_SERVER=1` is the escape
-hatch and must be documented in `apps/myorganizer-e2e/AGENTS.md`, or it becomes folklore.
+hatch and must be documented in `apps/web-e2e/AGENTS.md`, or it becomes folklore.
 
 Backend-only pull requests skip the blocking lane entirely. This is correct — the suite stubs the
 backend and cannot be broken by it — but it means the e2e gate is not evidence about backend changes.

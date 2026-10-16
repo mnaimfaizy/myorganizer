@@ -13,14 +13,14 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import * as React from 'react';
 import { formatDistance } from 'date-fns';
 import { formatDate } from './formatDate';
 
 /**
  * Connection state shown by {@link CloudBackupCard}. Mirrors the discriminated
- * union exported by `@myorganizer/web-vault` but kept local so this component
+ * union exported by `@myorganiser/web-vault` but kept local so this component
  * has no runtime dependency on the vault library.
  */
 export type CloudBackupCardConnection =
@@ -161,7 +161,7 @@ export function CloudBackupCard({
         <CardTitle>Encrypted Escape Copy</CardTitle>
         <CardDescription>
           Keep an encrypted copy of your vault in your own {providerLabel}, so
-          it outlives MyOrganizer. Plaintext never leaves this device.
+          it outlives MyOrganiser. Plaintext never leaves this device.
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col gap-4">

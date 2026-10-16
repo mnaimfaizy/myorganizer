@@ -1,4 +1,4 @@
-import type { AuthUser } from '@myorganizer/auth';
+import type { AuthUser } from '@myorganiser/auth';
 
 import { isPlatformAdmin } from './isPlatformAdmin';
 

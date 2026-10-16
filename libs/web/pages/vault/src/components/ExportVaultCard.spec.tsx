@@ -25,7 +25,7 @@ jest.mock('../hooks', () => {
 /**
  * Mock web-ui components.
  */
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ children, onClick, disabled, 'data-testid': testId }: any) => (
     <button onClick={onClick} disabled={disabled} data-testid={testId}>
       {children}

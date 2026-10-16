@@ -10,7 +10,7 @@
  * (`vaultSyncQueue.ts`) drains through here, so does the pull check
  * (`vaultPullCheck.ts`, scheduled by `vaultPullTrigger.ts`), and so does the
  * sign-in pass (`vaultReconcile.ts`). Triplicating the decision is what
- * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) was: four
+ * [#512](https://github.com/mnaimfaizy/myorganiser/issues/512) was: four
  * hand-written fan-outs that agreed about five Vault Blob Types and destroyed
  * the sixth. See [ADR 0054](../../../../../docs/adr/0054-a-vault-blob-converges-by-record-and-absence-is-recorded.md).
  *
@@ -25,7 +25,7 @@
  * ([ADR 0067](../../../../../docs/adr/0067-a-vault-blob-is-never-taken-across-a-vault-identity.md)).
  * That comparison costs one field and needs no Master Key, so it holds on a
  * locked device — where decrypting the remote copy to answer the same question
- * could only guess or defer ([#571](https://github.com/mnaimfaizy/myorganizer/issues/571)).
+ * could only guess or defer ([#571](https://github.com/mnaimfaizy/myorganiser/issues/571)).
  *
  * The observation behind that comparison is also recorded here, per User,
  * whenever a caller supplies one — matching identity or not. Recording is
@@ -38,11 +38,11 @@ import {
   PutVaultBlobResponse,
   VaultApi,
   VaultBlobType,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   toVaultBlobEnvelope,
   type VaultBlobConvergeStrategy,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
@@ -159,7 +159,7 @@ export type VaultBlobConvergeRefusalReason =
    * The server's Vault Meta carries a different Vault Identity, so the two
    * sides are two Vaults under two Master Keys. Taking would replace readable
    * Ciphertext with bytes this device cannot open
-   * ([#571](https://github.com/mnaimfaizy/myorganizer/issues/571)), and there
+   * ([#571](https://github.com/mnaimfaizy/myorganiser/issues/571)), and there
    * is no merge across two Vaults to offer instead.
    *
    * Refused rather than asked, and named as Vault Meta Converge names it:

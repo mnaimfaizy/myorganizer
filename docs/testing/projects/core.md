@@ -18,8 +18,8 @@ carry moved to `libs/vault-core` with their specs (#164), so the config sets `pa
 
 ## Note for consumers
 
-`@myorganizer/core` is lazy-loaded, so **downstream** libraries mocking it must place
-`jest.mock('@myorganizer/core', ...)` before every import — see the
+`@myorganiser/core` is lazy-loaded, so **downstream** libraries mocking it must place
+`jest.mock('@myorganiser/core', ...)` before every import — see the
 [Nx lazy-loading & `jest.mock()` ordering rule](../README.md#nx-lazy-loading--jestmock-ordering).
 
 ## Commands

@@ -22,7 +22,7 @@ export const VAULT_BACKUP_HISTORY_MAX_LIMIT = 100;
 // Upper bound on the `sizeBytes` figure a client may *report* to the audit endpoint —
 // this endpoint records a number, it does not accept a payload.
 //
-// Mirrors VAULT_ENVELOPE_PARSE_MAX_BYTES (10 MiB) in @myorganizer/vault-core, the largest
+// Mirrors VAULT_ENVELOPE_PARSE_MAX_BYTES (10 MiB) in @myorganiser/vault-core, the largest
 // envelope a client could legitimately have produced. Intentionally larger than
 // VAULT_EXPORT_PAYLOAD_MAX_BYTES (1 MiB) in VaultService, which caps bodies actually
 // crossing the API.

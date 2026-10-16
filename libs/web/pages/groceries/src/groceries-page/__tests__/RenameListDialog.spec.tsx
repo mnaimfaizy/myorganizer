@@ -1,4 +1,4 @@
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Dialog: ({ open, onOpenChange, children }: any) =>
     open ? (
       <div data-testid="dialog" onClick={() => onOpenChange?.(false)}>

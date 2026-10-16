@@ -22,12 +22,12 @@ comment around it describes suppressing the _dialog_ — "leaving the flag unset
 choice back". It is documented as a rule about the question and implemented as a rule about the
 pass.
 
-[#596](https://github.com/mnaimfaizy/myorganizer/issues/596): a User who keeps a tab open — the
+[#596](https://github.com/mnaimfaizy/myorganiser/issues/596): a User who keeps a tab open — the
 ordinary case — never learns their passphrase was changed on another device, because the meta pass
 never runs again. A reload does not help; `sessionStorage` survives one. Closing the tab is the
 only cure, and nothing says so.
 
-[#628](https://github.com/mnaimfaizy/myorganizer/issues/628): after an explicit Local Vault removal
+[#628](https://github.com/mnaimfaizy/myorganiser/issues/628): after an explicit Local Vault removal
 ([ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md)) the reconcile flag is
 already set, so the reconcile never runs, so the "no Local Vault and the server holds meta →
 download the wrapping" path is never reached. `VaultGate` reads `absent` and offers to **create a
@@ -106,7 +106,7 @@ the fact that asking happened.**
 ## Considered Options
 
 **Clearing the reconcile flag inside `removeVault`** is
-[#628](https://github.com/mnaimfaizy/myorganizer/issues/628)'s own first suggestion and the smallest
+[#628](https://github.com/mnaimfaizy/myorganiser/issues/628)'s own first suggestion and the smallest
 possible change. It is rejected because it builds a second, private signal for an event the codebase
 already has a canonical one for, and because it covers removal alone: an import or a
 convergence-replacement reaches the same `absent` state by a different door, and each would have to
@@ -169,7 +169,7 @@ Meta, the mount-time pass downloaded the server's wrapping into the owned slot. 
 held an owned Vault beside the unclaimed one, and Vault Claim Evidence — which had been about to
 claim the unclaimed one silently — found an owned Vault and raised the replace offer instead:
 "replace this device's vault with the other vault that is also yours", where the two are the same
-Vault ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673)).
+Vault ([#673](https://github.com/mnaimfaizy/myorganiser/issues/673)).
 
 This was not a rare ordering. Silent claim fires only on `server-meta-match`, which requires the
 server to hold Vault Meta, which is exactly the condition under which the download runs. ADR 0061's

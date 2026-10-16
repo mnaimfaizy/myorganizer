@@ -1,6 +1,6 @@
 'use client';
 
-import { Input, Label } from '@myorganizer/web-ui';
+import { Input, Label } from '@myorganiser/web-ui';
 import { useCallback, useState } from 'react';
 import {
   formatShortsDuration,

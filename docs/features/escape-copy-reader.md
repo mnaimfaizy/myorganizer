@@ -1,7 +1,7 @@
 # Escape Copy reader
 
-The standalone tool that opens a MyOrganizer vault Escape Copy with no MyOrganizer server, no
-MyOrganizer session, and no Google account — [ADR 0064](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md).
+The standalone tool that opens a MyOrganiser vault Escape Copy with no MyOrganiser server, no
+MyOrganiser session, and no Google account — [ADR 0064](../adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md).
 
 An Escape Copy is the file a local vault Export downloads and the file a Google Drive backup
 uploads. They are the identical envelope, so one reader opens both.
@@ -19,12 +19,12 @@ then has to remember to delete.
 
 ## Getting it, and verifying it
 
-The reader is attached to every [GitHub Release](https://github.com/mnaimfaizy/myorganizer/releases)
+The reader is attached to every [GitHub Release](https://github.com/mnaimfaizy/myorganiser/releases)
 as two assets:
 
 | Asset                                 | What it is                          |
 | ------------------------------------- | ----------------------------------- |
-| `myorganizer-escape-copy-reader.html` | The reader.                         |
+| `myorganiser-escape-copy-reader.html` | The reader.                         |
 | `SHA256SUMS.txt`                      | Its SHA-256 digest, published here. |
 
 **Verify before you type a passphrase into it.** A file that accepts a vault passphrase is exactly
@@ -32,15 +32,15 @@ the thing an attacker would like to substitute, and the app being reachable is n
 tool is allowed to assume.
 
 ```bash
-sha256sum myorganizer-escape-copy-reader.html
+sha256sum myorganiser-escape-copy-reader.html
 ```
 
 ```bash
-shasum -a 256 myorganizer-escape-copy-reader.html
+shasum -a 256 myorganiser-escape-copy-reader.html
 ```
 
 ```powershell
-Get-FileHash myorganizer-escape-copy-reader.html -Algorithm SHA256
+Get-FileHash myorganiser-escape-copy-reader.html -Algorithm SHA256
 ```
 
 Compare the output against the line in `SHA256SUMS.txt`. If it does not match, do not open the file.
@@ -61,7 +61,7 @@ which is, after all, the scenario the whole feature is for.
 yarn escape-copy-reader:build
 ```
 
-Writes `dist/escape-copy-reader/myorganizer-escape-copy-reader.html` and its `SHA256SUMS.txt`. The
+Writes `dist/escape-copy-reader/myorganiser-escape-copy-reader.html` and its `SHA256SUMS.txt`. The
 output is deliberately **not** minified: a User asked to check a checksum is entitled to read what
 they checked.
 

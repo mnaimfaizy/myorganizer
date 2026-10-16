@@ -9,7 +9,7 @@
     "cssVariables": true
   },
   "aliases": {
-    "components": "@myorganizer/web-ui/components",
-    "utils": "@myorganizer/web-ui/utils"
+    "components": "@myorganiser/web-ui/components",
+    "utils": "@myorganiser/web-ui/utils"
   }
 }

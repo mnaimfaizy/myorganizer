@@ -6,19 +6,19 @@ import {
   getFxRates,
   randomId,
   subscribeAccountSettings,
-} from '@myorganizer/core';
+} from '@myorganiser/core';
 import {
   SubscriptionStatusEnum,
   type CurrencyCode,
   type SubscriptionRecord,
-} from '@myorganizer/vault-core';
-import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/vault-core';
+import { Button, ConfirmDeleteDialog, useToast } from '@myorganiser/web-ui';
 import {
   normalizeSubscriptions,
   saveVaultRecords,
   type VaultHandle,
-} from '@myorganizer/web-vault';
-import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault';
+import { useLocalVaultRevision, VaultGate } from '@myorganiser/web-vault-ui';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { dateInputToIso } from '../utils/date';

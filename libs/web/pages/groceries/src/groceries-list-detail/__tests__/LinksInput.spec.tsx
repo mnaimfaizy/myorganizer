@@ -1,5 +1,5 @@
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react');
   const { Controller } = require('react-hook-form');
 

@@ -20,11 +20,11 @@ different content (also `M`), and A later pushes with `If-Match: M`. The server 
 and B's write is gone. No 409, so no merge, so no prompt — silent destruction of a User's
 Ciphertext, which is the failure class
 [ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md) and
-[#512](https://github.com/mnaimfaizy/myorganizer/issues/512) exist over.
+[#512](https://github.com/mnaimfaizy/myorganiser/issues/512) exist over.
 
 The window was nearly unreachable while nothing persisted an ETag: every caller fetched a fresh one
 immediately before its PUT, so the collision needed two requests in flight within one millisecond.
-Sync Bookmarks ([#513](https://github.com/mnaimfaizy/myorganizer/issues/513)) change that. They
+Sync Bookmarks ([#513](https://github.com/mnaimfaizy/myorganiser/issues/513)) change that. They
 store the ETag across reloads and across days, and the collision stops being a race between two
 requests and becomes a race between a stored value and the world.
 

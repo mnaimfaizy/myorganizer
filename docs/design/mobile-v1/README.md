@@ -1,13 +1,13 @@
-# MyOrganizer Mobile v1
+# MyOrganiser Mobile v1
 
-The approved design for the Mobile App v1 ([PRD #908](https://github.com/mnaimfaizy/myorganizer/issues/908)), committed so that anyone building it — a person, or an agent in a sandbox with no claude.ai login — reads the same design the maintainer approved ([ADR 0110](../../adr/0110-an-approved-design-is-committed-to-the-repo.md)).
+The approved design for the Mobile App v1 ([PRD #908](https://github.com/mnaimfaizy/myorganiser/issues/908)), committed so that anyone building it — a person, or an agent in a sandbox with no claude.ai login — reads the same design the maintainer approved ([ADR 0110](../../adr/0110-an-approved-design-is-committed-to-the-repo.md)).
 
 |                  |                                                                                                              |
 | ---------------- | ------------------------------------------------------------------------------------------------------------ |
 | Source           | [Claude Design canvas](https://claude.ai/artifact/NQEpyQyfkqKrTEBHmm3ehj) (private; needs the owner's login) |
 | Exported version | `1790728996-b9c1`                                                                                            |
 | Exported         | 2026-09-30                                                                                                   |
-| Built by         | [PR #944](https://github.com/mnaimfaizy/myorganizer/pull/944)                                                |
+| Built by         | [PR #944](https://github.com/mnaimfaizy/myorganiser/pull/944)                                                |
 
 **These files are the design of record.** When the canvas changes after approval, the change is exported here in its own commit; the canvas link is for collaborating on the next version, and the files here are what an issue or pull request builds to.
 
@@ -51,7 +51,7 @@ The approved design for the Mobile App v1 ([PRD #908](https://github.com/mnaimfa
 | -------- | -------------------------------------------- | ----------- |
 | App icon | [AppIcon.dc.html](artboards/AppIcon.dc.html) | 1440 × 1780 |
 
-The App icon artboard was drawn in this repository for [#945](https://github.com/mnaimfaizy/myorganizer/issues/945), in the export's format, because the canvas had no app-icon artboard at the exported version. It is not on the canvas and so not in `canvas.json`; the next export should carry it across. It states the icon's construction and every colour; the files both platforms ship are generated from the same shield by `yarn mobile:app-icon:generate`.
+The App icon artboard was drawn in this repository for [#945](https://github.com/mnaimfaizy/myorganiser/issues/945), in the export's format, because the canvas had no app-icon artboard at the exported version. It is not on the canvas and so not in `canvas.json`; the next export should carry it across. It states the icon's construction and every colour; the files both platforms ship are generated from the same shield by `yarn mobile:app-icon:generate`.
 
 ### 1 · Entry and unlock
 

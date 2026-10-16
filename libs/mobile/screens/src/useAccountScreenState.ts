@@ -8,9 +8,9 @@ import {
   useKeepScreenAwakeSetting,
   type Appearance,
   type AutoLockDelay,
-} from '@myorganizer/mobile/core';
-import { useAuth } from '@myorganizer/mobile/feat-auth';
-import { useVaultSession } from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/core';
+import { useAuth } from '@myorganiser/mobile/feat-auth';
+import { useVaultSession } from '@myorganiser/mobile/feat-vault';
 import {
   performBiometricDisable,
   performBiometricEnable,

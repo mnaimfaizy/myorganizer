@@ -20,18 +20,18 @@ import {
   type RouteProp,
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   useUnconfirmedEdit,
   useVaultBlob,
   useVaultSession,
   recoversByReload,
   VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   type SubscriptionRecord,
   type SubscriptionStatus,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   Button,
   EmptyState,
@@ -50,7 +50,7 @@ import {
   usePressFeedback,
   useTheme,
   type StatusTone,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   BILLING_CYCLE_LABELS,
   BILLING_CYCLE_UNITS,

@@ -1,4 +1,4 @@
-// @myorganizer/mobile/ui — shared theme + React Native UI Primitives.
+// @myorganiser/mobile/ui — shared theme + React Native UI Primitives.
 export {
   darkTheme,
   lightTheme,

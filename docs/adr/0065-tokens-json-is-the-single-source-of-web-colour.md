@@ -12,7 +12,7 @@ Mobile App theme. Two were not: `tailwind-preset.js` and `tailwind-preset.native
 generated, committed, and imported by nothing.
 
 Both were documented as live. The library README asserted the web preset was consumed by
-`apps/myorganizer/tailwind.config.js`. [ADR 0008](0008-mobile-styling-stylesheet-theme.md) asserted
+`apps/web/tailwind.config.js`. [ADR 0008](0008-mobile-styling-stylesheet-theme.md) asserted
 the native preset fed the Mobile App theme. Neither was true — the theme reads the generated TS
 constants, and neither Tailwind config had a `presets` key at all.
 
@@ -71,7 +71,7 @@ had a consumer.
 - One file to edit. A colour change reaches web Tailwind utilities, the landing page, the
   authentication pages, the email shell, and the Mobile App together.
 - Adding a web colour utility now has exactly one route: add a Semantic Role, with a value in both
-  modes. It can no longer half-work, which is what [PR #631](https://github.com/mnaimfaizy/myorganizer/pull/631)
+  modes. It can no longer half-work, which is what [PR #631](https://github.com/mnaimfaizy/myorganiser/pull/631)
   had to work around by hand-copying a new role into four places.
 - `tokens.json` is no longer a palette you can read at a glance. It is a palette plus a mapping,
   and it carries two colour modes.
@@ -86,7 +86,7 @@ had a consumer.
   ADR carries the correction.
 - Groceries still renders against names that resolve to nothing. Retargeting it is separate work,
   and so is the gate that would have caught this; both follow from
-  [issue #632](https://github.com/mnaimfaizy/myorganizer/issues/632).
+  [issue #632](https://github.com/mnaimfaizy/myorganiser/issues/632).
 
 ## Alternatives considered
 

@@ -1,6 +1,6 @@
 ---
 name: storybook-delegation-workflow
-description: 'Use when adding, editing, reviewing, or refactoring Storybook stories (`*.stories.tsx`) for MyOrganizer UI components. Delegate implementation to StorybookCurator, require requirement analysis first, and review for completeness, accessibility, and UX quality.'
+description: 'Use when adding, editing, reviewing, or refactoring Storybook stories (`*.stories.tsx`) for MyOrganiser UI components. Delegate implementation to StorybookCurator, require requirement analysis first, and review for completeness, accessibility, and UX quality.'
 argument-hint: 'Requirement summary + component path(s) + story file path(s) + expected states'
 ---
 

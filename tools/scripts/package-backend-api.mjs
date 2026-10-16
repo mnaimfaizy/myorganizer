@@ -245,7 +245,7 @@ const deployPrismaConfig = [
   "const isGenerate = process.argv.includes('generate');",
   'const datasourceUrl =',
   '  process.env.DATABASE_URL ||',
-  "  (isGenerate ? 'postgresql://localhost:5432/myorganizer' : env('DATABASE_URL'));",
+  "  (isGenerate ? 'postgresql://localhost:5432/myorganiser' : env('DATABASE_URL'));",
   '',
   'module.exports = defineConfig({',
   "  schema: 'prisma/schema',",

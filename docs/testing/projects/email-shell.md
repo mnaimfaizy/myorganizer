@@ -17,7 +17,7 @@ transform: { '^.+\\.[tj]s$': ['ts-jest', { tsconfig: '<rootDir>/tsconfig.spec.js
   the regressions this suite exists to catch.
 - `options.emailClass` is the load-bearing input (ADR 0034): cover both `'transactional'` and
   `'notification'`, plus the missing/invalid-class rejection.
-- Design-token values (`@myorganizer/design-tokens`) are real, not mocked — asserting the literal
+- Design-token values (`@myorganiser/design-tokens`) are real, not mocked — asserting the literal
   token values (e.g. `colorPrimary`) in output is how "colours come from tokens, not literal hex" is
   actually verified.
 

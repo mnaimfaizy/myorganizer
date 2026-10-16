@@ -5,7 +5,7 @@
 //   node tools/scripts/build-escape-copy-reader.mjs [--out-dir <dir>]
 //
 // The reader is bundled from `apps/escape-copy-reader/src/main.ts`, which is a
-// page shell around `openEscapeCopy` in `@myorganizer/vault-core` — the same
+// page shell around `openEscapeCopy` in `@myorganiser/vault-core` — the same
 // module, the same envelope schema and the same crypto the exporter runs. That
 // is the point of building it rather than writing it: a reader carrying its
 // own copy of the crypto would be a second implementation of the one thing
@@ -35,7 +35,7 @@ export const READER_ENTRY = `${READER_APP_ROOT}/src/main.ts`;
 export const READER_SHELL = `${READER_APP_ROOT}/src/index.html`;
 export const DESIGN_TOKENS_CSS = 'libs/design-tokens/src/generated/tokens.css';
 export const DEFAULT_OUT_DIR = 'dist/escape-copy-reader';
-export const READER_FILENAME = 'myorganizer-escape-copy-reader.html';
+export const READER_FILENAME = 'myorganiser-escape-copy-reader.html';
 export const CHECKSUM_FILENAME = 'SHA256SUMS.txt';
 
 const TOKENS_PLACEHOLDER = '/* @@DESIGN_TOKENS@@ */';
@@ -68,7 +68,7 @@ export function composeReaderHtml({ shell, tokensCss, bundleJs, stamp }) {
 
 export function stampFor({ schemaVersion, builtFrom }) {
   return (
-    `// MyOrganizer Escape Copy reader — envelope schema version ${schemaVersion}.\n` +
+    `// MyOrganiser Escape Copy reader — envelope schema version ${schemaVersion}.\n` +
     `// Bundled from ${builtFrom}. Open this file from disk; it needs no network.`
   );
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import { Button } from '@myorganizer/web-ui';
+import { Button } from '@myorganiser/web-ui';
 import { X } from 'lucide-react';
 import { useCallback } from 'react';
 import type { YouTubeVideo } from '../types';

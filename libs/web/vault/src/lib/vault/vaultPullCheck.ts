@@ -20,7 +20,7 @@
  *     is nothing to pull for it, which is never the same as something to
  *     delete (decision 5) — reading absence as deletion is the shape that
  *     destroyed grocery Ciphertext in
- *     [#512](https://github.com/mnaimfaizy/myorganizer/issues/512).
+ *     [#512](https://github.com/mnaimfaizy/myorganiser/issues/512).
  *   - A **failed** inventory read fails the pass: every type is recorded
  *     unanswered and none is read. There is deliberately no fallback to the
  *     five-way fan-out (decision 6) — a path that runs only when something is
@@ -80,7 +80,7 @@
  * push, never an edit (ADR 0088, decision 5, and
  * [ADR 0058](../../../../../docs/adr/0058-a-sync-bookmark-is-a-second-per-user-namespace-not-a-second-vault.md)).
  */
-import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultApi, VaultBlobType } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
@@ -176,7 +176,7 @@ function abortReason(signal: AbortSignal): unknown {
  * cancelling will not. A pass that learned its time was up only by its own
  * request rejecting would therefore keep the failure it was built to end —
  * the device stops pulling, silently, exactly as in
- * [#697](https://github.com/mnaimfaizy/myorganizer/issues/697).
+ * [#697](https://github.com/mnaimfaizy/myorganiser/issues/697).
  *
  * So the wait is ended here, from the pass's side, and the abandoned request is
  * left to settle into nothing. Rejecting with the signal's own reason is what

@@ -30,7 +30,7 @@ import {
 
 dotenv.config({ path: join(process.cwd(), '.sandcastle', '.env') });
 
-const REPO = 'mnaimfaizy/myorganizer';
+const REPO = 'mnaimfaizy/myorganiser';
 
 function fail(message: string, code = 1): never {
   console.error(`\nError: ${message}`);

@@ -1,5 +1,5 @@
 {
-  "name": "MyOrganizer",
+  "name": "MyOrganiser",
   "install": "bash .cursor/install.sh",
   "start": "bash .cursor/start.sh",
   "terminals": [
@@ -9,7 +9,7 @@
     },
     {
       "name": "frontend",
-      "command": "PORT=4200 corepack yarn start:myorganizer"
+      "command": "PORT=4200 corepack yarn start:web"
     }
   ]
 }

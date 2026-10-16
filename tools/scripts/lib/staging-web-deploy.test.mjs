@@ -641,7 +641,7 @@ test('service worker headers are compared exactly, but for spacing and case', ()
 // === The three places the service worker headers are written ===
 
 test('next.config.js sets exactly the expected service worker headers', () => {
-  const config = readRepo('apps/myorganizer/next.config.js');
+  const config = readRepo('apps/web/next.config.js');
   const valueOf = (key) =>
     config.match(
       new RegExp(`key: '${key}',\\s*value:\\s*(?:'([^']*)'|"([^"]*)")`),
@@ -657,7 +657,7 @@ test('next.config.js sets exactly the expected service worker headers', () => {
 });
 
 test('the sw-headers snippet sets exactly the expected service worker headers, for sw.js only', () => {
-  const snippet = readRepo('apps/myorganizer/deploy/sw-headers.htaccess');
+  const snippet = readRepo('apps/web/deploy/sw-headers.htaccess');
   const directives = snippet
     .split('\n')
     .map((line) => line.trim())
@@ -675,9 +675,9 @@ test('the sw-headers snippet sets exactly the expected service worker headers, f
 
 // === The host's own .htaccess is never overwritten ===
 
-test('the tree has no apps/myorganizer/public/.htaccess', () => {
+test('the tree has no apps/web/public/.htaccess', () => {
   assert.equal(
-    existsSync(join(REPO, 'apps/myorganizer/public/.htaccess')),
+    existsSync(join(REPO, 'apps/web/public/.htaccess')),
     false,
     "the host's document root is this folder and holds the host's own .htaccess; shipping one overwrites it",
   );
@@ -716,7 +716,7 @@ test('the root layout stays force-dynamic, so /login comes from the running proc
   // read from disk, and the probe, the schedule and the plan would all report
   // the uploaded build as the running one.
   assert.match(
-    readRepo('apps/myorganizer/src/app/layout.tsx'),
+    readRepo('apps/web/src/app/layout.tsx'),
     /^export const dynamic = 'force-dynamic';$/m,
   );
 });
@@ -955,7 +955,7 @@ test('every schedule decision has an outcome; only proceed deploys; the fail- on
   );
   assert.match(
     SCHEDULE_OUTCOMES[SCHEDULE_FAIL_HEADERS].summary,
-    /apps\/myorganizer\/deploy\/sw-headers\.htaccess/,
+    /apps\/web\/deploy\/sw-headers\.htaccess/,
   );
 });
 

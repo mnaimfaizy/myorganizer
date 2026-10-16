@@ -3,7 +3,7 @@
 import {
   SubscriptionBillingCycleEnum,
   SubscriptionStatusEnum,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import {
   Input,
   Label,
@@ -12,7 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { type UseFormReturn } from 'react-hook-form';
 import { useCallback } from 'react';
 

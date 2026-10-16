@@ -85,7 +85,7 @@ mechanism offered alongside the manual file-based one:
 In production the two features use separate Cloud projects, so Drive backup
 never waits on YouTube's sensitive-scope verification
 ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)).
-The YouTube production project is created in [#848](https://github.com/mnaimfaizy/myorganizer/issues/848);
+The YouTube production project is created in [#848](https://github.com/mnaimfaizy/myorganiser/issues/848);
 the Drive production project is created here — do not reuse or duplicate that
 YouTube project. Development and staging may share one Testing-project client
 (it just needs both **Authorized redirect URIs** _and_ **Authorized JavaScript
@@ -161,7 +161,7 @@ things on every token request:
 | Development / staging | Shared **Testing** project with YouTube ([ADR 0091](../adr/0091-a-google-cloud-project-is-split-by-verification-not-by-environment.md)) | Weekly reconnect is accepted there. One Web client can hold YouTube redirect URIs _and_ Drive JavaScript origins.                                      |
 | Production            | **Dedicated Drive project** (this issue)                                                                                                | Consent, publishing, and quota belong to the project. `drive.appdata` is non-sensitive and must not wait on YouTube's `youtube.readonly` verification. |
 
-[#848](https://github.com/mnaimfaizy/myorganizer/issues/848) creates the production
+[#848](https://github.com/mnaimfaizy/myorganiser/issues/848) creates the production
 **YouTube** project. It does not create this Drive project. Do not put
 `drive.appdata` on the YouTube production consent screen, and do not invent a
 second Drive production project beside the one this runbook describes.
@@ -183,21 +183,21 @@ a second logo:
 
 | Branding / access field    | YouTube production                      | Drive production                                         |
 | -------------------------- | --------------------------------------- | -------------------------------------------------------- |
-| **App name**               | `MyOrganizer`                           | `MyOrganizer Vault Backup`                               |
-| **App logo**               | Same MyOrganizer shield (120 × 120 PNG) | Same file — one product                                  |
+| **App name**               | `MyOrganiser`                           | `MyOrganiser Vault Backup`                               |
+| **App logo**               | Same MyOrganiser shield (120 × 120 PNG) | Same file — one product                                  |
 | Homepage / privacy / terms | `https://myorganiser.app`               | Same URLs                                                |
 | **Data Access**            | `youtube.readonly` only                 | `drive.appdata` only                                     |
 | Enabled API                | YouTube Data API v3                     | Google Drive API                                         |
 | Client extras              | Authorized redirect URIs                | Authorized JavaScript origins; leave redirect URIs empty |
 
-The logo to upload is `apps/myorganizer/public/images/google-oauth-app-logo.png`
+The logo to upload is `apps/web/public/images/google-oauth-app-logo.png`
 (square PNG, 120 × 120, under 1 MB — Google's Branding spec). It is the same
-shield as `apps/myorganizer/src/app/icon.svg`. Do not invent a Drive-only mark
+shield as `apps/web/src/app/icon.svg`. Do not invent a Drive-only mark
 or use a Google Drive icon.
 
 1. **Google Auth platform → Branding** → fill:
-   - **App name:** `MyOrganizer Vault Backup` (YouTube production stays
-     `MyOrganizer` — this is the field that differs)
+   - **App name:** `MyOrganiser Vault Backup` (YouTube production stays
+     `MyOrganiser` — this is the field that differs)
    - **App logo:** upload `google-oauth-app-logo.png`
    - Support email and developer contact
    - App domain links (homepage, privacy, terms) on `myorganiser.app` once
@@ -259,7 +259,7 @@ not configured"_.
 Sign out of all Google accounts, then visit the dev app and click
 **Connect Google Drive**. Confirm the popup shows:
 
-- The correct app name (`MyOrganizer Vault Backup` on the production Drive
+- The correct app name (`MyOrganiser Vault Backup` on the production Drive
   client). Until brand verification is approved, Google may show only the
   domain `myorganiser.app` instead of the name and logo — that is expected.
 - A **single** scope item: _"See, create, and delete its own configuration
@@ -273,12 +273,12 @@ the wrong client ID is wired up — check `NEXT_PUBLIC_GOOGLE_CLIENT_ID`.
 ## Production Google application
 
 This is operator work in Google Cloud Console. The repository cannot create
-the project. [#848](https://github.com/mnaimfaizy/myorganizer/issues/848) is
+the project. [#848](https://github.com/mnaimfaizy/myorganiser/issues/848) is
 the YouTube production project; this section is the Drive one.
 
-1. Create a Cloud project (name e.g. `MyOrganizer Vault Backup`).
+1. Create a Cloud project (name e.g. `MyOrganiser Vault Backup`).
 2. Enable **Google Drive API** only ([Step 2](#step-2--enable-the-google-drive-api)).
-3. Configure the consent screen with App name **MyOrganizer Vault Backup**,
+3. Configure the consent screen with App name **MyOrganiser Vault Backup**,
    the shared shield logo, and scope `drive.appdata` only
    ([Step 3](#step-3--configure-the-oauth-consent-screen)).
 4. Create a **Web application** OAuth client whose **Authorized JavaScript
@@ -313,7 +313,7 @@ anyone who relied on Drive as their Escape Copy destination.
   short-lived and those environments are not the User's Escape Copy home.
 - Recording a new Client ID in the GitHub `production` Environment variable
   is the production cutover. Because the value is inlined at build time,
-  the next `yarn package:myorganizer:web` in
+  the next `yarn package:web` in
   [Deploy Production](../deployment/CI_CD_AND_RELEASE_PROCESS.md) is what
   ships it.
 
@@ -338,7 +338,7 @@ Drive has no YouTube-style production availability flag.
 The same file also reads `window.__MYORG_GOOGLE_CLIENT_ID__` when the
 build-time variable is absent. That fallback exists so Playwright can
 enable the card without rebuilding
-([vault-cloud-backup.spec.ts](../../apps/myorganizer-e2e/src/e2e/vault-cloud-backup.spec.ts)).
+([vault-cloud-backup.spec.ts](../../apps/web-e2e/src/e2e/vault-cloud-backup.spec.ts)).
 It is **not** a production configuration path. Do not inject the production
 client id through `window` on a hosted origin.
 
@@ -351,23 +351,23 @@ unavailable. The configuration messages above are shown only once the policy
 permits cloud backup. A locked Vault does **not** hide the card: cloud backup
 moves Ciphertext and needs no Master Key.
 
-For Next.js to pick up the variable, restart `corepack yarn start:myorganizer`
+For Next.js to pick up the variable, restart `corepack yarn start:web`
 after editing `.env`. `NEXT_PUBLIC_*` values are inlined at build time.
 
 > **Ops — where to set it.**
 >
-> | Environment | Where the value lives                                                                                                                | Notes                                                                                                                                                                                    |
-> | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-> | Local       | `.env` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`                                                                                             | Testing-project client is fine; may share YouTube's.                                                                                                                                     |
-> | Staging     | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `staging` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md))    | Testing-project client. Add the Staging web address as an Authorized JavaScript origin. Injected when CI runs `yarn package:myorganizer:web`, as for Production.                         |
-> | Production  | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `production` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md)) | Dedicated Drive client. Injected when CI runs `yarn package:myorganizer:web`. Setting it only in the cPanel Node.js app panel does nothing — the value is already baked into the bundle. |
+> | Environment | Where the value lives                                                                                                                | Notes                                                                                                                                                                        |
+> | ----------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+> | Local       | `.env` as `NEXT_PUBLIC_GOOGLE_CLIENT_ID`                                                                                             | Testing-project client is fine; may share YouTube's.                                                                                                                         |
+> | Staging     | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `staging` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md))    | Testing-project client. Add the Staging web address as an Authorized JavaScript origin. Injected when CI runs `yarn package:web`, as for Production.                         |
+> | Production  | GitHub Environment **variable** `NEXT_PUBLIC_GOOGLE_CLIENT_ID` on `production` ([CI/CD](../deployment/CI_CD_AND_RELEASE_PROCESS.md)) | Dedicated Drive client. Injected when CI runs `yarn package:web`. Setting it only in the cPanel Node.js app panel does nothing — the value is already baked into the bundle. |
 >
 > Changing the production value after Users have copies in `appDataFolder`
 > is a [sticky-client](#sticky-client-id) event, not a routine rotate.
 
 ### Why there is no ADR 0043 gate
 
-[#751](https://github.com/mnaimfaizy/myorganizer/issues/751) asked whether any
+[#751](https://github.com/mnaimfaizy/myorganiser/issues/751) asked whether any
 fact here is worth an [ADR 0043](../adr/0043-gates-assert-facts.md) Assertion
 Gate, or whether this stays operational and documented only. The 2026-09-18
 triage chose **ops + docs**: no new checker, and no YouTube-style availability
@@ -385,7 +385,7 @@ a repo gate: the value is not an artifact a checker can compare.
 
 What _is_ in git — `.env.example` declaring the name, and
 `deploy-production.yml` injecting `vars.NEXT_PUBLIC_GOOGLE_CLIENT_ID` into
-`yarn package:myorganizer:web` — is already visible to review. A dedicated
+`yarn package:web` — is already visible to review. A dedicated
 checker that only confirmed that one YAML line still would not catch the
 operator failure that matters (the value stored as a Secret instead of a
 Variable, or never set), so it would assert a fact that has never broken a
@@ -433,9 +433,9 @@ libs/web/vault-ui/src/lib/CloudBackupCard.tsx
 ```
 
 The Next.js route wrapper at
-[apps/myorganizer/src/app/dashboard/vault/page.tsx](../../apps/myorganizer/src/app/dashboard/vault/page.tsx)
+[apps/web/src/app/dashboard/vault/page.tsx](../../apps/web/src/app/dashboard/vault/page.tsx)
 is intentionally minimal — it just re-exports `VaultPage` from the
-`@myorganizer/web-pages/vault` library.
+`@myorganiser/web-pages/vault` library.
 
 The page is reachable from:
 
@@ -446,7 +446,7 @@ The page is reachable from:
 
 Two old routes redirect here permanently:
 `/dashboard/vault-export` and `/dashboard/account/vault` (see
-[apps/myorganizer/next.config.js](../../apps/myorganizer/next.config.js)).
+[apps/web/next.config.js](../../apps/web/next.config.js)).
 
 ---
 
@@ -480,7 +480,7 @@ the relevant page hooks/UI.
 ## What the feature is for
 
 Vault Cloud Backup makes an **Escape Copy** (see `CONTEXT.md`): a whole-Vault
-copy in storage the User controls, so their Ciphertext outlives MyOrganizer.
+copy in storage the User controls, so their Ciphertext outlives MyOrganiser.
 It is **not** how a Vault stays durable — the server already holds every Vault
 Blob and converges it per record. So the feature promises no schedule, and a
 months-old copy is not broken. What it owes the User is honesty about how old
@@ -508,8 +508,8 @@ never contacts Google:
 | `reconnect-needed` | Google itself refused a token request while linked | **Reconnect**, Unlink        |
 
 ```
-myorganizer.cloudBackup.googleDrive.connected       = "1"   # linked (historical key name)
-myorganizer.cloudBackup.googleDrive.reconnectNeeded = "1"   # a recorded refusal
+myorganiser.cloudBackup.googleDrive.connected       = "1"   # linked (historical key name)
+myorganiser.cloudBackup.googleDrive.reconnectNeeded = "1"   # a recorded refusal
 ```
 
 Which failures count is precise, because Reconnect Needed survives a reload:

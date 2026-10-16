@@ -1,5 +1,5 @@
 import type { ViewStyle } from 'react-native';
-import { shadowCard, shadowPopover } from '@myorganizer/design-tokens';
+import { shadowCard, shadowPopover } from '@myorganiser/design-tokens';
 
 /** The two elevations the token set carries, as React Native reads them. */
 export type ShadowName = 'card' | 'popover';

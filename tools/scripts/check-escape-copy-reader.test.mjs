@@ -268,7 +268,7 @@ export const B = 'SHA256SUMS.txt';`,
     sources: [
       {
         label: 'the constants',
-        text: "export const A = 'myorganizer-reader-OLD.html';",
+        text: "export const A = 'myorganiser-reader-OLD.html';",
         expect: [READER_FILENAME, 'SHA256SUMS.txt'],
       },
     ],

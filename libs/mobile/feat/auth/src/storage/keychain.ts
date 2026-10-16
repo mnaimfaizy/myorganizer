@@ -1,6 +1,6 @@
 import * as Keychain from 'react-native-keychain';
 
-const SERVICE_NAME = 'com.myorganizer.auth';
+const SERVICE_NAME = 'com.myorganiser.auth';
 
 export interface StoredCredentials {
   refreshToken: string;

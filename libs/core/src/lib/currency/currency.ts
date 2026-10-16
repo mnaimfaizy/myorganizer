@@ -1,4 +1,4 @@
-import type { CurrencyCode } from '@myorganizer/vault-core/portable';
+import type { CurrencyCode } from '@myorganiser/vault-core/portable';
 
 export const SUPPORTED_CURRENCIES: Array<{ code: CurrencyCode; name: string }> =
   [

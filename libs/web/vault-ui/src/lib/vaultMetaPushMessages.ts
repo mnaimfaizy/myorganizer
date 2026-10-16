@@ -1,6 +1,6 @@
 /**
  * User-facing copy for a Vault Meta Push outcome — the same split
- * `vaultSyncMessages.ts` keeps: `@myorganizer/web-vault` decides *what
+ * `vaultSyncMessages.ts` keeps: `@myorganiser/web-vault` decides *what
  * happened* and carries no English text, and the library that shows a User
  * owns naming it.
  *
@@ -10,7 +10,7 @@
  * twice — two places that must agree about what `refused-server-moved` means,
  * with nothing making them agree.
  */
-import type { VaultMetaPushOutcome } from '@myorganizer/web-vault';
+import type { VaultMetaPushOutcome } from '@myorganiser/web-vault';
 
 type PushOutcome = VaultMetaPushOutcome;
 
@@ -98,7 +98,7 @@ export const PASSPHRASE_REWRITE_FACTS = {
  *
  * The `tone` a reading carries is not consumed by any surface today, and
  * that is a decision rather than an oversight (#621). The only louder toast
- * variant `@myorganizer/web-ui` offers is `destructive`, which says the
+ * variant `@myorganiser/web-ui` offers is `destructive`, which says the
  * action failed — and a rotation reported here has already succeeded on this
  * device, where the new key is now the User's only way in. Presenting one in
  * red would be the single claim this whole module is arranged never to make.

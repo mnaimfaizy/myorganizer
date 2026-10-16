@@ -260,7 +260,7 @@ jobs:
       PR_AUTHOR: ${{ needs.context.outputs.author }}
       RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       # Required for Prisma v7 config loading if a reviewer runs backend tests.
-      DATABASE_URL: postgresql://localhost:5432/myorganizer
+      DATABASE_URL: postgresql://localhost:5432/myorganiser
 
     steps:
       - name: Check for a reviewer credential

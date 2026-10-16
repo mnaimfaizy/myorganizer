@@ -5,8 +5,8 @@ import {
 } from './unknownFieldsRoundTrip.testutil';
 import { saveVaultRecords } from './vaultRecordWrite';
 
-jest.mock('@myorganizer/core', () => ({
-  ...jest.requireActual('@myorganizer/core'),
+jest.mock('@myorganiser/core', () => ({
+  ...jest.requireActual('@myorganiser/core'),
   randomId: jest.fn().mockReturnValue('generated-id'),
 }));
 

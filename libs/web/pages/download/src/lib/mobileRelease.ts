@@ -8,7 +8,7 @@
 /** The newest Mobile Release, `X.Y.Z`, or `null` before the first one. */
 export const CURRENT_MOBILE_RELEASE: string | null = null;
 
-const REPOSITORY_URL = 'https://github.com/mnaimfaizy/myorganizer';
+const REPOSITORY_URL = 'https://github.com/mnaimfaizy/myorganiser';
 
 /** Where a Mobile Release's files live, built from its version. */
 export interface MobileReleaseLinks {

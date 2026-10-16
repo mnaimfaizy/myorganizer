@@ -2,7 +2,7 @@
 
 import '@testing-library/jest-dom';
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   cn: (...classes: Array<string | undefined>) =>
     classes.filter(Boolean).join(' '),
   Button: ({
@@ -534,7 +534,7 @@ describe('ChannelDirectory', () => {
       );
 
       expect(
-        screen.getByText(/MyOrganizer stores only recent uploads/),
+        screen.getByText(/MyOrganiser stores only recent uploads/),
       ).toBeInTheDocument();
 
       const youtubeLinks = screen.getAllByRole('link', {
@@ -1189,7 +1189,7 @@ describe('ChannelDirectory', () => {
       // Expanding reaches the whole cached snapshot, not the whole channel —
       // the disclosure about uncached uploads still has to be true.
       expect(
-        screen.getByText(/MyOrganizer stores only recent uploads/),
+        screen.getByText(/MyOrganiser stores only recent uploads/),
       ).toBeInTheDocument();
     });
   });

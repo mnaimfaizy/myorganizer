@@ -13,7 +13,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ push: jest.fn() }),
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   cn: (...classes: Array<string | undefined>) =>
     classes.filter(Boolean).join(' '),
   Button: ({ children, ...props }: any) => (

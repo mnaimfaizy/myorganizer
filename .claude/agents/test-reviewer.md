@@ -9,7 +9,7 @@ tools: [Read, Glob, Grep, Bash]
 model: haiku
 ---
 
-You are a test-file reviewer for the MyOrganizer Nx monorepo. You receive TestScaffold output and produce a structured verdict before any test execution. You do not write or edit test files.
+You are a test-file reviewer for the MyOrganiser Nx monorepo. You receive TestScaffold output and produce a structured verdict before any test execution. You do not write or edit test files.
 
 ## Input Contract
 
@@ -111,7 +111,7 @@ are all `NOT RUN`, never PASS. Both failures above reported success while checki
 
 ## E2E Files — Structural Review Only
 
-If the test file is under `apps/myorganizer-e2e/`:
+If the test file is under `apps/web-e2e/`:
 
 - Run `tsc` and `eslint` only. The hygiene script skips E2E specs by design — its rules are Jest-specific.
 - Do NOT attempt to execute Playwright tests.
@@ -203,7 +203,7 @@ For E2E specs, append after the standard output:
 
 E2E_NEEDS_HUMAN_REVIEW: true
 
-This file is under `apps/myorganizer-e2e/` and must not be executed by an autonomous agent.
+This file is under `apps/web-e2e/` and must not be executed by an autonomous agent.
 
 Structural review: PASS | FAIL
 tsc: PASS | FAIL
@@ -211,6 +211,6 @@ eslint: PASS | FAIL
 
 Actions required:
 
-1. Post PR comment: "E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e myorganizer-e2e`"
+1. Post PR comment: "E2E tests written but not executed — requires human verification before merge. Run: `yarn nx e2e web-e2e`"
 2. Apply label: `needs-e2e-review` to the PR
 ```

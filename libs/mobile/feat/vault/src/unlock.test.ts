@@ -4,8 +4,8 @@ import {
   pbkdf2Sync,
   randomBytes,
 } from 'node:crypto';
-import type { VaultCrypto } from '@myorganizer/vault-core/portable';
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultCrypto } from '@myorganiser/vault-core/portable';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 import {
   unlockVaultWithPassphrase,
   unlockVaultWithRecoveryKey,

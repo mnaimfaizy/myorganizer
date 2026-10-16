@@ -13,7 +13,7 @@ export default defineConfig({
       process.env.NODE_ENV === 'production'
         ? env('DATABASE_URL')
         : (process.env.DATABASE_URL ??
-          'postgresql://localhost:5432/myorganizer'),
+          'postgresql://localhost:5432/myorganiser'),
   },
   migrations: {
     path: 'prisma/migrations',

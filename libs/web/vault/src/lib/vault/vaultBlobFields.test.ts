@@ -9,11 +9,11 @@
  * ADR 0113.
  */
 
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import type {
   VaultBlobConvergeStrategy,
   VaultBlobEnvelope,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import {
   VAULT_BLOB_CONVERGE_STRATEGIES,

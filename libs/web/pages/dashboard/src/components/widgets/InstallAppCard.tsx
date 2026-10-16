@@ -8,7 +8,7 @@ import {
   CardTitle,
   InstallAppInstructions,
   useAppInstall,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { X } from 'lucide-react';
 
 import { useInstallCardDismissed } from '../../hooks/use-install-card-dismissed';

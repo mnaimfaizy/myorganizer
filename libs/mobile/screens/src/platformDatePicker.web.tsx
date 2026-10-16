@@ -3,7 +3,7 @@
 // react-native-web preview has no native calendar, and the library's Flow
 // source cannot be bundled, so the date sheet takes the day as typed text.
 import React, { useState } from 'react';
-import { TextField, type ColorMode } from '@myorganizer/mobile/ui';
+import { TextField, type ColorMode } from '@myorganiser/mobile/ui';
 import { parseCalendarDate, toCalendarDate } from './calendarDate';
 
 export interface InlineDatePickerProps {

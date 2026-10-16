@@ -1,11 +1,11 @@
 /*
   Tests for CreateListDialog component.
-  - Mocks @myorganizer/web-ui Dialog, Input, Button components
+  - Mocks @myorganiser/web-ui Dialog, Input, Button components
   - Covers form submission, validation, error handling, and state management
 */
 
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react') as typeof import('react');
 
   const DialogContext = React.createContext<{

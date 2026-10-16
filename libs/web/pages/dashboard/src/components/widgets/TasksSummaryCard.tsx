@@ -1,7 +1,7 @@
 'use client';
 
-import { normalizeTasks, type VaultHandle } from '@myorganizer/web-vault';
-import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
+import { normalizeTasks, type VaultHandle } from '@myorganiser/web-vault';
+import { useLocalVaultRevision } from '@myorganiser/web-vault-ui';
 import { CheckSquare } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

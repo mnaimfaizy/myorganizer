@@ -1,5 +1,5 @@
 import { useCallback } from 'react';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
+import type { VaultBlobEnvelope } from '@myorganiser/vault-core/portable';
 import { isNotified, type DecryptedUsageLocation } from './contactModel';
 import {
   usageLocationToggleEdit,

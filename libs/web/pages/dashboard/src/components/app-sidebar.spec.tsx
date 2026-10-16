@@ -3,12 +3,12 @@ jest.mock('../hooks/useYouTubeNavVisible', () => ({
   useYouTubeNavVisible: jest.fn(),
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   getCurrentUser: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-ui'),
+jest.mock('@myorganiser/web-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-ui'),
   useSidebar: jest.fn(),
   Sidebar: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="sidebar">{children}</div>
@@ -51,8 +51,8 @@ jest.mock('./nav-user', () => ({
 import React from 'react';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { getCurrentUser } from '@myorganizer/auth';
-import { useSidebar } from '@myorganizer/web-ui';
+import { getCurrentUser } from '@myorganiser/auth';
+import { useSidebar } from '@myorganiser/web-ui';
 import { useYouTubeNavVisible } from '../hooks/useYouTubeNavVisible';
 import { AppSidebar } from './app-sidebar';
 import { NavMain } from './nav-main';

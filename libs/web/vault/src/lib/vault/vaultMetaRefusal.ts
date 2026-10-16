@@ -12,7 +12,7 @@
  * change never gets asked about at all.
  */
 
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import { hashVaultMeta } from './syncBookmarkAccess';
 import type { VaultMetaChange } from './vaultMetaConverge';

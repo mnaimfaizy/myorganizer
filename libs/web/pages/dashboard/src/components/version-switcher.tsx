@@ -11,7 +11,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 interface VersionSwitcherProps {
   versions: string[];

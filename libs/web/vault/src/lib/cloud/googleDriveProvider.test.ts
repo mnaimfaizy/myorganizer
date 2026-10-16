@@ -272,7 +272,7 @@ describe('GoogleDriveCloudBackupProvider', () => {
     await provider.connect();
     // Manually set reconnect flag to simulate a failed token acquisition
     window.localStorage.setItem(
-      'myorganizer.cloudBackup.googleDrive.reconnectNeeded',
+      'myorganiser.cloudBackup.googleDrive.reconnectNeeded',
       '1',
     );
 
@@ -291,7 +291,7 @@ describe('GoogleDriveCloudBackupProvider', () => {
     });
     await provider1.connect();
     window.localStorage.setItem(
-      'myorganizer.cloudBackup.googleDrive.reconnectNeeded',
+      'myorganiser.cloudBackup.googleDrive.reconnectNeeded',
       '1',
     );
 
@@ -330,6 +330,9 @@ describe('GoogleDriveCloudBackupProvider', () => {
     const result = await provider.connect();
     expect(result.status).toBe('linked');
     expect((await provider.getConnectionState()).status).toBe('linked');
+    expect(
+      localStorage.getItem('myorganiser.cloudBackup.googleDrive.connected'),
+    ).toBe('1');
   });
 
   test('failed first connect does NOT write reconnect-needed flag', async () => {
@@ -398,7 +401,7 @@ describe('GoogleDriveCloudBackupProvider', () => {
     });
     await provider1.connect();
     window.localStorage.setItem(
-      'myorganizer.cloudBackup.googleDrive.reconnectNeeded',
+      'myorganiser.cloudBackup.googleDrive.reconnectNeeded',
       '1',
     );
     expect((await provider1.getConnectionState()).status).toBe(
@@ -435,7 +438,7 @@ describe('GoogleDriveCloudBackupProvider', () => {
     });
     await provider.connect();
     window.localStorage.setItem(
-      'myorganizer.cloudBackup.googleDrive.reconnectNeeded',
+      'myorganiser.cloudBackup.googleDrive.reconnectNeeded',
       '1',
     );
 
@@ -707,6 +710,7 @@ describe('GoogleDriveCloudBackupProvider', () => {
     expect(result.metadata.exportId).toBe('exp-1');
     expect(state.files).toHaveLength(1);
     expect(state.files[0].appProperties?.status).toBe('complete');
+    expect(state.files[0].appProperties?.kind).toBe('myorganiser-vault-backup');
     expect(state.files[0].body).toBe('{"a":1}');
   });
 

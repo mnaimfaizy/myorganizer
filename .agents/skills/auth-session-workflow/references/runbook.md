@@ -2,7 +2,7 @@
 
 ## Owning Surfaces
 
-- Frontend auth utilities and UI helpers in `@myorganizer/auth`
+- Frontend auth utilities and UI helpers in `@myorganiser/auth`
 - Backend auth controllers and services in `apps/backend`
 - Generated client output if auth endpoint shapes change
 
@@ -18,7 +18,7 @@
 ## Change Workflow
 
 1. Identify whether the change is frontend-only, backend-only, or a cross-boundary auth flow change.
-2. If browser session behavior changes, inspect `@myorganizer/auth` before editing backend code in isolation.
+2. If browser session behavior changes, inspect `@myorganiser/auth` before editing backend code in isolation.
 3. If endpoint shapes, DTOs, or public auth responses change, regenerate contract outputs:
    - `yarn openapi:sync`
    - `yarn api:generate`
@@ -27,7 +27,7 @@
 ## Checkpoints
 
 - If refresh tokens move into JavaScript-accessible storage, stop and redesign.
-- If login or refresh behavior changed without checking `@myorganizer/auth`, the work is probably incomplete.
+- If login or refresh behavior changed without checking `@myorganiser/auth`, the work is probably incomplete.
 - If auth responses changed but generated client output was not regenerated, the work is incomplete.
 
 ## Validation

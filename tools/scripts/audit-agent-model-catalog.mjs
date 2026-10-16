@@ -134,7 +134,7 @@ async function fetchDocument(url) {
       const response = await fetch(url, {
         headers: {
           accept: 'text/html,text/plain;q=0.9',
-          'user-agent': 'myorganizer-agent-model-audit/1.0',
+          'user-agent': 'myorganiser-agent-model-audit/1.0',
         },
         signal: AbortSignal.timeout(20_000),
       });

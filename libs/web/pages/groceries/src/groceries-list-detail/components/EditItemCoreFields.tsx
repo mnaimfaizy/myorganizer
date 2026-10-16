@@ -1,6 +1,6 @@
 'use client';
 
-import { Input, Label, cn } from '@myorganizer/web-ui';
+import { Input, Label, cn } from '@myorganiser/web-ui';
 import type { Control, FieldErrors, UseFormRegister } from 'react-hook-form';
 import { Controller } from 'react-hook-form';
 import {

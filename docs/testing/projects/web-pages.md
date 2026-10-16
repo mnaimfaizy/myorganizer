@@ -19,7 +19,7 @@ libs/web/pages/<route>/src/**/<name>.spec.ts(x)
 - Mock the API client, auth, and vault at the module boundary — **except** when the hook under
   test derives its answer from real Ciphertext (e.g. `handle.hasUnsentChanges`). A stubbed handle
   there would only prove the stub returns what it was told to return; drive a real `VaultHandle`
-  from `@myorganizer/web-vault` instead, and keep mocking `@myorganizer/web-vault-ui`'s
+  from `@myorganiser/web-vault` instead, and keep mocking `@myorganiser/web-vault-ui`'s
   `useOptionalVaultSession` to supply it. See `useUnsentVaultBlobTypes.spec.ts` (issue #702).
 - Use Zod schema `safeParse` directly for form validation tests — no DOM rendering needed.
 - Use React Testing Library for component integration.
@@ -35,12 +35,12 @@ For page libraries exposing custom hooks with async operations (vault saves, API
 - Use `waitFor()` for **all** assertions that follow an async effect or async state update.
 
 ```typescript
-jest.mock('@myorganizer/web-vault');
-jest.mock('@myorganizer/core');
+jest.mock('@myorganiser/web-vault');
+jest.mock('@myorganiser/core');
 
 // Imports AFTER jest.mock() calls — see the Nx lazy-loading rule in ../README.md
 import { renderHook, act, waitFor } from '@testing-library/react';
-import { loadDecryptedData, saveEncryptedData } from '@myorganizer/web-vault';
+import { loadDecryptedData, saveEncryptedData } from '@myorganiser/web-vault';
 import { useMyHook } from './useMyHook';
 
 describe('useMyHook', () => {

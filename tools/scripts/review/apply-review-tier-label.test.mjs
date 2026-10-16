@@ -24,7 +24,7 @@ const runApply = (over = {}) => {
   const resultP = applyReviewTierLabel({
     pr: 789,
     label: 'review:agent',
-    repo: 'mnaimfaizy/myorganizer',
+    repo: 'mnaimfaizy/myorganiser',
     ghJsonCall: (args) => {
       calls.push(['json', ...args]);
       return { labels: [{ name: 'tooling' }] };
@@ -57,7 +57,7 @@ test('applies the classifier label and removes a stale review:* label', async ()
     'edit',
     '789',
     '--repo',
-    'mnaimfaizy/myorganizer',
+    'mnaimfaizy/myorganiser',
     '--add-label',
     'review:agent',
     '--remove-label',

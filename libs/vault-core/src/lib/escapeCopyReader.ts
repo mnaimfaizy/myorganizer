@@ -2,8 +2,8 @@
  * Opening an Escape Copy — the whole of what the standalone reader does.
  *
  * [ADR 0064](../../../../docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)
- * requires an Escape Copy to be readable by a tool needing no MyOrganizer
- * server, no MyOrganizer session, and no Google account. This module is that
+ * requires an Escape Copy to be readable by a tool needing no MyOrganiser
+ * server, no MyOrganiser session, and no Google account. This module is that
  * tool's entire brain: envelope text plus a passphrase or a Recovery Key in,
  * plaintext out. It reaches the network never, storage never, and the DOM
  * never — the reader page around it supplies the file and renders the result,
@@ -243,7 +243,7 @@ async function decryptSection(options: {
  * whose job is to leave nothing behind
  * ([ADR 0053](../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  * That is the same omission that dropped Tasks from the hardened export path
- * in [#537](https://github.com/mnaimfaizy/myorganizer/issues/537).
+ * in [#537](https://github.com/mnaimfaizy/myorganiser/issues/537).
  *
  * Nothing is written and nothing is sent. Opening an Escape Copy twice is
  * exactly as safe as opening it once.

@@ -2,7 +2,7 @@ import {
   EncryptedBlobV1,
   VaultBlobType,
   VaultMetaV1,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   checkServerVaultBlobInventory,
   getServerVaultBlob,

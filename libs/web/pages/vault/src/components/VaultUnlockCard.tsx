@@ -20,8 +20,8 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@myorganizer/web-ui';
-import { currentPassphraseSchema } from '@myorganizer/web-vault';
+} from '@myorganiser/web-ui';
+import { currentPassphraseSchema } from '@myorganiser/web-vault';
 
 import { useVaultUnlock, useVaultDisabledState } from '../hooks';
 

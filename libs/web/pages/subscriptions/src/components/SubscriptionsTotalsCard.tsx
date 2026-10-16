@@ -1,5 +1,5 @@
-import { formatMoney } from '@myorganizer/core';
-import type { CurrencyCode, SubscriptionRecord } from '@myorganizer/vault-core';
+import { formatMoney } from '@myorganiser/core';
+import type { CurrencyCode, SubscriptionRecord } from '@myorganiser/vault-core';
 import {
   Button,
   Card,
@@ -11,7 +11,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { getSubscriptionBillingCycleLabel } from '../utils/presentation';
 

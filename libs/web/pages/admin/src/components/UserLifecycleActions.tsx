@@ -3,7 +3,7 @@
 import type {
   AdminUserIdentity,
   YouTubeDisconnectOutcome,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   Button,
   Dialog,
@@ -13,7 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { isAxiosError } from 'axios';
 import { useCallback, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
@@ -132,7 +132,7 @@ const ACTION_DEFINITIONS: ActionDefinition[] = [
     loadingLabel: 'Granting…',
     confirmTitle: 'Grant YouTube Access?',
     confirmDescription:
-      'This will let the user connect and use YouTube in MyOrganizer. A first grant uses one of the limited YouTube Access places.',
+      'This will let the user connect and use YouTube in MyOrganiser. A first grant uses one of the limited YouTube Access places.',
     confirmLabel: 'Grant access',
     variant: 'outline',
     isVisible: (targetUser) => !targetUser.youtubeAccess,
@@ -143,7 +143,7 @@ const ACTION_DEFINITIONS: ActionDefinition[] = [
     loadingLabel: 'Withdrawing…',
     confirmTitle: 'Withdraw YouTube Access?',
     confirmDescription:
-      "This will end the user's YouTube connection and revoke MyOrganizer's access at Google. Their YouTube data will be deleted: followed channels, cached uploads, watched marks and digest settings. Nothing is kept for a later reconnect.",
+      "This will end the user's YouTube connection and revoke MyOrganiser's access at Google. Their YouTube data will be deleted: followed channels, cached uploads, watched marks and digest settings. Nothing is kept for a later reconnect.",
     confirmLabel: 'Withdraw access',
     destructive: true,
     variant: 'destructive',

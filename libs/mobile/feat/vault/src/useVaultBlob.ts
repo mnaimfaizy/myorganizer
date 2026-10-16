@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import type { VaultBlobType } from '@myorganizer/app-api-client';
+import type { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { useVaultSession } from './context/VaultSessionContext';
 import type {

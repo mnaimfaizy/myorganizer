@@ -1,6 +1,6 @@
 import { clearAuthSession, getAccessToken, setAccessToken } from './auth';
 
-describe('@myorganizer/auth', () => {
+describe('@myorganiser/auth', () => {
   beforeEach(() => {
     clearAuthSession();
   });

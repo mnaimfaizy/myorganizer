@@ -13,9 +13,9 @@ import {
   DialogTitle,
   Checkbox,
   Label,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
-import { formatDate } from '@myorganizer/web-vault-ui';
+import { formatDate } from '@myorganiser/web-vault-ui';
 
 import { type VaultImportDisclosureState } from '../hooks';
 

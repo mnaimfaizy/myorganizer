@@ -8,7 +8,7 @@ The public `/download` page: the one stable address for the newest Mobile Releas
 
 - Build every link from `CURRENT_MOBILE_RELEASE` through `mobileReleaseLinks()` in `src/lib/mobileRelease.ts`.
 - Keep the page reachable without a session. No auth hooks.
-- Preserve the import path `@myorganizer/web-pages/download`.
+- Preserve the import path `@myorganiser/web-pages/download`.
 - Publish a new Mobile Release with `yarn mobile:release:publish`; it rewrites the `CURRENT_MOBILE_RELEASE` line, and the page moves with it.
 
 ## Do Not

@@ -7,9 +7,9 @@ import {
   localToServerMeta,
   parseVaultExportEnvelope,
   type VaultImportCredentialOutcome,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
 
 export type VaultImportDisclosureState =
   /** The bundle has not been read yet. Nothing about credentials may be shown. */

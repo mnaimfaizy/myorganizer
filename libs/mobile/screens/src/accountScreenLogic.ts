@@ -2,9 +2,9 @@
  * Pure logic functions for AccountScreen, extracted for testability.
  * These functions contain no React hooks and run in a node environment.
  */
-import type { Appearance, AutoLockDelay } from '@myorganizer/mobile/core';
-import type { BiometricMethod } from '@myorganizer/mobile/feat-vault';
-import type { IconName } from '@myorganizer/mobile/ui';
+import type { Appearance, AutoLockDelay } from '@myorganiser/mobile/core';
+import type { BiometricMethod } from '@myorganiser/mobile/feat-vault';
+import type { IconName } from '@myorganiser/mobile/ui';
 import {
   classifyUnlockFailure,
   describeUnlockFailure,

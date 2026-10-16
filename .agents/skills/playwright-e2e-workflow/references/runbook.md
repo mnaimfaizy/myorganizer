@@ -48,14 +48,14 @@ Before writing or delegating a Playwright spec, define:
 
 ## Validation
 
-- `yarn nx e2e myorganizer-e2e`
-- `yarn nx e2e myorganizer-e2e --ui`
+- `yarn nx e2e web-e2e`
+- `yarn nx e2e web-e2e --ui`
 - Use cross-browser targets only when the change justifies wider coverage.
 - Verify no generated traces, screenshots, videos, or downloaded artifacts are left in the worktree unless intentionally committed.
 
 ## Repo References
 
-- `apps/myorganizer-e2e/AGENTS.md`
-- `apps/myorganizer-e2e/playwright.config.ts`
+- `apps/web-e2e/AGENTS.md`
+- `apps/web-e2e/playwright.config.ts`
 - `.github/copilot-instructions.md`
 - `README.md`

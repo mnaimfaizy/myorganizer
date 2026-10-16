@@ -18,7 +18,7 @@ ran a Bash command that began `cd <workspace>/tmp/code-review/worktree && …`. 
 refusals, including a 14-byte probe file — with "Claude requested permissions to write to `<path>`,
 but you haven't granted it yet". A sibling attempt in the same run, at the same commit, wrote the
 same absolute paths without trouble; it never ran `cd`. The transcripts expired after seven days;
-[issue #880](https://github.com/mnaimfaizy/myorganizer/issues/880) carries the timeline read from
+[issue #880](https://github.com/mnaimfaizy/myorganiser/issues/880) carries the timeline read from
 them before they did.
 
 Claude Code's permission rules explain both attempts

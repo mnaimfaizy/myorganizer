@@ -1,6 +1,6 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ onClick, disabled, children, ...props }: any) => (
     <button disabled={disabled} onClick={onClick} {...props}>
       {children}

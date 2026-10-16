@@ -3,7 +3,7 @@ const mockDropdownSelectEvent = {
   preventDefault: jest.fn(),
 };
 
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react') as typeof import('react');
 
   const MenuContext = React.createContext<{
@@ -111,7 +111,7 @@ jest.mock('lucide-react', () => ({
   Trash2: () => <span data-testid="trash-icon" />,
 }));
 
-import type { CatalogItem, ListLine } from '@myorganizer/vault-core';
+import type { CatalogItem, ListLine } from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { TripBoardLineRow } from '../components/TripBoardLineRow';

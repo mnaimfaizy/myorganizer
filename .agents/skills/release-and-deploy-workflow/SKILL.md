@@ -1,6 +1,6 @@
 ---
 name: release-and-deploy-workflow
-description: 'Use when cutting releases, preparing staging or production deployments, updating release automation, or validating GitHub Actions deployment flow for MyOrganizer.'
+description: 'Use when cutting releases, preparing staging or production deployments, updating release automation, or validating GitHub Actions deployment flow for MyOrganiser.'
 ---
 
 # Release And Deploy Workflow
@@ -307,7 +307,7 @@ Conventional commit signals:
 Classify on the commit **type**, never on the word "deps". `chore(deps):` and `ci: bump …` never
 reach the deployed app; `fix(deps):` does.
 
-MyOrganizer does not use pre-release versions. `release.mjs` rejects anything that is not `vX.Y.Z` —
+MyOrganiser does not use pre-release versions. `release.mjs` rejects anything that is not `vX.Y.Z` —
 staging is the pre-release channel.
 
 ---

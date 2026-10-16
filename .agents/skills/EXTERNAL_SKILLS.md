@@ -1,6 +1,6 @@
 # Approved Third-Party Skills
 
-Third-party skills approved for use in MyOrganizer. They add fast-moving framework knowledge the repo should not duplicate.
+Third-party skills approved for use in MyOrganiser. They add fast-moving framework knowledge the repo should not duplicate.
 
 **Project scope only.** A third-party skill is either committed here and stewarded like any other file, or it is not approved. Personal-scope recommendations were removed: this repo cannot update, review, or vouch for a skill living on one developer's machine, and an approval list nobody installs from decays silently — see [ADR 0032](../../docs/adr/0032-no-personal-scope-external-skills.md).
 

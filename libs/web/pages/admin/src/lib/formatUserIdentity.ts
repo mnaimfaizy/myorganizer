@@ -1,4 +1,4 @@
-import type { AdminUserIdentity } from '@myorganizer/app-api-client';
+import type { AdminUserIdentity } from '@myorganiser/app-api-client';
 
 export function formatUserDisplayName(user: AdminUserIdentity): string {
   if (user.name.trim()) {

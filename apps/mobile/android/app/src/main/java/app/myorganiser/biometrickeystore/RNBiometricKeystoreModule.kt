@@ -215,7 +215,7 @@ class RNBiometricKeystoreModule(reactContext: ReactApplicationContext) :
 
   private fun keyStore(): KeyStore = KeyStore.getInstance(ANDROID_KEYSTORE).apply { load(null) }
 
-  private fun alias(userId: String): String = "com.myorganizer.vault.masterkey.$userId"
+  private fun alias(userId: String): String = "com.myorganiser.vault.masterkey.$userId"
 
   private fun entryKey(userId: String): String = "masterkey.$userId"
 
@@ -226,7 +226,7 @@ class RNBiometricKeystoreModule(reactContext: ReactApplicationContext) :
   companion object {
     private const val ANDROID_KEYSTORE = "AndroidKeyStore"
     private const val TRANSFORMATION = "AES/GCM/NoPadding"
-    private const val PREFS = "com.myorganizer.biometrickeystore"
+    private const val PREFS = "com.myorganiser.biometrickeystore"
     private const val SEPARATOR = ":"
     private const val KEY_BITS = 256
     private const val TAG_BITS = 128

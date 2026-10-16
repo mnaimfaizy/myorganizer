@@ -15,12 +15,12 @@ Root-level React Native rules (package-root imports, edge-to-edge via `react-nat
 ## Do
 
 - Keep feature screens, hooks, UI, and platform adapters here; the app stays native wiring and navigation entry.
-- Compose a screen out of the UI Primitives in `@myorganizer/mobile/ui` rather than assembling one out of `View` and `Pressable`. The primitives are where the touch-target minimum, the text-scaling cap, the Reduce Motion behaviour, and the accessibility roles live; a hand-rolled control has none of them and nothing will tell you.
+- Compose a screen out of the UI Primitives in `@myorganiser/mobile/ui` rather than assembling one out of `View` and `Pressable`. The primitives are where the touch-target minimum, the text-scaling cap, the Reduce Motion behaviour, and the accessibility roles live; a hand-rolled control has none of them and nothing will tell you.
 - Reach for `useSafeAreaInsets` when `SafeAreaView` will not do — e.g. offsetting a fixed-position element or a custom scroll inset — rather than a manual inset calculation.
 - Keep vault plaintext and the Master Key on the device.
 - Size text with a Type Scale step — `<Text variant="title">` or `theme.type.title` — never a raw `fontSize`. A step carries its line height, weight, tracking, and the bundled font cut that has its weight; picking the size alone loses the other four.
 - Read colours from `theme.colors`, which is the Semantic Role set for the resolved colour mode. A Brand Primitive has one value, so a screen reaching one is a screen that only works in light mode.
-- Store anything that belongs to one installation of the app as a Device Setting (`@myorganizer/mobile/core`), not in the vault. It is not encrypted, not synced, and not reconciled.
+- Store anything that belongs to one installation of the app as a Device Setting (`@myorganiser/mobile/core`), not in the vault. It is not encrypted, not synced, and not reconciled.
 
 ## Do Not
 

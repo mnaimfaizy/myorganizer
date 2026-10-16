@@ -8,7 +8,7 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import type { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultApi, VaultMetaV1 } from '@myorganiser/app-api-client';
 import type { VaultStorageV1 } from './localVaultStorage';
 import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';
 import {

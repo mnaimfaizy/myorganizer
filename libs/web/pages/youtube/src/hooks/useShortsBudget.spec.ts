@@ -247,7 +247,7 @@ describe('useShortsBudget — metering and state management', () => {
       );
 
       localStorage.setItem(
-        'myorganizer.youtube.shorts-budget.v1',
+        'myorganiser.youtube.shorts-budget.v1',
         JSON.stringify({
           dayKey: yesterdayKey,
           spentMs: 1800000,
@@ -407,7 +407,7 @@ describe('useShortsBudget — metering and state management', () => {
       act(() => {
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: 'myorganizer.youtube.shorts-budget.v1',
+            key: 'myorganiser.youtube.shorts-budget.v1',
             newValue: JSON.stringify({
               dayKey: todayKey,
               spentMs: 1800000,
@@ -434,7 +434,7 @@ describe('useShortsBudget — metering and state management', () => {
       act(() => {
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: 'myorganizer.youtube.shorts-budget.v1',
+            key: 'myorganiser.youtube.shorts-budget.v1',
             newValue: JSON.stringify({
               dayKey: todayKey,
               spentMs: 1000000,
@@ -456,7 +456,7 @@ describe('useShortsBudget — metering and state management', () => {
       act(() => {
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: 'myorganizer.youtube.shorts-budget.v1',
+            key: 'myorganiser.youtube.shorts-budget.v1',
             newValue: JSON.stringify({
               dayKey: todayKey,
               spentMs: 1000000,
@@ -477,7 +477,7 @@ describe('useShortsBudget — metering and state management', () => {
       act(() => {
         window.dispatchEvent(
           new StorageEvent('storage', {
-            key: 'myorganizer.youtube.shorts-budget.v1',
+            key: 'myorganiser.youtube.shorts-budget.v1',
             newValue: 'invalid json',
           }),
         );

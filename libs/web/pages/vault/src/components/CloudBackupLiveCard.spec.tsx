@@ -47,18 +47,18 @@ jest.mock('../hooks', () => ({
 }));
 
 /**
- * Mock @myorganizer/web-vault-ui components as trivial divs.
+ * Mock @myorganiser/web-vault-ui components as trivial divs.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   CloudBackupCard: () => (
     <div data-testid="cloud-backup-card">Cloud Backup</div>
   ),
 }));
 
 /**
- * Mock @myorganizer/web-vault functions and utilities.
+ * Mock @myorganiser/web-vault functions and utilities.
  */
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   createVaultBackupsApi: jest.fn(() => ({
     getLatestBackup: jest.fn().mockResolvedValue({}),
   })),

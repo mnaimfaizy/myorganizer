@@ -19,14 +19,14 @@ const mockCheckVaultAbsentEvidence = jest.fn<
 >();
 const mockCreateVaultApi = jest.fn();
 
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   checkVaultAbsentEvidence: (options: AbsentEvidenceOptions) =>
     mockCheckVaultAbsentEvidence(options),
   createVaultApi: () => mockCreateVaultApi(),
 }));
 
 import { act, renderHook, waitFor } from '@testing-library/react';
-import type { VaultAbsentEvidence, VaultHandle } from '@myorganizer/web-vault';
+import type { VaultAbsentEvidence, VaultHandle } from '@myorganiser/web-vault';
 import type { VaultAbsentEvidenceState } from './useVaultAbsentEvidence';
 import { useVaultAbsentEvidence } from './useVaultAbsentEvidence';
 

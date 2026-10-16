@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Implement
 
-Adapted from [mattpocock/skills — implement](https://github.com/mattpocock/skills/tree/main/skills/engineering/implement) for MyOrganizer workflows.
+Adapted from [mattpocock/skills — implement](https://github.com/mattpocock/skills/tree/main/skills/engineering/implement) for MyOrganiser workflows.
 
 Claude Code resolves this file through the committed `.claude/skills` → `../.agents/skills` symlink, so this project-scoped `implement` skill takes precedence over the unmodified upstream one installed globally at `~/.claude/skills/implement`.
 
@@ -56,7 +56,7 @@ Pick domain workflow skills when they apply:
 - Prisma runbook (read by PrismaWriter) → `prisma-migration-workflow`
 - YouTube integration → `youtube-integration-workflow`
 
-Respect MyOrganizer structure: thin Next.js route wrappers in `apps/myorganizer`, page logic in `libs/web/pages/**`, shared code in `libs/**`.
+Respect MyOrganiser structure: thin Next.js route wrappers in `apps/web`, page logic in `libs/web/pages/**`, shared code in `libs/**`.
 
 ## Validation loop
 
@@ -78,18 +78,18 @@ When `/implement` was invoked against a specific issue (slice or ad-hoc ticket),
 ### 1. Mark the current issue complete
 
 ```sh
-gh issue edit <N> --repo mnaimfaizy/myorganizer \
+gh issue edit <N> --repo mnaimfaizy/myorganiser \
   --remove-label status:in-progress \
   --add-label status:done
 
-gh issue comment <N> --repo mnaimfaizy/myorganizer \
+gh issue comment <N> --repo mnaimfaizy/myorganiser \
   --body "Implementation complete in this session. Unblocking dependents next."
 ```
 
 Close the issue only when appropriate (AFK-style slices, or when the user asks):
 
 ```sh
-gh issue close <N> --repo mnaimfaizy/myorganizer --reason completed
+gh issue close <N> --repo mnaimfaizy/myorganiser --reason completed
 ```
 
 ### 2. Discover dependents
@@ -106,8 +106,8 @@ For every dependent that still has `status:blocked`:
 3. If **all** blockers are satisfied:
 
 ```sh
-gh issue edit <dependent> --repo mnaimfaizy/myorganizer --remove-label status:blocked
-gh issue comment <dependent> --repo mnaimfaizy/myorganizer \
+gh issue edit <dependent> --repo mnaimfaizy/myorganiser --remove-label status:blocked
+gh issue comment <dependent> --repo mnaimfaizy/myorganiser \
   --body "Unblocked: #<completed> is done. Remaining blockers: none — ready for agent/human."
 ```
 

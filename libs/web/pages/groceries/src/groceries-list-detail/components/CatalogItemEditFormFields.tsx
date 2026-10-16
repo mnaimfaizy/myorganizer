@@ -1,6 +1,6 @@
 'use client';
 
-import type { GroceryCategoryType } from '@myorganizer/vault-core';
+import type { GroceryCategoryType } from '@myorganiser/vault-core';
 import {
   FormControl,
   FormField,
@@ -9,7 +9,7 @@ import {
   FormMessage,
   Input,
   cn,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import type { Control } from 'react-hook-form';
 import {
   CATEGORY_EMOJIS,

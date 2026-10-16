@@ -1,6 +1,6 @@
 ---
 name: to-prd
-description: 'Use when the user wants to plan a new feature for MyOrganizer, or to publish a grill/spec session as a PRD Issue. Explores the codebase, sketches test seams, gets user approval, writes a PRD, and publishes it as a GitHub Issue. Always use this skill for planned features — not for ad-hoc bugs, one-off tasks, or standalone IssueCreator tickets.'
+description: 'Use when the user wants to plan a new feature for MyOrganiser, or to publish a grill/spec session as a PRD Issue. Explores the codebase, sketches test seams, gets user approval, writes a PRD, and publishes it as a GitHub Issue. Always use this skill for planned features — not for ad-hoc bugs, one-off tasks, or standalone IssueCreator tickets.'
 ---
 
 # To PRD
@@ -9,7 +9,7 @@ Turn the current conversation context into a Product Requirements Document and p
 
 ## Use This Skill When
 
-- The user wants to plan a new feature, capability, or significant change to MyOrganizer.
+- The user wants to plan a new feature, capability, or significant change to MyOrganiser.
 - The user asks to write a PRD, create a spec, or turn an idea into a structured plan.
 - The user wants to publish the outcome of a `grill-with-docs` session as tracked work.
 - The user wants to prepare work for autonomous agents via `dispatch-agents`.
@@ -92,7 +92,7 @@ _To be populated by to-issues._
 
    ```sh
    gh issue create \
-     --repo mnaimfaizy/myorganizer \
+     --repo mnaimfaizy/myorganiser \
      --title "[PRD] <Feature Name>" \
      --label "prd" \
      --label "ready-for-agent" \

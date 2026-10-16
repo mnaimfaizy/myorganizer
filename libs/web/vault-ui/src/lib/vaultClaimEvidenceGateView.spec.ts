@@ -6,7 +6,7 @@
  */
 
 import { VAULT_CLAIM_EVIDENCE_GATE_VIEWS } from './vaultClaimEvidenceGateView';
-import type { VaultClaimOnEvidenceResult } from '@myorganizer/web-vault';
+import type { VaultClaimOnEvidenceResult } from '@myorganiser/web-vault';
 
 // Import VAULT_META_CHANGES to get the list of all possible result kinds
 // We derive the kinds from VaultClaimOnEvidenceResult type

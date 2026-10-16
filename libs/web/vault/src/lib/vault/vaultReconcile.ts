@@ -8,7 +8,7 @@
  * implementation of convergence. It used to be four hand-written directions —
  * download, upload, keep local, keep server — three of which carried their own
  * fan-out across the Vault Blob Types. That triplication *is*
- * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512): Groceries was
+ * [#512](https://github.com/mnaimfaizy/myorganiser/issues/512): Groceries was
  * present in some directions and missing from others, and a keep-server answer
  * destroyed a User's Ciphertext.
  *
@@ -48,7 +48,7 @@
  * being a server that holds no Vault Meta at all, where the first sync has
  * nothing to override.
  */
-import { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultApi, VaultBlobType } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 

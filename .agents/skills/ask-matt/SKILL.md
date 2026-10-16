@@ -1,18 +1,18 @@
 ---
 name: ask-matt
-description: Ask which MyOrganizer skill or workflow to run next. Use when the right path is unclear and you need a routing recommendation.
+description: Ask which MyOrganiser skill or workflow to run next. Use when the right path is unclear and you need a routing recommendation.
 disable-model-invocation: true
 ---
 
 # Ask Matt
 
-Adapted from `mattpocock/skills` (through v1.2.3 ideas), adjusted to MyOrganizer's skill set and workflows.
+Adapted from `mattpocock/skills` (through v1.2.3 ideas), adjusted to MyOrganiser's skill set and workflows.
 
 Use this as a **router** when you are unsure which workflow to run.
 
 Always recommend a **gate tier** first (`gate:mechanical | standard | full` — ADR 0012 / `.claude/checklist.md` Step 0) when the next step is implementation.
 
-## Main MyOrganizer flow: idea → ship
+## Main MyOrganiser flow: idea → ship
 
 1. **`/grill-with-docs`**  
    Start here to sharpen a feature/problem statement against domain language and existing decisions.

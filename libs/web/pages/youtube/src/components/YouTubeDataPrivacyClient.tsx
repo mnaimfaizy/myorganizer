@@ -1,4 +1,4 @@
-import { Button, Card, CardContent } from '@myorganizer/web-ui';
+import { Button, Card, CardContent } from '@myorganiser/web-ui';
 import Link from 'next/link';
 
 export default function YouTubeDataPrivacyClient() {
@@ -40,7 +40,7 @@ export default function YouTubeDataPrivacyClient() {
             </li>
             <li className="text-sm text-muted-foreground">
               This YouTube metadata is <strong>not</strong> covered by
-              MyOrganizer's Vault or end-to-end encryption — those apply
+              MyOrganiser's Vault or end-to-end encryption — those apply
               elsewhere in the app. (Your YouTube sign-in tokens are still
               encrypted at rest.)
             </li>

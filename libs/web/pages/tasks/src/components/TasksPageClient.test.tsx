@@ -1,4 +1,4 @@
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   useToast: jest.fn(),
   Dialog: ({
     children,
@@ -29,7 +29,7 @@ jest.mock('@myorganizer/web-ui', () => ({
   ),
 }));
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   // Constant: these suites never converge, so the revision never moves.
   // Reloading on a moved revision is covered where it is the subject.
   useLocalVaultRevision: () => 0,
@@ -205,8 +205,8 @@ jest.mock('./task-delete-dialog', () => ({
 import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import type { Task } from '@myorganizer/vault-core';
-import { useToast } from '@myorganizer/web-ui';
+import type { Task } from '@myorganiser/vault-core';
+import { useToast } from '@myorganiser/web-ui';
 import { TasksPageClient } from './TasksPageClient';
 import { useTasksWorkflow } from '../workflow';
 /* eslint-enable import/first */

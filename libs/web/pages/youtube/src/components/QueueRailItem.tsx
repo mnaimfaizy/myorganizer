@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, cn } from '@myorganizer/web-ui';
+import { Button, cn } from '@myorganiser/web-ui';
 import { ChevronDown, ChevronUp, Play, Trash2 } from 'lucide-react';
 import { useCallback } from 'react';
 import type { YouTubeVideo } from '../types';

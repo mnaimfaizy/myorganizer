@@ -6,8 +6,8 @@
 import type {
   GroceryList,
   GroceriesVaultPayload,
-} from '@myorganizer/vault-core';
-import { randomId } from '@myorganizer/core';
+} from '@myorganiser/vault-core';
+import { randomId } from '@myorganiser/core';
 
 /**
  * Friendly error message for vault operations.

@@ -4,8 +4,8 @@ import type {
   CatalogItem,
   GroceryList,
   ListLine,
-} from '@myorganizer/vault-core';
-import { ToastAction, useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/vault-core';
+import { ToastAction, useToast } from '@myorganiser/web-ui';
 import { ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';

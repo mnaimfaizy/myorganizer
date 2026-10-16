@@ -4,9 +4,9 @@ import filterUser from './filterUser';
 import type { User } from '../models/User';
 import type { FilteredUserInterface } from '../types';
 
-// Redirect @myorganizer/auth to refresh-client-contract only so ts-jest does not
+// Redirect @myorganiser/auth to refresh-client-contract only so ts-jest does not
 // compile libs/auth/src/lib/auth.ts (unrelated TS errors under backend tsconfig).
-jest.mock('@myorganizer/auth', () =>
+jest.mock('@myorganiser/auth', () =>
   jest.requireActual('../../../../libs/auth/src/lib/refresh-client-contract'),
 );
 

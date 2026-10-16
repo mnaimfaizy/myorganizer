@@ -10,13 +10,13 @@
     {
       "name": "web",
       "runtimeExecutable": "env",
-      "runtimeArgs": ["PORT=4200", "corepack", "yarn", "start:myorganizer"],
+      "runtimeArgs": ["PORT=4200", "corepack", "yarn", "start:web"],
       "port": 4200
     },
     {
       "name": "web-prod",
       "runtimeExecutable": "corepack",
-      "runtimeArgs": ["yarn", "nx", "run", "myorganizer:start", "--port=4200"],
+      "runtimeArgs": ["yarn", "nx", "run", "web:start", "--port=4200"],
       "port": 4200
     },
     {

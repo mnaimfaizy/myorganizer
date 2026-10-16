@@ -8,7 +8,7 @@
  * therefore knows an Acknowledgment is owed and cannot re-show the key.
  *
  * **Keyed by owner in the storage key, wrapping fingerprint in the value.**
- * The localStorage key is `myorganizer_recovery_key_acknowledgment_v1:<owner>`.
+ * The localStorage key is `myorganiser_recovery_key_acknowledgment_v1:<owner>`.
  * What it holds is a SHA-256 of `masterKeyWrappedWithRecoveryKey`, not a
  * boolean. A boolean per User would still be true after a claim, an import, a
  * replacement or a rotation moved the wrapping, and would need a hand-maintained
@@ -30,7 +30,7 @@
 
 /** The storage key prefix every per-User Recovery Key Acknowledgment key is built from. */
 export const RECOVERY_KEY_ACKNOWLEDGMENT_STORAGE_KEY =
-  'myorganizer_recovery_key_acknowledgment_v1';
+  'myorganiser_recovery_key_acknowledgment_v1';
 
 /** Record version written for a pending Recovery Key Acknowledgment. */
 export const RECOVERY_KEY_ACKNOWLEDGMENT_RECORD_VERSION = 1;

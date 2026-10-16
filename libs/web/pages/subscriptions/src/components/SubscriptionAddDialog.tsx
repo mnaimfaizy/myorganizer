@@ -6,7 +6,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useState } from 'react';
 import { SubscriptionForm } from './SubscriptionForm';
 import type { SubscriptionFormValues } from '../schemas/subscription';

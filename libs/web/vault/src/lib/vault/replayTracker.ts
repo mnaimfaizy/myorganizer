@@ -11,7 +11,7 @@
  *   and for environments without persistent storage.
  */
 
-const DB_NAME = 'myorganizer_vault_replay_v1';
+const DB_NAME = 'myorganiser_vault_replay_v1';
 const STORE_NAME = 'imports';
 const DEFAULT_CAPACITY = 10;
 

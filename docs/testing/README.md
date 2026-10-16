@@ -1,6 +1,6 @@
 # Testing Guide
 
-This document is the canonical **tooling** reference for the MyOrganizer Nx monorepo: which runner,
+This document is the canonical **tooling** reference for the MyOrganiser Nx monorepo: which runner,
 environment, and mock patterns apply to each project, plus the patterns shared across all of them.
 
 It is deliberately short. Per-project detail lives in [`projects/`](./projects/) — read the index
@@ -23,7 +23,7 @@ below plus **only the file for the project you are testing**.
 | Target                               | Test type                    | Runner                               | Command                          | Guide                                         |
 | ------------------------------------ | ---------------------------- | ------------------------------------ | -------------------------------- | --------------------------------------------- |
 | `apps/backend`                       | Jest unit/integration        | `ts-jest` + `node` env               | `yarn nx test backend`           | [backend.md](./projects/backend.md)           |
-| `apps/myorganizer`                   | Jest unit/integration        | `babel-jest` + `jsdom` env           | `yarn nx test myorganizer`       | [myorganizer.md](./projects/myorganizer.md)   |
+| `apps/web`                           | Jest unit/integration        | `babel-jest` + `jsdom` env           | `yarn nx test web`               | [web.md](./projects/web.md)                   |
 | `libs/web/ui`                        | Jest unit/integration        | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-ui`            | [web-ui.md](./projects/web-ui.md)             |
 | `libs/auth`                          | Jest unit/integration        | `ts-jest` + `jsdom` env              | `yarn nx test auth`              | [auth.md](./projects/auth.md)                 |
 | `libs/core`                          | Jest unit                    | `ts-jest` or `babel-jest`            | `yarn nx test core`              | [core.md](./projects/core.md)                 |
@@ -32,7 +32,7 @@ below plus **only the file for the project you are testing**.
 | `libs/web/vault`                     | Jest unit/integration        | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-vault`         | [web-vault.md](./projects/web-vault.md)       |
 | `libs/web/vault-ui`                  | Jest unit/integration        | `babel-jest` + `jsdom` env (React)   | `yarn nx test web-vault-ui`      | [web-vault-ui.md](./projects/web-vault-ui.md) |
 | `libs/web/pages/*`                   | Jest unit/integration        | `babel-jest` + `jsdom` env (React)   | `yarn nx test <lib-name>`        | [web-pages.md](./projects/web-pages.md)       |
-| `apps/myorganizer-e2e`               | Playwright E2E               | `@playwright/test`                   | `yarn nx e2e myorganizer-e2e`    | [e2e.md](./projects/e2e.md)                   |
+| `apps/web-e2e`                       | Playwright E2E               | `@playwright/test`                   | `yarn nx e2e web-e2e`            | [e2e.md](./projects/e2e.md)                   |
 | `libs/mobile/ui`                     | Jest unit + component        | `babel-jest` + `react-native` preset | `yarn nx test mobile-ui`         | [mobile.md](./projects/mobile.md)             |
 | `libs/mobile/core`                   | Jest unit (pure logic only)  | `babel-jest` + `node` env            | `yarn nx test mobile-core`       | [mobile.md](./projects/mobile.md)             |
 | `libs/mobile/screens`                | Jest unit (pure logic only)  | `babel-jest` + `node` env            | `yarn nx test mobile-screens`    | [mobile.md](./projects/mobile.md)             |
@@ -40,8 +40,8 @@ below plus **only the file for the project you are testing**.
 | `libs/mobile/feat/auth`              | Jest unit (pure logic only)  | `babel-jest` + `node` env            | `yarn nx test mobile-feat-auth`  | [mobile.md](./projects/mobile.md)             |
 | `apps/mobile`, other `libs/mobile/*` | Jest — **no spec files yet** | `babel-jest` + `react-native` preset | `yarn nx test mobile`            | [mobile.md](./projects/mobile.md)             |
 
-Use Jest for `*.spec.ts(x)` and `*.test.ts(x)` **outside** `apps/myorganizer-e2e`.
-Use `@playwright/test` **only** under `apps/myorganizer-e2e`.
+Use Jest for `*.spec.ts(x)` and `*.test.ts(x)` **outside** `apps/web-e2e`.
+Use `@playwright/test` **only** under `apps/web-e2e`.
 
 ## How to identify the right config
 
@@ -71,26 +71,26 @@ any other issue in this repo:
 
 ```typescript
 // ❌ WRONG — linting flags the static import as a boundary violation
-import { randomId } from '@myorganizer/core';
-jest.mock('@myorganizer/core');
+import { randomId } from '@myorganiser/core';
+jest.mock('@myorganiser/core');
 
 // ✅ CORRECT — mocks first, then imports
-jest.mock('@myorganizer/core', () => ({
-  ...jest.requireActual('@myorganizer/core'),
+jest.mock('@myorganiser/core', () => ({
+  ...jest.requireActual('@myorganiser/core'),
   randomId: jest.fn(),
 }));
-jest.mock('@myorganizer/web-vault');
+jest.mock('@myorganiser/web-vault');
 
-import { randomId } from '@myorganizer/core';
-import { loadDecryptedData } from '@myorganizer/web-vault';
+import { randomId } from '@myorganiser/core';
+import { loadDecryptedData } from '@myorganiser/web-vault';
 import { useMyHook } from './useMyHook';
 ```
 
 Known lazy-loaded libraries (verify against `nx.json` when new libs are added):
 
-- `@myorganizer/core`
-- `@myorganizer/auth`
-- `@myorganizer/vault-core`
+- `@myorganiser/core`
+- `@myorganiser/auth`
+- `@myorganiser/vault-core`
 
 ---
 
@@ -219,7 +219,7 @@ still scanned. It is not a way to land a long fixture in a spec; see
 
 **Keep test passphrases and passwords to 10–15 characters.** `VaultGate` requires at least 10
 (`setupPassphrase.length >= 10`), and the hook triggers at 16, so that window satisfies both.
-`apps/myorganizer-e2e/src/e2e/multi-user-vault.spec.ts` is the worked example.
+`apps/web-e2e/src/e2e/multi-user-vault.spec.ts` is the worked example.
 
 Do **not** encode a value, rename a variable to dodge the keyword, or move fixture credentials
 into env vars or a side-channel script to get past the hook. Those defeat a control rather than

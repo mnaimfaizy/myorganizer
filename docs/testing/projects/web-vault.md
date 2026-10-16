@@ -21,7 +21,7 @@ crypto seam from the subject of the test, not from the table below.
 
 ## Crypto
 
-This library drives `@myorganizer/vault-core` through the vault handle; it does not reimplement
+This library drives `@myorganiser/vault-core` through the vault handle; it does not reimplement
 crypto. Pick the seam from **what the test claims**, not from the file it sits in.
 
 | The test claims                                                                       | Crypto                                                      |

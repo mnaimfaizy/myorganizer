@@ -10,8 +10,8 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@myorganizer/web-ui';
-import { MIN_PASSPHRASE_LENGTH } from '@myorganizer/web-vault';
+} from '@myorganiser/web-ui';
+import { MIN_PASSPHRASE_LENGTH } from '@myorganiser/web-vault';
 
 export type NewPassphraseFieldValues = {
   newPassphrase: string;

@@ -21,7 +21,7 @@ import {
   PopoverContent,
   PopoverTrigger,
   cn,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import {
   SyncStatusIndicator,

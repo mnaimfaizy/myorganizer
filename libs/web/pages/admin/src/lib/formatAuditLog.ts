@@ -1,4 +1,4 @@
-import type { AdminAuditAction } from '@myorganizer/app-api-client';
+import type { AdminAuditAction } from '@myorganiser/app-api-client';
 
 const AUDIT_ACTION_LABELS: Record<AdminAuditAction, string> = {
   disable: 'Disable',

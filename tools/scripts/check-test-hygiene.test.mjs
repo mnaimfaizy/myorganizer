@@ -203,7 +203,7 @@ test('--all checks tracked Jest files, excludes E2E, and prints concise output',
   );
   writeFixture(
     workspace,
-    'apps/myorganizer-e2e/src/e2e/ignored.spec.ts',
+    'apps/web-e2e/src/e2e/ignored.spec.ts',
     "test('e2e', () => { console.info('not Jest'); });\n",
   );
   git(workspace, 'add', '.');
@@ -285,7 +285,7 @@ test('explicit E2E paths remain skipped', (t) => {
   const workspace = createWorkspace(t);
   const file = writeFixture(
     workspace,
-    'apps/myorganizer-e2e/src/e2e/ignored.spec.ts',
+    'apps/web-e2e/src/e2e/ignored.spec.ts',
     "test('e2e', () => { console.info('not Jest'); });\n",
   );
 

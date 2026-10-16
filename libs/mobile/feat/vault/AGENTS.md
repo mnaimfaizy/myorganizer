@@ -64,7 +64,7 @@ as `crypto.ts` does, so the web target has one copy of them.
 
 - Do not send decrypted vault data off the device.
 - Do not persist passphrases, recovery keys, or the Master Key in plaintext.
-- Do not import browser WebCrypto or `localStorage` helpers from `@myorganizer/web-vault`. The
+- Do not import browser WebCrypto or `localStorage` helpers from `@myorganiser/web-vault`. The
   WebCrypto in `crypto.web.ts` is a platform variant of this lib's own module, not a reach into the
   web vault, and it is the only place in this lib where WebCrypto is allowed.
 - Do not add local vault persistence without a recorded decision. The web vault's owner-bound

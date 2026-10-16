@@ -1,7 +1,7 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@myorganizer/web-ui';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import { Card, CardContent, CardHeader, CardTitle } from '@myorganiser/web-ui';
+import type { VaultHandle } from '@myorganiser/web-vault';
 import { Lock } from 'lucide-react';
 import type { ReactNode } from 'react';
 

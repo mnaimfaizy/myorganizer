@@ -8,7 +8,7 @@ Used for frontend page libraries, shared UI, or utility libs with React.
 yarn nx generate @nx/react:library \
   --name=<lib-name> \
   --directory=libs/<path> \
-  --importPath=@myorganizer/<lib-name> \
+  --importPath=@myorganiser/<lib-name> \
   --unitTestRunner=jest \
   --bundler=none \
   --no-interactive
@@ -20,7 +20,7 @@ yarn nx generate @nx/react:library \
 yarn nx generate @nx/react:library \
   --name=my-route \
   --directory=libs/web/pages/<route> \
-  --importPath=@myorganizer/web-pages/my-route \
+  --importPath=@myorganiser/web-pages/my-route \
   --unitTestRunner=jest \
   --bundler=none \
   --no-interactive
@@ -29,7 +29,7 @@ yarn nx generate @nx/react:library \
 After generation, add to `tsconfig.base.json`:
 
 ```json
-"@myorganizer/web-pages/my-route": ["libs/web/pages/<route>/src/index.ts"]
+"@myorganiser/web-pages/my-route": ["libs/web/pages/<route>/src/index.ts"]
 ```
 
 ---
@@ -42,7 +42,7 @@ For shared logic, utilities, or backend-facing code without React.
 yarn nx generate @nx/js:library \
   --name=<lib-name> \
   --directory=libs/<path> \
-  --importPath=@myorganizer/<lib-name> \
+  --importPath=@myorganiser/<lib-name> \
   --unitTestRunner=jest \
   --bundler=tsc \
   --no-interactive
@@ -82,7 +82,7 @@ yarn nx generate @nx/express:application \
 yarn nx generate @nx/node:library \
   --name=<lib-name> \
   --directory=libs/<path> \
-  --importPath=@myorganizer/<lib-name> \
+  --importPath=@myorganiser/<lib-name> \
   --unitTestRunner=jest \
   --no-interactive
 ```
@@ -156,7 +156,7 @@ Always use `--dry-run` first to preview what files will be created or modified:
 yarn nx generate @nx/react:library \
   --name=my-route \
   --directory=libs/web/pages/<route> \
-  --importPath=@myorganizer/web-pages/my-route \
+  --importPath=@myorganiser/web-pages/my-route \
   --unitTestRunner=jest \
   --bundler=none \
   --dry-run
@@ -197,9 +197,9 @@ yarn nx graph --affected
 | -------------------- | ---------------------- | ------------------------------ |
 | Library project name | kebab-case             | `web-pages-todos`              |
 | Library directory    | `libs/<domain>/<name>` | `libs/web/pages/<name>`        |
-| Import path alias    | `@myorganizer/<scope>` | `@myorganizer/web-pages/todos` |
-| App project name     | kebab-case             | `myorganizer`, `backend`       |
-| App directory        | `apps/<name>`          | `apps/myorganizer`             |
+| Import path alias    | `@myorganiser/<scope>` | `@myorganiser/web-pages/todos` |
+| App project name     | kebab-case             | `web`, `backend`               |
+| App directory        | `apps/<name>`          | `apps/web`                     |
 | Component name       | PascalCase             | `TodoList`                     |
 
 ---
@@ -212,7 +212,7 @@ Every library intended to be imported by other projects must have a path alias r
 {
   "compilerOptions": {
     "paths": {
-      "@myorganizer/<scope>": ["libs/<path>/src/index.ts"]
+      "@myorganiser/<scope>": ["libs/<path>/src/index.ts"]
     }
   }
 }

@@ -8,7 +8,7 @@
   - Uses real TripBoardLifecycleToolbar, TripBoardCatalogAddStrip, and
     TripBoardLineRow children for lifecycle wiring; dialog components remain
     stubbed so this suite focuses on GroceryListView orchestration.
-  - Mocks @myorganizer/web-ui's useToast/ToastAction the same way sibling
+  - Mocks @myorganiser/web-ui's useToast/ToastAction the same way sibling
     vault-adjacent specs in this repo do (see reconcileRunner.spec.tsx).
 */
 
@@ -31,7 +31,7 @@ jest.mock('next/link', () => ({
   ),
 }));
 
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react') as typeof import('react');
 
   const MenuContext = React.createContext<{
@@ -267,7 +267,7 @@ import type {
   CatalogItem,
   GroceryList,
   ListLine,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { GroceryListView } from '../components/GroceryListView';

@@ -27,7 +27,7 @@ import {
   createVaultApi,
   probeVaultMetaReachability,
   type ServerReachability,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 export type UseServerReachabilityResult = {
   /** Null until the first probe resolves. */

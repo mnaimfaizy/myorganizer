@@ -5,7 +5,7 @@
 //   node tools/scripts/check-escape-copy-reader.mjs
 //
 // ADR 0064 decides two things this checks. That an Escape Copy is readable by
-// a tool requiring no MyOrganizer server, no session and no Google account —
+// a tool requiring no MyOrganiser server, no session and no Google account —
 // and that a gate asserts the tool still opens a freshly produced envelope,
 // because "a reader pinned to a schema version the exporter has moved past is
 // worse than no reader: it fails at the only moment anyone runs it, and it
@@ -148,10 +148,10 @@ function loadReaderFromHtml(html) {
   createContext(sandbox);
   runInContext(match[1], sandbox, { filename: READER_FILENAME });
 
-  const reader = sandbox['MyOrganizerEscapeCopyReader'];
+  const reader = sandbox['MyOrganiserEscapeCopyReader'];
   if (!reader?.openEscapeCopy) {
     throw new Error(
-      'The built reader exposes no MyOrganizerEscapeCopyReader.openEscapeCopy handle.',
+      'The built reader exposes no MyOrganiserEscapeCopyReader.openEscapeCopy handle.',
     );
   }
   return reader;

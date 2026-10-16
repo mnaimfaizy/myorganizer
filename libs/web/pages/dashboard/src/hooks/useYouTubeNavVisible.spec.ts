@@ -1,10 +1,10 @@
 /* eslint-disable import/first */
-jest.mock('@myorganizer/web-youtube', () => ({
+jest.mock('@myorganiser/web-youtube', () => ({
   useYouTubeAvailability: jest.fn(),
 }));
 
 import { renderHook } from '@testing-library/react';
-import { useYouTubeAvailability } from '@myorganizer/web-youtube';
+import { useYouTubeAvailability } from '@myorganiser/web-youtube';
 import { useYouTubeNavVisible } from './useYouTubeNavVisible';
 
 const mockUseYouTubeAvailability = useYouTubeAvailability as jest.Mock;

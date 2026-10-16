@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Skeleton } from '@myorganizer/web-ui';
+import { Button, Skeleton } from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import {

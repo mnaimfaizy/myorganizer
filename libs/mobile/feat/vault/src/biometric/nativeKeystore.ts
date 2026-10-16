@@ -21,7 +21,7 @@ import type {
  * refresh-token service, which is device-wide and holds no key material.
  */
 function serviceFor(userId: string): string {
-  return `com.myorganizer.vault.masterkey.${userId}`;
+  return `com.myorganiser.vault.masterkey.${userId}`;
 }
 
 /** The username slot the keychain requires. Carries nothing. */

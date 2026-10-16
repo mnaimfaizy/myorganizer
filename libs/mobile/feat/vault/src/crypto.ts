@@ -1,4 +1,4 @@
-import type { VaultCrypto } from '@myorganizer/vault-core/portable';
+import type { VaultCrypto } from '@myorganiser/vault-core/portable';
 import {
   pbkdf2Sync,
   randomBytes as cryptoRandomBytes,

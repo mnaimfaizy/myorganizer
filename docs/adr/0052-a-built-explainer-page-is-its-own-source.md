@@ -9,7 +9,7 @@ accepted
 `docs/vault/README.md` told readers the vault pages "are generated from dc-runtime design
 exports" and printed the command to regenerate them. Nobody could run it. No `.dc.html` export has
 ever been committed to this repository, and the `<export-dir>` the command names does not exist
-([#534](https://github.com/mnaimfaizy/myorganizer/issues/534)).
+([#534](https://github.com/mnaimfaizy/myorganiser/issues/534)).
 
 The claim was not invented; it was true of a workflow that has since been replaced.
 
@@ -21,7 +21,7 @@ house convention by the `Designer` sub-agent from a brief, which is the workflow
 [ADR 0046](0046-house-explainer-pages-have-a-designer-and-a-gate.md) records. The import path was
 never deprecated; it was simply stopped being used, and the README describing it was not revisited.
 
-The cost was paid in full during [#511](https://github.com/mnaimfaizy/myorganizer/issues/511). Its
+The cost was paid in full during [#511](https://github.com/mnaimfaizy/myorganiser/issues/511). Its
 Remediation Notes stated the page "cannot be hand-edited", citing that README, and concluded the
 correction had to go through a design export. It could not, because none exists. The page was
 edited in place instead, and the repository was left documenting one workflow while practising

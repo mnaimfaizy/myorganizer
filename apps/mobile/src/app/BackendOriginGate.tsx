@@ -5,7 +5,7 @@ import {
   getDeviceSettings,
   guardBackendOrigin,
   isBackendOriginUnchanged,
-} from '@myorganizer/mobile/core';
+} from '@myorganiser/mobile/core';
 import { clearUserLocalData } from './userLocalData';
 
 /**

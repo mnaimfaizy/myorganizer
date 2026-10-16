@@ -1,6 +1,6 @@
 'use client';
 
-import { cn, useOnlineStatus } from '@myorganizer/web-ui';
+import { cn, useOnlineStatus } from '@myorganiser/web-ui';
 import { WifiOff } from 'lucide-react';
 
 export interface OfflineNoticeProps {

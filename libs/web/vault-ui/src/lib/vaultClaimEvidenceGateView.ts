@@ -16,7 +16,7 @@
  * to compile until somebody says what the User sees for it
  * ([ADR 0053](../../../../docs/adr/0053-a-fan-out-over-a-domain-enum-is-pinned-at-its-call-site.md)).
  */
-import type { VaultClaimOnEvidenceResult } from '@myorganizer/web-vault';
+import type { VaultClaimOnEvidenceResult } from '@myorganiser/web-vault';
 
 export type VaultClaimEvidenceGateView =
   /** Carry on as this vault status. */

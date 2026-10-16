@@ -24,8 +24,8 @@ import {
   useVaultBlob,
   recoversByReload,
   VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+} from '@myorganiser/mobile/feat-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   putVaultRecord,
   transitionTaskStatus,
@@ -33,7 +33,7 @@ import {
   type TaskContext,
   type TaskPriority,
   type TaskStatus,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   Button,
   Checkbox,
@@ -63,7 +63,7 @@ import {
   useTheme,
   type ListRowState,
   type StatusTone,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { TaskPriorityMarker } from './TaskPriorityMarker';
 import { formatCalendarDateShort } from './calendarDate';
 import { useCalendarDatePicker } from './DateField';

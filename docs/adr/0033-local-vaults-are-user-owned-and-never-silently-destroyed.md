@@ -6,7 +6,7 @@ accepted
 
 ## Context
 
-A Vault has always been strictly User-owned on the server — `EncryptedVault.userId` is `@unique`, cascading on User delete. On the client it was not owned by anyone: the browser held a single `myorganizer_vault_v1` localStorage slot with no owner recorded in the record shape, and nothing ever cleared it. Any User signing in on that browser inherited whatever Vault was already there.
+A Vault has always been strictly User-owned on the server — `EncryptedVault.userId` is `@unique`, cascading on User delete. On the client it was not owned by anyone: the browser held a single `myorganiser_vault_v1` localStorage slot with no owner recorded in the record shape, and nothing ever cleared it. Any User signing in on that browser inherited whatever Vault was already there.
 
 That asymmetry produced issue #318. A second User registering on a browser where someone had already signed in inherited the first User's Local Vault, had that User's Ciphertext uploaded into their own server-side Vault, was shown a "Vault migrated" toast, and was then asked for a passphrase they had never set — never reaching the new-Vault and recovery-key flow at all. It was both a cross-account write path and a dead end for the new User.
 
@@ -15,7 +15,7 @@ That asymmetry produced issue #318. A second User registering on a browser where
 A Vault is owned by a User on every surface it appears on. A device may hold several Local Vaults, at most one per User who has signed in there, and never adopts one on a User's behalf.
 
 1. **Local Vaults are scoped per User.** Storage is keyed by user id; loading a Vault requires knowing whose it is.
-2. **Legacy unowned Vaults are claimed by unlock.** A pre-existing `myorganizer_vault_v1` has no owner field, so ownership cannot be read from it. It is offered to a signing-in User who has no Local Vault of their own, and becomes theirs only if the Master Key unwrap succeeds. A failed unwrap is proof it belongs to someone else, and it stays unowned.
+2. **Legacy unowned Vaults are claimed by unlock.** A pre-existing `myorganiser_vault_v1` has no owner field, so ownership cannot be read from it. It is offered to a signing-in User who has no Local Vault of their own, and becomes theirs only if the Master Key unwrap succeeds. A failed unwrap is proof it belongs to someone else, and it stays unowned.
 3. **Logout keeps the Local Vault.** Removal is an explicit action in vault settings. Automatic discard happens only against a confirmed server copy of the same Ciphertext.
 
 ## Considered Options

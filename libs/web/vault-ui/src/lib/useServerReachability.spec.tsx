@@ -4,14 +4,14 @@ import { act, renderHook, waitFor } from '@testing-library/react';
 const mockProbeVaultMetaReachability = jest.fn();
 const mockCreateVaultApi = jest.fn();
 
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   probeVaultMetaReachability: (opts: unknown) =>
     mockProbeVaultMetaReachability(opts),
   createVaultApi: () => mockCreateVaultApi(),
 }));
 
 import { useServerReachability } from './useServerReachability';
-import type { ServerReachability } from '@myorganizer/web-vault';
+import type { ServerReachability } from '@myorganiser/web-vault';
 
 describe('useServerReachability', () => {
   beforeEach(() => {

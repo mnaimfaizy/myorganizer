@@ -1,7 +1,7 @@
 'use client';
 
-import { getCurrentUser } from '@myorganizer/auth';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import { getCurrentUser } from '@myorganiser/auth';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
 import { useMemo } from 'react';
 
 import { AddressesCountCard } from './widgets/AddressesCountCard';

@@ -2,10 +2,10 @@ import {
   AuthenticationApi,
   Configuration,
   UsersApi,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import axios, { AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { Platform } from 'react-native';
-import { MOBILE_ENVIRONMENT, readAppVersion } from '@myorganizer/mobile/core';
+import { MOBILE_ENVIRONMENT, readAppVersion } from '@myorganiser/mobile/core';
 import {
   clearRefreshToken,
   getRefreshToken,

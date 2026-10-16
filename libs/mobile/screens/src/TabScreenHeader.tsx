@@ -1,7 +1,7 @@
 import React from 'react';
 import { Platform } from 'react-native';
-import { useVaultSession } from '@myorganizer/mobile/feat-vault';
-import { LargeTitleHeader } from '@myorganizer/mobile/ui';
+import { useVaultSession } from '@myorganiser/mobile/feat-vault';
+import { LargeTitleHeader } from '@myorganiser/mobile/ui';
 
 /**
  * The safe-area edges a tab screen's root takes.

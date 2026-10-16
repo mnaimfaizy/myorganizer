@@ -1,6 +1,6 @@
-# Development Guide - MyOrganizer Monorepo
+# Development Guide - MyOrganiser Monorepo
 
-This guide provides comprehensive documentation for developing in the MyOrganizer monorepo. Whether you're a new contributor or a seasoned developer, this guide will help you get started and navigate the development workflow.
+This guide provides comprehensive documentation for developing in the MyOrganiser monorepo. Whether you're a new contributor or a seasoned developer, this guide will help you get started and navigate the development workflow.
 
 ## Table of Contents
 
@@ -44,7 +44,7 @@ This guide provides comprehensive documentation for developing in the MyOrganize
 
 ## Overview
 
-MyOrganizer is a full-stack web application built as an Nx monorepo. It consists of:
+MyOrganiser is a full-stack web application built as an Nx monorepo. It consists of:
 
 - **Frontend**: Next.js application with React and Tailwind CSS
 - **Backend**: Express.js REST API with TypeScript, Prisma ORM
@@ -70,8 +70,8 @@ Before you begin, ensure you have the following installed on your system:
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/mnaimfaizy/myorganizer.git
-   cd myorganizer
+   git clone https://github.com/mnaimfaizy/myorganiser.git
+   cd myorganiser
    ```
 
 2. **Install Dependencies**
@@ -108,11 +108,11 @@ Before you begin, ensure you have the following installed on your system:
    # Database
    DATABASE_USER=postgres
    DATABASE_PASSWORD=Admin@123
-   DATABASE_NAME=myorganizer
-   DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganizer
+   DATABASE_NAME=myorganiser
+   DATABASE_URL=postgresql://postgres:Admin%40123@localhost:5453/myorganiser
 
    # PgAdmin (for database management GUI)
-   PGADMIN_DEFAULT_EMAIL=admin@myorganizer.com
+   PGADMIN_DEFAULT_EMAIL=admin@myorganiser.com
    PGADMIN_DEFAULT_PASSWORD=Admin@123
 
    # CORS - Comma-separated list
@@ -126,7 +126,7 @@ Before you begin, ensure you have the following installed on your system:
    MAIL_SECURE=false
    MAIL_USERNAME=
    MAIL_PASSWORD=
-   EMAIL_SENDER=no-reply@myorganizer.local
+   EMAIL_SENDER=no-reply@myorganiser.local
 
    # Frontend
    API_BASE_URL=http://localhost:3000/api/v1
@@ -177,7 +177,7 @@ The application uses Docker Compose to run local development dependencies:
 docker-compose up -d
 
 # Start specific service
-docker-compose up -d myorganizer_db
+docker-compose up -d myorganiser_db
 docker-compose up -d mailhog
 
 # View logs
@@ -190,9 +190,17 @@ docker-compose down
 docker-compose down -v
 ```
 
+**Containers from before the product rename.** [ADR 0132](docs/adr/0132-one-product-name-aligned-while-there-were-no-users.md) renamed the database service, the network and every container. A machine set up earlier still runs the old containers, and the old database container holds port 5453, so a plain `docker-compose up -d` fails on the port clash. Recreate once with:
+
+```bash
+docker-compose up -d --remove-orphans
+```
+
+`--remove-orphans` removes the containers whose service no longer exists and starts `myorganiser_db`, `myorganiser_mailhog` and `myorganiser_pgadmin` in their place. Your data is kept: the database still mounts the same `.database/` folder.
+
 **Services included**:
 
-- **PostgreSQL** (myorganizer_db): Database server on port 5453
+- **PostgreSQL** (myorganiser_db): Database server on port 5453
 - **MailHog**: Email testing server on host ports 1453 (SMTP) and 8453 (Web UI)
 - **PgAdmin**: Database GUI on host port 8853
 
@@ -218,10 +226,10 @@ The development server features:
 
 ```bash
 # From the root directory
-yarn start:myorganizer
+yarn start:web
 
 # Or using Nx directly
-yarn nx dev myorganizer
+yarn nx dev web
 
 # The frontend will be available at http://localhost:4200
 ```
@@ -245,7 +253,7 @@ yarn start:backend
 **Terminal 2 - Frontend:**
 
 ```bash
-yarn start:myorganizer
+yarn start:web
 ```
 
 ### Starting the Mobile App (iOS)
@@ -358,7 +366,7 @@ Once everything is running, you can access:
 
 **PgAdmin Credentials** (from .env):
 
-- Email: admin@myorganizer.com
+- Email: admin@myorganiser.com
 - Password: Admin@123
 
 ## Monorepo Structure
@@ -378,9 +386,9 @@ For more than one line on a project, read the `AGENTS.md` (and, where one exists
 
 ## Frontend Architecture (Web Page Libraries)
 
-MyOrganizer enforces a simple rule for the Next.js App Router:
+MyOrganiser enforces a simple rule for the Next.js App Router:
 
-- Files under `apps/myorganizer/src/app/**` are **thin route wrappers** only.
+- Files under `apps/web/src/app/**` are **thin route wrappers** only.
 - All page/domain logic lives in Nx libraries under `libs/web/pages/<route>/`.
 
 Next.js request conventions (`proxy.ts`, async request APIs, do not suggest `next lint`) live in [AGENTS.md](./AGENTS.md). Package versions live in [TECH_STACK.md](./TECH_STACK.md). Do not add a Next.js Proxy unless a ticket explicitly asks — [ADR 0019](./docs/adr/0019-nextjs-proxy-is-not-a-session-layer.md).
@@ -389,7 +397,7 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 
 ### What goes where
 
-- Route wrappers: `apps/myorganizer/src/app/<route>/page.tsx`
+- Route wrappers: `apps/web/src/app/<route>/page.tsx`
   - Keep minimal: route segment wiring, metadata, and importing the page component from the library.
 - Page implementation: `libs/web/pages/<route>/src/**`
   - Actual React components, data fetching (via generated client), form logic, and page-specific helpers.
@@ -398,14 +406,14 @@ This keeps pages reusable and testable, and prevents app-local “shared code”
 
 ### Adding a new frontend page
 
-1. Create a new React library under `libs/web/pages/<route>/` with import path `@myorganizer/web-pages/<route>`.
+1. Create a new React library under `libs/web/pages/<route>/` with import path `@myorganiser/web-pages/<route>`.
 2. Export the page entry from the library’s `src/index.ts`.
-3. Add a thin wrapper at `apps/myorganizer/src/app/<route>/page.tsx` that renders/exports the library page.
+3. Add a thin wrapper at `apps/web/src/app/<route>/page.tsx` that renders/exports the library page.
 
 Examples of existing page libraries:
 
-- `@myorganizer/web-pages/account`
-- `@myorganizer/web-pages/subscriptions`
+- `@myorganiser/web-pages/account`
+- `@myorganiser/web-pages/subscriptions`
 
 ### Forms
 
@@ -574,7 +582,7 @@ yarn nx run-many -t lint
 
 # Lint specific project
 yarn nx lint backend
-yarn nx lint myorganizer
+yarn nx lint web
 
 # Auto-fix linting issues in one project
 yarn nx lint backend --fix
@@ -631,7 +639,7 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
 1. **Navigate to the Repository**
 
-   Go to https://github.com/mnaimfaizy/myorganizer/issues
+   Go to https://github.com/mnaimfaizy/myorganiser/issues
 
 2. **Click "New Issue"**
 
@@ -689,9 +697,9 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    ```bash
    # Fork the repository on GitHub, then:
-   git clone https://github.com/YOUR_USERNAME/myorganizer.git
-   cd myorganizer
-   git remote add upstream https://github.com/mnaimfaizy/myorganizer.git
+   git clone https://github.com/YOUR_USERNAME/myorganiser.git
+   cd myorganiser
+   git remote add upstream https://github.com/mnaimfaizy/myorganiser.git
    ```
 
 2. **Create a Feature Branch**
@@ -714,10 +722,10 @@ Good issues help maintainers understand and address problems quickly. Here's how
 
    # Run specific tests
    yarn nx test backend
-   yarn nx test myorganizer
+   yarn nx test web
 
    # Run E2E tests
-   yarn nx e2e myorganizer-e2e
+   yarn nx e2e web-e2e
 
    # Check code quality
    yarn format:write
@@ -832,7 +840,7 @@ yarn nx run-many -t test
 
 # Run tests for specific project
 yarn nx test backend
-yarn nx test myorganizer
+yarn nx test web
 yarn nx test web-ui
 
 # Run tests in watch mode
@@ -900,23 +908,23 @@ describe('Button', () => {
 
 ### E2E Testing
 
-End-to-end tests use Playwright and are located in `apps/myorganizer-e2e`.
+End-to-end tests use Playwright and are located in `apps/web-e2e`.
 
 ```bash
 # Run E2E tests
-yarn nx e2e myorganizer-e2e
+yarn nx e2e web-e2e
 
 # Run E2E tests in UI mode (interactive)
-yarn nx e2e myorganizer-e2e --ui
+yarn nx e2e web-e2e --ui
 
 # Run E2E tests for CI
-yarn nx e2e-ci myorganizer-e2e
+yarn nx e2e-ci web-e2e
 ```
 
 **Writing E2E Tests**:
 
 ```typescript
-// apps/myorganizer-e2e/src/example.spec.ts
+// apps/web-e2e/src/example.spec.ts
 import { test, expect } from '@playwright/test';
 
 test('user can log in', async ({ page }) => {
@@ -936,7 +944,7 @@ test('user can log in', async ({ page }) => {
 ```bash
 # Generate coverage report
 yarn nx test backend --coverage
-yarn nx test myorganizer --coverage
+yarn nx test web --coverage
 
 # View coverage in browser
 # Reports are in coverage/ directory
@@ -976,23 +984,23 @@ node main.js
 
 ```bash
 # Build frontend
-yarn build:myorganizer
+yarn build:web
 
 # Or using Nx
-yarn nx build myorganizer
+yarn nx build web
 
-# Output is in apps/myorganizer/.next/
+# Output is in apps/web/.next/
 ```
 
 **Running Production Build**:
 
 ```bash
 # Builds (or restores the build from cache), then runs `next start`
-yarn start:myorganizer:prod
+yarn start:web:prod
 ```
 
-To produce the self-hosted deploy bundle in `dist/deploy/myorganizer-web/`, run
-`yarn nx run myorganizer:package`.
+To produce the self-hosted deploy bundle in `dist/deploy/web/`, run
+`yarn nx run web:package`.
 
 ### Building Storybook
 
@@ -1107,8 +1115,17 @@ docker-compose down
 docker-compose up -d
 
 # View logs
-docker-compose logs -f myorganizer_db
+docker-compose logs -f myorganiser_db
 ```
+
+**Problem**: `Bind for 0.0.0.0:5453 failed: port is already allocated` after pulling the product rename
+
+```bash
+# Solution: remove the containers created before the rename, keeping your data
+docker-compose up -d --remove-orphans
+```
+
+See [Starting Dependencies (Docker)](#starting-dependencies-docker).
 
 ### Database Issues
 
@@ -1116,7 +1133,7 @@ docker-compose logs -f myorganizer_db
 
 ```bash
 # Solution 1: Check database is running
-docker ps | grep myorganizer_db
+docker ps | grep myorganiser_db
 
 # Solution 2: Verify DATABASE_URL in .env
 # Should match docker-compose.yml settings
@@ -1244,7 +1261,7 @@ Notes:
 
 ### Common Errors
 
-**Error**: `Cannot find module '@myorganizer/...'`
+**Error**: `Cannot find module '@myorganiser/...'`
 
 ```bash
 # Solution: Rebuild TypeScript paths
@@ -1299,7 +1316,7 @@ yarn husky install
 
 If you encounter issues not covered in this guide:
 
-1. Check existing [GitHub Issues](https://github.com/mnaimfaizy/myorganizer/issues)
+1. Check existing [GitHub Issues](https://github.com/mnaimfaizy/myorganiser/issues)
 2. Search the documentation
 3. Review recent Pull Requests for similar changes
 4. Create a new issue with detailed information

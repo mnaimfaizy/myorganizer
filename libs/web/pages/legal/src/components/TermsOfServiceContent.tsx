@@ -18,7 +18,7 @@ export function TermsOfServiceContent({
           Acceptance of Terms
         </Heading>
         <p className="text-sm text-muted-foreground">
-          By using MyOrganizer, you agree to these Terms. If you do not agree,
+          By using MyOrganiser, you agree to these Terms. If you do not agree,
           you may not use the service.
         </p>
       </section>
@@ -28,7 +28,7 @@ export function TermsOfServiceContent({
           Description of Service
         </Heading>
         <p className="text-sm text-muted-foreground">
-          MyOrganizer is a personal organizer application that helps you manage
+          MyOrganiser is a personal organizer application that helps you manage
           and store personal information, including tasks, addresses, contacts,
           grocery lists, and similar items. The service is built around an
           end-to-end encrypted Vault that stores your data securely. The server
@@ -36,7 +36,7 @@ export function TermsOfServiceContent({
           has access to the unencrypted contents.
         </p>
         <p className="text-sm text-muted-foreground">
-          MyOrganizer has an optional YouTube feature, which is available only
+          MyOrganiser has an optional YouTube feature, which is available only
           to accounts the operator has enabled. It uses YouTube API Services and
           is read-only: it retrieves and displays your subscriptions and their
           uploads. By using it you agree to be bound by the{' '}
@@ -65,7 +65,7 @@ export function TermsOfServiceContent({
         <p className="text-sm text-muted-foreground">
           You acknowledge that the server never stores your encryption key or
           the plaintext contents of your Vault. If you lose your passphrase or
-          recovery material, MyOrganizer cannot recover your encrypted data, as
+          recovery material, MyOrganiser cannot recover your encrypted data, as
           recovery is technically impossible without these credentials.
         </p>
       </section>
@@ -98,7 +98,7 @@ export function TermsOfServiceContent({
           Service Availability
         </Heading>
         <p className="text-sm text-muted-foreground">
-          MyOrganizer is provided on an &quot;as is&quot; basis without any
+          MyOrganiser is provided on an &quot;as is&quot; basis without any
           warranty of uninterrupted availability. We do not guarantee that the
           service will be available at all times, and we may perform maintenance
           or updates that temporarily affect availability. Features,
@@ -111,7 +111,7 @@ export function TermsOfServiceContent({
           Limitation of Liability
         </Heading>
         <p className="text-sm text-muted-foreground">
-          To the fullest extent permitted by law, MyOrganizer and its operators
+          To the fullest extent permitted by law, MyOrganiser and its operators
           shall not be liable for any indirect, incidental, special,
           consequential, or punitive damages, including without limitation
           damages for loss of data, loss of profits, or interruption of service,

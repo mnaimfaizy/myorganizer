@@ -8,7 +8,7 @@ import {
   DialogTitle,
   DialogTrigger,
   cn,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   type ComponentType,
   type ReactNode,
@@ -84,7 +84,7 @@ export function LegalDocumentDialog({
         <DialogHeader className="px-6 pb-4 pr-12 pt-6">
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription className="sr-only">
-            Full text of the MyOrganizer {title}.
+            Full text of the MyOrganiser {title}.
           </DialogDescription>
         </DialogHeader>
         <div className="min-h-0 overflow-y-auto px-6 pb-6">

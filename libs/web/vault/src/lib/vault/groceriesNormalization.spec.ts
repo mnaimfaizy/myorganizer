@@ -4,7 +4,7 @@ import {
   storeHolding,
 } from './unknownFieldsRoundTrip.testutil';
 import { saveGroceriesPayload } from './vaultRecordWrite';
-import type { GroceriesVaultPayload } from '@myorganizer/vault-core';
+import type { GroceriesVaultPayload } from '@myorganiser/vault-core';
 
 describe('normalizeGroceries', () => {
   beforeEach(() => {

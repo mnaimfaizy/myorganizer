@@ -4,22 +4,22 @@
  * Mock web-vault functions before importing the hook.
  * Keep the real VaultSecretMismatchError to test instanceof checks.
  */
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
 }));
 
 /**
  * Mock web-vault-ui functions.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-vault-ui'),
+jest.mock('@myorganiser/web-vault-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-vault-ui'),
   useOptionalVaultSession: jest.fn(),
 }));
 
 /**
  * Mock web-ui hook.
  */
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   useToast: jest.fn(),
 }));
 
@@ -31,11 +31,11 @@ jest.mock('../utils/getErrorMessage', () => ({
 }));
 
 import { renderHook, act } from '@testing-library/react';
-import { VaultSecretMismatchError } from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+import { VaultSecretMismatchError } from '@myorganiser/web-vault';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 import { useVaultUnlock } from './useVaultUnlock';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 
 // === Mock helpers ===
 

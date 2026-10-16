@@ -1,6 +1,6 @@
 # Host Apply: operator setup and first live apply
 
-Issue [#569](https://github.com/mnaimfaizy/myorganizer/issues/569). The work in
+Issue [#569](https://github.com/mnaimfaizy/myorganiser/issues/569). The work in
 [ADR 0056](../adr/0056-ci-owns-host-apply-without-describing-the-jail.md) gives CI
 the ability to install, migrate, regenerate the Prisma client, restart, and
 verify — but only once a human has put a deploy key on the host and real values

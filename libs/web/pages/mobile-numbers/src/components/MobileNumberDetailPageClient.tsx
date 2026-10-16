@@ -6,14 +6,14 @@ import {
   PriorityEnum,
   UpdateMethodEnum,
   UsageLocationRecord,
-} from '@myorganizer/vault-core';
-import { Button, ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/vault-core';
+import { Button, ConfirmDeleteDialog, useToast } from '@myorganiser/web-ui';
 import {
   normalizeMobileNumbers,
   saveVaultRecords,
   type VaultHandle,
-} from '@myorganizer/web-vault';
-import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault';
+import { useLocalVaultRevision, VaultGate } from '@myorganiser/web-vault-ui';
 import { Plus } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 

@@ -1,4 +1,4 @@
-import type { VaultImportErrorCode } from '@myorganizer/vault-core';
+import type { VaultImportErrorCode } from '@myorganiser/vault-core';
 
 /**
  * User-facing actionable messages for every {@link VaultImportErrorCode}.

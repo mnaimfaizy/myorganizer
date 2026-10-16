@@ -1,16 +1,16 @@
 'use client';
 
-import { formatMoney } from '@myorganizer/core';
+import { formatMoney } from '@myorganiser/core';
 import {
   calculateMonthlyEquivalents,
   SubscriptionStatusEnum,
   type CurrencyCode,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import {
   normalizeSubscriptions,
   type VaultHandle,
-} from '@myorganizer/web-vault';
-import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault';
+import { useLocalVaultRevision } from '@myorganiser/web-vault-ui';
 import { CreditCard } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

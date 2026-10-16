@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@myorganizer/web-ui';
+import { cn } from '@myorganiser/web-ui';
 import type { KeyboardEvent, MutableRefObject } from 'react';
 import type { ChannelCarousel } from '../types';
 

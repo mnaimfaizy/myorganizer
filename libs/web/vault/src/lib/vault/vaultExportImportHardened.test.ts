@@ -4,7 +4,7 @@
  * existing `vaultExportImport.test.ts` which still covers the legacy
  * `validateVaultExportBundle*` helpers used by the current UI cards.
  */
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { AuditReporter, AuditReporterInput } from './auditReporter';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
@@ -19,7 +19,7 @@ import {
 import { createVaultHandle } from './vaultHandle';
 
 const TEST_OWNER = 'test-owner';
-const OWNED_VAULT_STORAGE_KEY = `myorganizer_vault_v1:${TEST_OWNER}`;
+const OWNED_VAULT_STORAGE_KEY = `myorganiser_vault_v1:${TEST_OWNER}`;
 
 // Minimal in-memory localStorage shim so `saveVault` works in node.
 class MemoryStorage {

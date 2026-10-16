@@ -7,7 +7,7 @@ import {
   useFocusRing,
   usePressFeedback,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import type { CopyableField } from './contactModel';
 
 export interface ContactFieldRowProps {

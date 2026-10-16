@@ -211,7 +211,7 @@ const stagedPaths = listStagedPaths();
 ensureStagedChanges(stagedPaths);
 rejectStagedSecrets(listStagedPaths({ diffFilter: 'ACMR' }));
 
-const tempDir = mkdtempSync(join(tmpdir(), 'myorganizer-ai-commit-'));
+const tempDir = mkdtempSync(join(tmpdir(), 'myorganiser-ai-commit-'));
 const messagePath = join(tempDir, 'COMMIT_EDITMSG');
 
 writeFileSync(messagePath, `${commitMessage}\n`, 'utf8');

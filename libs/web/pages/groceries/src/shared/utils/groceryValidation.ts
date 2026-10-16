@@ -1,7 +1,7 @@
 import {
   type GroceryCategoryType,
   GROCERY_PREDEFINED_CATEGORIES,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import { z } from 'zod';
 import type { AddCatalogItemAndLineInput } from '../hooks/useGroceriesVault';
 

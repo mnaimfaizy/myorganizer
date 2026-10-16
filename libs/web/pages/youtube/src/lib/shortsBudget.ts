@@ -18,7 +18,7 @@
  */
 
 /** Namespaced per the repo's localStorage convention; `v1` allows a reshape later. */
-export const SHORTS_BUDGET_STORAGE_KEY = 'myorganizer.youtube.shorts-budget.v1';
+export const SHORTS_BUDGET_STORAGE_KEY = 'myorganiser.youtube.shorts-budget.v1';
 
 /** Default Shorts Daily Budget: one hour (PRD #264, user story 15). */
 export const DEFAULT_SHORTS_LIMIT_MS = 60 * 60 * 1000;

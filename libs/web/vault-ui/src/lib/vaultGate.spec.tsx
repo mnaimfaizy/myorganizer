@@ -1,8 +1,8 @@
 /* eslint-disable import/first -- jest.mock must precede application imports */
 
 const mockUseToast = jest.fn();
-jest.mock('@myorganizer/web-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-ui'),
+jest.mock('@myorganiser/web-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-ui'),
   useToast: () => mockUseToast(),
 }));
 
@@ -39,8 +39,8 @@ const mockReplaceOwnedLocalVaultWithRecoveryKey = jest.fn();
 const mockExportVault = jest.fn();
 const mockCreateDefaultAuditReporter = jest.fn();
 
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   claimUnclaimedLocalVaultWithRecoveryKey: (args: unknown) =>
     mockClaimUnclaimedLocalVaultWithRecoveryKey(args),
   replaceOwnedLocalVaultOnEvidence: (args: unknown) =>
@@ -58,8 +58,8 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { VaultSecretMismatchError } from '@myorganizer/web-vault';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import { VaultSecretMismatchError } from '@myorganiser/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 
 import { VaultGate } from './vaultGate';
 

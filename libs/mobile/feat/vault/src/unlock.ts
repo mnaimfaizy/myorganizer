@@ -1,5 +1,5 @@
-import type { VaultCrypto } from '@myorganizer/vault-core/portable';
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultCrypto } from '@myorganiser/vault-core/portable';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 import { base64ToBytes } from './bytes';
 import { PBKDF2_ITERATIONS } from './constants';
 

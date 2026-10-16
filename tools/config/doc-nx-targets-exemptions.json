@@ -4,8 +4,8 @@
   "exemptions": [
     {
       "file": "docs/adr/0050-e2e-runs-as-a-blocking-chromium-lane-and-a-nightly-rot-detector.md",
-      "claim": "nx run myorganizer:serve:production",
-      "reason": "Records the `webServer.command` the decision set at the time. The same paragraph says the target has since become the inferred `myorganizer:start` (ADR 0083), so the sentence is history, not an instruction."
+      "claim": "nx run web:serve:production",
+      "reason": "Records the `webServer.command` the decision set at the time. The same paragraph says the target has since become the inferred `web:start` (ADR 0083), so the sentence is history, not an instruction."
     }
   ]
 }

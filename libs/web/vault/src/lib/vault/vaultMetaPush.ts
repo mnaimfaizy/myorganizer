@@ -25,7 +25,7 @@
  * composes the two exactly as `vaultReconcile.ts` composes `convergeVaultBlob`
  * — the write capability lives here, above the primitive, never inside it.
  */
-import { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultApi, VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
@@ -60,7 +60,7 @@ type VaultMetaApi = Pick<VaultApi, 'getVaultMeta' | 'putVaultMeta'>;
  * different Vault, and no proof about the base makes pushing over it right.
  * Pushing there would leave the server's Ciphertext guarded by a key it was
  * not encrypted under — exactly
- * [#578](https://github.com/mnaimfaizy/myorganizer/issues/578) pointing the
+ * [#578](https://github.com/mnaimfaizy/myorganiser/issues/578) pointing the
  * other way.
  *
  * It guards a second case that does not exist yet. `changePassphrase`

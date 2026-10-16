@@ -1,6 +1,6 @@
 'use client';
 
-import { getAccessToken } from '@myorganizer/auth';
+import { getAccessToken } from '@myorganiser/auth';
 import {
   COUNTRIES,
   detectTimeZone,
@@ -9,8 +9,8 @@ import {
   setAccountSettings,
   subscribeAccountSettings,
   SUPPORTED_CURRENCIES,
-} from '@myorganizer/core';
-import type { CurrencyCode } from '@myorganizer/vault-core';
+} from '@myorganiser/core';
+import type { CurrencyCode } from '@myorganiser/vault-core';
 import {
   Button,
   Card,
@@ -23,8 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
   useToast,
-} from '@myorganizer/web-ui';
-import { LastBackupCard } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-ui';
+import { LastBackupCard } from '@myorganiser/web-vault-ui';
 import Link from 'next/link';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 

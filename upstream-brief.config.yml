@@ -1,4 +1,4 @@
-# MyOrganizer adapter for the portable Upstream Brief skill.
+# MyOrganiser adapter for the portable Upstream Brief skill.
 # Schema: .agents/skills/upstream-brief/ADAPTER.md
 
 version_record:
@@ -46,7 +46,7 @@ script_globs:
   - tools/scripts/check-mobile-platform.mjs
 
 source_globs:
-  - apps/myorganizer/src/**/*.{ts,tsx}
+  - apps/web/src/**/*.{ts,tsx}
   - apps/backend/src/**/*.{ts,js}
   - apps/mobile/src/**/*.{ts,tsx}
   - libs/web/ui/src/**/*.{ts,tsx}
@@ -60,7 +60,7 @@ brief_dir: docs/research
 # arrived labelled as something it was not.
 issue:
   tracker: github
-  repository: mnaimfaizy/myorganizer
+  repository: mnaimfaizy/myorganiser
   labels:
     research: research
     hitl: type:hitl

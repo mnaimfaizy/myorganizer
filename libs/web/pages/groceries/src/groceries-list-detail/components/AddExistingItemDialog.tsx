@@ -1,13 +1,13 @@
 'use client';
 
-import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
+import type { CatalogItem, GroceryList } from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
   DialogContent,
   Input,
   Label,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Lock } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { AddExistingItemCatalogSelector } from './AddExistingItemCatalogSelector';

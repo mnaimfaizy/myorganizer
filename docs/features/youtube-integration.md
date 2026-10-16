@@ -211,7 +211,7 @@ seconds while the run is live, which is how the page shows progress and how it
 learns that a run it did not start (cron, another tab) has finished. For a run the
 User started, the `PUT` response is also a completion signal: a run that finishes
 before the first poll sees it live still refreshes the lists
-([#753](https://github.com/mnaimfaizy/myorganizer/issues/753)). The response
+([#753](https://github.com/mnaimfaizy/myorganiser/issues/753)). The response
 counts as a run only when its status is one that did work and its attempt stamp
 moved past the one read just before the request, because a lost claim answers with
 an earlier run's stored status. Either path refreshes the lists at most once per
@@ -293,7 +293,7 @@ there is no intra-channel counter.
   that dies mid-send leaves a claimed row that no later pass re-sends: losing
   one week's digest is the deliberate trade against mailing it twice.
 - **Unsubscribe** link in every email, backed by a stable per-User token, and
-  every content link points back into MyOrganizer rather than youtube.com.
+  every content link points back into MyOrganiser rather than youtube.com.
 
 ## Frontend Views
 
@@ -368,8 +368,8 @@ failed one.
 ```text
 $HOME/bin/youtube-cron.sh          # copy of tools/scripts/youtube-cron.sh
 $HOME/bin/youtube-cron.env         # mode 600; not in git
-$HOME/bin/myorganizer-youtube-sync.lock
-$HOME/bin/myorganizer-youtube-digest.lock
+$HOME/bin/myorganiser-youtube-sync.lock
+$HOME/bin/myorganiser-youtube-digest.lock
 ```
 
 `youtube-cron.env`:
@@ -471,6 +471,6 @@ close that issue until the production proof there is done.
 1. **Phase 1 — Database & Schema**: Add Prisma models, run migration.
 2. **Phase 2 — Backend Services**: Token encryption, YouTube API service, sync service, notification service.
 3. **Phase 3 — Backend Controller**: TSOA endpoints, cron webhook.
-4. **Phase 4 — Frontend Library**: Create `@myorganizer/web-pages/youtube`, build dashboard components.
+4. **Phase 4 — Frontend Library**: Create `@myorganiser/web-pages/youtube`, build dashboard components.
 5. **Phase 5 — Settings Integration**: Extend account settings page.
 6. **Phase 6 — Testing**: Unit tests + E2E scaffolding.

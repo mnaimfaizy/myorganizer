@@ -5,10 +5,10 @@ import { DownloadPage } from './DownloadPage';
 
 const RELEASE_VERSION = '1.2.3';
 const APK_URL =
-  'https://github.com/mnaimfaizy/myorganizer/releases/download/mobile-v1.2.3/myorganiser-1.2.3.apk';
+  'https://github.com/mnaimfaizy/myorganiser/releases/download/mobile-v1.2.3/myorganiser-1.2.3.apk';
 const CHECKSUM_URL = `${APK_URL}.sha256`;
 const RELEASE_NOTES_URL =
-  'https://github.com/mnaimfaizy/myorganizer/releases/tag/mobile-v1.2.3';
+  'https://github.com/mnaimfaizy/myorganiser/releases/tag/mobile-v1.2.3';
 
 describe('DownloadPage', () => {
   describe('with a Mobile Release', () => {

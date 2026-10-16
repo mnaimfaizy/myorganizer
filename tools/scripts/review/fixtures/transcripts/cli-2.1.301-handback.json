@@ -248,7 +248,7 @@
         {
           "tool_use_id": "toolu_01Ec9JwjNwLyHhhc13AqkiLc",
           "type": "tool_result",
-          "content": "00fd10e4 refactor(brand): point repo slug references at mnaimfaizy/myorganiser\n45bc6ca4 docs(deployment): record repository rename and never-recreate rule\nf9a89b06 refactor(brand): rename product to MyOrganiser everywhere\nc1c1ab97 refactor: rename @myorganizer import scope to @myorganiser\nf7568c81 t\n[... shortened ...]",
+          "content": "00fd10e4 refactor(brand): point repo slug references at mnaimfaizy/myorganiser\n45bc6ca4 docs(deployment): record repository rename and never-recreate rule\nf9a89b06 refactor(brand): rename product to MyOrganiser everywhere\n[... shortened ...]",
           "is_error": false
         }
       ]
@@ -313,7 +313,7 @@
       "content": [
         {
           "type": "tool_result",
-          "content": "Exit code 1\nproduct-name: tracked files still use the old product spelling (ADR 0132)\n\n  .claude/agents/api-sync.md:4: Use when the user asks to verify, regenerate, or check drift in the OpenAPI spec or generated API client (libs/app-api-client) after backend contract changes in\n  .claude/agents/api-sync.md:9: You are the API contract sync specialist for MyOrganizer. Your job is to verify and (if \n[... shortened ...]",
+          "content": "Exit code 1\nproduct-name: tracked files still use the old product spelling (ADR 0132)\n\n  .claude/agents/api-sync.md:4: Use when the user asks to verify, regenerate, or check drift in the OpenAPI spec or generated API client (libs/app-api-client) after backend contract changes in\n[... shortened ...]",
           "is_error": true,
           "tool_use_id": "toolu_01BoK4WiediKvYLQHf2au9vA"
         }

@@ -3,7 +3,7 @@ import { Linking, StyleSheet, View } from 'react-native';
 import type {
   OrganisationType,
   UpdateMethod,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   Checkbox,
   Icon,
@@ -14,7 +14,7 @@ import {
   Text,
   useTheme,
   type IconName,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   describeNotifiedOn,
   describeNotifiedProgress,

@@ -25,7 +25,7 @@ const MAC_SAFARI_16_UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Safari/605.1.15';
 
 const STANDALONE_QUERY = '(display-mode: standalone)';
-const DISMISSED_KEY = 'myorganizer.install-card.dismissed.v1';
+const DISMISSED_KEY = 'myorganiser.install-card.dismissed.v1';
 const IOS_SENTENCE =
   "You'll sign in and unlock your vault again inside the installed MyOrganiser.";
 

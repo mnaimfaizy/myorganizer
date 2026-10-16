@@ -1,4 +1,4 @@
-import { EMAIL_BRAND_NAME, renderEmailShell } from '@myorganizer/email-shell';
+import { EMAIL_BRAND_NAME, renderEmailShell } from '@myorganiser/email-shell';
 import bcrypt from 'bcrypt';
 import { JsonWebTokenError, JwtPayload, TokenExpiredError } from 'jsonwebtoken';
 import winston from 'winston';

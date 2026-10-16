@@ -1,7 +1,7 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <meta name="color-scheme" content="light dark" />
-<title>Release Pipeline &middot; MyOrganizer</title>
+<title>Release Pipeline &middot; MyOrganiser</title>
 <script>
   /* Pinned theme, applied before first paint. Not a module, not deferred.
      Storage access throws SecurityError on an opaque origin — a data: URL, a
@@ -918,7 +918,7 @@
 <div class="wrap">
   <header class="masthead">
     <div>
-      <div class="eyebrow">MyOrganizer &middot; release &amp; deploy</div>
+      <div class="eyebrow">MyOrganiser &middot; release &amp; deploy</div>
       <h1>Release Pipeline</h1>
       <p class="lede">
         You are about to approve a production deploy. This page answers what
@@ -1707,7 +1707,7 @@
           (<a href="../adr/0028-production-deploys-are-approval-gated-and-tags-are-receipts.md"
             >ADR&nbsp;0028</a
           >). Verify it directly:
-          <code>gh api repos/mnaimfaizy/myorganizer/environments/production --jq '.protection_rules'</code>.
+          <code>gh api repos/mnaimfaizy/myorganiser/environments/production --jq '.protection_rules'</code>.
         </dd>
         <dt>halt</dt>
         <dd id="note-halt">
@@ -1762,8 +1762,8 @@
         </dd>
         <dt>deployfrontend</dt>
         <dd id="note-deployfrontend">
-          Packages with <code>yarn package:myorganizer:web</code> and ships
-          <code>./dist/deploy/myorganizer-web/</code> over FTP to cPanel
+          Packages with <code>yarn package:web</code> and ships
+          <code>./dist/deploy/web/</code> over FTP to cPanel
           (<code>deploy-production.yml:344-361</code>). The job ends at the
           upload; Staging's frontend job goes on to restart the app and probe
           it &mdash; see panel&nbsp;2. Runs
@@ -1916,7 +1916,7 @@
         </div>
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP, then restart and probe</div>
-          <p><code>./dist/deploy/myorganizer-web/</code></p>
+          <p><code>./dist/deploy/web/</code></p>
           <span class="cite">deploy-staging.yml:533, :539</span>
         </div>
 
@@ -1928,7 +1928,7 @@
         </div>
         <div class="ccard cpanel">
           <div class="ctop">cPanel over FTP</div>
-          <p><code>./dist/deploy/myorganizer-web/</code></p>
+          <p><code>./dist/deploy/web/</code></p>
           <span class="cite">deploy-production.yml:353, :359</span>
         </div>
       </div>
@@ -1953,7 +1953,7 @@
           <span class="cite">deploy-staging.yml:493-497</span>.
         </li>
         <li>
-          Builds the bundle with <code>yarn package:myorganizer:web</code>,
+          Builds the bundle with <code>yarn package:web</code>,
           setting the commit as the build id
           <span class="cite">:499-509</span>.
         </li>
@@ -2711,7 +2711,7 @@
       "ci.yml:1252": { "file": ".github/workflows/ci.yml", "start": "build-backend:" },
       "ci.yml:1256": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'backend') }}" },
       "ci.yml:1298": { "file": ".github/workflows/ci.yml", "start": "build-frontend:" },
-      "ci.yml:1302": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}" },
+      "ci.yml:1302": { "file": ".github/workflows/ci.yml", "start": "if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'web') }}" },
       "deploy-production.yml:1": { "file": ".github/workflows/deploy-production.yml", "start": "name: Deploy Production (manual)" },
       "deploy-production.yml:3-4": { "file": ".github/workflows/deploy-production.yml", "start": "on:", "end": "workflow_dispatch:" },
       "deploy-production.yml:18-21": { "file": ".github/workflows/deploy-production.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
@@ -2744,7 +2744,7 @@
       "deploy-production.yml:300": { "file": ".github/workflows/deploy-production.yml", "start": "ref: ${{ needs.validate.outputs.release_ref }}" },
       "deploy-production.yml:344-361": { "file": ".github/workflows/deploy-production.yml", "start": "- name: Package frontend (cPanel)", "end": "timeout: 300000" },
       "deploy-production.yml:353": { "file": ".github/workflows/deploy-production.yml", "start": "- name: Deploy frontend to cPanel (production)" },
-      "deploy-production.yml:359": { "file": ".github/workflows/deploy-production.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
+      "deploy-production.yml:359": { "file": ".github/workflows/deploy-production.yml", "start": "local-dir: ./dist/deploy/web/" },
       "deploy-production.yml:361": { "file": ".github/workflows/deploy-production.yml", "start": "timeout: 300000" },
       "deploy-staging.yml:16": { "file": ".github/workflows/deploy-staging.yml", "start": "run-name: Deploy Staging ${{ github.event_name == 'schedule' && '(scheduled)' || github.sha }}" },
       "deploy-staging.yml:18-23": { "file": ".github/workflows/deploy-staging.yml", "start": "on:", "end": "workflow_dispatch:" },
@@ -2769,11 +2769,11 @@
       "deploy-staging.yml:406-408": { "file": ".github/workflows/deploy-staging.yml", "start": "concurrency:", "end": "cancel-in-progress: false" },
       "deploy-staging.yml:424-430": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Checkout deploy tools", "end": "sparse-checkout-cone-mode: false" },
       "deploy-staging.yml:493-497": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Assert the web app and the API are on the same site", "end": "run: node .deploy-tools/tools/scripts/staging-web-deploy.mjs same-site \"$WEB_ORIGIN\" \"$API_ORIGIN\"" },
-      "deploy-staging.yml:499-509": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Package web app (cPanel)", "end": "run: corepack yarn package:myorganizer:web" },
-      "deploy-staging.yml:515-529": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Plan the web deploy", "end": "rm -f dist/deploy/myorganizer-web/myorganizer-web.zip" },
+      "deploy-staging.yml:499-509": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Package web app (cPanel)", "end": "run: corepack yarn package:web" },
+      "deploy-staging.yml:515-529": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Plan the web deploy", "end": "rm -f dist/deploy/web/web.zip" },
       "deploy-staging.yml:533": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)" },
       "deploy-staging.yml:533-541": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Deploy web app to cPanel (staging)", "end": "timeout: 300000" },
-      "deploy-staging.yml:539": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/myorganizer-web/" },
+      "deploy-staging.yml:539": { "file": ".github/workflows/deploy-staging.yml", "start": "local-dir: ./dist/deploy/web/" },
       "deploy-staging.yml:541": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
       "deploy-staging.yml:559-578": { "file": ".github/workflows/deploy-staging.yml", "start": "- name: Write the restart file", "end": "timeout: 300000" },
       "deploy-staging.yml:578": { "file": ".github/workflows/deploy-staging.yml", "start": "timeout: 300000" },
@@ -2833,8 +2833,8 @@
     "cutGuardUploadJob": "deploy-backend",
     "cutGuardApplyJob": "host-apply",
     "backendArtifactDir": "./dist/deploy/backend-api/",
-    "stagingFrontendArtifactDir": "./dist/deploy/myorganizer-web/",
-    "productionFrontendArtifactDir": "./dist/deploy/myorganizer-web/",
+    "stagingFrontendArtifactDir": "./dist/deploy/web/",
+    "productionFrontendArtifactDir": "./dist/deploy/web/",
     "releaseNotesFileName": "RELEASE_NOTES.md"
   }
 </script>

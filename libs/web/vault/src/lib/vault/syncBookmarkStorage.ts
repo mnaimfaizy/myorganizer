@@ -72,7 +72,7 @@ export type ObservedVaultIdentityEntry = {
 };
 
 /** The storage key prefix every per-User Sync Bookmark key is composed from. */
-export const SYNC_BOOKMARK_STORAGE_KEY = 'myorganizer_sync_bookmarks_v1';
+export const SYNC_BOOKMARK_STORAGE_KEY = 'myorganiser_sync_bookmarks_v1';
 
 /** Record version written for a Sync Bookmark entry. */
 export const SYNC_BOOKMARK_RECORD_VERSION = 1;

@@ -25,7 +25,7 @@ jest.mock('next/link', () => {
   };
 });
 
-import type { AdminUserIdentity } from '@myorganizer/app-api-client';
+import type { AdminUserIdentity } from '@myorganiser/app-api-client';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useRouter } from 'next/navigation';

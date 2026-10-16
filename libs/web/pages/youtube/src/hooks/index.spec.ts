@@ -4,13 +4,13 @@ const mockRefresh = jest.fn();
 const mockClearAuthSession = jest.fn();
 const mockGetApiBaseUrl = jest.fn(() => 'http://api.test');
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   getAccessToken: () => mockGetAccessToken(),
   refresh: () => mockRefresh(),
   clearAuthSession: () => mockClearAuthSession(),
 }));
 
-jest.mock('@myorganizer/core', () => ({
+jest.mock('@myorganiser/core', () => ({
   getApiBaseUrl: () => mockGetApiBaseUrl(),
 }));
 

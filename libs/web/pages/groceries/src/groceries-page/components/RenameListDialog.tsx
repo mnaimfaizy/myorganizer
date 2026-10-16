@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useState } from 'react';
 import { z } from 'zod';
 

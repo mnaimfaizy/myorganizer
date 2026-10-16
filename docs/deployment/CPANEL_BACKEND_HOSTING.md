@@ -1,6 +1,6 @@
 # Backend API on cPanel
 
-How the MyOrganizer backend (Node/Express + Prisma) runs on Namecheap cPanel
+How the MyOrganiser backend (Node/Express + Prisma) runs on Namecheap cPanel
 shared hosting, for both Staging and Production. Staging and Production are
 separate app roots with separate databases on the same kind of host; the
 [environment table](#what-differs-between-environments) is the only place they

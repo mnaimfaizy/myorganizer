@@ -53,7 +53,7 @@ type ServiceResult<T> =
 const VAULT_META_MAX_BYTES = 32 * 1024;
 const VAULT_BLOB_MAX_BYTES = 256 * 1024;
 // Cap on `POST /vault/export` and `POST /vault/import` payloads. Independent of, and
-// tighter than, VAULT_ENVELOPE_PARSE_MAX_BYTES (10 MiB) in @myorganizer/vault-core,
+// tighter than, VAULT_ENVELOPE_PARSE_MAX_BYTES (10 MiB) in @myorganiser/vault-core,
 // which governs client-side envelope parsing rather than anything crossing this API.
 const VAULT_EXPORT_PAYLOAD_MAX_BYTES = 1024 * 1024;
 

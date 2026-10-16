@@ -6,7 +6,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { ChangeEvent, useCallback } from 'react';
 import { COUNTRY_CALLING_CODES } from '../data/countryCodes';
 

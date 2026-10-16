@@ -1,6 +1,6 @@
 'use client';
 
-import type { Task } from '@myorganizer/vault-core';
+import type { Task } from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { AlertTriangle } from 'lucide-react';
 import { useCallback, useState } from 'react';
 

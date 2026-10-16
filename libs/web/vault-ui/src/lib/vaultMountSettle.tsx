@@ -43,7 +43,7 @@ const VaultMountSettleContext =
  * here changes when these runners actually run, what they do, or how they
  * debounce/coalesce — it only watches.
  *
- * `waitForDashboardReady` (apps/myorganizer-e2e) proves `DashboardGuard`
+ * `waitForDashboardReady` (apps/web-e2e) proves `DashboardGuard`
  * resolved; it proves nothing about this. A spec that hard-navigates
  * immediately after login, before this settles, can tear down these
  * runners' in-flight requests mid-pass — the race issue #858 traced a

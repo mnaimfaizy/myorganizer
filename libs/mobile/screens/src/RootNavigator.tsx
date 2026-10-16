@@ -13,8 +13,8 @@ import {
 } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { useAuth } from '@myorganizer/mobile/feat-auth';
-import { useVaultSession } from '@myorganizer/mobile/feat-vault';
+import { useAuth } from '@myorganiser/mobile/feat-auth';
+import { useVaultSession } from '@myorganiser/mobile/feat-vault';
 import {
   EmptyState,
   FocusLanding,
@@ -23,7 +23,7 @@ import {
   useAppState,
   useReduceMotion,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { navigationTheme } from './navigationTheme';
 import { BiometricOfferSheet } from './BiometricOfferSheet';
 import { LoginScreen } from './LoginScreen';
@@ -111,7 +111,7 @@ function SessionUnreachableScreen(): React.JSX.Element {
       ) : (
         <EmptyState
           icon="offline"
-          title="Can’t reach MyOrganizer"
+          title="Can’t reach MyOrganiser"
           description="You’re still signed in. Check your connection and try again."
           actionLabel="Try again"
           actionIcon="retry"

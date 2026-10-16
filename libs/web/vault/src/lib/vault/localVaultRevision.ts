@@ -18,7 +18,7 @@
  * Bookmark advanced during convergence makes that push conditional-safe, so
  * the server takes it. A record that arrived correctly is then discarded by
  * the device that received it
- * ([#587](https://github.com/mnaimfaizy/myorganizer/issues/587)).
+ * ([#587](https://github.com/mnaimfaizy/myorganiser/issues/587)).
  *
  * A number rather than an event payload, and no Vault Blob Type on it. Readers
  * re-read what they already know how to read, which keeps this incapable of

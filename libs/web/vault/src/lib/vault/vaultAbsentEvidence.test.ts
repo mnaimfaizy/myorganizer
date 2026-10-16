@@ -7,7 +7,7 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import type { VaultApi } from '@myorganizer/app-api-client';
+import type { VaultApi } from '@myorganiser/app-api-client';
 
 import { checkVaultAbsentEvidence } from './vaultAbsentEvidence';
 import { VAULT_META_CHANGE_ADOPTABLE } from './vaultMetaConverge';

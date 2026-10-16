@@ -1,4 +1,4 @@
-# MyOrganizer Agent Guide
+# MyOrganiser Agent Guide
 
 ## Scope
 
@@ -35,7 +35,7 @@ Current `next` version lives in `TECH_STACK.md`. Do not claim that Next.js auto-
 React Native ships no bundled documentation — verify an export against the installed package rather than from memory.
 
 - Import only from the `react-native` package root, never a `react-native/...` subpath; `yarn mobile-platform:check` enforces this over `apps/mobile` and `libs/mobile`.
-- Native mobile code reaches a shared library through its Portable Entry Point (`@myorganizer/auth/portable`, `@myorganizer/vault-core/portable`), never its main entry point: `typeof window` guards do not protect native, because React Native sets `global.window = global`. See [ADR 0103](docs/adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md).
+- Native mobile code reaches a shared library through its Portable Entry Point (`@myorganiser/auth/portable`, `@myorganiser/vault-core/portable`), never its main entry point: `typeof window` guards do not protect native, because React Native sets `global.window = global`. See [ADR 0103](docs/adr/0103-mobile-native-code-is-typechecked-without-dom-and-reaches-shared-libraries-through-a-portable-entry-point.md).
 - No non-spec mobile program has Node types, so `process`, `Buffer`, and a global `crypto` do not compile. Import a missing name from a package that provides it; only for a global Hermes itself provides, declare it in `libs/mobile/native-globals.d.ts` (created with its first entry). Never restore `types: ["node"]` or add `dom` to make a name resolve. See [ADR 0120](docs/adr/0120-a-mobile-program-gets-node-types-only-if-it-runs-on-node.md).
 - `targetSdk 36` means Android enforces edge-to-edge: every screen root must come from `react-native-safe-area-context`, not a manual status-bar inset.
 - Reach the mobile theme through `useTheme()` inside a `ThemeProvider`, never as a module-level constant. Colours come from the Semantic Roles the theme exposes, and text size from a Type Scale step used whole.
@@ -46,22 +46,22 @@ React Native ships no bundled documentation — verify an export against the ins
 - Use Node and Corepack-managed Yarn.
 - Install with `corepack yarn install --immutable`.
 - Start local services with `docker-compose up -d`.
-- Start apps with `yarn start:backend` and `yarn start:myorganizer`.
+- Start apps with `yarn start:backend` and `yarn start:web`.
 
 ## Cursor Cloud specific instructions
 
 The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh` replace `docker-compose up -d` with native services.
 
 - If a service is down, re-run `bash .cursor/start.sh` (idempotent; it does not reinstall dependencies). It starts PostgreSQL on **5453** and MailHog (**SMTP 1453 / UI 8453**), applies Prisma migrations, and seeds the QA Accounts.
-- The backend serves on `:3000` and the frontend on `:4200`, pinned on the Nx `dev` target in `apps/myorganizer/project.json`.
+- The backend serves on `:3000` and the frontend on `:4200`, pinned on the Nx `dev` target in `apps/web/project.json`.
 - Verify email flows via MailHog at `http://localhost:8453`. Login and refresh require a verified email: register → read the verification email → verify → login. To skip that, use a QA Account: `yarn qa:accounts` prints the values.
-- `next dev` rewrites `apps/myorganizer/AGENTS.md` (its `nextjs-agent-rules` block); do not commit that incidental change unless it is the point of your work.
+- `next dev` rewrites `apps/web/AGENTS.md` (its `nextjs-agent-rules` block); do not commit that incidental change unless it is the point of your work.
 
 ## Commands
 
-- Build: `yarn build:backend`, `yarn build:myorganizer`.
+- Build: `yarn build:backend`, `yarn build:web`.
 - Test one Jest project: `yarn nx test <project-name>`.
-- E2E: `yarn nx e2e myorganizer-e2e`.
+- E2E: `yarn nx e2e web-e2e`.
 - Lint: `yarn nx lint <project-name>` or `yarn lint`.
 - Format: `yarn format:write` rewrites uncommitted files. `yarn format:check --all` fails when Prettier would change any file in the tree; without `--all`, Nx checks only the files changed since `main`.
 - A `git commit` runs `.husky/pre-commit` only when Husky is installed (`postinstall` sets `core.hooksPath`). Without `node_modules` the commit succeeds with no checker run, so that success is not evidence. CI runs `yarn format:check --all`.
@@ -75,7 +75,7 @@ The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh
 
 ## Architecture
 
-- Keep `apps/myorganizer/src/app/**` as thin Next.js route wrappers.
+- Keep `apps/web/src/app/**` as thin Next.js route wrappers.
 - Put page logic in `libs/web/pages/<route>` and shared code in `libs/**`.
 - After adding or removing an app, a top-level lib, or a `/dashboard/*` route, update `README.md` and run `yarn readme:check`. Keep the README a front door: versions live in `TECH_STACK.md`, scripts in `package.json`, env vars in `.env.example` — link, do not restate.
 - Use path aliases from `tsconfig.base.json`.
@@ -85,7 +85,7 @@ The Cloud Agent VM has **no Docker**; `.cursor/install.sh` and `.cursor/start.sh
 ## Design Tokens
 
 - The design reference lives in `libs/design-tokens/DESIGN.md`; use it together with `libs/design-tokens/src/tokens.json` when changing colors, typography, spacing, radii, or shadows.
-- `libs/design-tokens/src/tokens.json` is the single source of truth for design values; do not hard-code hex colors, font stacks, or magic spacing values in components when a token should exist. Prefer importing token constants from `@myorganizer/design-tokens`.
+- `libs/design-tokens/src/tokens.json` is the single source of truth for design values; do not hard-code hex colors, font stacks, or magic spacing values in components when a token should exist. Prefer importing token constants from `@myorganiser/design-tokens`.
 - `DESIGN.md` is brand rationale, not a second palette. Update it when a semantic role or brand rule changes, not when a hex or spacing step moves. See ADR 0023.
 - After editing tokens, regenerate with `yarn nx run design-tokens:build-tokens`; never edit files under `libs/design-tokens/src/generated/` directly.
 
@@ -195,7 +195,7 @@ Use [`.claude/checklist.md`](.claude/checklist.md) Step 0 → file-type matrix. 
 ## Do Not
 
 - Do not introduce `package-lock.json` or `pnpm-lock.yaml` changes.
-- Do not put app-local shared helpers under `apps/myorganizer/src/lib/**`.
+- Do not put app-local shared helpers under `apps/web/src/lib/**`.
 - Do not store vault plaintext on the server or add plaintext task APIs.
 - Do not hand-edit generated API client code.
 - Do not commit secrets or production credentials, and do not paste them into chat, logs, or issue bodies. This covers vault plaintext, JWT and session cookies, SMTP credentials, and environment file values. Redact instead — `Authorization: <REDACTED>` and similar. If redacted output is not enough to diagnose a problem, say so and ask rather than pasting the real value.

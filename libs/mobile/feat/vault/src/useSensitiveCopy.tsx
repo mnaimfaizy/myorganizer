@@ -8,7 +8,7 @@ import React, {
 } from 'react';
 import type { ReactNode } from 'react';
 import { Platform } from 'react-native';
-import { useAppState } from '@myorganizer/mobile/ui';
+import { useAppState } from '@myorganiser/mobile/ui';
 import { useVaultSession } from './context/VaultSessionContext';
 import { nativeSensitiveClipboard } from './clipboard/nativeSensitiveClipboard';
 import {

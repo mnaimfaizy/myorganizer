@@ -1,6 +1,6 @@
-# `@myorganizer/design-tokens`
+# `@myorganiser/design-tokens`
 
-Single source of truth for the MyOrganizer design system (colors, spacing,
+Single source of truth for the MyOrganiser design system (colors, spacing,
 typography, radius, shadow). Based on the **Secure Modernism** spec in
 [DESIGN.md](DESIGN.md).
 
@@ -32,7 +32,7 @@ typography, radius, shadow). Based on the **Secure Modernism** spec in
   primitive, once per colour mode. Adding a Semantic Role is the only way to add a
   web colour utility — the Tailwind configs read roles as `hsl(var(--role))` —
   but it is not sufficient: a utility also needs the role named in
-  `apps/myorganizer/tailwind.config.js`. A role with no entry there is a slot
+  `apps/web/tailwind.config.js`. A role with no entry there is a slot
   nothing on the web resolves yet, which is a legitimate state.
 
 The **Mobile App theme reads roles, not primitives** (`roleLight` / `roleDark`).
@@ -41,7 +41,7 @@ of primitives can only ever be light.
 
 The Neutral Ramp is deliberately **not** exposed as Tailwind utilities. Dark mode
 cannot be expressed without an ordered greyscale, but a second elevation vocabulary
-next to the roles is what [issue #632](https://github.com/mnaimfaizy/myorganizer/issues/632)
+next to the roles is what [issue #632](https://github.com/mnaimfaizy/myorganiser/issues/632)
 was about. See [ADR 0065](../../docs/adr/0065-tokens-json-is-the-single-source-of-web-colour.md).
 
 Dark mode is shipped on mobile and not yet on the web: the Mobile App theme
@@ -73,14 +73,14 @@ applies the `dark` class.
 **TypeScript (when a value must reach JS, e.g. SVG fill):**
 
 ```ts
-import { colorPrimary, colorPrimaryVar } from '@myorganizer/design-tokens';
+import { colorPrimary, colorPrimaryVar } from '@myorganiser/design-tokens';
 ```
 
 ## Rules
 
 - **Never hard-code hex colors, spacing values, or font stacks in
   components.** Use a Tailwind class or import from
-  `@myorganizer/design-tokens`.
+  `@myorganiser/design-tokens`.
 - New token? Add it to `tokens.json` first, regenerate, then use it.
 - Keep DESIGN.md as brand rationale (when to use a role), not a second
   palette. Update it when a semantic role or brand rule changes, not when

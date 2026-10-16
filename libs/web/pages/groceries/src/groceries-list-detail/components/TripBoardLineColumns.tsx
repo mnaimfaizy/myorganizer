@@ -1,4 +1,4 @@
-import type { CatalogItem, ListLine } from '@myorganizer/vault-core';
+import type { CatalogItem, ListLine } from '@myorganiser/vault-core';
 import { TripBoardLineRow } from './TripBoardLineRow';
 
 interface TripBoardLineColumnsProps {

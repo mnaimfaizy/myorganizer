@@ -14,11 +14,11 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   type VaultBlobEnvelope,
   readVaultBlobRecords,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { checkVaultBlobsForUpdates } from './vaultPullCheck';
 import { createVaultHandle, type VaultHandle } from './vaultHandle';

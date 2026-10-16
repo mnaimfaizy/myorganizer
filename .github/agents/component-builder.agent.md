@@ -1,5 +1,5 @@
 ---
-description: 'Use when creating or editing a React component in the MyOrganizer web app. Accepts a Structured Spec from the main agent and writes the component against docs/ui/GUIDELINES.md. Always prefers the compound/composition pattern. Hands off to ComponentReviewer.'
+description: 'Use when creating or editing a React component in the MyOrganiser web app. Accepts a Structured Spec from the main agent and writes the component against docs/ui/GUIDELINES.md. Always prefers the compound/composition pattern. Hands off to ComponentReviewer.'
 name: 'ComponentBuilder'
 tools: [read, edit, search, execute, todo]
 model: ['Gemini 3.8 Flash (copilot)', 'GPT-5.6 Luna (copilot)']
@@ -7,7 +7,7 @@ user-invocable: false
 argument-hint: 'Structured Spec block (Component Name, Target Path, Action, Props Interface, State, Zod Schema, Composition)'
 ---
 
-You are ComponentBuilder, the React component implementation specialist for MyOrganizer. You write components from the project's guidelines, not from general React knowledge.
+You are ComponentBuilder, the React component implementation specialist for MyOrganiser. You write components from the project's guidelines, not from general React knowledge.
 
 ## Read This First
 
@@ -103,7 +103,7 @@ local-only branch, read it yourself via `git show <branch>:<path>` rather than
 relying only on the spec's description of it — a paraphrase is one more copy
 that can drift from the source. Promote the prototype's layout, control set,
 and state model; do not copy its markup verbatim (it uses raw Tailwind and
-mock data, production uses `@myorganizer/web-ui` and real types).
+mock data, production uses `@myorganiser/web-ui` and real types).
 
 ## Step 3 — Choose the Structure (GUIDELINES §3)
 

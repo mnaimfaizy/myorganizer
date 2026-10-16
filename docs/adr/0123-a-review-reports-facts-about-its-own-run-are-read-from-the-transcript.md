@@ -6,7 +6,7 @@ accepted
 
 ## Context
 
-CI review run [37576528356](https://github.com/mnaimfaizy/myorganizer/actions/runs/37576528356)
+CI review run [37576528356](https://github.com/mnaimfaizy/myorganiser/actions/runs/37576528356)
 (pull request #1030, 2026-10-07) published "No findings" on the Standards axis and listed four
 `standardsSources`. Its transcript shows the Standards sub-agent made two tool calls and opened none
 of the four. It had run `ls` on two of them. Its reply said in prose that it had not opened

@@ -45,7 +45,7 @@ describe('staticElement', () => {
           <BrandMark lockup="mark" />
         </TestWrapper>,
       );
-      const mark = screen.getByLabelText('MyOrganizer');
+      const mark = screen.getByLabelText('MyOrganiser');
       expect(mark.props.accessible).toBe(false);
       expect(mark.props.focusable).toBeUndefined();
       expect(mark.props.screenReaderFocusable).toBe(true);
@@ -57,7 +57,7 @@ describe('staticElement', () => {
           <BrandMark lockup="mark" />
         </TestWrapper>,
       );
-      expect(screen.getByLabelText('MyOrganizer').props.accessible).toBe(true);
+      expect(screen.getByLabelText('MyOrganiser').props.accessible).toBe(true);
     });
   });
 
@@ -70,7 +70,7 @@ describe('staticElement', () => {
     [
       'BrandMark with its wordmark',
       'image',
-      'MyOrganizer',
+      'MyOrganiser',
       <BrandMark lockup="inline" />,
     ],
     [

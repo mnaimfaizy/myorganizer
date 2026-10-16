@@ -1,6 +1,6 @@
 'use client';
 
-import { SUPPORTED_CURRENCIES } from '@myorganizer/core';
+import { SUPPORTED_CURRENCIES } from '@myorganiser/core';
 import {
   DatePicker,
   Input,
@@ -10,7 +10,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Controller, type UseFormReturn } from 'react-hook-form';
 import { useCallback } from 'react';
 

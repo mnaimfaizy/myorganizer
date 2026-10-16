@@ -7,19 +7,19 @@ jest.mock('next/navigation', () => ({
   useRouter: () => mockRouter,
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   logout: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-ui'),
+jest.mock('@myorganiser/web-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-ui'),
   useSidebar: jest.fn(),
 }));
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import { logout } from '@myorganizer/auth';
-import { SidebarProvider, useSidebar } from '@myorganizer/web-ui';
+import { logout } from '@myorganiser/auth';
+import { SidebarProvider, useSidebar } from '@myorganiser/web-ui';
 import { NavUser } from './nav-user';
 
 const user = {

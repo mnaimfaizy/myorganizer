@@ -2,7 +2,7 @@
   {
     "type": "system",
     "subtype": "init",
-    "cwd": "/home/runner/work/myorganizer/myorganizer"
+    "cwd": "/home/runner/work/myorganiser/myorganiser"
   },
   {
     "type": "rate_limit_event",
@@ -37,7 +37,7 @@
         "tool_name": "Write",
         "tool_use_id": "toolu_fixture",
         "tool_input": {
-          "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/_permtest.json"
+          "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/_permtest.json"
         }
       }
     ]

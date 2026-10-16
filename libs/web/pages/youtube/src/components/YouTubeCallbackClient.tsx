@@ -1,7 +1,7 @@
 'use client';
 
-import { getAccessToken } from '@myorganizer/auth';
-import { getApiBaseUrl } from '@myorganizer/core';
+import { getAccessToken } from '@myorganiser/auth';
+import { getApiBaseUrl } from '@myorganiser/core';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useYouTubeAvailability } from '../hooks';

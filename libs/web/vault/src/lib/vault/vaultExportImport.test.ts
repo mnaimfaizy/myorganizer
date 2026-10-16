@@ -1,4 +1,4 @@
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import type { VaultStorageV1 } from './localVaultStorage';
 import {

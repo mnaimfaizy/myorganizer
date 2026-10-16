@@ -117,7 +117,7 @@
           "ruleId": "obligation-slot-injected-props-land-on-the-control",
           "source": "GUIDELINES",
           "rule": "FormLabel|htmlFor|associated|label|accessib|aria-describedby",
-          "files": ["apps/myorganizer/src/app/(auth)/signup/page.tsx"],
+          "files": ["apps/web/src/app/(auth)/signup/page.tsx"],
           "minSeverity": "should-fix",
           "why": "the diff placed a positioning div for the show/hide button as FormControl's direct child, so the Radix Slot injected id, aria-describedby, and aria-invalid onto the div and both password inputs were announced by their bullet placeholder with no label association (#525)"
         }
@@ -144,7 +144,7 @@
           "ruleId": "obligation-destructive-confirmation-names-what-it-mutates",
           "source": "GUIDELINES|0068|0063",
           "rule": "dialog|Radix|window\\.confirm|confirm|disclos|destroy|what it will",
-          "files": ["apps/myorganizer/src/app/vault-export/page.tsx"],
+          "files": ["apps/web/src/app/vault-export/page.tsx"],
           "minSeverity": "should-fix",
           "why": "the diff gated a whole-vault replace, including wrapped_mk_passphrase and kdf_salt, behind window.confirm('Importing will replace your current local vault data. Continue?') instead of a Radix dialog stating that the passphrase and Recovery Key are replaced by the backup's, so a user could accept and lose access without the backup's credentials (#657)"
         }
@@ -253,7 +253,7 @@
     {
       "id": "e2e-export-download-read-through-download-path",
       "title": "The vault export E2E spec reads the downloaded file through Download.path(), which resolves only while the browser shares the test's filesystem",
-      "incident": "issue #796, fixed by PR #888, introduced by PR #77 (commit eacbfd3 on the fix branch carries `Introduced in #77`, and the helper that pull request added records the same origin in a doc comment in apps/myorganizer-e2e/src/e2e/helpers/download.ts). The 2026-09-28 escaped-defect gather classifies this fix `unreviewed`: #77 merged on 2026-04-29, months before the reviewer went live, so no review ever saw the diff. Deliberately the same range as `export-envelope-drops-tasks`, which the set already traces to the same pull request (fixed by #540): the two defects are unrelated — one in the hardened export envelope, one in the export E2E spec — and folding this expectation into that case would move a live measurement's denominator (9 of 17 lifetime, at `minRecall` 1) mid-flight, which costs more than a second session on the same diff.",
+      "incident": "issue #796, fixed by PR #888, introduced by PR #77 (commit eacbfd3 on the fix branch carries `Introduced in #77`, and the helper that pull request added records the same origin in a doc comment in apps/web-e2e/src/e2e/helpers/download.ts). The 2026-09-28 escaped-defect gather classifies this fix `unreviewed`: #77 merged on 2026-04-29, months before the reviewer went live, so no review ever saw the diff. Deliberately the same range as `export-envelope-drops-tasks`, which the set already traces to the same pull request (fixed by #540): the two defects are unrelated — one in the hardened export envelope, one in the export E2E spec — and folding this expectation into that case would move a live measurement's denominator (9 of 17 lifetime, at `minRecall` 1) mid-flight, which costs more than a second session on the same diff.",
       "origin": "attributed",
       "tier": "frontier",
       "base": "dea9122c1854879044d51696dec93a57c89e914d",
@@ -268,7 +268,7 @@
           "axis": "standards",
           "source": "smell-baseline|playwright|testing|AGENTS|CODING_STANDARDS",
           "rule": "path\\(\\)|saveAs|remote|portab|same filesystem|shared filesystem",
-          "files": ["apps/myorganizer-e2e/src/e2e/vault-export-import.spec.ts"],
+          "files": ["apps/web-e2e/src/e2e/vault-export-import.spec.ts"],
           "why": "the spec this diff adds reads the exported vault with `const downloadPath = await download.path()` and then `fs.readFile(downloadPath)`, which resolves only while the browser and the test share a filesystem; against a remote or containerised browser `path()` hands the test nothing it can read and every export assertion in the file fails for a reason that has nothing to do with the vault. `download.saveAs(<a path the test owns>)` is the portable read, and is what #888 extracted into readDownloadText (#796). No `ruleId` is pinned and no severity floor is set, for the reason `mail-test-setup-assigns-undefined-to-env` gives: no document at this head names the rule, so the honest report cites the smell baseline. The `rule` pattern deliberately excludes the words `download` and `duplicat`: #888 also extracted six repeated download-then-read blocks out of this same file, and a duplication finding there is not this defect"
         }
       ],

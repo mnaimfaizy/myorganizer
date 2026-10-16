@@ -2,8 +2,8 @@ import type {
   BiometricEnrolment,
   BiometricMethod,
   BiometricUnlockAttempt,
-} from '@myorganizer/mobile/feat-vault';
-import type { IconName } from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/feat-vault';
+import type { IconName } from '@myorganiser/mobile/ui';
 
 /** Everything the Entry screens say that depends on which biometric it is. */
 export interface BiometricMethodCopy {

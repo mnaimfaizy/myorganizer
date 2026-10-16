@@ -13,7 +13,7 @@
 # ahead of the host's Node 22.13 — always AFTER a clean compile and typecheck,
 # which is what made it read as a code failure. It hit the agent sandbox too, not
 # just the gate: both run builds inside a bind-mounted worktree. Since ADR 0083 the
-# web app builds with plain `next build` into `apps/myorganizer/.next`, which no
+# web app builds with plain `next build` into `apps/web/.next`, which no
 # longer makes that copy; the pin stays until something verifies no other build
 # step reaches a recursive cpSync onto the mount.
 #
@@ -101,7 +101,7 @@ RUN node -e "const f='/home/agent/.claude.json',fs=require('fs');let j={};try{j=
 # its own mistake. Secret guards (.env, credentials, key material) are NOT
 # lifted — the transcript still leaves the container. See
 # tools/scripts/copilot-hooks/pre-tool-use.mjs.
-ENV MYORGANIZER_SANDBOX=1
+ENV MYORGANISER_SANDBOX=1
 
 WORKDIR /home/agent
 

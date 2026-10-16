@@ -398,7 +398,7 @@ describe('pre-tool-use hook', () => {
     });
   });
 
-  // Sandcastle sets MYORGANIZER_SANDBOX=1 in its image. The workflow guards
+  // Sandcastle sets MYORGANISER_SANDBOX=1 in its image. The workflow guards
   // exist to stop hand-edits during chat and local development; inside a
   // disposable container they only block legitimate work. In run #408 they
   // rejected every `git restore` the agent tried after a botched regeneration,

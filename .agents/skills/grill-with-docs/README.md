@@ -4,7 +4,7 @@
 
 **When to use**:
 
-- You have a plan and want to challenge it against MyOrganizer's existing language and architecture
+- You have a plan and want to challenge it against MyOrganiser's existing language and architecture
 - You want to sharpen fuzzy design decisions before committing to code
 - You're designing a new feature and need to align terminology across the team
 - You want to capture architectural decisions as ADRs
@@ -28,11 +28,11 @@
 3. **Terminology sharpening** - Challenge fuzzy language and align with CONTEXT.md
 4. **Inline documentation** - Update CONTEXT.md and create ADRs as decisions are made
 
-## MyOrganizer-specific
+## MyOrganiser-specific
 
 The skill is pre-configured with:
 
-- MyOrganizer's key domain terms (Vault, Todo, Subscription, User, Organization, Ciphertext)
+- MyOrganiser's key domain terms (Vault, Todo, Subscription, User, Organization, Ciphertext)
 - Project structure (single-context, Nx monorepo, DDD-influenced)
 - Technology stack (Next.js, Express, Prisma, TSOA, Playwright)
 - Key architectural constraints (vault = ciphertext-only on server)

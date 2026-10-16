@@ -16,7 +16,7 @@ import {
   bytesToBase64,
   deriveKeyFromPassphrase,
   importAesGcmKey,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import { localToServerMeta } from '../lib/vault/vaultShapes';
 
 /**

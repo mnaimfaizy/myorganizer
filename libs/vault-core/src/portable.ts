@@ -1,4 +1,4 @@
-// Portable Entry Point (see CONTEXT.md): `@myorganizer/vault-core/portable`.
+// Portable Entry Point (see CONTEXT.md): `@myorganiser/vault-core/portable`.
 //
 // Carries only exports that hold on every runtime the Mobile App targets. The
 // main entry point (`./index.ts`) also carries `vaultCrypto.ts` and the Escape
@@ -8,7 +8,7 @@
 //
 // Mobile native code imports this library only through this file. The mobile
 // native typecheck program has no `dom` in `lib`, and `yarn mobile-platform:check`
-// fails a mobile import of `@myorganizer/vault-core` while this entry exists
+// fails a mobile import of `@myorganiser/vault-core` while this entry exists
 // (ADR 0103). Anything re-exported here must not reach a browser global.
 export * from './lib/interfaces';
 export * from './lib/records';

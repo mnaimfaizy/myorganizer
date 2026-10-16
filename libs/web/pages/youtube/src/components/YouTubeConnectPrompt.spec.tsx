@@ -8,8 +8,8 @@ jest.mock('../hooks', () => ({
   useYouTubeAcknowledgement: () => mockUseYouTubeAcknowledgement(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-ui');
+jest.mock('@myorganiser/web-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-ui');
   const { forwardRef } = jest.requireActual('react');
 
   return {
@@ -243,7 +243,7 @@ describe('YouTubeConnectPrompt', () => {
 
       expect(screen.getByText('Before you connect')).toBeInTheDocument();
       expect(
-        screen.getByText(/MyOrganizer reads your YouTube subscriptions/),
+        screen.getByText(/MyOrganiser reads your YouTube subscriptions/),
       ).toBeInTheDocument();
       expect(
         screen.getByText(/stored outside your Vault and is not end-to-end/),

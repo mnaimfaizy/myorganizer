@@ -6,11 +6,11 @@ jest.mock('../../hooks/useYouTubeNavVisible', () => ({
   useYouTubeNavVisible: jest.fn(),
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   getAccessToken: () => mockGetAccessToken(),
 }));
 
-jest.mock('@myorganizer/core', () => ({
+jest.mock('@myorganiser/core', () => ({
   getApiBaseUrl: () => mockGetApiBaseUrl(),
 }));
 

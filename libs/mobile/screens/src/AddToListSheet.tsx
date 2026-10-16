@@ -4,7 +4,7 @@ import {
   GROCERY_CATEGORY_ORDER,
   groceryCategoryLabel,
   type GroceryCategoryType,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   BottomSheet,
   Button,
@@ -17,7 +17,7 @@ import {
   TextField,
   useTheme,
   type ListRowState,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import type { CatalogEntry } from './groceryTripModel';
 
 /** The line this sheet last added, and where its Vault Push has got to. */

@@ -2,14 +2,14 @@ import {
   isSupportedCurrencyCode,
   SUPPORTED_CURRENCY_CODES,
   type CurrencyCode,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 
 export type AccountSettings = {
   countryCode: string;
   preferredCurrency: CurrencyCode;
 };
 
-const ACCOUNT_SETTINGS_STORAGE_KEY = 'myorganizer_account_settings_v1';
+const ACCOUNT_SETTINGS_STORAGE_KEY = 'myorganiser_account_settings_v1';
 
 function isBrowser(): boolean {
   return (

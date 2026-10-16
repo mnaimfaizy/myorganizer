@@ -1,0 +1,44 @@
+{
+  "name": "web",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "sourceRoot": "apps/web",
+  "projectType": "application",
+  "tags": ["type:app", "scope:web", "tier:agent"],
+  "targets": {
+    "clean": {
+      "executor": "nx:run-commands",
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "commands": [
+          "node -e \"const fs=require('fs'); const path=require('path'); fs.rmSync(path.resolve('apps/web/.next'), { recursive: true, force: true });\""
+        ],
+        "parallel": false
+      }
+    },
+    "dev": {
+      "options": {
+        "port": 4200
+      }
+    },
+    "build": {
+      "dependsOn": ["clean"],
+      "options": {
+        "env": {
+          "NODE_ENV": "production"
+        }
+      }
+    },
+    "package": {
+      "executor": "nx:run-commands",
+      "dependsOn": ["clean"],
+      "options": {
+        "cwd": "{workspaceRoot}",
+        "parallel": false,
+        "commands": [
+          "yarn nx run web:build",
+          "node tools/scripts/package-web.mjs"
+        ]
+      }
+    }
+  }
+}

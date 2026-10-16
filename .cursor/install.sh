@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Idempotent repository bootstrap for the MyOrganizer Cloud Agent environment.
+# Idempotent repository bootstrap for the MyOrganiser Cloud Agent environment.
 # Runs after checkout. Installs system deps (Postgres + MailHog) if missing,
 # installs JS deps, creates a local .env, and generates the Prisma client.
 set -euo pipefail

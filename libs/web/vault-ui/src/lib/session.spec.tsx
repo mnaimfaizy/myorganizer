@@ -15,11 +15,11 @@ const mockCreateLocalVaultRevision = jest.fn(() => ({
 const mockClaimUnclaimedLocalVaultOnEvidence = jest.fn();
 const mockCheckVaultAbsentEvidence = jest.fn();
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   getCurrentUser: () => mockGetCurrentUser(),
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   createVaultHandle: (opts: unknown) => mockCreateVaultHandle(opts),
   createVaultApi: () => mockCreateVaultApi(),
   createVaultSyncQueue: (opts: unknown) => mockCreateVaultSyncQueue(opts),

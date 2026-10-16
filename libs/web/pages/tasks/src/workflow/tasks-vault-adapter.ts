@@ -2,12 +2,12 @@ import {
   deleteVaultRecord,
   type DeletionLog,
   type Task,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import {
   deleteVaultRecordAndSave,
   saveVaultRecords,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 export interface TasksVaultAdapter {
   loadTasks(): Promise<Task[] | null>;

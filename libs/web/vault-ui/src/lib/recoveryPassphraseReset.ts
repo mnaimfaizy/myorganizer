@@ -3,7 +3,7 @@ import {
   resetPassphraseAfterRecovery,
   type VaultHandle,
   type WrappingChangeResult,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { passphraseChangeReading } from './vaultMetaPushMessages';
 

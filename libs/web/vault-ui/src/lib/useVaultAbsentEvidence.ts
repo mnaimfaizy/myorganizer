@@ -28,7 +28,7 @@ import {
   createVaultApi,
   type VaultAbsentEvidence,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 export type VaultAbsentEvidenceState =
   /** The question is out. Nothing is offered while it is. */

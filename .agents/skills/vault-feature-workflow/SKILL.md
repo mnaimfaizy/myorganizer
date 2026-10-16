@@ -1,6 +1,6 @@
 ---
 name: vault-feature-workflow
-description: 'Use when working on vault-backed features, encrypted blob types, vault export/import, ciphertext-only sync, or browser vault flows in MyOrganizer.'
+description: 'Use when working on vault-backed features, encrypted blob types, vault export/import, ciphertext-only sync, or browser vault flows in MyOrganiser.'
 ---
 
 # Vault Feature Workflow

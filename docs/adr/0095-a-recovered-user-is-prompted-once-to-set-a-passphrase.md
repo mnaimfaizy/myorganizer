@@ -10,7 +10,7 @@ A User reaches recovery because they could not remember their passphrase. Unlock
 Recovery Key hands them into the app, and the passphrase they forgot is still the live one on
 every device.
 
-[#593](https://github.com/mnaimfaizy/myorganizer/issues/593) made a reset possible and kept it out
+[#593](https://github.com/mnaimfaizy/myorganiser/issues/593) made a reset possible and kept it out
 of the Vault Gate. The gate's recovery branch only unlocks. The Vault page's passphrase card,
 when the session's Vault Unlock Secret is the Recovery Key, drops the current-passphrase field
 and resets without it. That signal is client-only session state: it is never written into the
@@ -19,9 +19,9 @@ Secret").
 
 Permitting that reset is not the same as asking for it. After the "Recovered" toast there is no
 prompt. A User who never opens the Vault page keeps the forgotten passphrase live by doing
-nothing. [#714](https://github.com/mnaimfaizy/myorganizer/issues/714) is the decision #593
+nothing. [#714](https://github.com/mnaimfaizy/myorganiser/issues/714) is the decision #593
 refused to make. The grill on 2026-09-18 chose a prompt with an explicit skip.
-[#826](https://github.com/mnaimfaizy/myorganizer/issues/826) implements the prompt; this ADR does
+[#826](https://github.com/mnaimfaizy/myorganiser/issues/826) implements the prompt; this ADR does
 not.
 
 ## Decision

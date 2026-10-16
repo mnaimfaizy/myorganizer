@@ -1,4 +1,4 @@
-import { isNetworkError } from '@myorganizer/mobile/feat-vault';
+import { isNetworkError } from '@myorganiser/mobile/feat-vault';
 
 /**
  * Why a Vault Blob read failed, in words, for a screen that was trying to

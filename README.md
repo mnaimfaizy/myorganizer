@@ -1,12 +1,12 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="apps/myorganizer/public/images/logo-shield-dark.svg" />
-    <source media="(prefers-color-scheme: light)" srcset="apps/myorganizer/public/images/logo-shield.svg" />
-    <img src="apps/myorganizer/public/images/logo-shield.svg" alt="MyOrganiser logo" width="220" />
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/images/logo-shield-dark.svg" />
+    <source media="(prefers-color-scheme: light)" srcset="apps/web/public/images/logo-shield.svg" />
+    <img src="apps/web/public/images/logo-shield.svg" alt="MyOrganiser logo" width="220" />
   </picture>
 </p>
 
-<h1 align="center">MyOrganizer</h1>
+<h1 align="center">MyOrganiser</h1>
 
 <p align="center">
   A privacy-first personal organizer. Your data is encrypted in the browser — the server only ever sees ciphertext.
@@ -23,8 +23,8 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml">
-    <img src="https://github.com/mnaimfaizy/myorganizer/actions/workflows/ci.yml/badge.svg" alt="CI" />
+  <a href="https://github.com/mnaimfaizy/myorganiser/actions/workflows/ci.yml">
+    <img src="https://github.com/mnaimfaizy/myorganiser/actions/workflows/ci.yml/badge.svg" alt="CI" />
   </a>
   <a href="https://myorganiser.app">
     <img src="https://img.shields.io/badge/demo-live-brightgreen" alt="Live Demo" />
@@ -39,7 +39,7 @@
 
 ## What it is
 
-MyOrganizer keeps the things you would rather not hand to a server — addresses, phone numbers,
+MyOrganiser keeps the things you would rather not hand to a server — addresses, phone numbers,
 subscriptions, tasks, groceries — in a vault that is encrypted and decrypted **in your browser**.
 The key is derived from your passphrase and never leaves the device; the backend stores an opaque
 blob it cannot read.
@@ -81,8 +81,8 @@ browser — no build step, no network, no server:
 and Docker for local Postgres and MailHog.
 
 ```sh
-git clone https://github.com/mnaimfaizy/myorganizer.git
-cd myorganizer
+git clone https://github.com/mnaimfaizy/myorganiser.git
+cd myorganiser
 corepack enable
 cp .env.example .env          # fill in database credentials and JWT secrets
 corepack yarn install --immutable
@@ -94,7 +94,7 @@ Then start the apps in separate terminals:
 
 ```sh
 yarn start:backend       # http://localhost:3000 — API docs at /docs
-yarn start:myorganizer   # http://localhost:4200
+yarn start:web   # http://localhost:4200
 ```
 
 [DEVELOPMENT.md](DEVELOPMENT.md) covers everything past this point: architecture, testing, running
@@ -105,13 +105,13 @@ the mobile app, and the agent workflows.
 ## Repository layout
 
 ```
-myorganizer/
+myorganiser/
 ├── apps/
 │   ├── backend/          # Express + TSOA REST API, Prisma, PostgreSQL
-│   ├── myorganizer/      # Next.js web client (App Router — route wrappers only)
+│   ├── web/              # Next.js web client (App Router — route wrappers only)
 │   ├── mobile/           # React Native client
 │   ├── escape-copy-reader/ # Standalone offline vault Escape Copy reader (one HTML file)
-│   └── myorganizer-e2e/  # Playwright end-to-end tests
+│   └── web-e2e/          # Playwright end-to-end tests
 ├── libs/
 │   ├── api-specs/        # OpenAPI spec, synced from TSOA decorators
 │   ├── app-api-client/   # Generated API client — never edit by hand
@@ -130,11 +130,11 @@ myorganizer/
 └── tools/                # Build, release, and repo-guard scripts
 ```
 
-The web app enforces a strict thin-wrapper rule: `apps/myorganizer/src/app/**` holds routing,
+The web app enforces a strict thin-wrapper rule: `apps/web/src/app/**` holds routing,
 metadata, and layout composition only, and every page's logic lives in `libs/web/pages/<route>/`.
-Shared code belongs in `libs/**`, never in `apps/myorganizer/src/lib/**`.
-A web library's folder under `libs/web/` records its scope; its import alias (`@myorganizer/web-ui`,
-`@myorganizer/web-vault`, …) is stable and does not follow the folder.
+Shared code belongs in `libs/**`, never in `apps/web/src/lib/**`.
+A web library's folder under `libs/web/` records its scope; its import alias (`@myorganiser/web-ui`,
+`@myorganiser/web-vault`, …) is stable and does not follow the folder.
 
 ---
 

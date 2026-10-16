@@ -1,10 +1,10 @@
 'use client';
 
-import { formatMoney } from '@myorganizer/core';
-import type { SubscriptionRecord } from '@myorganizer/vault-core';
-import { Button } from '@myorganizer/web-ui';
+import { formatMoney } from '@myorganiser/core';
+import type { SubscriptionRecord } from '@myorganiser/vault-core';
+import { Button } from '@myorganiser/web-ui';
 import { useCallback } from 'react';
-import { TableCell, TableRow } from '@myorganizer/web-ui';
+import { TableCell, TableRow } from '@myorganiser/web-ui';
 
 import {
   formatIsoDateForDisplay,

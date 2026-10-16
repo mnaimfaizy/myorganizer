@@ -1,7 +1,7 @@
 'use client';
 
-import { normalizeAddresses, type VaultHandle } from '@myorganizer/web-vault';
-import { useLocalVaultRevision } from '@myorganizer/web-vault-ui';
+import { normalizeAddresses, type VaultHandle } from '@myorganiser/web-vault';
+import { useLocalVaultRevision } from '@myorganiser/web-vault-ui';
 import { MapPin } from 'lucide-react';
 import { useEffect, useState } from 'react';
 

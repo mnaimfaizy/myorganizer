@@ -4,7 +4,7 @@ Claude Code ships a built-in `Explore` agent, but we created a custom `CodeExplo
 
 ## Considered Options
 
-- **Built-in Claude Code `Explore` agent** — zero setup, fast, but Claude-only and carries no MyOrganizer context. Other IDEs would still explore inline with the frontier model.
+- **Built-in Claude Code `Explore` agent** — zero setup, fast, but Claude-only and carries no MyOrganiser context. Other IDEs would still explore inline with the frontier model.
 - **Custom `CodeExplorer` with per-IDE adapters** — requires maintaining four adapter files (`.github/agents/`, `.claude/agents/`, `.gemini/agents/`, `.cursor/agents/`), but delivers cross-IDE consistency, domain-aware exploration via `DEVELOPMENT.md`, and enforced cheap-model usage on every run.
 
 ## Consequences

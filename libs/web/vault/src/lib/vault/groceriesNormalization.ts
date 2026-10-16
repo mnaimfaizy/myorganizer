@@ -1,4 +1,4 @@
-import { randomId } from '@myorganizer/core';
+import { randomId } from '@myorganiser/core';
 import {
   CATALOG_ITEM_KEYS,
   GROCERIES_PAYLOAD_KEYS,
@@ -14,7 +14,7 @@ import {
   type GroceryList,
   type GroceryItem,
   type GroceryCategoryType,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import { z } from 'zod';
 
 // Helper to validate and coerce category

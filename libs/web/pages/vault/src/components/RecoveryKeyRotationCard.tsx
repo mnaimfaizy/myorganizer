@@ -21,12 +21,12 @@ import {
   FormMessage,
   Input,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   currentPassphraseSchema,
   mintRecoveryKey,
   type MintedRecoveryKey,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { downloadTextFile } from '../utils';
 import {
@@ -76,7 +76,7 @@ export function RecoveryKeyRotationCard() {
     if (!mintedKey) return;
     downloadTextFile(
       'myorganiser-recovery-key.txt',
-      `MyOrganizer Recovery Key\n\n${mintedKey}\n\nKeep this safe. Anyone with it can decrypt your vault.`,
+      `MyOrganiser Recovery Key\n\n${mintedKey}\n\nKeep this safe. Anyone with it can decrypt your vault.`,
     );
   }, [mintedKey]);
 

@@ -17,7 +17,7 @@ const classify = (events) => classifyReviewerRun(JSON.stringify(events));
 const errors = ({ annotations }) =>
   annotations.filter((a) => a.level === 'error').map((a) => a.message);
 
-const WORKSPACE = '/home/runner/work/myorganizer/myorganizer';
+const WORKSPACE = '/home/runner/work/myorganiser/myorganiser';
 const result = (fields) => ({ type: 'result', subtype: 'success', ...fields });
 const denied = (tool_name, file_path) => ({
   tool_name,

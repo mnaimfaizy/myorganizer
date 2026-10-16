@@ -34,8 +34,8 @@ jest.mock('../hooks', () => {
  * Use requireActual to get the real ServerReachabilityNotice component
  * and only override the hooks we need to control.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-vault-ui'),
+jest.mock('@myorganiser/web-vault-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-vault-ui'),
   useOptionalVaultSession: jest.fn(),
   useServerReachability: jest.fn(),
 }));
@@ -43,8 +43,8 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
 /**
  * Mock web-vault functions.
  */
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   mintRecoveryKey: jest.fn(),
 }));
 
@@ -52,8 +52,8 @@ jest.mock('@myorganizer/web-vault', () => ({
  * Mock web-ui components and useToast.
  * Spread actual to get cn and other utilities, then override components.
  */
-jest.mock('@myorganizer/web-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-ui');
+jest.mock('@myorganiser/web-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-ui');
   const React = require('react') as typeof import('react');
   const {
     Controller,
@@ -178,17 +178,17 @@ jest.mock('@myorganizer/web-ui', () => {
 });
 
 import { RecoveryKeyRotationCard } from './RecoveryKeyRotationCard';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 import {
   mintRecoveryKey,
   type MintedRecoveryKey,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   useOptionalVaultSession,
   useServerReachability,
   SERVER_REACHABILITY_READINGS,
-} from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 import { useRecoveryKeyRotation } from '../hooks';
 import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 import { downloadTextFile } from '../utils';
@@ -375,7 +375,7 @@ describe('RecoveryKeyRotationCard', () => {
       // strict-mode violation. Pinned here so a revert fails in Jest rather
       // than only in the browser.
       // Queried as text, not by label association: this spec mocks
-      // `@myorganizer/web-ui`, and the mocked FormLabel/Input do not wire
+      // `@myorganiser/web-ui`, and the mocked FormLabel/Input do not wire
       // `htmlFor`/`id` the way the real primitives do. The association itself
       // is real in the browser and is what the Playwright spec relies on.
       expect(

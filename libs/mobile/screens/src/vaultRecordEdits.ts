@@ -14,8 +14,8 @@ import {
   type Task,
   type UsageLocationRecord,
   type VaultBlobEnvelope,
-} from '@myorganizer/vault-core/portable';
-import type { VaultBlobEdit } from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/vault-core/portable';
+import type { VaultBlobEdit } from '@myorganiser/mobile/feat-vault';
 import { findVisibleContact } from './contactModel';
 import type { SubscriptionEditValues } from './SubscriptionEditSheet';
 import { findVisibleSubscription } from './subscriptionModel';

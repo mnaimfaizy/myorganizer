@@ -1,7 +1,7 @@
 import {
   toAuthErrorFromMessage,
   type AuthErrorCode,
-} from '@myorganizer/auth/portable';
+} from '@myorganiser/auth/portable';
 import { extractServerMessage, isNetworkError } from './httpErrorShape';
 
 /** Every way a sign-in can fail, as the Sign in screen tells them apart. */

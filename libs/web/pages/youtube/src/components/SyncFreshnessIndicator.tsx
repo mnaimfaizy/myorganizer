@@ -1,6 +1,6 @@
 'use client';
 
-import { cn } from '@myorganizer/web-ui';
+import { cn } from '@myorganiser/web-ui';
 import { AlertTriangle, CircleAlert, Clock } from 'lucide-react';
 import { describeSyncFreshness } from '../lib/syncFreshness';
 import type { YouTubeSyncStatus } from '../types';

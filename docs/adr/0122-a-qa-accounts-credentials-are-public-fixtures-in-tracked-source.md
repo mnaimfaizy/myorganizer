@@ -16,12 +16,12 @@ That had three costs:
 
 Issue #1004 tracks the change.
 
-The repository already commits sign-in fixtures for the live logout Playwright spec (`apps/myorganizer-e2e/src/e2e/helpers/liveAuth.ts`), and every vault spec carries its passphrase as a literal.
+The repository already commits sign-in fixtures for the live logout Playwright spec (`apps/web-e2e/src/e2e/helpers/liveAuth.ts`), and every vault spec carries its passphrase as a literal.
 
 ## Decision
 
 1. **A QA Account's sign-in password and Vault passphrase are public, and fixed by tracked source.** `tools/config/qa-accounts.json` holds one row per account: an id, an email and a name. The password and the passphrase are derived from the id. They are not secrets: they open a fixture User in a local database and nothing else.
-2. **The seeder runs against a local database or not at all.** `yarn qa:accounts:seed` creates each account as a verified User, skipping the email round-trip. `localDatabaseRefusal` lets it run only when `DATABASE_URL`'s host is this machine and `NODE_ENV` is not `production`. There is no flag that lifts the refusal. The seeder is the only path to a verified QA Account: the addresses sit on `myorganizer.test`, a reserved domain that receives no mail, so nobody can register and verify one on a real deployment.
+2. **The seeder runs against a local database or not at all.** `yarn qa:accounts:seed` creates each account as a verified User, skipping the email round-trip. `localDatabaseRefusal` lets it run only when `DATABASE_URL`'s host is this machine and `NODE_ENV` is not `production`. There is no flag that lifts the refusal. The seeder is the only path to a verified QA Account: the addresses sit on `myorganiser.test`, a reserved domain that receives no mail, so nobody can register and verify one on a real deployment.
 3. **The seeder mints the Vault.** It builds the vault meta in Node with `vault-core`'s crypto and the web client's own `localToServerMeta`, and writes only what a client would have pushed. The server still holds Ciphertext only.
 4. **Every secret-shaped value is fixed and derived, not committed.** The password, the passphrase, the salt, the Master Key, the Recovery Key and the wrap IVs are each taken from a SHA-256 digest of a label that names the account. They are fixed, so minting twice gives the same Vault. They are derived, so no credential-shaped string sits in the tree for a secret scanner, or a reader, to learn to ignore. `yarn qa:accounts` prints each account's values, Recovery Key included.
 5. **The seeder is the Vault's backup.** A seed puts the password and the vault meta back to the fixture and keeps every Vault Blob, which stays readable because the Master Key did not change. It reports a blob that no longer opens. `--restore` deletes the account's blobs, which returns the Vault to its default state, empty. Nothing is stored on disk to go stale.

@@ -4,7 +4,7 @@
  * the latest reader version.
  */
 export const ESCAPE_COPY_READER_RELEASES_URL =
-  'https://github.com/mnaimfaizy/myorganizer/releases/latest';
+  'https://github.com/mnaimfaizy/myorganiser/releases/latest';
 
 /**
  * Filename of the self-contained HTML reader that decrypts and displays
@@ -12,7 +12,7 @@ export const ESCAPE_COPY_READER_RELEASES_URL =
  * and keep it in the same folder as their Escape Copy backup.
  */
 export const ESCAPE_COPY_READER_FILENAME =
-  'myorganizer-escape-copy-reader.html';
+  'myorganiser-escape-copy-reader.html';
 
 /**
  * Filename of the checksums file published alongside the reader on GitHub Releases.

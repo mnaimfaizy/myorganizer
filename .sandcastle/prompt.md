@@ -9,7 +9,7 @@
 
 # Context
 
-You are implementing a vertical slice for MyOrganizer.
+You are implementing a vertical slice for MyOrganiser.
 
 - Dependencies are **already installed** in this sandbox before you start (a setup hook runs `corepack yarn install --immutable`). Do NOT run `yarn install` yourself.
 - Read `CLAUDE.md`, `CONTEXT.md`, and `TECH_STACK.md` before making any changes.

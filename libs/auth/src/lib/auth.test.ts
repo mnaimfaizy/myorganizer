@@ -18,8 +18,8 @@ describe('auth storage', () => {
   it('stores access token in localStorage when requested', () => {
     setAccessToken('abc', 'local');
     expect(getAccessToken()).toBe('abc');
-    expect(window.localStorage.getItem('myorganizer_access_token')).toBe('abc');
-    expect(window.sessionStorage.getItem('myorganizer_access_token')).toBe(
+    expect(window.localStorage.getItem('myorganiser_access_token')).toBe('abc');
+    expect(window.sessionStorage.getItem('myorganiser_access_token')).toBe(
       null,
     );
   });
@@ -27,10 +27,10 @@ describe('auth storage', () => {
   it('stores access token in sessionStorage when requested', () => {
     setAccessToken('def', 'session');
     expect(getAccessToken()).toBe('def');
-    expect(window.sessionStorage.getItem('myorganizer_access_token')).toBe(
+    expect(window.sessionStorage.getItem('myorganiser_access_token')).toBe(
       'def',
     );
-    expect(window.localStorage.getItem('myorganizer_access_token')).toBe(null);
+    expect(window.localStorage.getItem('myorganiser_access_token')).toBe(null);
   });
 
   it('stores and loads current user', () => {
@@ -64,10 +64,10 @@ describe('onSessionEnded', () => {
   function otherWindowRemovesUser(): void {
     // What the browser does in every *other* window when one signs out: the
     // shared user is already gone from localStorage when the event arrives.
-    window.localStorage.removeItem('myorganizer_user');
+    window.localStorage.removeItem('myorganiser_user');
     window.dispatchEvent(
       new StorageEvent('storage', {
-        key: 'myorganizer_user',
+        key: 'myorganiser_user',
         newValue: null,
         storageArea: window.localStorage,
       }),
@@ -89,7 +89,7 @@ describe('onSessionEnded', () => {
 
     expect(getAccessToken()).toBeUndefined();
     expect(
-      window.sessionStorage.getItem('myorganizer_access_token'),
+      window.sessionStorage.getItem('myorganiser_access_token'),
     ).toBeNull();
     expect(getCurrentUser()).toBeUndefined();
     expect(listener).toHaveBeenCalledTimes(1);

@@ -6,7 +6,7 @@ accepted. Amended 2026-10-09 (issue #1088): the Task Detail screen now leaves wh
 
 ## Context
 
-A Vault Pull merges an arriving Vault Blob against what the device already holds, so it cannot discard a local edit the server has not seen (`CONTEXT.md`). Issue #896 asked for that on mobile, through the per-record merge that #164 moved behind `@myorganizer/vault-core/portable`.
+A Vault Pull merges an arriving Vault Blob against what the device already holds, so it cannot discard a local edit the server has not seen (`CONTEXT.md`). Issue #896 asked for that on mobile, through the per-record merge that #164 moved behind `@myorganiser/vault-core/portable`.
 
 The issue was written as if mobile held a Local Vault. It does not ([ADR 0107](0107-a-mobile-vault-write-is-read-modify-write-against-the-server.md)), and adding one is still a decision nobody has made ([ADR 0047](0047-vault-access-is-obtained-through-an-owner-bound-handle.md)). Measured against what mobile does hold:
 

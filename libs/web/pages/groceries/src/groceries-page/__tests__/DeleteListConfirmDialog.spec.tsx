@@ -1,12 +1,12 @@
 /*
   Tests for DeleteListConfirmDialog component.
-  - Mocks @myorganizer/web-ui Dialog compound for predictable behavior
+  - Mocks @myorganiser/web-ui Dialog compound for predictable behavior
   - Mocks lucide-react AlertTriangle icon
   - Tests confirmation flow, pluralization, warning display, button interactions, and error handling
 */
 
 /** Mocking rule: place jest.mock calls before any imports */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react');
 
   return {

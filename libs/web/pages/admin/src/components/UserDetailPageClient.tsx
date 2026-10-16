@@ -3,8 +3,8 @@
 import type {
   AdminUserIdentity,
   YouTubeAccessUsageResponse,
-} from '@myorganizer/app-api-client';
-import { Button } from '@myorganizer/web-ui';
+} from '@myorganiser/app-api-client';
+import { Button } from '@myorganiser/web-ui';
 import { isAxiosError } from 'axios';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';

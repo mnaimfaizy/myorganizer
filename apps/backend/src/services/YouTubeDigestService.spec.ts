@@ -1,4 +1,4 @@
-import { collectCidReferences } from '@myorganizer/email-shell';
+import { collectCidReferences } from '@myorganiser/email-shell';
 import { YouTubeDigestService, DIGEST_ITEM_CAP } from './YouTubeDigestService';
 
 jest.mock('./WorkerLeaseService', () => {
@@ -550,7 +550,7 @@ describe('YouTubeDigestService', () => {
       );
     });
 
-    it('should carry an unsubscribe link and keep every link inside MyOrganizer', async () => {
+    it('should carry an unsubscribe link and keep every link inside MyOrganiser', async () => {
       const monday = new Date('2026-01-05T12:00:00Z');
       process.env.APP_FRONTEND_URL = 'https://app.example.com';
       (
@@ -597,7 +597,7 @@ describe('YouTubeDigestService', () => {
         'https://app.example.com/youtube/unsubscribe?token=token123',
       );
       expect(html).toContain('https://app.example.com/dashboard/youtube');
-      // The whole point of the digest is to return the reader to MyOrganizer.
+      // The whole point of the digest is to return the reader to MyOrganiser.
       expect(html).not.toContain('youtube.com');
       // ...and specifically to the locked long-form home, the channel
       // directory with the channel preselected (Variant C / issue #250),

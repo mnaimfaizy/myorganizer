@@ -1,3 +1,4 @@
+import { EMAIL_BRAND_NAME } from '@myorganiser/email-shell';
 import nodemailer, { SendMailOptions } from 'nodemailer';
 import winston from 'winston';
 
@@ -107,6 +108,14 @@ const getEmailService = (): EmailService => {
   return emailProviders[defaultEmailProvider]();
 };
 
+// A bare `EMAIL_SENDER` address is sent under the brand name, so the inbox
+// shows "MyOrganiser" (#1185). A value that already names its sender, as
+// `Name <address>`, is used as given.
+const senderOf = (sender: string | undefined): SendMailOptions['from'] =>
+  sender && !sender.includes('<')
+    ? { name: EMAIL_BRAND_NAME, address: sender }
+    : sender;
+
 const sendEmail = async (
   to: string | string[],
   subject: string,
@@ -115,7 +124,7 @@ const sendEmail = async (
   const emailService = getEmailService();
 
   const mailOptions: SendMailOptions = {
-    from: process.env.EMAIL_SENDER,
+    from: senderOf(process.env.EMAIL_SENDER),
     to: Array.isArray(to) ? to.join(',') : to,
     subject: subject,
     html: message.html,

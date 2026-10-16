@@ -9,7 +9,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { TriangleAlert } from 'lucide-react';
 import { useCallback, useState } from 'react';
 

@@ -1,8 +1,8 @@
 'use client';
 
-import { Button, cn } from '@myorganizer/web-ui';
+import { Button, cn } from '@myorganiser/web-ui';
 import { TriangleAlert } from 'lucide-react';
-import type { ServerReachability } from '@myorganizer/web-vault';
+import type { ServerReachability } from '@myorganiser/web-vault';
 import {
   serverReachabilityReading,
   type ServerReachabilityTone,
@@ -115,7 +115,7 @@ export function ServerReachabilityNotice({
         two elements and fails strict mode. Assert against the `data-testid`
         attributes on this component, not its copy. The same duplication in the
         toaster's announcer is what
-        `apps/myorganizer-e2e/src/e2e/vault-recovery-key-rotation.spec.ts` had
+        `apps/web-e2e/src/e2e/vault-recovery-key-rotation.spec.ts` had
         to add `{ exact: true }` for.
       */}
       <p className="sr-only" role="status" aria-live="polite">

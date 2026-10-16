@@ -13,7 +13,7 @@ React UI, session provider, vault gate, reconcile runner, meta converge runner, 
 
 - Keep vault unlock/session state explicit and local to the client.
 - Give the session provider's handle its sync sink there and nowhere else. `VaultSessionProvider` owns the one Vault Sync Queue per User; a page that wants its edit synchronised needs to do nothing, and a page that adds its own push has added a second one.
-- Reuse `@myorganizer/web-ui` primitives for UI.
+- Reuse `@myorganiser/web-ui` primitives for UI.
 - Preserve reconcile flow safety and user recovery paths.
 - Ask Vault Claim Evidence and Vault Absent Evidence from `VaultSessionProvider` and nowhere else, and read them from the session context. Each has more than one reader — the gate withholds on them, and the reconcile runner waits on the claim — and a check run inside a gate is one the runner in the layout cannot see ([ADR 0066](../../../docs/adr/0066-a-convergence-pass-runs-freely-and-only-the-question-is-suppressed.md), amendment). A postponed check is re-asked on `online` and on window focus, never remembered.
 - Start no reconcile pass for an owner whose device holds an Unclaimed Local Vault until Vault Claim Evidence has settled. An unclaimed slot resolves no Local Vault, so a pass that runs over it reads it as absent and downloads the server's wrapping ahead of the claim — which is exactly when a silent claim would have fired, and left the User offered a replace of their Vault with itself (#673).

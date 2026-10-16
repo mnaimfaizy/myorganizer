@@ -1,12 +1,12 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { AddressRecord } from '@myorganizer/vault-core';
+import { AddressRecord } from '@myorganiser/vault-core';
 import {
   Sheet,
   SheetContent,
   SheetDescription,
   SheetHeader,
   SheetTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { MapPinned } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useState } from 'react';

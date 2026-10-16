@@ -12,7 +12,7 @@ import {
   type RouteProp,
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { useSensitiveCopy } from '@myorganizer/mobile/feat-vault';
+import { useSensitiveCopy } from '@myorganiser/mobile/feat-vault';
 import {
   Button,
   EmptyState,
@@ -23,7 +23,7 @@ import {
   Text,
   useLargeTitleCollapse,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { ContactFieldRow } from './ContactFieldRow';
 import {
   formatMobileNumber,

@@ -25,23 +25,23 @@ jest.mock('../hooks', () => {
 /**
  * Mock web-vault-ui hooks.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-vault-ui'),
+jest.mock('@myorganiser/web-vault-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-vault-ui'),
   useOptionalVaultSession: jest.fn(),
 }));
 
 /**
  * Mock web-vault functions.
  */
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   resetPassphraseAfterRecovery: jest.fn(),
 }));
 
 /**
  * Mock web-ui components and useToast.
  */
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react') as typeof import('react');
   const {
     Controller,
@@ -154,10 +154,10 @@ jest.mock('@myorganizer/web-ui', () => {
 });
 
 import { ChangePassphraseCard } from './ChangePassphraseCard';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import { resetPassphraseAfterRecovery } from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import { resetPassphraseAfterRecovery } from '@myorganiser/web-vault';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 import { useChangePassphrase } from '../hooks';
 import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 

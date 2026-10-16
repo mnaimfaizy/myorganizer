@@ -1,6 +1,6 @@
 ---
 name: auth-session-workflow
-description: 'Use when changing login, logout, registration, refresh-token flow, email verification, token storage, or auth UI helpers in MyOrganizer.'
+description: 'Use when changing login, logout, registration, refresh-token flow, email verification, token storage, or auth UI helpers in MyOrganiser.'
 ---
 
 # Auth Session Workflow
@@ -20,7 +20,7 @@ description: 'Use when changing login, logout, registration, refresh-token flow,
 
 ## Procedure
 
-1. Start from the owning auth surface in `@myorganizer/auth` or `apps/backend`.
+1. Start from the owning auth surface in `@myorganiser/auth` or `apps/backend`.
 2. Update frontend and backend together when the session flow crosses that boundary.
 3. If auth endpoint shapes change, run `yarn openapi:sync` and `yarn api:generate`.
 4. Follow the detailed [auth session runbook](./references/runbook.md) for session invariants, validation, and repo references.

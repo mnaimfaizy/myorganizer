@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Skeleton } from '@myorganizer/web-ui';
+import { Button, Skeleton } from '@myorganiser/web-ui';
 import { ExternalLink } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { updateVideoWatched } from '../hooks';
@@ -386,7 +386,7 @@ export function ChannelDirectory({
                   </Button>
                 )}
                 <p className="text-xs text-muted-foreground">
-                  MyOrganizer stores only recent uploads from each channel.
+                  MyOrganiser stores only recent uploads from each channel.
                   Older uploads are not cached here.
                 </p>
                 <a

@@ -1,17 +1,17 @@
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   VAULT_BLOB_CONVERGE_STRATEGIES as CORE_VAULT_BLOB_CONVERGE_STRATEGIES,
   type VaultBlobConvergeStrategy,
   type VaultExportBlobType,
   type VaultRecordType as CoreVaultRecordType,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { VaultRecordType } from './localVaultStorage';
 
 export type {
   VaultBlobConvergeStrategy,
   VaultBlobMerge,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 /**
  * Every Vault Blob Type, and the Local Vault field each one lands in.
@@ -25,10 +25,10 @@ export type {
  * Two omissions are the reason this table is shared rather than local to one
  * module. Groceries was missing from all four directions of the reconcile
  * while the Local Vault carried it, and a keep-server decision destroyed it
- * ([#512](https://github.com/mnaimfaizy/myorganizer/issues/512)). Tasks was
+ * ([#512](https://github.com/mnaimfaizy/myorganiser/issues/512)). Tasks was
  * then found missing from the hardened export path, which had been built by
  * hand-enumerating five of the then-six members
- * ([#537](https://github.com/mnaimfaizy/myorganizer/issues/537)). `'todos'`
+ * ([#537](https://github.com/mnaimfaizy/myorganiser/issues/537)). `'todos'`
  * was retired in #841 once ADR 0003's exit query was zero.
  *
  * The rest of the `satisfies` clause holds four hand-maintained lists of the
@@ -100,9 +100,9 @@ export const VAULT_BLOB_TYPE_BY_FIELD = Object.fromEntries(
  * here until the shared table decides how it converges — it cannot inherit a
  * strategy from whichever arm an `else` happened to be, the shape that
  * destroyed grocery Ciphertext in
- * [#512](https://github.com/mnaimfaizy/myorganizer/issues/512) and dropped the
+ * [#512](https://github.com/mnaimfaizy/myorganiser/issues/512) and dropped the
  * Tasks blob from hardened export in
- * [#537](https://github.com/mnaimfaizy/myorganizer/issues/537).
+ * [#537](https://github.com/mnaimfaizy/myorganiser/issues/537).
  *
  * The table says which strategy, never when to apply it. Deciding that — and
  * carrying it out — happens in exactly one place on web, `convergeVaultBlob`.

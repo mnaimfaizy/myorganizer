@@ -11,12 +11,12 @@ import {
   FormMessage,
   Input,
   Label,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   ServerReachabilityNotice,
   useServerReachability,
-} from '@myorganizer/web-vault-ui';
-import type { MintedRecoveryKey } from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault-ui';
+import type { MintedRecoveryKey } from '@myorganiser/web-vault';
 
 import type { RotationFormInput } from './RecoveryKeyRotationCard';
 

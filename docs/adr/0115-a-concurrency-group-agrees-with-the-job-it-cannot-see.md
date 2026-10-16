@@ -2,13 +2,13 @@
 
 It happened three times in one morning. `ai:create-pr` adds a label a second after opening a pull
 request, and those `labeled` runs of `.github/workflows/code-review.yml` cancelled the review in
-flight on [#687](https://github.com/mnaimfaizy/myorganizer/issues/687) and
-[#690](https://github.com/mnaimfaizy/myorganizer/issues/690). The fix sent them to a group of their
-own, and a bot comment on [#693](https://github.com/mnaimfaizy/myorganizer/issues/693) did the same
+flight on [#687](https://github.com/mnaimfaizy/myorganiser/issues/687) and
+[#690](https://github.com/mnaimfaizy/myorganiser/issues/690). The fix sent them to a group of their
+own, and a bot comment on [#693](https://github.com/mnaimfaizy/myorganiser/issues/693) did the same
 thing an hour later through the `issue_comment` trigger, which had been left in the shared group —
 invisible to anyone listing runs for the pull request's branch, because `issue_comment` runs are
 attributed to the default branch. Then the shared inert group cancelled itself on
-[#694](https://github.com/mnaimfaizy/myorganizer/issues/694).
+[#694](https://github.com/mnaimfaizy/myorganiser/issues/694).
 
 ## Status
 

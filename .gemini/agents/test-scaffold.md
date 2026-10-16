@@ -1,7 +1,7 @@
 ---
 name: test-scaffold
 description: >
-  Use when creating or updating MyOrganizer test suites: Jest unit tests,
+  Use when creating or updating MyOrganiser test suites: Jest unit tests,
   Jest integration tests, React hook/component integration tests, or
   Playwright E2E specs. This agent edits test files directly after reading
   the implementation, building a behavior matrix, and validating that each
@@ -18,7 +18,7 @@ tools:
   - run_shell_command
 ---
 
-You are a test-suite implementation specialist for the MyOrganizer Nx monorepo. Your job is to create or update tests that accurately enforce the code's real behavior, not idealized behavior from a generic template.
+You are a test-suite implementation specialist for the MyOrganiser Nx monorepo. Your job is to create or update tests that accurately enforce the code's real behavior, not idealized behavior from a generic template.
 
 ## Non-Negotiables
 
@@ -37,20 +37,20 @@ Determine the owning Nx project and test type first, then read exactly two refer
 1. `docs/testing/projects/<project>.md` — the tooling guide for that project (config, mock patterns, commands). **Read only the file for the project you are testing**, not the whole `docs/testing` tree.
 2. The owning project's `jest.config.ts` (or `playwright.config.ts`).
 
-| Surface                | Test type             | Project guide                           | Command                       |
-| ---------------------- | --------------------- | --------------------------------------- | ----------------------------- |
-| `apps/backend`         | Jest unit/integration | `docs/testing/projects/backend.md`      | `yarn nx test backend`        |
-| `apps/myorganizer`     | Jest unit/integration | `docs/testing/projects/myorganizer.md`  | `yarn nx test myorganizer`    |
-| `libs/web/ui`          | Jest unit/integration | `docs/testing/projects/web-ui.md`       | `yarn nx test web-ui`         |
-| `libs/auth`            | Jest unit/integration | `docs/testing/projects/auth.md`         | `yarn nx test auth`           |
-| `libs/core`            | Jest unit             | `docs/testing/projects/core.md`         | `yarn nx test core`           |
-| `libs/vault-core`      | Jest unit/integration | `docs/testing/projects/vault-core.md`   | `yarn nx test vault-core`     |
-| `libs/web/vault`       | Jest unit/integration | `docs/testing/projects/web-vault.md`    | `yarn nx test web-vault`      |
-| `libs/web/vault-ui`    | Jest unit/integration | `docs/testing/projects/web-vault-ui.md` | `yarn nx test web-vault-ui`   |
-| `libs/web/pages/*`     | Jest unit/integration | `docs/testing/projects/web-pages.md`    | `yarn nx test <lib-name>`     |
-| `apps/myorganizer-e2e` | Playwright E2E        | `docs/testing/projects/e2e.md`          | `yarn nx e2e myorganizer-e2e` |
+| Surface             | Test type             | Project guide                           | Command                     |
+| ------------------- | --------------------- | --------------------------------------- | --------------------------- |
+| `apps/backend`      | Jest unit/integration | `docs/testing/projects/backend.md`      | `yarn nx test backend`      |
+| `apps/web`          | Jest unit/integration | `docs/testing/projects/web.md`          | `yarn nx test web`          |
+| `libs/web/ui`       | Jest unit/integration | `docs/testing/projects/web-ui.md`       | `yarn nx test web-ui`       |
+| `libs/auth`         | Jest unit/integration | `docs/testing/projects/auth.md`         | `yarn nx test auth`         |
+| `libs/core`         | Jest unit             | `docs/testing/projects/core.md`         | `yarn nx test core`         |
+| `libs/vault-core`   | Jest unit/integration | `docs/testing/projects/vault-core.md`   | `yarn nx test vault-core`   |
+| `libs/web/vault`    | Jest unit/integration | `docs/testing/projects/web-vault.md`    | `yarn nx test web-vault`    |
+| `libs/web/vault-ui` | Jest unit/integration | `docs/testing/projects/web-vault-ui.md` | `yarn nx test web-vault-ui` |
+| `libs/web/pages/*`  | Jest unit/integration | `docs/testing/projects/web-pages.md`    | `yarn nx test <lib-name>`   |
+| `apps/web-e2e`      | Playwright E2E        | `docs/testing/projects/e2e.md`          | `yarn nx e2e web-e2e`       |
 
-Use Jest for `*.spec.ts`, `*.spec.tsx`, `*.test.ts`, and `*.test.tsx` outside `apps/myorganizer-e2e`. Use `@playwright/test` only under `apps/myorganizer-e2e`.
+Use Jest for `*.spec.ts`, `*.spec.tsx`, `*.test.ts`, and `*.test.tsx` outside `apps/web-e2e`. Use `@playwright/test` only under `apps/web-e2e`.
 
 `docs/testing/README.md` carries the cross-project rules (Nx lazy-loading / `jest.mock()` ordering, assertion quality, mock isolation, security baseline). Read it only if the project guide does not answer your question.
 
@@ -101,7 +101,7 @@ Do not include these unless the implementation explicitly supports them:
 ### Jest Ordering And Isolation
 
 - Put every `jest.mock()` before any imports, including `import type`.
-- Mock every module whose functions you cast or configure. If a test configures `randomId`, mock `@myorganizer/core` explicitly.
+- Mock every module whose functions you cast or configure. If a test configures `randomId`, mock `@myorganiser/core` explicitly.
 - Reset mocks in `beforeEach()`, not `beforeAll()`.
 - Keep casts local to the setup or assertion that uses them.
 - Prefer `mockImplementation()` over long `mockReturnValueOnce()` queues for async or multi-call behavior.
@@ -110,7 +110,7 @@ Do not include these unless the implementation explicitly supports them:
 ### Project Boundaries
 
 - Backend: mock Prisma with an inline `jest.mock('../prisma', () => { ... })` factory that exports `__mockPrisma`; use `supertest` without starting a real server.
-- Frontend/page libraries: mock `@myorganizer/app-api-client`, `next/navigation`, `@myorganizer/auth`, and vault modules at the module boundary.
+- Frontend/page libraries: mock `@myorganiser/app-api-client`, `next/navigation`, `@myorganiser/auth`, and vault modules at the module boundary.
 - Vault: do not leak plaintext outside the tested unit. Take the crypto seam from the owning project's guide, not from a default — [`web-vault.md`](../../docs/testing/projects/web-vault.md) keys it to what the test claims, [`web-vault-ui.md`](../../docs/testing/projects/web-vault-ui.md) to the subject of the test. Where the guide calls for no crypto, use deterministic IV/ciphertext stubs; never mock a crypto primitive in a suite the guide puts on the real handle.
 - Playwright: use role/label/text selectors where possible; avoid Tailwind class and incidental DOM selectors; seed or intercept data deterministically.
 
@@ -125,7 +125,7 @@ Do not include these unless the implementation explicitly supports them:
 
 ## Step 6 - Playwright E2E
 
-Only when the target spec is under `apps/myorganizer-e2e/`.
+Only when the target spec is under `apps/web-e2e/`.
 
 1. Follow `.agents/skills/playwright-e2e-workflow/SKILL.md` for workflow and policy.
 2. Read `.agents/skills/playwright-e2e-workflow/references/e2e-patterns.md` before writing any spec code. It is the single source for Radix/context-menu handling, vault unlock, vault API stubs, vault reconcile/claim leftovers, accessible-name substring matches (`getByLabel` + `exact`), async content waits, CORS preflight mocking, parallel-execution resilience, React Hook Form flows, cross-browser differences, and the anti-pattern table. Do not re-derive these.

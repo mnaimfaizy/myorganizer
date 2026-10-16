@@ -138,7 +138,7 @@ test('checks a tsconfig.web.json, the react-native-web program', (t) => {
 });
 
 test('checks a bare tsconfig.json when a project has no production config', (t) => {
-  // apps/myorganizer is a Next.js app: its production program is
+  // apps/web is a Next.js app: its production program is
   // `tsconfig.json` itself, with no `tsconfig.app.json` beside it. A checker
   // that knew only the suffixed names compiled its spec program and nothing
   // else, so a production type error no spec imported passed the gate (#1060).
@@ -153,7 +153,7 @@ test('checks a bare tsconfig.json when a project has no production config', (t) 
     }),
   );
   writeFileSync(join(dir, 'broken.ts'), 'export const n: number = "string";\n');
-  // The spec program is clean, as apps/myorganizer's was: only the production
+  // The spec program is clean, as apps/web's was: only the production
   // program can report this error.
   writeFileSync(
     join(dir, 'tsconfig.spec.json'),

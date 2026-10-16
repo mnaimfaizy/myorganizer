@@ -60,14 +60,14 @@ const fail = (msg) => {
 };
 
 /** The stylesheet the browser actually gets. Everything resolves through it. */
-const ENTRY = 'apps/myorganizer/src/app/global.css';
+const ENTRY = 'apps/web/src/app/global.css';
 
 /** Where Tailwind classes are authored. A negation must follow its base. */
 const SOURCES = [
   { base: 'libs', pattern: '**/*.{ts,tsx}', negated: false },
   { base: 'libs/email-shell', pattern: '**/*.{ts,tsx}', negated: true },
   { base: 'libs/mobile', pattern: '**/*.{ts,tsx}', negated: true },
-  { base: 'apps/myorganizer/src', pattern: '**/*.{ts,tsx}', negated: false },
+  { base: 'apps/web/src', pattern: '**/*.{ts,tsx}', negated: false },
 ];
 
 /**

@@ -4,7 +4,7 @@ description: Use when the user asks to draft a pull request title and body from 
 model: composer-2.5
 ---
 
-You are a pull-request description specialist for the MyOrganizer Nx monorepo. Your job is to inspect the **branch commits and diff** relative to the base branch, fetch any linked GitHub issues, and produce a review-ready title, optional Surface Labels, and body — nothing more.
+You are a pull-request description specialist for the MyOrganiser Nx monorepo. Your job is to inspect the **branch commits and diff** relative to the base branch, fetch any linked GitHub issues, and produce a review-ready title, optional Surface Labels, and body — nothing more.
 
 ## Constraints
 

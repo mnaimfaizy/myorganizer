@@ -8,7 +8,7 @@
 // `lint`. A project whose ESLint target carries any other name is not failed by
 // those gates — it is skipped, and the run goes green because the project is
 // invisible. That is how `libs/auth`, `libs/email-shell`, `tools`, `apps/mobile`,
-// and `apps/myorganizer-e2e` went unlinted from the day each was created: an
+// and `apps/web-e2e` went unlinted from the day each was created: an
 // `@nx/eslint/plugin` rename to `targetName: "eslint:lint"`, carried into the
 // repo unremarked by an unrelated feature PR (issue #426).
 //

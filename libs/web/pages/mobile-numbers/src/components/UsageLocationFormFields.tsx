@@ -1,4 +1,4 @@
-import { PriorityEnum } from '@myorganizer/vault-core';
+import { PriorityEnum } from '@myorganiser/vault-core';
 import {
   Checkbox,
   Combobox,
@@ -9,7 +9,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { AlertTriangle } from 'lucide-react';
 import { ChangeEvent, useCallback } from 'react';
 

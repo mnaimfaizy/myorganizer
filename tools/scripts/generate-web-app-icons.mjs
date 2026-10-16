@@ -10,7 +10,7 @@
  * the design-token build. This script only decides how the mark sits on each
  * icon's canvas, and fails if it cannot find a value it reads.
  *
- * Writes apps/myorganizer/public/icons/:
+ * Writes apps/web/public/icons/:
  * - icon-192.png, icon-512.png — transparent "any"-purpose icons, the shield
  *   at the same proportions as the existing favicon.
  * - icon-512-maskable.png — opaque full-bleed background with the shield kept
@@ -39,7 +39,7 @@ const fromRoot = (path) => resolve(repoRoot, path);
 
 const APP_LOGO = 'libs/web/ui/src/lib/components/AppLogo/AppLogo.tsx';
 const TOKENS = 'libs/design-tokens/src/generated/tokens.ts';
-const ICONS_DIR = 'apps/myorganizer/public/icons';
+const ICONS_DIR = 'apps/web/public/icons';
 
 function readOrFail(path, pattern, what) {
   const match = readFileSync(fromRoot(path), 'utf8').match(pattern);

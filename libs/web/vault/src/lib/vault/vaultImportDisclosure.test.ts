@@ -1,4 +1,4 @@
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 import { classifyVaultImportCredentialOutcome } from './vaultImportDisclosure';
 import { vaultIdentityOf } from './vaultMetaConverge';
 

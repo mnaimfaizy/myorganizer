@@ -1,6 +1,6 @@
-# MyOrganizer
+# MyOrganiser
 
-MyOrganizer is a personal organization app with end-to-end encrypted storage for sensitive user data. The server never stores or processes plaintext — all encryption and decryption happens on the client.
+MyOrganiser is a personal organization app with end-to-end encrypted storage for sensitive user data. The server never stores or processes plaintext — all encryption and decryption happens on the client.
 
 ## Domain
 
@@ -29,11 +29,11 @@ A Subscription's amount restated as what it costs per month, whatever its billin
 _Avoid_: monthly total, monthly cost, burn rate, converted total
 
 **User**:
-A person's account in MyOrganizer. Authentication is a state a User may be in, not part of what a User is — a Disabled User and an Unverified User are both Users.
+A person's account in MyOrganiser. Authentication is a state a User may be in, not part of what a User is — a Disabled User and an Unverified User are both Users.
 _Avoid_: Account, member, customer, person
 
 **Platform Admin**:
-A User with elevated privilege to manage other Users' account metadata across the MyOrganizer service. Cannot access Vault plaintext or Master Keys.
+A User with elevated privilege to manage other Users' account metadata across the MyOrganiser service. Cannot access Vault plaintext or Master Keys.
 _Avoid_: Admin, superuser, staff, operator, system admin
 
 **Disabled User**:
@@ -153,17 +153,17 @@ Mail a User receives because they opted in to being told about something, the We
 _Avoid_: marketing email, newsletter, alert, transactional email
 
 **Email Shell**:
-The shared frame every MyOrganizer email is rendered inside — logo, brand colours, typography, and footer. Each email supplies only its body and declares whether it is a Transactional Email or a Notification Email; the declaration is what decides the footer, so the shell can never put an unsubscribe link on mail a User must not opt out of.
+The shared frame every MyOrganiser email is rendered inside — logo, brand colours, typography, and footer. Each email supplies only its body and declares whether it is a Transactional Email or a Notification Email; the declaration is what decides the footer, so the shell can never put an unsubscribe link on mail a User must not opt out of.
 _Avoid_: email template, layout, wrapper, base template
 
 ## YouTube (focused watching)
 
 **YouTube Access**:
-A Platform Admin's permission for one User to use YouTube in MyOrganizer at all. It is granted to and withdrawn from a specific User, never claimed by the User and never transferable. Without it YouTube does not exist for that User. It comes before a YouTube Connection: Access is MyOrganizer letting the User in, the Connection is the User letting MyOrganizer read their account. Decided in ADR 0129.
+A Platform Admin's permission for one User to use YouTube in MyOrganiser at all. It is granted to and withdrawn from a specific User, never claimed by the User and never transferable. Without it YouTube does not exist for that User. It comes before a YouTube Connection: Access is MyOrganiser letting the User in, the Connection is the User letting MyOrganiser read their account. Decided in ADR 0129.
 _Avoid_: invitation, invite link, test user, beta access, allowlist
 
 **YouTube Connection**:
-The User's grant letting MyOrganizer read their YouTube account on their behalf. It is either live or **Revoked** — Google no longer honours it, and only the User reconnecting restores it. A Connection left Revoked for seven days ends in a YouTube Disconnect. The seven-day rule is decided in ADR 0129.
+The User's grant letting MyOrganiser read their YouTube account on their behalf. It is either live or **Revoked** — Google no longer honours it, and only the User reconnecting restores it. A Connection left Revoked for seven days ends in a YouTube Disconnect. The seven-day rule is decided in ADR 0129.
 _Avoid_: integration, YouTube account link, OAuth token
 
 **Followed Channel**:
@@ -175,7 +175,7 @@ A Followed Channel the User has turned on for metadata sync and focused watching
 _Avoid_: Active channel, selected channel, subscribed channel
 
 **Cached Upload**:
-Metadata MyOrganizer stores for one upload from an Enabled Channel (ids, title, thumb, published time, duration). Never the media file.
+Metadata MyOrganiser stores for one upload from an Enabled Channel (ids, title, thumb, published time, duration). Never the media file.
 _Avoid_: Video (as the domain name alone), synced video, YouTube video row
 
 **Watched**:
@@ -287,8 +287,8 @@ _Avoid_: Component brief, component plan, design spec
 ## Mobile
 
 **Web App**:
-The Next.js browser client, the web counterpart of the Mobile App. Feature code lives under `libs/web/*`. Its app folder is named for its role, never for the product.
-_Avoid_: frontend (the Mobile App is a frontend too), the myorganizer app, the app
+The Next.js browser client in `apps/web`, the web counterpart of the Mobile App. Feature code lives under `libs/web/*`. Its app folder is named for its role, never for the product.
+_Avoid_: frontend (the Mobile App is a frontend too), the myorganiser app, the app
 
 **Mobile App**:
 The React Native client in `apps/mobile`, sharing domain logic with the web app through cross-platform libraries. Feature code lives under `libs/mobile/*`.
@@ -521,7 +521,7 @@ The Vault Blob Types a device has still to converge, held by a Vault Sync Sink. 
 _Avoid_: outbox, dirty queue, pending changes, write buffer, debounce buffer
 
 **Escape Copy**:
-A whole-Vault snapshot the User keeps in storage they control, so their Ciphertext outlives MyOrganizer itself. It is not the durability mechanism for a Vault — the server already holds every Vault Blob and converges it per record — and it is not a replica: it does not converge, it has no freshness obligation, and being months old does not make it broken. It exists only once the storage holding it has confirmed it whole: a copy that was started and not finished is not an Escape Copy, and restoring a Vault from one makes no new Escape Copy. What it must be is openable without us, which is why it carries the KDF parameters and both Master Key wrappings and nothing about it depends on a token we hold ([ADR 0062](docs/adr/0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md), [ADR 0064](docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)).
+A whole-Vault snapshot the User keeps in storage they control, so their Ciphertext outlives MyOrganiser itself. It is not the durability mechanism for a Vault — the server already holds every Vault Blob and converges it per record — and it is not a replica: it does not converge, it has no freshness obligation, and being months old does not make it broken. It exists only once the storage holding it has confirmed it whole: a copy that was started and not finished is not an Escape Copy, and restoring a Vault from one makes no new Escape Copy. What it must be is openable without us, which is why it carries the KDF parameters and both Master Key wrappings and nothing about it depends on a token we hold ([ADR 0062](docs/adr/0062-the-drive-escape-hatch-holds-no-token-we-could-lose.md), [ADR 0064](docs/adr/0064-an-escape-copy-is-opened-by-a-tool-that-needs-nothing-of-ours.md)).
 _Avoid_: cloud backup (as the concept), snapshot, sync copy, remote vault, archive
 
 **Escape Copy Reader**:
@@ -781,7 +781,7 @@ The live deployment target Users use. Its backend is a distinct app root with it
 _Avoid_: live, prod (as the glossary name), staging (when you mean this)
 
 **Release**:
-A version of MyOrganizer that is live in Production, identified by a `vX.Y.Z` tag. Not the act of preparing one, not the GitHub Release page that documents it, and not a Mobile Release, which is versioned on its own.
+A version of MyOrganiser that is live in Production, identified by a `vX.Y.Z` tag. Not the act of preparing one, not the GitHub Release page that documents it, and not a Mobile Release, which is versioned on its own.
 _Avoid_: version, deployment, ship, build
 
 **Cut**:
@@ -813,11 +813,11 @@ The lowest Mobile Release an environment's backend still serves. A Mobile App be
 _Avoid_: minimum version, force update, kill switch, min supported version
 
 **Product Surface**:
-A fact MyOrganizer publishes by existing — its domains, its app store identity, the API origin its clients call. Public by nature: hiding one in git hides it from nobody who can use the app.
+A fact MyOrganiser publishes by existing — its domains, its app store identity, the API origin its clients call. Public by nature: hiding one in git hides it from nobody who can use the app.
 _Avoid_: public config, non-secret, branding
 
 **Operator Fingerprint**:
-A fact about where and by whom MyOrganizer is run — host, port, account name, home paths, sibling apps on the account, and the operator's other properties. Never enters the tracked tree, and never reaches a public log: on a public repository a workflow's log is published, so a value a step can print is written down. Not a secret: a secret is defeated by a secret store, a Fingerprint only by not writing it down.
+A fact about where and by whom MyOrganiser is run — host, port, account name, home paths, sibling apps on the account, and the operator's other properties. Never enters the tracked tree, and never reaches a public log: on a public repository a workflow's log is published, so a value a step can print is written down. Not a secret: a secret is defeated by a secret store, a Fingerprint only by not writing it down.
 _Avoid_: secret, credential, private config, infra detail
 
 ## Documentation

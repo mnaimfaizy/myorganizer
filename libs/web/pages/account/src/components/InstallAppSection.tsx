@@ -6,7 +6,7 @@ import {
   CardTitle,
   InstallAppInstructions,
   useAppInstall,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 // The permanent install entry. It ignores the dashboard card's dismissal, so a
 // User who dismissed the card can still find the steps here.

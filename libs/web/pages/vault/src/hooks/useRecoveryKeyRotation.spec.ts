@@ -4,8 +4,8 @@
  * Mock web-vault functions before importing the hook.
  * Keep the real VaultSecretMismatchError to test instanceof checks.
  */
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   rotateRecoveryKeyWithPassphrase: jest.fn(),
   createVaultApi: jest.fn(),
 }));
@@ -14,15 +14,15 @@ jest.mock('@myorganizer/web-vault', () => ({
  * Mock web-vault-ui functions.
  * Keep the real recoveryKeyRotationReading to test actual copy.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
-  ...jest.requireActual('@myorganizer/web-vault-ui'),
+jest.mock('@myorganiser/web-vault-ui', () => ({
+  ...jest.requireActual('@myorganiser/web-vault-ui'),
   useOptionalVaultSession: jest.fn(),
 }));
 
 /**
  * Mock web-ui hook.
  */
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   useToast: jest.fn(),
 }));
 
@@ -39,11 +39,11 @@ import {
   createVaultApi,
   VaultSecretMismatchError,
   type MintedRecoveryKey,
-} from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/web-vault';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 import { useRecoveryKeyRotation } from './useRecoveryKeyRotation';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 
 // === Mock helpers ===
 

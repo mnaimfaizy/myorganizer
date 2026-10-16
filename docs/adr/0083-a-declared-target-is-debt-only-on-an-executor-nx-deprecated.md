@@ -20,7 +20,7 @@ waiting and one finds the definition of debt too wide:
 
 - **Nothing in `withNx` survives the move.** Next.js 16 builds with Turbopack by default, so
   `withNx`'s webpack hooks never run, and no tracked library has a CSS module or an SVG they would
-  serve anyway. What was left was relocating `distDir` to `dist/apps/myorganizer/.next`, which the
+  serve anyway. What was left was relocating `distDir` to `dist/apps/web/.next`, which the
   bundled Next.js docs forbid: `distDir` "should not leave your project directory".
 - **The v23 replacement already works on 22.** `NxAppWebpackPlugin` is the class the Nx 23 post
   names in place of `composePlugins`/`withNx`. At 22.7.7 it accepts every option the backend's
@@ -64,11 +64,11 @@ waiting and one finds the definition of debt too wide:
 
 ## Consequences
 
-- The web app's build output moves from `dist/apps/myorganizer/.next` to `apps/myorganizer/.next`,
+- The web app's build output moves from `dist/apps/web/.next` to `apps/web/.next`,
   and every consumer moves with it: `vercel.json` and the Vercel settings sync (which PATCHes the
   live staging project from `vercel.json` on each staging deploy), the web packaging script,
   `tsconfig.json`, and the docs that name the path.
-- The e2e suite's production web server runs `myorganizer:start`, which depends on `build`, so
+- The e2e suite's production web server runs `web:start`, which depends on `build`, so
   ADR 0050's "build before serving" is enforced by the task graph instead of a `&&` in
   `playwright.config.ts`. The inferred `e2e` target is cacheable by default; it is overridden to
   `cache: false`, because a replayed pass would hide the rot the nightly lane exists to find.

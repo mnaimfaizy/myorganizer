@@ -9,7 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type {
@@ -18,12 +18,12 @@ import type {
   VaultReconcileDecision,
   VaultReconcileResult,
   VaultReconcileStart,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   createVaultApi,
   getHttpStatus,
   reconcileVaultWithServer,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import { useOptionalVaultSession } from './session';
 import { NO_REVISION } from './useLocalVaultRevisionOf';
@@ -47,7 +47,7 @@ const KEEP_REMOTE_LABEL = "Keep the server's data";
 /**
  * What a User is told when reconcile has to ask.
  *
- * Written here rather than in `@myorganizer/web-vault` for the reason
+ * Written here rather than in `@myorganiser/web-vault` for the reason
  * `vaultSyncMessages.ts` gives, and beside its runner for the reason
  * `metaConvergeRunner.tsx` keeps its copy beside its own: the library that
  * decides what happened carries no English, and the component that shows a
@@ -102,7 +102,7 @@ const VAULT_BLOB_ASK_COPY = {
  * asserts against this value instead of re-spelling it, the way the old
  * dialog title `'Choose vault data to keep'` was re-spelled until #554
  * deleted it out from under those assertions (issue #574). A Playwright spec
- * cannot import this: `myorganizer-e2e` is tagged `type:e2e`, which
+ * cannot import this: `web-e2e` is tagged `type:e2e`, which
  * `@nx/enforce-module-boundaries` only lets depend on `type:app` /
  * `type:util` / `type:data-access`, not this lib's `type:feature`. E2E specs
  * assert on the `data-testid` set below instead.
@@ -269,7 +269,7 @@ const RECONCILE_MAY_START_AFTER_CLAIM_EVIDENCE = {
  * Claim Evidence settles.
  *
  * The trigger is the revision rather than the removal that prompted it
- * ([#628](https://github.com/mnaimfaizy/myorganizer/issues/628)). A removal, an
+ * ([#628](https://github.com/mnaimfaizy/myorganiser/issues/628)). A removal, an
  * import and a convergence-replacement all leave this device holding something
  * other than what it held a moment ago, all three already move the revision,
  * and a fourth door added later moves it without having to remember this runner
@@ -282,7 +282,7 @@ const RECONCILE_MAY_START_AFTER_CLAIM_EVIDENCE = {
  * server holding that owner's Vault Meta is exactly the condition under which
  * the claim would have fired silently. The User then met an offer to replace
  * their Vault with itself
- * ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673)). The same
+ * ([#673](https://github.com/mnaimfaizy/myorganiser/issues/673)). The same
  * discipline ADR 0066's decision point 4 applies to the create control applies
  * here to the download: no answer is acted on while the question is out. Once
  * it settles, each answer says what the pass does — a claim leaves an owned

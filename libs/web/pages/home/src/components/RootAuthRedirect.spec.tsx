@@ -5,7 +5,7 @@ jest.mock('next/navigation', () => ({
   useRouter: () => ({ replace: mockReplace }),
 }));
 
-jest.mock('@myorganizer/auth', () => ({
+jest.mock('@myorganiser/auth', () => ({
   authSession: {},
   resolveInboundGuard: jest.fn(),
 }));
@@ -13,7 +13,7 @@ jest.mock('@myorganizer/auth', () => ({
 import { render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RootAuthRedirect from './RootAuthRedirect';
-import { resolveInboundGuard } from '@myorganizer/auth';
+import { resolveInboundGuard } from '@myorganiser/auth';
 
 describe('RootAuthRedirect', () => {
   const mockResolveInboundGuard = resolveInboundGuard as jest.Mock;

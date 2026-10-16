@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 
-import { getCurrentUser, logout } from '@myorganizer/auth';
+import { getCurrentUser, logout } from '@myorganiser/auth';
 import {
   AppLogo,
   Avatar,
@@ -24,7 +24,7 @@ import {
   SidebarMenuItem,
   SidebarRail,
   useSidebar,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   ChevronsUpDown,
   Home,

@@ -1,11 +1,11 @@
-import { VaultBlobType, type VaultApi } from '@myorganizer/app-api-client';
+import { VaultBlobType, type VaultApi } from '@myorganiser/app-api-client';
 import {
   base64ToBytes,
   bytesToBase64,
   bytesToUtf8,
   utf8ToBytes,
 } from './bytes';
-import { VAULT_BLOB_CONVERGE_STRATEGIES } from '@myorganizer/vault-core/portable';
+import { VAULT_BLOB_CONVERGE_STRATEGIES } from '@myorganiser/vault-core/portable';
 import {
   pullAndSendVaultBlob,
   pullVaultBlob,

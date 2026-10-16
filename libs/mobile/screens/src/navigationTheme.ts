@@ -1,5 +1,5 @@
 import type { Theme as NavigationTheme } from '@react-navigation/native';
-import type { Theme } from '@myorganizer/mobile/ui';
+import type { Theme } from '@myorganiser/mobile/ui';
 
 /**
  * Which platform's font rules to build for. Not read from `Platform` here:

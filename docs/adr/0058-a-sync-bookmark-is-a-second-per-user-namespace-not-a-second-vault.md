@@ -7,12 +7,12 @@ accepted
 ## Context
 
 [ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md) proved one thing about
-the Local Vault: removing it touches exactly one key, `myorganizer_vault_v1:${owner}`, so Explicit
+the Local Vault: removing it touches exactly one key, `myorganiser_vault_v1:${owner}`, so Explicit
 Local Vault removal can never destroy a Vault it was not asked to remove. That proof was about a
 single storage key per User.
 
-Sync Bookmarks ([#547](https://github.com/mnaimfaizy/myorganizer/issues/547)) add a second per-User
-storage namespace beside it — `myorganizer_sync_bookmarks_v1:${owner}` — recording, per Vault Blob
+Sync Bookmarks ([#547](https://github.com/mnaimfaizy/myorganiser/issues/547)) add a second per-User
+storage namespace beside it — `myorganiser_sync_bookmarks_v1:${owner}` — recording, per Vault Blob
 Type, the hash of the Ciphertext a device last pushed successfully and the ETag the server returned
 for it. Whether a Vault Blob has unsent changes is derived by comparing current Ciphertext to that
 record, never read from a stored flag: a flag can be forgotten after a crash between a local save

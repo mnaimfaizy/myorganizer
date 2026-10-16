@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Input } from '@myorganizer/web-ui';
+import { Button, Input } from '@myorganiser/web-ui';
 import { Plus } from 'lucide-react';
 import { useCallback, useRef, useState } from 'react';
 import { z } from 'zod';

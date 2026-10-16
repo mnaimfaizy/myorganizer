@@ -1,7 +1,7 @@
 'use client';
 
-import { clearAuthSession, getAccessToken, refresh } from '@myorganizer/auth';
-import { getApiBaseUrl } from '@myorganizer/core';
+import { clearAuthSession, getAccessToken, refresh } from '@myorganiser/auth';
+import { getApiBaseUrl } from '@myorganiser/core';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { didSyncRequestRun } from '../lib/syncProgress';
 import type {
@@ -40,7 +40,7 @@ export function formatRetryAt(retryAt?: string | null) {
 
 export { useVideoQueue, QUEUE_CAP } from './useVideoQueue';
 export type { VideoQueue } from './useVideoQueue';
-export { useYouTubeAvailability } from '@myorganizer/web-youtube';
+export { useYouTubeAvailability } from '@myorganiser/web-youtube';
 
 export { useShortsBudget } from './useShortsBudget';
 export type { ShortsBudget } from './useShortsBudget';

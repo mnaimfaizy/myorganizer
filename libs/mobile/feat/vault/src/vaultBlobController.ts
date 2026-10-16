@@ -1,5 +1,5 @@
-import type { VaultApi, VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultBlobEnvelope } from '@myorganizer/vault-core/portable';
+import type { VaultApi, VaultBlobType } from '@myorganiser/app-api-client';
+import type { VaultBlobEnvelope } from '@myorganiser/vault-core/portable';
 
 import {
   classifyWriteError,

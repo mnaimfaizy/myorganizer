@@ -9,7 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { useExportVault, useVaultOperationAvailability } from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';

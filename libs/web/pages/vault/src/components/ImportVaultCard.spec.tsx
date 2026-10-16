@@ -21,23 +21,23 @@ jest.mock('../hooks', () => {
   };
 });
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
   getVaultImportErrorMessage: jest.fn(
     (code: string) => `Import error: ${code}`,
   ),
 }));
 
-jest.mock('@myorganizer/web-vault', () => ({
-  ...jest.requireActual('@myorganizer/web-vault'),
+jest.mock('@myorganiser/web-vault', () => ({
+  ...jest.requireActual('@myorganiser/web-vault'),
   importVault: jest.fn(),
   isVaultImportError: jest.fn(),
   createDefaultReplayTracker: jest.fn(() => ({})),
   createDefaultAuditReporter: jest.fn(() => ({})),
 }));
 
-jest.mock('@myorganizer/web-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-ui');
+jest.mock('@myorganiser/web-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-ui');
   return {
     ...actual,
     useToast: jest.fn(),
@@ -45,14 +45,14 @@ jest.mock('@myorganizer/web-ui', () => {
 });
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { VaultHandle } from '@myorganizer/web-vault';
+import type { VaultHandle } from '@myorganiser/web-vault';
 import {
   importVault,
   isVaultImportError,
   type ImportVaultResult,
-} from '@myorganizer/web-vault';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/web-vault';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
+import { useToast } from '@myorganiser/web-ui';
 import { useVaultDisabledState } from '../hooks/useVaultDisabledState';
 import {
   useVaultImportDisclosure,

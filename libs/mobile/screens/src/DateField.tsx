@@ -10,7 +10,7 @@ import {
   useFocusRing,
   usePressFeedback,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import {
   formatCalendarDate,
   parseCalendarDate,

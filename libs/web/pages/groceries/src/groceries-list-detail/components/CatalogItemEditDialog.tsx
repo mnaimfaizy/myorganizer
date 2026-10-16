@@ -5,7 +5,7 @@ import {
   type CatalogItem,
   type GroceryCategoryType,
   GROCERY_PREDEFINED_CATEGORIES,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import {
   Button,
   Dialog,
@@ -13,7 +13,7 @@ import {
   DialogDescription,
   DialogTitle,
   Form,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Lock } from 'lucide-react';
 import { useCallback, useEffect } from 'react';
 import { useForm } from 'react-hook-form';

@@ -3,18 +3,18 @@
 /**
  * Mock web-vault-ui hooks before importing the tested hook.
  */
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   useOptionalVaultSession: jest.fn(),
 }));
 
 import { renderHook, waitFor } from '@testing-library/react';
-import { useOptionalVaultSession } from '@myorganizer/web-vault-ui';
+import { useOptionalVaultSession } from '@myorganiser/web-vault-ui';
 import {
   createVaultHandle,
   VAULT_BLOB_FIELDS,
   type VaultHandle,
-} from '@myorganizer/web-vault';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+} from '@myorganiser/web-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { useUnsentVaultBlobTypes } from './useUnsentVaultBlobTypes';
 

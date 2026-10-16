@@ -8,7 +8,7 @@
  * here saves the whole blob back from what it is holding, goes on to write the
  * converged record back out. Adding this hook's return value to a load
  * effect's dependencies is what makes the page read again instead
- * ([#587](https://github.com/mnaimfaizy/myorganizer/issues/587)).
+ * ([#587](https://github.com/mnaimfaizy/myorganiser/issues/587)).
  *
  * The number itself carries no meaning and is never rendered; only the fact
  * that it changed matters. A page outside a Vault Session gets a constant, so

@@ -2,7 +2,7 @@
 
 ## Repository
 
-`mnaimfaizy/myorganizer`
+`mnaimfaizy/myorganiser`
 
 ## Issue Tracker
 

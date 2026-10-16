@@ -15,7 +15,7 @@ receives security and critical fixes only until roughly June 2027.
 The repo points the other way. `project.json` files carry 52 Declared Targets on `@nx/*` executors
 that v24 removes: 26 `@nx/eslint:lint`, 19 `@nx/jest:jest`, 3 `@nx/playwright:playwright`, and one
 each of `@nx/webpack:webpack` and `@nx/js:node` (backend) and `@nx/next:build` and
-`@nx/next:server` (myorganizer). The 10 `nx:run-commands` targets and the
+`@nx/next:server` (web). The 10 `nx:run-commands` targets and the
 `@driimus/nx-plugin-openapi` generator are not affected. Issue #420 recorded 27, 20, and 54 on
 2026-08-21. The difference is a recount, not a correction of method: the vault route consolidation
 (`5c06097`) deleted two page libraries that each declared a lint and a test target, and the
@@ -70,7 +70,7 @@ generated file — and says nothing about target shape. It needed a scope, not a
   project root (`node_modules/@nx/eslint/src/plugins/plugin.js`), while 25 Declared Targets narrow
   it with `lintFilePatterns` — `libs/core` lints only `src/**/*.ts`. Gate Coverage widens to config
   files, declaration files, and specs outside `src`. Measured on 2026-09-14 across all 26 projects,
-  the widening surfaces 1 error in tracked files: an import-order error in an `apps/myorganizer`
+  the widening surfaces 1 error in tracked files: an import-order error in an `apps/web`
   spec. A second error appears wherever Next.js has generated its gitignored `next-env.d.ts`, so a
   clean checkout does not show it and a developer machine does. It also exposes ignore patterns
   written relative to the workspace root, which match nothing once ESLint runs from the project

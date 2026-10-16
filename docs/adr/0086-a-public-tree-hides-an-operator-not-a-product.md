@@ -1,6 +1,6 @@
 # A public tree hides an operator, not a product
 
-MyOrganizer has one git tree, and it is public. An **Operator Fingerprint** does not enter it. A **Product Surface** may, because hiding one hides nothing from anyone who can use the app.
+MyOrganiser has one git tree, and it is public. An **Operator Fingerprint** does not enter it. A **Product Surface** may, because hiding one hides nothing from anyone who can use the app.
 
 ## Status
 
@@ -18,15 +18,15 @@ Grilled 2026-09-16. Four answers decided it before any option was priced.
 
 **Feature flags answer a different question.** A flag hides a feature. The content named is a fingerprint, and the code carrying a fingerprint stays public whether or not a flag guards the behaviour around it.
 
-**Product identity is already public, and has been since `d91ad6a` (2026-01-06).** `myorganiser.app` sits in `apps/backend/src/config/http.ts`, `apps/myorganizer/src/app/layout.tsx`, `README.md`, and the deployment docs, across five commits of public history. Moving those strings to environment variables today changes nothing a clone can learn: `git log -S` recovers them in one command. Only a history rewrite would, on a public repository that others may already have cloned.
+**Product identity is already public, and has been since `d91ad6a` (2026-01-06).** `myorganiser.app` sits in `apps/backend/src/config/http.ts`, `apps/web/src/app/layout.tsx`, `README.md`, and the deployment docs, across five commits of public history. Moving those strings to environment variables today changes nothing a clone can learn: `git log -S` recovers them in one command. Only a history rewrite would, on a public repository that others may already have cloned.
 
-One genuine fingerprint was found in source: an API hostname under the operator's personal domain, in `apps/backend/src/config/http.ts` and three times in `apps/backend/src/main.test.ts`. It is not a product URL. It ties MyOrganizer's API host to the operator's other web presence, which is the category the issue was about. **This document does not spell the value out** — by its own reasoning below, an artifact that names a forbidden value publishes it, and that reasoning does not stop applying because the artifact is an ADR. The file and line are enough to act on; #806 carries the removal.
+One genuine fingerprint was found in source: an API hostname under the operator's personal domain, in `apps/backend/src/config/http.ts` and three times in `apps/backend/src/main.test.ts`. It is not a product URL. It ties MyOrganiser's API host to the operator's other web presence, which is the category the issue was about. **This document does not spell the value out** — by its own reasoning below, an artifact that names a forbidden value publishes it, and that reasoning does not stop applying because the artifact is an ADR. The file and line are enough to act on; #806 carries the removal.
 
 The adversaries named — a casual cloner, an attacker, a competitor, and plain discomfort — collapse under the answers above. A cloner and a competitor presuppose the second audience that does not exist. An attacker is the case ADR 0056 already adjudicated: a private tree defeats one only until a single clone leaks, where a secret store defeats one structurally.
 
 ## Decision
 
-- **MyOrganizer has one tree.** No private fork, mirror, operator-notes companion, or private application package. A private companion was considered separately and refused: everything a runbook needs is either a placeholder, which is public and useful, or a secret, which belongs in a secret store.
+- **MyOrganiser has one tree.** No private fork, mirror, operator-notes companion, or private application package. A private companion was considered separately and refused: everything a runbook needs is either a placeholder, which is public and useful, or a secret, which belongs in a secret store.
 - **The boundary is Product Surface versus Operator Fingerprint**, defined in [`CONTEXT.md`](../../CONTEXT.md) § Release & Deploy. A Fingerprint does not enter the tracked tree.
 - **The hosting provider's name is an accepted exception.** `docs/deployment/CPANEL_*.md` name cPanel and Namecheap, and a runbook a human must follow on that provider's dashboard is useless without them. This is the trade ADR 0056 already made for shared-account blast radius: discipline, not isolation.
 - **An Operator Fingerprint is not a secret.** A secret is defeated by a secret store; a Fingerprint is defeated only by not writing it down. Do not reach for a private tree on the belief that it is the second kind of secret store — it is not a secret store at all.

@@ -43,7 +43,7 @@ export function PrivacyCover({
     >
       <View
         accessibilityViewIsModal
-        accessibilityLabel="MyOrganizer is hidden"
+        accessibilityLabel="MyOrganiser is hidden"
         style={[styles.cover, { backgroundColor: theme.colors.background }]}
       >
         <BrandMark lockup="stacked" />

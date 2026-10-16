@@ -6,7 +6,7 @@ import React from 'react';
 import DateTimePicker, {
   DateTimePickerAndroid,
 } from '@react-native-community/datetimepicker';
-import type { ColorMode } from '@myorganizer/mobile/ui';
+import type { ColorMode } from '@myorganiser/mobile/ui';
 
 export interface InlineDatePickerProps {
   value: Date;

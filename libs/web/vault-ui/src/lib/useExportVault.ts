@@ -5,8 +5,8 @@ import { useCallback, useState } from 'react';
 import {
   createDefaultAuditReporter,
   exportVault,
-} from '@myorganizer/web-vault';
-import { useToast } from '@myorganizer/web-ui';
+} from '@myorganiser/web-vault';
+import { useToast } from '@myorganiser/web-ui';
 
 import { downloadJsonFile } from './downloadFile';
 import { useOptionalVaultSession } from './session';
@@ -50,7 +50,7 @@ export function useExportVault() {
       }
 
       const filenameStamp = new Date().toISOString().replace(/[:.]/g, '-');
-      const filename = `myorganizer-vault-export-${filenameStamp}.json`;
+      const filename = `myorganiser-vault-export-${filenameStamp}.json`;
 
       // Hardened local export: stage → serialize → audit → download.
       // `strict: true` means a failed audit POST aborts the download so the

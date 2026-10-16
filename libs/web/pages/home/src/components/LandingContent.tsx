@@ -20,8 +20,8 @@ import {
   colorSurface,
   colorSurfaceContainer,
   fontDisplay,
-} from '@myorganizer/design-tokens';
-import { AppLogo } from '@myorganizer/web-ui';
+} from '@myorganiser/design-tokens';
+import { AppLogo } from '@myorganiser/web-ui';
 
 import MobileMenu from './MobileMenu';
 import Reveal from './Reveal';
@@ -185,7 +185,7 @@ function Hero() {
           className="text-3xl font-bold leading-tight tracking-tight md:text-5xl"
           style={{ color: palette.primary, letterSpacing: '-0.02em' }}
         >
-          Organize Your Life,
+          Organise Your Life,
           <br />
           Secure Your Data.
         </h1>

@@ -58,7 +58,7 @@ export type VaultUnlockResult = {
  * the platform storage interface stays key-addressed and unchanged; the
  * composition happens here, in the caller.
  */
-export const VAULT_STORAGE_KEY = 'myorganizer_vault_v1';
+export const VAULT_STORAGE_KEY = 'myorganiser_vault_v1';
 
 /** Record version written for a Local Vault that has a recorded owner. */
 export const LOCAL_VAULT_RECORD_VERSION = 2;

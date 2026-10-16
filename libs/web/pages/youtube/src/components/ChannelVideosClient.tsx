@@ -6,7 +6,7 @@ import {
   CardContent,
   CardTitle,
   Skeleton,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useCallback } from 'react';

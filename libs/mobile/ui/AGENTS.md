@@ -22,7 +22,7 @@ Native modules are stubbed once in `jest.setup.ts`, each with the double its own
 
 ## Do
 
-- This library owns the token-derived theme: derive it from `@myorganizer/design-tokens` (ADR 0008), and let the rest of `libs/mobile` reach tokens through it rather than importing the package directly.
+- This library owns the token-derived theme: derive it from `@myorganiser/design-tokens` (ADR 0008), and let the rest of `libs/mobile` reach tokens through it rather than importing the package directly.
 - Export public components from `src/index.ts`.
 - **Where the approved design draws a value the token scale does not carry, use the nearest token and say so in a comment.** Ties round up — the design sheet's 10pt tab button and 6pt checkbox radius both fall exactly between two steps and both take the larger. A component that hard-codes the sheet's own number instead is a component that stops following the scale the moment the scale moves.
 - Give every control a minimum touch target of `MIN_TOUCH_TARGET` (44pt on iOS, 48dp on Android), not a literal.

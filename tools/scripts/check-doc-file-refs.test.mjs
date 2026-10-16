@@ -262,7 +262,7 @@ test('skips a negative existence claim', (t) => {
   write(
     repo.workspace,
     'AGENTS.md',
-    'This app has no `apps/myorganizer/src/proxy.ts`.\n',
+    'This app has no `apps/web/src/proxy.ts`.\n',
   );
   commitAll(repo);
 
@@ -302,13 +302,13 @@ test('skips fenced code, placeholders, CLI flags, and identifiers with no nearby
     [
       'The `ComponentBuilder` sub-agent is a role, not a file-ref.',
       '',
-      'Flags like `--print` and packages like `@myorganizer/design-tokens` stay prose.',
+      'Flags like `--print` and packages like `@myorganiser/design-tokens` stay prose.',
       '',
       '```ts',
       'import { missing } from "libs/does-not-exist/gone.ts";',
       '```',
       '',
-      'Globs: `libs/**` and `apps/myorganizer/src/app/**`.',
+      'Globs: `libs/**` and `apps/web/src/app/**`.',
     ].join('\n'),
   );
   commitAll(repo);

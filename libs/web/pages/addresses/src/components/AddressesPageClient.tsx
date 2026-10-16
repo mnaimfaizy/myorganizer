@@ -1,13 +1,13 @@
 'use client';
 
-import { AddressRecord, AddressStatusEnum } from '@myorganizer/vault-core';
-import { ConfirmDeleteDialog, useToast } from '@myorganizer/web-ui';
+import { AddressRecord, AddressStatusEnum } from '@myorganiser/vault-core';
+import { ConfirmDeleteDialog, useToast } from '@myorganiser/web-ui';
 import {
   normalizeAddresses,
   saveVaultRecords,
   type VaultHandle,
-} from '@myorganizer/web-vault';
-import { useLocalVaultRevision, VaultGate } from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault';
+import { useLocalVaultRevision, VaultGate } from '@myorganiser/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
 import { type AddAddressFormValues } from '../schemas/address';

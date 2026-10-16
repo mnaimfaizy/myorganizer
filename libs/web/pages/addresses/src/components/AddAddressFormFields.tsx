@@ -8,7 +8,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { Control } from 'react-hook-form';
 
 import { type AddAddressFormValues } from '../schemas/address';

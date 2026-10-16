@@ -2,7 +2,7 @@ import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 import YouTubeDataPrivacyClient from './YouTubeDataPrivacyClient';
 
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Button: ({ children, asChild, ...props }: any) => {
     if (asChild) return children;
     return <button {...props}>{children}</button>;
@@ -94,7 +94,7 @@ describe('YouTubeDataPrivacyClient', () => {
     const { container } = render(<YouTubeDataPrivacyClient />);
     const text = container.textContent || '';
     const matches = text.match(
-      /not covered by MyOrganizer's Vault or end-to-end encryption/g,
+      /not covered by MyOrganiser's Vault or end-to-end encryption/g,
     );
     expect(matches).toHaveLength(1);
   });
@@ -105,7 +105,7 @@ describe('YouTubeDataPrivacyClient', () => {
 
     // Find the disclaimer sentence position
     const disclaimerIndex = text.indexOf(
-      "This YouTube metadata is not covered by MyOrganizer's Vault or end-to-end encryption",
+      "This YouTube metadata is not covered by MyOrganiser's Vault or end-to-end encryption",
     );
     expect(disclaimerIndex).toBeGreaterThan(-1);
 

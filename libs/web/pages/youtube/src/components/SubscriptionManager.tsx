@@ -6,7 +6,7 @@ import {
   CardContent,
   CardTitle,
   Skeleton,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';

@@ -25,7 +25,7 @@ Assert that each of these is **rejected**, not silently accepted:
 - wrong schema version;
 - oversized payloads.
 
-`@myorganizer/vault-core` is lazy-loaded — see the
+`@myorganiser/vault-core` is lazy-loaded — see the
 [Nx lazy-loading & `jest.mock()` ordering rule](../README.md#nx-lazy-loading--jestmock-ordering).
 
 ## Commands

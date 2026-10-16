@@ -1,4 +1,4 @@
-import { VAULT_IMPORT_ERROR_CODES } from '@myorganizer/vault-core';
+import { VAULT_IMPORT_ERROR_CODES } from '@myorganiser/vault-core';
 
 import {
   VAULT_IMPORT_ERROR_MESSAGES,

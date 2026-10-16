@@ -5,15 +5,15 @@ const mockToast = jest.fn();
 const mockSettleVaultMeta = jest.fn();
 const mockReportMountSettled = jest.fn();
 
-jest.mock('@myorganizer/web-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-ui');
+jest.mock('@myorganiser/web-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-ui');
   return {
     ...actual,
     useToast: () => ({ toast: mockToast }),
   };
 });
 
-jest.mock('@myorganizer/web-vault', () => ({
+jest.mock('@myorganiser/web-vault', () => ({
   createVaultApi: jest.fn(() => ({})),
   getHttpStatus: jest.fn(() => undefined),
   settleVaultMeta: (options: SettleVaultMetaOptions) =>
@@ -34,8 +34,8 @@ import type {
   VaultHandle,
   VaultMetaQuestion,
   VaultMetaRefusalLifetime,
-} from '@myorganizer/web-vault';
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+} from '@myorganiser/web-vault';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 import { useOptionalVaultSession } from './session';
 import { VaultMetaConvergeRunner } from './metaConvergeRunner';
 import { VAULT_STANDOFF_DIALOG_TITLE } from './reconcileRunner';

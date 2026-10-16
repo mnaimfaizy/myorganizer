@@ -10,7 +10,7 @@
  * reconcile runner in the layout unable to see it at all. Reconcile read an
  * `unclaimed` device as absent and downloaded the server's wrapping ahead of
  * the claim this check was about to make
- * ([#673](https://github.com/mnaimfaizy/myorganizer/issues/673); ADR 0066's
+ * ([#673](https://github.com/mnaimfaizy/myorganiser/issues/673); ADR 0066's
  * amendment). Now it waits on this.
  *
  * The check asks the User for nothing, so it belongs in an effect rather than
@@ -46,7 +46,7 @@ import {
   createVaultApi,
   type VaultClaimOnEvidenceResult,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 export type VaultClaimEvidenceState =
   /** The question is out. Nothing is offered while it is. */

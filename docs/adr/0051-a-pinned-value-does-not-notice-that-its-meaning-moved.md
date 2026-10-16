@@ -7,19 +7,19 @@ accepted
 ## Context
 
 `docs/vault/trust-boundary.html` told readers that a Vault lives on the device under
-`myorganizer_vault_v1`. [ADR 0047](0047-vault-access-is-obtained-through-an-owner-bound-handle.md)
+`myorganiser_vault_v1`. [ADR 0047](0047-vault-access-is-obtained-through-an-owner-bound-handle.md)
 made Local Vaults owner-bound: a signed-in User's Vault now lives at
-`myorganizer_vault_v1:<owner>`, and the unsuffixed key means something else entirely — an
+`myorganiser_vault_v1:<owner>`, and the unsuffixed key means something else entirely — an
 **Unclaimed Local Vault**, written before Vaults were owner-bound, adopted only on a successful
 Master Key unwrap and never deleted by that adoption.
 
 The page was wrong in the way that costs the most: it named a real key that really exists, so a
 developer following it found an answer rather than an error. An empty unsuffixed slot reads as
 "this User has no Vault", and a populated one reads as "here is my Vault" when it may be somebody
-else's ciphertext ([#511](https://github.com/mnaimfaizy/myorganizer/issues/511)).
+else's ciphertext ([#511](https://github.com/mnaimfaizy/myorganiser/issues/511)).
 
 `yarn vault:pages:check` passed the entire time. It asserted `page.storageKey ===
-VAULT_STORAGE_KEY`, and `VAULT_STORAGE_KEY` is still `'myorganizer_vault_v1'` — because that
+VAULT_STORAGE_KEY`, and `VAULT_STORAGE_KEY` is still `'myorganiser_vault_v1'` — because that
 constant became the _prefix_ per-User keys are composed from
 (`libs/web/vault/src/lib/vault/localVaultStorage.ts:61`). The string was byte-identical before and
 after. Only its meaning changed, and no equality check can see that.
@@ -32,7 +32,7 @@ a manifest field the gate reads on every commit.
 The obvious tightening — "require a page claiming `storageKey` to also declare the owner-scoped
 composition" — could not have been written while the ADR 0047 work was in flight, because it would
 have failed on `main`, correctly, for as long as the page was stale. That sequencing constraint is
-now discharged: [#507](https://github.com/mnaimfaizy/myorganizer/pull/507) merged on 2026-08-26.
+now discharged: [#507](https://github.com/mnaimfaizy/myorganiser/pull/507) merged on 2026-08-26.
 
 ## Decision
 
@@ -70,7 +70,7 @@ claim, trading a wrong assertion for no assertion.
   the author remembers to rename, which is the same discipline that failed here; and it forces a
   rename on every consumer to buy a doc assertion. The constant's doc comment already states that
   it is both the unsuffixed slot and the prefix, so the ambiguity is recorded where it matters.
-- **Assert the manifest against a literal `'myorganizer_vault_v1:<owner>'` in the checker** —
+- **Assert the manifest against a literal `'myorganiser_vault_v1:<owner>'` in the checker** —
   rejected. It is the same pin one layer along: a checker literal and a page literal agreeing
   proves the two files were edited together, not that either matches the code. Reading the template
   out of `localVaultStorageKey` means moving the composition breaks the gate.
@@ -90,7 +90,7 @@ claim, trading a wrong assertion for no assertion.
   to declare instead, so the retirement does not depend on anyone remembering it.
 - `libs/mobile/feat/vault/src/constants.ts:1` declares its own `VAULT_STORAGE_KEY` at the same
   value. It has no consumers — mobile never persists a Local Vault (ADR 0047, Consequences;
-  [#485](https://github.com/mnaimfaizy/myorganizer/issues/485)) — and the vault pages describe the
+  [#485](https://github.com/mnaimfaizy/myorganiser/issues/485)) — and the vault pages describe the
   web constant only. Naming mobile on those pages would imply a mobile Local Vault exists.
 - This does not make semantic drift generally detectable, and the rule should not be read as
   claiming so. It converts one class of it — a name that splits in two — from invisible into a

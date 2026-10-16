@@ -1,9 +1,9 @@
 'use client';
 
-import type { Task } from '@myorganizer/vault-core';
-import { useToast } from '@myorganizer/web-ui';
-import type { VaultHandle } from '@myorganizer/web-vault';
-import { VaultGate } from '@myorganizer/web-vault-ui';
+import type { Task } from '@myorganiser/vault-core';
+import { useToast } from '@myorganiser/web-ui';
+import type { VaultHandle } from '@myorganiser/web-vault';
+import { VaultGate } from '@myorganiser/web-vault-ui';
 import { useCallback, useEffect, useState } from 'react';
 
 import { useTasksWorkflow } from '../workflow';

@@ -1,4 +1,4 @@
-import { AddressRecord, AddressStatusEnum } from '@myorganizer/vault-core';
+import { AddressRecord, AddressStatusEnum } from '@myorganiser/vault-core';
 
 import { addAddressSchema } from '../schemas/address';
 import {
@@ -51,7 +51,7 @@ describe('addressForm', () => {
 
   it('uses the account country setting as the default country', () => {
     window.localStorage.setItem(
-      'myorganizer_account_settings_v1',
+      'myorganiser_account_settings_v1',
       JSON.stringify({ countryCode: 'GB', preferredCurrency: 'GBP' }),
     );
 

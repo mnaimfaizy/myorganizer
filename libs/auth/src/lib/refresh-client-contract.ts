@@ -2,7 +2,7 @@ import type {
   RefreshToken200Response,
   RefreshTokenBody,
   UserLoginBody,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 
 /**
  * Client-type contract for web cookie-based refresh vs mobile body refresh-token

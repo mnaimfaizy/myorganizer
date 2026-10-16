@@ -12,7 +12,7 @@ const CHECKER = join(
 );
 
 const FEATURE_INDEX = join('docs', 'features', 'README.md');
-const DASHBOARD_ROOT = join('apps', 'myorganizer', 'src', 'app', 'dashboard');
+const DASHBOARD_ROOT = join('apps', 'web', 'src', 'app', 'dashboard');
 const EXCLUSIONS_CONFIG = join(
   'tools',
   'config',

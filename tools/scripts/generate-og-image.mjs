@@ -1,5 +1,5 @@
 /**
- * One-shot script to generate apps/myorganizer/public/images/og-image.png
+ * One-shot script to generate apps/web/public/images/og-image.png
  * Usage: node tools/scripts/generate-og-image.mjs
  */
 import { unlinkSync, writeFileSync } from 'fs';
@@ -9,10 +9,7 @@ import { fileURLToPath } from 'url';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(__dirname, '..', '..');
-const outPath = resolve(
-  repoRoot,
-  'apps/myorganizer/public/images/og-image.png',
-);
+const outPath = resolve(repoRoot, 'apps/web/public/images/og-image.png');
 
 const html = /* html */ `<!DOCTYPE html>
 <html>

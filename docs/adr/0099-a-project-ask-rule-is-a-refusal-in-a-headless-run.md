@@ -1,6 +1,6 @@
 # A project `ask` rule is a refusal in a headless run
 
-Golden replay run [34582767531](https://github.com/mnaimfaizy/myorganizer/actions/runs/34582767531)
+Golden replay run [34582767531](https://github.com/mnaimfaizy/myorganiser/actions/runs/34582767531)
 came back with a catch and twenty-six permission denials, the same count as the run before it
 whose containment fix was supposed to reduce them
 ([research](../research/2026-09-11-the-guard-came-back-with-the-refusals-intact.md)). Eleven were
@@ -9,7 +9,7 @@ it to remove, under a `--allowedTools` list carrying `Bash(git worktree:*)`, in 
 `git worktree add` on that same path had been permitted and had run. One pattern, one prefix, two
 subcommands, opposite outcomes — roughly a fifth of the turn budget. `yarn review:allowlist:check`
 passed throughout, because token-wise the grant does permit `git worktree remove`
-([#732](https://github.com/mnaimfaizy/myorganizer/issues/732)).
+([#732](https://github.com/mnaimfaizy/myorganiser/issues/732)).
 
 ## Status
 
@@ -68,7 +68,7 @@ reading that avoids inventing refusals. It reads as matching nothing when asking
 _catches_ one: `node tools/scripts/check-<name>.mjs` is not `node -e` for any value of `<name>`,
 and the first version of this gate reported it as refused. An interception has to be certain.
 
-**6. An unused `--allowedTools` entry is still not failed.** [#715](https://github.com/mnaimfaizy/myorganizer/issues/715)
+**6. An unused `--allowedTools` entry is still not failed.** [#715](https://github.com/mnaimfaizy/myorganiser/issues/715)
 removed `Bash(sed -n:*)` for matching no instruction, and `sed` was refused in the very next run
 regardless — the entry was never what refused it; `Bash(sed:*)` in the `ask` list was. Reading an
 unused grant as debt cost a change that fixed nothing, and the checker's header now says why that

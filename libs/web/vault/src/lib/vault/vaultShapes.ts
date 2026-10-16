@@ -2,7 +2,7 @@ import {
   EncryptedBlobV1,
   VaultBlobType,
   VaultMetaV1,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 
 import { EncryptedBlob, VaultStorageV1 } from './localVaultStorage';
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';

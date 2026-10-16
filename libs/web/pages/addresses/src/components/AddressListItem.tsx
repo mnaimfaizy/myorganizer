@@ -1,5 +1,5 @@
-import { AddressRecord } from '@myorganizer/vault-core';
-import { Badge, Button } from '@myorganizer/web-ui';
+import { AddressRecord } from '@myorganiser/vault-core';
+import { Badge, Button } from '@myorganiser/web-ui';
 import { ArrowRight, MapPin, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { useCallback } from 'react';

@@ -3,8 +3,8 @@
 import { useCallback, useState } from 'react';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UserDeletionBodyConfirmationEnum } from '@myorganizer/app-api-client';
-import { clearAuthSession } from '@myorganizer/auth';
+import { UserDeletionBodyConfirmationEnum } from '@myorganiser/app-api-client';
+import { clearAuthSession } from '@myorganiser/auth';
 import {
   Button,
   DialogFooter,
@@ -15,7 +15,7 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { isAxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';

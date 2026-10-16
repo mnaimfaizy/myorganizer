@@ -10,7 +10,7 @@ accepted
 
 - The source is licensed under [Elastic License 2.0](https://www.elastic.co/licensing/elastic-license) (SPDX `Elastic-2.0`). Copyright line: `Copyright 2024–2026 Mohammad Naim Faizy`.
 - Prior MIT badges and `"license": "MIT"` were incorrect. They were not a grant. Relicensing does not grandfather historical snapshots under MIT.
-- `LICENSE` governs clone, modify, self-host, and redistribute. Terms for a hosted MyOrganizer account are a separate document, not this file.
+- `LICENSE` governs clone, modify, self-host, and redistribute. Terms for a hosted MyOrganiser account are a separate document, not this file.
 - GitHub inbound=outbound: contributions are offered under ELv2. No CLA until outside contributors make assignment necessary.
 - Vendored third-party files keep their own licenses. A root `NOTICE` lists React/ReactDOM (MIT), Caprasimo and Figtree (OFL-1.1), and notes that `tools/assets/dc-runtime/support.js` is generated design-tool output with no separate license grant.
 
@@ -29,4 +29,4 @@ ELv2 does not forbid charging for a copy of the source. That edge is accepted: t
 
 - Adding MIT back to the badge, footer, or `package.json` is a license change, not a docs fix.
 - The copyright holder can still operate a hosted service or offer a separate commercial grant; ELv2 restricts licensees, not the owner.
-- Implementation of this ADR is `LICENSE`, `NOTICE`, and aligning the README, `package.json`, backend README, and generated OpenAPI license field (issue [#320](https://github.com/mnaimfaizy/myorganizer/issues/320)).
+- Implementation of this ADR is `LICENSE`, `NOTICE`, and aligning the README, `package.json`, backend README, and generated OpenAPI license field (issue [#320](https://github.com/mnaimfaizy/myorganiser/issues/320)).

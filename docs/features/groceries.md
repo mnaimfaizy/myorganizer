@@ -3,7 +3,7 @@
 ## Overview
 
 The Groceries List Keeper lets you manage multiple encrypted grocery lists directly
-in MyOrganizer. All data is end-to-end encrypted — the server stores only ciphertext
+in MyOrganiser. All data is end-to-end encrypted — the server stores only ciphertext
 and cannot access your grocery information.
 
 ## Getting Started
@@ -155,11 +155,11 @@ in `catalog` — a `ListLine` itself never carries a copy of that data.
 
 ## Architecture
 
-- **Page library**: `@myorganizer/web-pages/groceries` ([libs/web/pages/groceries/](../../libs/web/pages/groceries/))
-- **Shared types**: `@myorganizer/vault-core` ([libs/vault-core/src/lib/records/grocery.ts](../../libs/vault-core/src/lib/records/grocery.ts)) → `GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`
-- **Vault normalization**: `@myorganizer/web-vault` → `normalizeGroceries` ([libs/web/vault/src/lib/vault/groceriesNormalization.ts](../../libs/web/vault/src/lib/vault/groceriesNormalization.ts))
+- **Page library**: `@myorganiser/web-pages/groceries` ([libs/web/pages/groceries/](../../libs/web/pages/groceries/))
+- **Shared types**: `@myorganiser/vault-core` ([libs/vault-core/src/lib/records/grocery.ts](../../libs/vault-core/src/lib/records/grocery.ts)) → `GroceriesVaultPayload`, `CatalogItem`, `GroceryList`, `ListLine`, `GroceryCategoryType`
+- **Vault normalization**: `@myorganiser/web-vault` → `normalizeGroceries` ([libs/web/vault/src/lib/vault/groceriesNormalization.ts](../../libs/web/vault/src/lib/vault/groceriesNormalization.ts))
 - **Vault blob type**: `'groceries'` (registered in `VaultRecordType`, `VaultBlobType`)
-- **Routes**: `/dashboard/groceries` ([apps/myorganizer/src/app/dashboard/groceries/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/page.tsx)) and `/dashboard/groceries/[listId]` ([apps/myorganizer/src/app/dashboard/groceries/[listId]/page.tsx](../../apps/myorganizer/src/app/dashboard/groceries/%5BlistId%5D/page.tsx))
+- **Routes**: `/dashboard/groceries` ([apps/web/src/app/dashboard/groceries/page.tsx](../../apps/web/src/app/dashboard/groceries/page.tsx)) and `/dashboard/groceries/[listId]` ([apps/web/src/app/dashboard/groceries/[listId]/page.tsx](../../apps/web/src/app/dashboard/groceries/%5BlistId%5D/page.tsx))
 
 ## Implementation Details
 
@@ -321,7 +321,7 @@ references it, across all lists.
 
 ## `useGroceriesVault` Hook
 
-**Location:** `@myorganizer/web-pages/groceries` → `src/shared/hooks/useGroceriesVault.ts`
+**Location:** `@myorganiser/web-pages/groceries` → `src/shared/hooks/useGroceriesVault.ts`
 
 ```typescript
 const vault = useGroceriesVault({ masterKeyBytes });
@@ -392,7 +392,7 @@ When the `CatalogItem`, `GroceryList`, or `ListLine` shape needs to change:
 
 ### Lists not loading (vault locked)
 
-If the empty state appears but the user expects data: confirm the VaultGate unlock screen was completed. Verify `localStorage` contains `myorganizer_vault_v1:<userId>` — Local Vaults are owner-bound ([ADR 0047](../adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)), so a signed-in User's Vault lives under their own id. The unsuffixed `myorganizer_vault_v1` key is a different thing: an Unclaimed Local Vault, written before Vaults were owner-bound. Finding it empty says nothing about whether this User has a Vault.
+If the empty state appears but the user expects data: confirm the VaultGate unlock screen was completed. Verify `localStorage` contains `myorganiser_vault_v1:<userId>` — Local Vaults are owner-bound ([ADR 0047](../adr/0047-vault-access-is-obtained-through-an-owner-bound-handle.md)), so a signed-in User's Vault lives under their own id. The unsuffixed `myorganiser_vault_v1` key is a different thing: an Unclaimed Local Vault, written before Vaults were owner-bound. Finding it empty says nothing about whether this User has a Vault.
 
 ### Form submission hangs
 

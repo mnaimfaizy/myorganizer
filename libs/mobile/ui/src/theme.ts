@@ -14,7 +14,7 @@ import {
   spaceXl,
   spaceXs,
   type SemanticRoleName,
-} from '@myorganizer/design-tokens';
+} from '@myorganiser/design-tokens';
 import { shadows, type Shadow, type ShadowName } from './shadows';
 import {
   toRnSize,

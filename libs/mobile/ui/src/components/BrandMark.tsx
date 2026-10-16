@@ -5,7 +5,7 @@ import {
   colorOnSecondary,
   colorSecondary,
   colorTertiary,
-} from '@myorganizer/design-tokens';
+} from '@myorganiser/design-tokens';
 import { staticElement } from '../staticElement';
 import { useTheme } from '../useTheme';
 import { fontCutFor } from '../typeScale';
@@ -53,8 +53,8 @@ export interface BrandMarkProps {
 }
 
 /**
- * The MyOrganizer mark: a shield in the brand gradient carrying a check, and
- * the two-weight wordmark — "My" lighter, "Organizer" at 800 — in the
+ * The MyOrganiser mark: a shield in the brand gradient carrying a check, and
+ * the two-weight wordmark — "My" lighter, "Organiser" at 800 — in the
  * foreground colour.
  *
  * The shield is drawn in the Brand Primitives rather than the Semantic Roles,
@@ -62,7 +62,7 @@ export interface BrandMarkProps {
  * colour with the theme is two logos. Violet to trust teal, top to bottom,
  * with the check in the colour that sits on violet.
  *
- * One accessibility element named "MyOrganizer"; the parts are not read. It
+ * One accessibility element named "MyOrganiser"; the parts are not read. It
  * is a picture and not a control, so it is no keyboard stop (`staticElement`),
  * and the wordmark is kept from the screen reader so that it is not read a
  * second time.
@@ -81,7 +81,7 @@ export function BrandMark({
     <View
       {...staticElement()}
       accessibilityRole="image"
-      accessibilityLabel="MyOrganizer"
+      accessibilityLabel="MyOrganiser"
       style={[
         styles.lockup,
         {
@@ -135,7 +135,7 @@ export function BrandMark({
             My
           </RNText>
           <RNText style={{ fontFamily: fontCutFor('display', '800') }}>
-            Organizer
+            Organiser
           </RNText>
         </Text>
       )}

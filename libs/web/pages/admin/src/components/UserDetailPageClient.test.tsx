@@ -5,8 +5,8 @@ jest.mock('../lib/apiClient', () => ({
   createPlatformAdminApi: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-ui', () => {
-  const actual = jest.requireActual('@myorganizer/web-ui');
+jest.mock('@myorganiser/web-ui', () => {
+  const actual = jest.requireActual('@myorganiser/web-ui');
 
   return {
     ...actual,
@@ -34,8 +34,8 @@ jest.mock('next/link', () => {
   };
 });
 
-import type { AdminUserIdentity } from '@myorganizer/app-api-client';
-import { useToast } from '@myorganizer/web-ui';
+import type { AdminUserIdentity } from '@myorganiser/app-api-client';
+import { useToast } from '@myorganiser/web-ui';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import { useParams } from 'next/navigation';

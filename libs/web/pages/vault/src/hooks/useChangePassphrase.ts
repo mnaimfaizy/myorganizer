@@ -7,17 +7,17 @@ import {
   createVaultApi,
   VaultSecretMismatchError,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   announcePassphraseChange,
   resetPassphraseAfterRecoveryAndAnnounce,
   useOptionalVaultSession,
   type PassphraseRewriteToast,
   type VaultUnlockSecret,
-} from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault-ui';
 
 import { getErrorMessage } from '../utils/getErrorMessage';
-import { useToast } from '@myorganizer/web-ui';
+import { useToast } from '@myorganiser/web-ui';
 
 export type ChangePassphraseOutcome = 'ok' | 'wrong-passphrase' | 'error';
 

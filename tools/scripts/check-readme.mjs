@@ -72,7 +72,7 @@ const LIBS_IGNORED = new Set(['graphify-out']);
 const documentedIn = (section, name) =>
   new RegExp(`^\\s*[│├└─\\s]*${name}/`, 'm').test(section);
 
-const layout = readme.match(/```\s*\nmyorganizer\/([\s\S]*?)```/);
+const layout = readme.match(/```\s*\nmyorganiser\/([\s\S]*?)```/);
 if (!layout) fail('no repository layout diagram found in README.md');
 const diagram = layout[1];
 
@@ -128,7 +128,7 @@ for (const [kind, ignored] of SECTIONS) {
 
 // ---------------------------------------------------------------- 3. routes are real
 
-const ROUTES_ROOT = 'apps/myorganizer/src/app/dashboard';
+const ROUTES_ROOT = 'apps/web/src/app/dashboard';
 
 if (existsSync(ROUTES_ROOT)) {
   const realRoutes = new Set(dirNames(ROUTES_ROOT));

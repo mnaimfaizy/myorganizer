@@ -40,7 +40,7 @@ esac
 : "${YOUTUBE_CRON_SECRET:?YOUTUBE_CRON_SECRET is required}"
 
 LOCK_DIR="${YOUTUBE_CRON_LOCK_DIR:-${TMPDIR:-/tmp}}"
-LOCK_FILE="${LOCK_DIR}/myorganizer-youtube-${WORKER}.lock"
+LOCK_FILE="${LOCK_DIR}/myorganiser-youtube-${WORKER}.lock"
 
 # Non-blocking: a tick that finds the previous one still running exits quietly
 # rather than queueing up behind it and pinning the shared host's process cap.

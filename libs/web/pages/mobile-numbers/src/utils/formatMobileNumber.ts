@@ -1,4 +1,4 @@
-import { MobileNumberRecord } from '@myorganizer/vault-core';
+import { MobileNumberRecord } from '@myorganiser/vault-core';
 import { formatPhoneNumber } from '../data/countryCodes';
 
 /**

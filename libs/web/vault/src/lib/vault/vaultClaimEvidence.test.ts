@@ -10,7 +10,7 @@
  */
 
 import type { AxiosResponse } from 'axios';
-import { VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import {
   checkVaultClaimEvidence,

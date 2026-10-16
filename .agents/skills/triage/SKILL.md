@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Triage
 
-Adapted from `mattpocock/skills` for MyOrganizer's issue and agent workflows.
+Adapted from `mattpocock/skills` for MyOrganiser's issue and agent workflows.
 
 Use this skill to move **existing** issue-tracker work through a consistent triage state machine. Do not use it to create new issues.
 
@@ -22,7 +22,7 @@ Every comment or issue body posted during triage must start with:
 
 - [AGENT-BRIEF.md](AGENT-BRIEF.md) - how to write durable agent briefs
 - [OUT-OF-SCOPE.md](OUT-OF-SCOPE.md) - how to maintain `.out-of-scope/` memory for rejected enhancements
-- `docs/agents/issue-tracker.md` - GitHub issue fetch/create conventions (`mnaimfaizy/myorganizer`)
+- `docs/agents/issue-tracker.md` - GitHub issue fetch/create conventions (`mnaimfaizy/myorganiser`)
 
 ## Roles
 

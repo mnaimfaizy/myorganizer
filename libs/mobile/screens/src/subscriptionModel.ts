@@ -7,7 +7,7 @@ import {
   type SubscriptionRenewalType,
   type SubscriptionStatus,
   type SubscriptionTier,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   formatCalendarDate,
   formatCalendarDateShort,
@@ -243,7 +243,7 @@ export function selectSubscriptionListView(
 /**
  * The Monthly Equivalent summed per currency, over the Subscriptions this
  * screen can already see. Mobile keeps no `normalizeSubscriptions` validation
- * pass (that lives in `@myorganizer/web-vault`, a web-only library) — a
+ * pass (that lives in `@myorganiser/web-vault`, a web-only library) — a
  * decrypted record here is only ever a `DecryptedSubscription` claim, so this
  * checks the three fields `monthlyEquivalentAmount` reads are actually
  * present before calling it, and skips a record missing any of them rather

@@ -3,7 +3,7 @@ import type { NativeScrollEvent, NativeSyntheticEvent } from 'react-native';
 import {
   recallScrollOffset,
   rememberScrollOffset,
-} from '@myorganizer/mobile/core';
+} from '@myorganiser/mobile/core';
 
 /** What to spread onto the screen's `ScrollView` or `FlatList`. */
 export interface RememberedScroll {

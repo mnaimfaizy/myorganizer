@@ -1,4 +1,4 @@
-import { ConfirmDeleteDialog } from '@myorganizer/web-ui';
+import { ConfirmDeleteDialog } from '@myorganiser/web-ui';
 
 export interface DisconnectYouTubeDialogProps {
   open: boolean;
@@ -22,9 +22,9 @@ export function DisconnectYouTubeDialog({
       title="Disconnect YouTube?"
       description={
         <>
-          Disconnecting revokes MyOrganizer&apos;s access and deletes your
+          Disconnecting revokes MyOrganiser&apos;s access and deletes your
           Followed Channels, Cached Uploads, Watched marks, notification and
-          digest settings, and OAuth tokens from MyOrganizer. Watched marks are
+          digest settings, and OAuth tokens from MyOrganiser. Watched marks are
           deleted and will not return if you reconnect.
         </>
       }

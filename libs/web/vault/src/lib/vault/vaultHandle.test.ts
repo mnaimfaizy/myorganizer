@@ -90,7 +90,7 @@ jest.mock('./crypto', () => {
   };
 });
 
-import type { VaultMetaV1 } from '@myorganizer/app-api-client';
+import type { VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import type { VaultStorageV1 } from './localVaultStorage';
 import { localVaultStorageKey } from './localVaultStorage';
@@ -237,7 +237,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         data: {},
       };
       localStorage.setItem(
-        'myorganizer_vault_v1',
+        'myorganiser_vault_v1',
         JSON.stringify(unclaimedVault),
       );
 
@@ -354,7 +354,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       expect(stored.vault).toEqual(vault);
 
       // Ensure unsuffixed slot was not touched.
-      expect(localStorage.getItem('myorganizer_vault_v1')).toBeNull();
+      expect(localStorage.getItem('myorganiser_vault_v1')).toBeNull();
     });
 
     // Test 6: Isolation
@@ -919,7 +919,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         },
         data: {},
       };
-      localStorage.setItem('myorganizer_vault_v1', JSON.stringify(unclaimed));
+      localStorage.setItem('myorganiser_vault_v1', JSON.stringify(unclaimed));
 
       const handle = createVaultHandle({ owner: 'user-a' });
       expect(handle.hasOwnedVault()).toBe(false);
@@ -1111,8 +1111,8 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         },
         data: {},
       };
-      localStorage.setItem('myorganizer_vault_v1', JSON.stringify(unclaimed));
-      const beforeRaw = localStorage.getItem('myorganizer_vault_v1');
+      localStorage.setItem('myorganiser_vault_v1', JSON.stringify(unclaimed));
+      const beforeRaw = localStorage.getItem('myorganiser_vault_v1');
       expect(beforeRaw).not.toBeNull();
 
       const handle = createVaultHandle({
@@ -1124,7 +1124,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       handle.removeVault();
 
       // Assert: unsuffixed slot unchanged (byte-identical, ADR 0033).
-      const afterRaw = localStorage.getItem('myorganizer_vault_v1');
+      const afterRaw = localStorage.getItem('myorganiser_vault_v1');
       expect(afterRaw).toBe(beforeRaw);
 
       // Assert: after removal, handle cannot see a vault (no owned record, unclaimed not offered)
@@ -1213,7 +1213,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         data: {},
       };
       localStorage.setItem(
-        'myorganizer_vault_v1',
+        'myorganiser_vault_v1',
         JSON.stringify(unclaimedVault),
       );
 
@@ -1264,7 +1264,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
       const beforeState = JSON.stringify({
         ownedKey: localStorage.getItem(LS_KEY_USER_A),
-        unclaimedKey: localStorage.getItem('myorganizer_vault_v1'),
+        unclaimedKey: localStorage.getItem('myorganiser_vault_v1'),
       });
 
       // Call vaultStatus multiple times
@@ -1274,7 +1274,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
 
       const afterState = JSON.stringify({
         ownedKey: localStorage.getItem(LS_KEY_USER_A),
-        unclaimedKey: localStorage.getItem('myorganizer_vault_v1'),
+        unclaimedKey: localStorage.getItem('myorganiser_vault_v1'),
       });
 
       expect(afterState).toBe(beforeState);
@@ -1305,7 +1305,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         data: {},
       };
       localStorage.setItem(
-        'myorganizer_vault_v1',
+        'myorganiser_vault_v1',
         JSON.stringify(unclaimedVault),
       );
 
@@ -1345,7 +1345,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       );
 
       // AND device has unclaimed vault
-      localStorage.setItem('myorganizer_vault_v1', JSON.stringify(vault));
+      localStorage.setItem('myorganiser_vault_v1', JSON.stringify(vault));
 
       // hasUnclaimedLocalVault should still return true
       expect(handle.hasUnclaimedLocalVault()).toBe(true);
@@ -1385,7 +1385,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         data: {},
       };
       localStorage.setItem(
-        'myorganizer_vault_v1',
+        'myorganiser_vault_v1',
         JSON.stringify(unclaimedVault),
       );
 
@@ -1426,7 +1426,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         data: {},
       };
       localStorage.setItem(
-        'myorganizer_vault_v1',
+        'myorganiser_vault_v1',
         JSON.stringify(unclaimedVault),
       );
 
@@ -1476,7 +1476,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         },
       };
       localStorage.setItem(
-        'myorganizer_vault_v1',
+        'myorganiser_vault_v1',
         JSON.stringify(unclaimedVault),
       );
 
@@ -1517,7 +1517,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
         data: {},
       };
       localStorage.setItem(
-        'myorganizer_vault_v1',
+        'myorganiser_vault_v1',
         JSON.stringify(unclaimedVault),
       );
       return unclaimedVault;
@@ -1526,7 +1526,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
     test('initialize() when unclaimed vault present creates owned record and leaves unsuffixed slot byte-identical', async () => {
       const handle = createVaultHandle({ owner: 'user-a' });
       const unclaimedVault = await createUnclaimedVault();
-      const unclaimedBefore = localStorage.getItem('myorganizer_vault_v1');
+      const unclaimedBefore = localStorage.getItem('myorganiser_vault_v1');
 
       // User creates their own vault (escape path)
       await handle.initialize({ passphrase: 'new-pass' });
@@ -1540,7 +1540,7 @@ describe('createVaultHandle (owner-bound Vault Handle)', () => {
       expect(ownedRecord.vault).toBeDefined();
 
       // Unsuffixed slot should be byte-identical (regression guard for #495)
-      expect(localStorage.getItem('myorganizer_vault_v1')).toBe(
+      expect(localStorage.getItem('myorganiser_vault_v1')).toBe(
         unclaimedBefore,
       );
 

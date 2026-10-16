@@ -9,7 +9,7 @@ The architectural review is rendered as a single self-contained HTML file in the
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Architecture review — MyOrganizer</title>
+    <title>Architecture review — MyOrganiser</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module">
       import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';

@@ -20,7 +20,7 @@
  * and undo a passphrase change made elsewhere. Adoption is returned as a next
  * Local Vault for the caller to save, exactly as Vault Reconcile returns one.
  */
-import { VaultApi, VaultMetaV1 } from '@myorganizer/app-api-client';
+import { VaultApi, VaultMetaV1 } from '@myorganiser/app-api-client';
 
 import { getHttpStatus } from '../http/getHttpStatus';
 
@@ -46,7 +46,7 @@ import {
  * the meta follows from that rather than standing on its own.
  *
  * Reading it as a passphrase change is what
- * [#578](https://github.com/mnaimfaizy/myorganizer/issues/578) was: the User
+ * [#578](https://github.com/mnaimfaizy/myorganiser/issues/578) was: the User
  * was told their passphrase had changed elsewhere and offered a button that
  * would adopt the other vault's wrapping over this device's Ciphertext,
  * leaving every Vault Blob here encrypted under a key nothing here can

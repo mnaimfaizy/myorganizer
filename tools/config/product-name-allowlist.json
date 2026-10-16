@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "comment": "Paths `yarn product-name:check` lets keep the product's old \"-izer\" spelling (ADR 0132, PRD #1172). Each entry names a tracked path — a directory ending in `/`, or one file — and a written reason; an entry without a reason is rejected. An entry may carry `frozenFrom`, a regular expression: the file is excused only from the first line that matches it downward, so text above that line must use the new spelling. An entry is stale — and fails — when it names no tracked file, when it excuses no occurrence, or when its `frozenFrom` matches no line. The list is an allowlist of paths, never of values.",
+  "allowlist": [
+    {
+      "path": "docs/research/",
+      "reason": "Research Briefs are frozen at their date (ADR 0041). They quote paths, names and output as they stood when written."
+    },
+    {
+      "path": "CHANGELOG.md",
+      "frozenFrom": "^## v\\d",
+      "reason": "Entries for releases cut before the aligned release name projects and scopes as they were then. Everything from the first released-version heading down is history; new entries go above it and use the new spelling."
+    },
+    {
+      "path": "tools/scripts/review/fixtures/2026-09-10/",
+      "reason": "Recorded review fixtures replayed against the pinned head 8fb1087f, where the Web App lived at the old app path. Rewriting them would break the recorded comparison."
+    },
+    {
+      "path": "tools/config/review-golden-specs/",
+      "reason": "Byte-for-byte snapshots of issue bodies taken for the golden review set. A snapshot that is edited no longer records what the reviewer was given."
+    },
+    {
+      "path": "tools/scripts/lib/qa-accounts.mjs",
+      "reason": "QA Account credentials are derived from the old-spelling email suffix and hash salt. Kept by the user's decision so QA credentials do not change (ADR 0122)."
+    },
+    {
+      "path": "tools/config/qa-accounts.json",
+      "reason": "Holds the QA Account emails on the old-spelling `.test` domain. Kept with qa-accounts.mjs so QA credentials do not change (ADR 0122)."
+    },
+    {
+      "path": "tools/scripts/lib/qa-accounts.test.mjs",
+      "reason": "Pins the QA Account email suffix that qa-accounts.mjs still uses. Changes only together with it."
+    }
+  ]
+}

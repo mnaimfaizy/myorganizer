@@ -1,4 +1,4 @@
-import type { Theme, ThemeColors } from '@myorganizer/mobile/ui';
+import type { Theme, ThemeColors } from '@myorganiser/mobile/ui';
 import { navigationTheme } from './navigationTheme';
 
 /**

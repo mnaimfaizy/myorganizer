@@ -1,6 +1,6 @@
 # Playwright E2E Patterns and Anti-Patterns
 
-Code-level reference for MyOrganizer E2E specs. This is the **single home** for these patterns —
+Code-level reference for MyOrganiser E2E specs. This is the **single home** for these patterns —
 `SKILL.md` covers workflow and policy, `runbook.md` covers the flow matrix and selector rules,
 and this file covers what the code must actually look like.
 
@@ -289,7 +289,7 @@ A controlled React form drops values typed before hydration: `fill()` writes to 
 React state stays empty and the form submits blank. Neither `networkidle` nor a sleep observes
 hydration. Probe it with an interaction whose visible result is pure client state, and retry the
 click — a pre-hydration click is dropped. `waitForLoginFormInteractive` in
-`apps/myorganizer-e2e/src/e2e/helpers/auth.ts` is the worked example.
+`apps/web-e2e/src/e2e/helpers/auth.ts` is the worked example.
 
 ```typescript
 await expect(async () => {
@@ -308,7 +308,7 @@ their network expectations in a test comment.
 Production incidents traced to gaps between test expectations and component lifecycle. Verify the
 component's form configuration before writing assertions.
 
-### MyOrganizer form defaults
+### MyOrganiser form defaults
 
 ```typescript
 // EditItemDialog pattern

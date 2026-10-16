@@ -2,7 +2,7 @@
   {
     "type": "system",
     "subtype": "init",
-    "cwd": "/home/runner/work/myorganizer/myorganizer",
+    "cwd": "/home/runner/work/myorganiser/myorganiser",
     "claude_code_version": "2.1.293",
     "model": "claude-sonnet-5-5"
   },
@@ -54,7 +54,7 @@
           "id": "toolu_01X2fF6DUSJipCd3sPKpPzqz",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/STANDARDS_BRIEF.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/STANDARDS_BRIEF.md"
           }
         }
       ]
@@ -88,7 +88,7 @@
           "id": "toolu_015zdKgzYXoctut8gqdzAC46",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/CODING_STANDARDS.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/CODING_STANDARDS.md"
           }
         }
       ]
@@ -191,7 +191,7 @@
           "name": "Grep",
           "input": {
             "pattern": "SKILL\\.md:\\d+|pastes|paste",
-            "path": "/home/runner/work/myorganizer/myorganizer"
+            "path": "/home/runner/work/myorganiser/myorganiser"
           }
         }
       ]
@@ -226,7 +226,7 @@
           "name": "Grep",
           "input": {
             "pattern": "^(The diff command is `git diff|2\\. \\*\\*Issue references|it \\(`AGENTS.md`, Branch naming|The main agent assembles the report envelope|Each axis runs as a|exposes \\(step 4\\))",
-            "path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SKILL.md"
+            "path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SKILL.md"
           }
         }
       ]
@@ -243,7 +243,7 @@
           "id": "toolu_01Q7AcY1AgpoTxhebV8tacrx",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SKILL.md",
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SKILL.md",
             "offset": 10,
             "limit": 20
           }
@@ -263,7 +263,7 @@
           "name": "Grep",
           "input": {
             "pattern": "always a judgement call",
-            "path": "/home/runner/work/myorganizer/myorganizer/tools/scripts/review/schema.mjs"
+            "path": "/home/runner/work/myorganiser/myorganiser/tools/scripts/review/schema.mjs"
           }
         }
       ]
@@ -328,7 +328,7 @@
           "id": "toolu_01Q19NLaTgwzoG8rhnqRWVd5",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SPEC_BRIEF.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SPEC_BRIEF.md"
           }
         }
       ]
@@ -345,7 +345,7 @@
           "id": "toolu_018Krtc3vHm7tk2V8J3KnHm5",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/spec.json"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/spec.json"
           }
         }
       ]
@@ -396,7 +396,7 @@
           "id": "toolu_01JxpZocJu5Lej3Yx8v49CjB",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/SKILL.md"
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/SKILL.md"
           }
         }
       ]
@@ -430,7 +430,7 @@
           "id": "toolu_01QjgukY6R1LqkFmRACbrber",
           "name": "Read",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/.agents/skills/code-review/STANDARDS_BRIEF.md",
+            "file_path": "/home/runner/work/myorganiser/myorganiser/.agents/skills/code-review/STANDARDS_BRIEF.md",
             "limit": 120
           }
         }
@@ -527,7 +527,7 @@
           "id": "toolu_01KSEyVeVj8ay6DiSFRyXi7G",
           "name": "Write",
           "input": {
-            "file_path": "/home/runner/work/myorganizer/myorganizer/tmp/code-review/report.json",
+            "file_path": "/home/runner/work/myorganiser/myorganiser/tmp/code-review/report.json",
             "content": "<trimmed>"
           }
         }

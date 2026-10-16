@@ -6,7 +6,7 @@ accepted
 
 ## Context
 
-Golden Replay run [35833576958](https://github.com/mnaimfaizy/myorganizer/actions/runs/35833576958)
+Golden Replay run [35833576958](https://github.com/mnaimfaizy/myorganiser/actions/runs/35833576958)
 (pull request #884) scored `release-bump-leaves-generated-client-stale` as a miss. The miss was a
 suppression. The worklist handed the reviewer `package.json:3` with `coveringGate: openapi:check`.
 The reviewer answered `wiredBy` by citing `.github/workflows/ci.yml:527` as

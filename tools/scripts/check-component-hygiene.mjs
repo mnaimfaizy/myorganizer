@@ -193,7 +193,7 @@ function checkClassNameMerge(_code, raw, findings) {
 
 /**
  * A primitive that is not in the barrel cannot be imported by a feature
- * component through @myorganizer/web-ui, which is the only import path
+ * component through @myorganiser/web-ui, which is the only import path
  * GUIDELINES §1 permits.
  */
 function checkBarrelExport(file, scope, barrels, findings) {
@@ -231,7 +231,7 @@ function checkDeepImport(code, raw, findings) {
         level: 'error',
         rule: 'deep-import',
         line: lineOf(raw, m.index),
-        message: `Imports '${spec}' directly instead of '@myorganizer/web-ui'. GUIDELINES §1 — deep imports bypass the barrel and break Nx module boundaries.`,
+        message: `Imports '${spec}' directly instead of '@myorganiser/web-ui'. GUIDELINES §1 — deep imports bypass the barrel and break Nx module boundaries.`,
       });
     }
   }
@@ -665,7 +665,7 @@ function checkJsxSize(code, raw, findings) {
  *
  * Vault UI Components take both sets. They accept a `className` and merge it
  * like a primitive, they publish through a barrel like a primitive, and they
- * consume primitives through `@myorganizer/web-ui` like a feature.
+ * consume primitives through `@myorganiser/web-ui` like a feature.
  */
 const SCOPE_RULES = {
   primitive: ['displayName', 'classNameMerge', 'barrelExport'],

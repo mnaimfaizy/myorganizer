@@ -13,7 +13,7 @@ jest.mock('../../shared/hooks', () => ({
   useGroceriesVault: jest.fn(),
 }));
 
-jest.mock('@myorganizer/web-vault-ui', () => ({
+jest.mock('@myorganiser/web-vault-ui', () => ({
   // Constant: these suites never converge, so the revision never moves.
   // Reloading on a moved revision is covered where it is the subject.
   useLocalVaultRevision: () => 0,
@@ -27,7 +27,7 @@ jest.mock('@myorganizer/web-vault-ui', () => ({
   },
 }));
 
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react');
 
   function Button({
@@ -195,7 +195,7 @@ jest.mock('../components', () => {
   };
 });
 
-import type { CatalogItem, GroceryList } from '@myorganizer/vault-core';
+import type { CatalogItem, GroceryList } from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { GroceriesPageClient as GroceriesPage } from '../GroceriesPageClient';

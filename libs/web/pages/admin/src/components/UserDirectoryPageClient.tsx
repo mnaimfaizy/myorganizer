@@ -1,6 +1,6 @@
 'use client';
 
-import type { AdminUserIdentity } from '@myorganizer/app-api-client';
+import type { AdminUserIdentity } from '@myorganiser/app-api-client';
 import {
   Button,
   Input,
@@ -10,7 +10,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';

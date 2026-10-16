@@ -1,7 +1,7 @@
 /** Mocking rule: place jest.mock calls before any imports. */
 const mockToast = jest.fn();
 
-jest.mock('@myorganizer/web-ui', () => {
+jest.mock('@myorganiser/web-ui', () => {
   const React = require('react') as typeof import('react');
 
   const MenuContext = React.createContext<{
@@ -273,7 +273,7 @@ import type {
   CatalogItem,
   GroceryList,
   ListLine,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import {
   fireEvent,

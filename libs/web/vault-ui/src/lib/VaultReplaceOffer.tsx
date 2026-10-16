@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, Checkbox, Label } from '@myorganizer/web-ui';
+import { Button, Checkbox, Label } from '@myorganiser/web-ui';
 import { useCallback, useState } from 'react';
 
 export type VaultReplaceOfferProps = {

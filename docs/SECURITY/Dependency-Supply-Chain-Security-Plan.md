@@ -4,7 +4,7 @@ Last updated: 2026-10-08
 
 ## Purpose
 
-This document records the dependency, package-manager, and CI hardening posture for the MyOrganizer repository. It exists to support dependency review, incident response, and future security maintenance.
+This document records the dependency, package-manager, and CI hardening posture for the MyOrganiser repository. It exists to support dependency review, incident response, and future security maintenance.
 
 ## Current Repository Policy
 

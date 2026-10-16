@@ -1,6 +1,6 @@
 import React from 'react';
 import { ScrollView, StyleSheet } from 'react-native';
-import { EmptyState, OfflineBanner, Screen } from '@myorganizer/mobile/ui';
+import { EmptyState, OfflineBanner, Screen } from '@myorganiser/mobile/ui';
 import { TAB_SCREEN_EDGES, TabScreenHeader } from './TabScreenHeader';
 import { useRememberedScroll } from './useRememberedScroll';
 

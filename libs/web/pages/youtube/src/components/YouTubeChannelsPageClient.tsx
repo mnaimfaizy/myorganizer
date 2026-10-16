@@ -1,6 +1,6 @@
 'use client';
 
-import { Button, CardTitle } from '@myorganizer/web-ui';
+import { Button, CardTitle } from '@myorganiser/web-ui';
 import Link from 'next/link';
 import { useCallback, useState } from 'react';
 import {

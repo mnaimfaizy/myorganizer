@@ -13,14 +13,14 @@ import {
   type RouteProp,
 } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   useUnconfirmedEdit,
   useVaultBlob,
   recoversByReload,
   VAULT_WRITE_ERROR_COPY,
   type VaultBlobEdit,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   deleteVaultRecord,
   putVaultRecord,
@@ -29,7 +29,7 @@ import {
   type TaskContext,
   type TaskPriority,
   type TaskStatus,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   Button,
   Chip,
@@ -44,7 +44,7 @@ import {
   Text,
   TextField,
   useTheme,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { DateField } from './DateField';
 import { TASKS_ROUTES, type TasksStackParamList } from './tasksStack';
 import { STACK_SCREEN_EDGES } from './TabScreenHeader';

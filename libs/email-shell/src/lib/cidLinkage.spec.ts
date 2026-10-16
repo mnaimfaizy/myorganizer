@@ -38,7 +38,7 @@ describe('cidLinkage', () => {
 
     it('ignores bare "cid:" in body text (does not match src/href)', () => {
       const html =
-        'For details, contact support at cid:support@example.com or see cid: myorganizer-logo in the docs.';
+        'For details, contact support at cid:support@example.com or see cid: myorganiser-logo in the docs.';
       const refs = collectCidReferences(html);
       expect(refs).toEqual([]);
     });
@@ -173,7 +173,7 @@ describe('cidLinkage', () => {
     <title>Test</title>
   </head>
   <body>
-    <img src="cid:myorganizer-logo" width="140" height="32" alt="MyOrganizer" />
+    <img src="cid:myorganiser-logo" width="140" height="32" alt="MyOrganiser" />
     <p>Hello world</p>
   </body>
 </html>`;
@@ -182,7 +182,7 @@ describe('cidLinkage', () => {
           filename: 'logo-email.png',
           content: Buffer.from('fake-png-data'),
           contentType: 'image/png',
-          cid: 'myorganizer-logo',
+          cid: 'myorganiser-logo',
           contentDisposition: 'inline',
         },
       ];

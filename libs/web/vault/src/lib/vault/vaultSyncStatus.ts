@@ -30,7 +30,7 @@
  * landed, but presenting it as merely "not synced yet" is the one lie this
  * status exists to avoid — see the module doc on `vaultSyncQueue.ts`.
  */
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 
 import { VAULT_BLOB_FIELDS, VAULT_BLOB_TYPES } from './vaultBlobFields';
 import type { VaultHandle } from './vaultHandle';

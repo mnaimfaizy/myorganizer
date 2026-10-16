@@ -1,5 +1,5 @@
-import { VaultBlobType } from '@myorganizer/app-api-client';
-import type { VaultSyncStatus } from '@myorganizer/web-vault';
+import { VaultBlobType } from '@myorganiser/app-api-client';
+import type { VaultSyncStatus } from '@myorganiser/web-vault';
 import {
   VAULT_BLOB_TYPE_LABELS,
   describeVaultSyncStatus,

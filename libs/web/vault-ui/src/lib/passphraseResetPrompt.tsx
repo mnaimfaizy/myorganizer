@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
-import { newPassphraseSchema } from '@myorganizer/web-vault';
+import { newPassphraseSchema } from '@myorganiser/web-vault';
 import {
   Button,
   Dialog,
@@ -17,7 +17,7 @@ import {
   DialogTitle,
   Form,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import { NewPassphraseFields } from './newPassphraseFields';
 import { resetPassphraseAfterRecoveryAndAnnounce } from './recoveryPassphraseReset';

@@ -69,21 +69,21 @@ jobs:
       # Built here rather than inside Playwright's webServer timeout, so a build
       # failure is attributable and starting the server is only that.
       - name: Build frontend for E2E
-        run: corepack yarn nx build myorganizer
+        run: corepack yarn nx build web
 
       # --fail-on-flaky-tests lives here and not on the blocking lane. A test
       # that passes on retry is not evidence that a pull request broke
       # something, but it is evidence about suite health — and nobody is
       # blocked here. See ADR 0050.
       - name: Run E2E (${{ matrix.browser }})
-        run: corepack yarn nx run myorganizer-e2e:${{ matrix.target }} --fail-on-flaky-tests --reporter=list
+        run: corepack yarn nx run web-e2e:${{ matrix.target }} --fail-on-flaky-tests --reporter=list
 
       - name: Upload report
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
         with:
           name: nightly-e2e-report-${{ matrix.browser }}
-          path: dist/.playwright/apps/myorganizer-e2e/
+          path: dist/.playwright/apps/web-e2e/
           retention-days: 14
 
   # Schedule only, same as Report Success. A workflow_dispatch failure is a

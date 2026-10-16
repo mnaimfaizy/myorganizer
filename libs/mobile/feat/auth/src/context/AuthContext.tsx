@@ -7,12 +7,12 @@ import React, {
   useMemo,
 } from 'react';
 import type { ReactNode } from 'react';
-import type { FilteredUserInterface } from '@myorganizer/app-api-client';
+import type { FilteredUserInterface } from '@myorganiser/app-api-client';
 import {
   buildLoginUserBody,
   buildRefreshTokenRequest,
   extractRefreshTokenFromLoginResponse,
-} from '@myorganizer/auth/portable';
+} from '@myorganiser/auth/portable';
 import { saveRefreshToken, clearRefreshToken } from '../storage/keychain';
 import {
   apiClient,

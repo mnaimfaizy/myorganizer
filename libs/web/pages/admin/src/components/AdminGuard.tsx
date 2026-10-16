@@ -5,7 +5,7 @@ import {
   getCurrentUser,
   onSessionEnded,
   resolveOutboundGuard,
-} from '@myorganizer/auth';
+} from '@myorganiser/auth';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useEffect, useState } from 'react';
 

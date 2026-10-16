@@ -12,7 +12,7 @@ import {
   Input,
   Label,
   useToast,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 
 import {
   createDefaultAuditReporter,
@@ -20,11 +20,11 @@ import {
   importVault,
   isVaultImportError,
   VAULT_ENVELOPE_PARSE_MAX_BYTES,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   getVaultImportErrorMessage,
   useOptionalVaultSession,
-} from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault-ui';
 
 import { ImportVaultReplaceDialog } from './ImportVaultReplaceDialog';
 import { formatBytes } from '../utils/formatBytes';

@@ -20,18 +20,18 @@ import {
   FormLabel,
   FormMessage,
   Input,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import {
   changePassphraseSchema,
   ChangePassphraseInput,
   newPassphraseSchema,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 import {
   NewPassphraseFields,
   PASSPHRASE_REWRITE_FACTS,
   type NewPassphraseFieldValues,
   type VaultUnlockSecret,
-} from '@myorganizer/web-vault-ui';
+} from '@myorganiser/web-vault-ui';
 
 import { useChangePassphrase, useVaultOperationAvailability } from '../hooks';
 import { VAULT_OPERATIONS } from '../policy';

@@ -17,10 +17,10 @@ import { attachTsoaErrorHandler } from '../testing/tsoaErrorHandler';
 
 jest.setTimeout(30_000);
 
-// PlatformTokenHandler imports @myorganizer/auth; keep ts-jest on the
+// PlatformTokenHandler imports @myorganiser/auth; keep ts-jest on the
 // refresh-client-contract surface so the rest of that package is not compiled
 // under the backend spec tsconfig.
-jest.mock('@myorganizer/auth', () =>
+jest.mock('@myorganiser/auth', () =>
   jest.requireActual('../../../../libs/auth/src/lib/refresh-client-contract'),
 );
 

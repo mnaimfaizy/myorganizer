@@ -2,13 +2,13 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { CloudBackupCard } from '@myorganizer/web-vault-ui';
+import { CloudBackupCard } from '@myorganiser/web-vault-ui';
 import {
   createVaultBackupsApi,
   isEscapeCopyOverdue,
   type CloudBackupProvider,
   type VaultHandle,
-} from '@myorganizer/web-vault';
+} from '@myorganiser/web-vault';
 
 import {
   useCloudBackup,

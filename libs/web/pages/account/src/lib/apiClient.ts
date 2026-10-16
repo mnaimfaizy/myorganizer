@@ -2,9 +2,9 @@ import {
   Configuration,
   UsersApi,
   type ConfigurationParameters,
-} from '@myorganizer/app-api-client';
-import { getAccessToken, getAuthAxios } from '@myorganizer/auth';
-import { getApiBaseUrl } from '@myorganizer/core';
+} from '@myorganiser/app-api-client';
+import { getAccessToken, getAuthAxios } from '@myorganiser/auth';
+import { getApiBaseUrl } from '@myorganiser/core';
 
 export function createApiConfiguration(
   overrides: Partial<ConfigurationParameters> = {},

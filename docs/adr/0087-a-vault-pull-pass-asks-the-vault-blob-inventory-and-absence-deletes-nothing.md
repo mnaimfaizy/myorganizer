@@ -8,7 +8,7 @@ accepted
 
 A Vault Pull Pass issues one conditional `GET /vault/blob/{type}` per Vault Blob Type, all five, in
 series, on every mount and every window `focus`
-([#616](https://github.com/mnaimfaizy/myorganizer/issues/616)). A type this device has never pushed
+([#616](https://github.com/mnaimfaizy/myorganiser/issues/616)). A type this device has never pushed
 has no Sync Bookmark, so no `If-None-Match` goes up and the request cannot be answered `304`. For a
 User who has never used three of the five types, three `404`s arrive on every pass — permanent red rows
 in exactly the place a real failure would show up the same way.
@@ -42,7 +42,7 @@ the inventory says its Ciphertext differs from this device's Sync Bookmark.**
    single Vault Blob; one leaves only when the whole Vault does, which is handled elsewhere. Reading a
    missing type as a deletion would buy nothing and would turn a stale or partial response into local
    data loss — the same shape as the keep-server reconcile that destroyed grocery Ciphertext
-   ([#512](https://github.com/mnaimfaizy/myorganizer/issues/512)).
+   ([#512](https://github.com/mnaimfaizy/myorganiser/issues/512)).
 6. **A failed inventory read fails the pass; there is no fallback to the five-way fan-out.** Every type
    is recorded as unanswered and the next pass retries. A fallback that runs only when something is
    already wrong is a path nothing exercises, and it would silently restore the behaviour this ADR

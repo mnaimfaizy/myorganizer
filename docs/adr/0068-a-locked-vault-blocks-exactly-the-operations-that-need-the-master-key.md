@@ -10,7 +10,7 @@ The Vault page carries six cards. Two of them — change passphrase and rotate R
 `useVaultDisabledState` and disable themselves while the Vault is locked, with copy saying why. The
 other four — import, export, remove, and cloud backup — do not consult it at all.
 
-[#625](https://github.com/mnaimfaizy/myorganizer/issues/625) read that asymmetry as a security defect
+[#625](https://github.com/mnaimfaizy/myorganiser/issues/625) read that asymmetry as a security defect
 and proposed the obvious remedy: require the Vault to be unlocked before importing, or require the
 Master Key to be entered as part of the confirmation. Filed as a security issue, it also recorded that
 nothing pins which Vault states permit which operations, and that neither card has a spec.
@@ -65,8 +65,8 @@ destructive operation owes the User is an accurate account of what it will destr
    Bookmarks so an imported wrapping cannot be pushed over the real one), removal clears only this
    owner's local keys ([ADR 0033](0033-local-vaults-are-user-owned-and-never-silently-destroyed.md),
    [ADR 0058](0058-a-sync-bookmark-is-a-second-per-user-namespace-not-a-second-vault.md)), and in-session
-   recovery is what [#645](https://github.com/mnaimfaizy/myorganizer/issues/645) and
-   [#647](https://github.com/mnaimfaizy/myorganizer/issues/647) are building.
+   recovery is what [#645](https://github.com/mnaimfaizy/myorganiser/issues/645) and
+   [#647](https://github.com/mnaimfaizy/myorganiser/issues/647) are building.
 
 5. **A destructive confirmation states what is unrecoverable, derived at the moment it is shown.** A
    fixed warning has to be written for the worst case, so it cries wolf on the common one and trains

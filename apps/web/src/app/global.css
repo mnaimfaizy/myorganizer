@@ -1,0 +1,26 @@
+@config "../../tailwind.config.js";
+@import 'tailwindcss';
+
+/*
+ * MyOrganiser design tokens (Secure Modernism).
+ * Source: libs/design-tokens/src/tokens.json — never edit the generated CSS.
+ * Exposes --color-*, --neutral-*, --space-*, --radius-*, --font-*, --shadow-*
+ * on :root. These are Brand Primitives and the Neutral Ramp, not Semantic Roles.
+ */
+@import '../../../../libs/design-tokens/src/generated/tokens.css';
+
+/*
+ * Semantic Roles for both colour modes. Generated from the same tokens.json
+ * as the custom properties above — see ADR 0065. The Tailwind configs read
+ * these as hsl(var(--role)).
+ */
+@import '../../../../libs/design-tokens/src/generated/roles.css';
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+}

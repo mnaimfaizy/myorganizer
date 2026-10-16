@@ -28,7 +28,7 @@ import {
   typeTitleSize,
   typeTitleTracking,
   typeTitleWeight,
-} from '@myorganizer/design-tokens';
+} from '@myorganiser/design-tokens';
 
 /**
  * A step of the shared type scale, named as the tokens name it. `titleLg` and

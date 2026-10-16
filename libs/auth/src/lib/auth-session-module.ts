@@ -1,7 +1,7 @@
 import type {
   AuthenticationApi,
   ConfirmResetPasswordBody,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import axios, { type AxiosInstance } from 'axios';
 
 import { toAuthError, toAuthErrorFromMessage } from './auth-error-mapping';
@@ -33,7 +33,7 @@ import {
 } from './session-ended-signal';
 
 function toSessionData(
-  response: import('@myorganizer/app-api-client').Login200Response,
+  response: import('@myorganiser/app-api-client').Login200Response,
 ): AuthSessionData {
   return {
     token: response.token,

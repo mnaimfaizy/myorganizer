@@ -1,5 +1,5 @@
 /** Mocking rule: place jest.mock calls before any imports. */
-jest.mock('@myorganizer/web-ui', () => ({
+jest.mock('@myorganiser/web-ui', () => ({
   Input: (props: React.InputHTMLAttributes<HTMLInputElement>) => (
     <input {...props} />
   ),
@@ -10,7 +10,7 @@ import type {
   CatalogItem,
   GroceryList,
   ListLine,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import '@testing-library/jest-dom';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { TripBoardCatalogAddStrip } from '../components/TripBoardCatalogAddStrip';

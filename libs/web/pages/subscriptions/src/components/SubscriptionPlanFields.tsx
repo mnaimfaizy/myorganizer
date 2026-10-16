@@ -4,7 +4,7 @@ import {
   SubscriptionPaymentMethodEnum,
   SubscriptionRenewalTypeEnum,
   SubscriptionTierEnum,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 import {
   Label,
   Select,
@@ -12,7 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@myorganizer/web-ui';
+} from '@myorganiser/web-ui';
 import { type UseFormReturn } from 'react-hook-form';
 import { useCallback } from 'react';
 

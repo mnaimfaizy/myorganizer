@@ -12,11 +12,11 @@ Rotation does — the wrapping has to exist to be shown — so the User's confir
 recorded it is creation's version of the same guarantee, moved after the write because it has to be
 (CONTEXT.md, "Recovery Key Acknowledgment").
 
-Issue [#667](https://github.com/mnaimfaizy/myorganizer/issues/667) split `VaultGate`'s `vaultStatus`
+Issue [#667](https://github.com/mnaimfaizy/myorganiser/issues/667) split `VaultGate`'s `vaultStatus`
 from the showing-the-key phase and held that phase in component state. A remount therefore knew
 nothing: the key was gone, and so was any record that nobody had confirmed holding it. The grill
 that produced #667 treated persistence as a separate product capability
-([#668](https://github.com/mnaimfaizy/myorganizer/issues/668)), because nobody is blocked by its
+([#668](https://github.com/mnaimfaizy/myorganiser/issues/668)), because nobody is blocked by its
 absence and because the trade-off it records is only true once a durable record exists.
 
 The naive persistences all collapse something the product has already decided. Storing the key in
@@ -34,7 +34,7 @@ the remount is a dead end: the card cannot re-show a key it no longer holds.
 confirmation, and never the key that opens it.**
 
 1. **The record is a fingerprint, not a flag.** One durable per-User `localStorage` entry, keyed
-   `myorganizer_recovery_key_acknowledgment_v1:<owner>`, holds a SHA-256 of that owner's
+   `myorganiser_recovery_key_acknowledgment_v1:<owner>`, holds a SHA-256 of that owner's
    `masterKeyWrappedWithRecoveryKey`. The comparison is derived the way a Vault Meta Refusal is:
    hash the wrapping this device now holds and ask whether it is the one recorded as unacknowledged.
    A wrapping that is not it is a different question, so a claim, an import, a replacement or a
@@ -89,7 +89,7 @@ readers do not need that bump; Acknowledgment readers do, or a banner that was t
 rotation would stay on screen until the next remount. An extra reconcile pass after rotation is
 idle work (no blob moved) and is accepted so the reminder and the wrapping cannot disagree.
 
-ADR number 0067 was named in [#668](https://github.com/mnaimfaizy/myorganizer/issues/668) before
+ADR number 0067 was named in [#668](https://github.com/mnaimfaizy/myorganiser/issues/668) before
 [ADR 0067](0067-a-vault-blob-is-never-taken-across-a-vault-identity.md) and
 [ADR 0068](0068-a-locked-vault-blocks-exactly-the-operations-that-need-the-master-key.md) merged.
 The number here is a claim until this file merges

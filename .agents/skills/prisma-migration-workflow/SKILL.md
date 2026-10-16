@@ -1,6 +1,6 @@
 ---
 name: prisma-migration-workflow
-description: 'Use when editing Prisma schema files, creating migrations, regenerating Prisma client types, or changing database structure in MyOrganizer.'
+description: 'Use when editing Prisma schema files, creating migrations, regenerating Prisma client types, or changing database structure in MyOrganiser.'
 ---
 
 # Prisma Migration Workflow

@@ -14,7 +14,7 @@ import {
   spaceMd,
   spaceSm,
   spaceXs,
-} from '@myorganizer/design-tokens';
+} from '@myorganiser/design-tokens';
 import { LOGO_EMAIL_PNG_BASE64 } from '../generated/logoEmailPng';
 import { assertCidLinkage } from './cidLinkage';
 import { escapeHtml } from './escapeHtml';
@@ -27,8 +27,8 @@ import {
   RenderEmailShellOptions,
 } from './types';
 
-/** The name every MyOrganizer email signs itself with; the shell owns it, not a caller or an env var. */
-export const EMAIL_BRAND_NAME = 'MyOrganizer';
+/** The name every MyOrganiser email signs itself with; the shell owns it, not a caller or an env var. */
+export const EMAIL_BRAND_NAME = 'MyOrganiser';
 
 /**
  * Caps thumbnail upscaling without capping the row.
@@ -40,7 +40,7 @@ export const EMAIL_BRAND_NAME = 'MyOrganizer';
 const MEDIA_THUMBNAIL_MAX_WIDTH = '320px';
 
 /**
- * Renders a body inside the shared MyOrganizer Email Shell (ADR 0034).
+ * Renders a body inside the shared MyOrganiser Email Shell (ADR 0034).
  * `options.emailClass` is required and has no default: an email that does not
  * declare whether it is Transactional or Notification must not render at all,
  * because that declaration is the only thing deciding whether the footer

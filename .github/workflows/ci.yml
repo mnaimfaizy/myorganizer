@@ -683,7 +683,7 @@ jobs:
           # Throwaway runner service. Trust avoids storing a credential in the
           # workflow; this database is never reachable off the job.
           POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_DB: myorganizer
+          POSTGRES_DB: myorganiser
         ports:
           - 5432:5432
         options: >-
@@ -696,7 +696,7 @@ jobs:
       # Prisma generate reads this without connecting; migrate deploy and
       # migrate diff use the service above so a migration that fails to apply,
       # or a schema that has drifted from the migrations, fails before merge.
-      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganiser
 
     steps:
       - name: Checkout repository
@@ -1124,7 +1124,7 @@ jobs:
     timeout-minutes: 30
     # Pull requests only: the same commits ran this seconds earlier on the PR,
     # and the nightly workflow covers `main`. See ADR 0050.
-    if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer-e2e') }}
+    if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'web-e2e') }}
     # Deliberately NOT gated on `test`, unlike build-backend/build-frontend.
     # Waiting for the unit tests serialised E2E behind them and put the critical
     # path at 11 minutes; running alongside them brings it back to ~8. The cost
@@ -1189,10 +1189,10 @@ jobs:
       # Built here rather than inside Playwright's webServer timeout, so a build
       # failure is attributable and starting the server is only that.
       - name: Build frontend for E2E
-        run: corepack yarn nx build myorganizer
+        run: corepack yarn nx build web
 
       - name: Run E2E shard
-        run: corepack yarn nx run myorganizer-e2e:e2e --shard=${{ matrix.shard }}/3 --reporter=blob
+        run: corepack yarn nx run web-e2e:e2e --shard=${{ matrix.shard }}/3 --reporter=blob
 
       - name: Upload blob report
         if: ${{ !cancelled() }}
@@ -1262,7 +1262,7 @@ jobs:
     env:
       # Required for Prisma v7 config loading during `prisma generate`.
       # CI uses a dummy local URL here because generation does not connect.
-      DATABASE_URL: postgresql://localhost:5432/myorganizer
+      DATABASE_URL: postgresql://localhost:5432/myorganiser
 
     steps:
       - name: Checkout repository
@@ -1299,7 +1299,7 @@ jobs:
     name: Build Frontend
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer') }}
+    if: ${{ contains(fromJson(needs.setup.outputs.affected_projects), 'web') }}
     needs:
       - setup
       - lint
@@ -1334,7 +1334,7 @@ jobs:
         run: git diff --exit-code -- yarn.lock
 
       - name: Build frontend
-        run: corepack yarn nx build myorganizer
+        run: corepack yarn nx build web
 
   # Not a shard of the hermetic lane (ADR 0050). That lane stubs /auth/logout.
   # Starting the real API beside those stubs makes unmocked calls hit it and
@@ -1343,7 +1343,7 @@ jobs:
     name: E2E live logout
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'myorganizer-e2e') }}
+    if: ${{ github.event_name == 'pull_request' && contains(fromJson(needs.setup.outputs.affected_projects), 'web-e2e') }}
     needs:
       - setup
       - lint
@@ -1354,7 +1354,7 @@ jobs:
         env:
           POSTGRES_USER: postgres
           POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_DB: myorganizer
+          POSTGRES_DB: myorganiser
         ports:
           - 5432:5432
         options: >-
@@ -1366,7 +1366,7 @@ jobs:
     env:
       NX_DAEMON: 'false'
       E2E_LIVE_BACKEND: '1'
-      DATABASE_URL: postgresql://postgres@localhost:5432/myorganizer
+      DATABASE_URL: postgresql://postgres@localhost:5432/myorganiser
       ACCESS_JWT_SECRET: e2e-access-jwt
       REFRESH_JWT_SECRET: e2e-refresh-jwt
       VERIFY_JWT_SECRET: e2e-verify-jwt
@@ -1412,15 +1412,15 @@ jobs:
         run: corepack yarn playwright install --with-deps chromium
 
       - name: Build frontend for E2E
-        run: corepack yarn nx build myorganizer
+        run: corepack yarn nx build web
 
       - name: Build backend for live logout
         run: corepack yarn nx build backend
 
       - name: Run live logout spec
-        run: corepack yarn nx e2e myorganizer-e2e --grep="logs out against the real backend"
+        run: corepack yarn nx e2e web-e2e --grep="logs out against the real backend"
 
       # User Deletion (#969) against the real API: its own seeded user, so the
       # logout spec above is unaffected.
       - name: Run live account deletion spec
-        run: corepack yarn nx e2e myorganizer-e2e --grep="deletes the account against the real backend"
+        run: corepack yarn nx e2e web-e2e --grep="deletes the account against the real backend"

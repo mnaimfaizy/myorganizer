@@ -22,8 +22,8 @@ import {
   importAesGcmKey,
   randomBytes,
   utf8ToBytes,
-} from '@myorganizer/vault-core';
-import { VAULT_BLOB_FIELDS, exportVault } from '@myorganizer/web-vault';
+} from '@myorganiser/vault-core';
+import { VAULT_BLOB_FIELDS, exportVault } from '@myorganiser/web-vault';
 
 /**
  * The KDF iteration count this harness wraps its throwaway Master Key at.

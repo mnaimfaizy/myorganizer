@@ -10,20 +10,20 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { VaultBlobType } from '@myorganizer/app-api-client';
+import { VaultBlobType } from '@myorganiser/app-api-client';
 import {
   newRecordId,
   useUnconfirmedEdit,
   useVaultBlob,
   recoversByReload,
   VAULT_WRITE_ERROR_COPY,
-} from '@myorganizer/mobile/feat-vault';
+} from '@myorganiser/mobile/feat-vault';
 import {
   createGroceryList,
   deleteGroceryList,
   renameGroceryList,
   type GroceryList,
-} from '@myorganizer/vault-core/portable';
+} from '@myorganiser/vault-core/portable';
 import {
   Button,
   ConfirmSheet,
@@ -39,7 +39,7 @@ import {
   useLargeTitleCollapse,
   useTheme,
   type ListRowState,
-} from '@myorganizer/mobile/ui';
+} from '@myorganiser/mobile/ui';
 import { GroceryFooterButton } from './GroceryFooterButton';
 import { GroceryProgressBar } from './GroceryProgressBar';
 import {

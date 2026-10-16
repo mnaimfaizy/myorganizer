@@ -13,12 +13,12 @@ import type { AxiosResponse } from 'axios';
 import {
   VaultBlobType,
   type GetVaultMetaResponse,
-} from '@myorganizer/app-api-client';
+} from '@myorganiser/app-api-client';
 import {
   type VaultBlobEnvelope,
   readDeletionLog,
   readVaultBlobRecords,
-} from '@myorganizer/vault-core';
+} from '@myorganiser/vault-core';
 
 import { mintRecoveryKey } from './recoveryKeyMint';
 import { createVaultHandle, VaultSecretMismatchError } from './vaultHandle';

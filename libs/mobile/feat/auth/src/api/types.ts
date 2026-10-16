@@ -1,4 +1,4 @@
-import type { FilteredUserInterface } from '@myorganizer/app-api-client';
+import type { FilteredUserInterface } from '@myorganiser/app-api-client';
 
 export interface AuthTokens {
   accessToken: string;
