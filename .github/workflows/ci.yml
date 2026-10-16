@@ -697,9 +697,6 @@ jobs:
       # migrate diff use the service above so a migration that fails to apply,
       # or a schema that has drifted from the migrations, fails before merge.
       DATABASE_URL: postgresql://postgres@localhost:5432/myorganiser
-      # One graph for the three checkers in this job that read it (issue #1061).
-      # A missing or mistyped path fails the checker; it does not rebuild.
-      NX_GRAPH_FILE: ${{ runner.temp }}/nx-graph.json
 
     steps:
       - name: Checkout repository
@@ -855,8 +852,14 @@ jobs:
       # Review Tier is a separate workflow and its only graph consumer, so it
       # still builds its own. Each checker used to spawn `nx graph` itself;
       # that build is the slow part (ADR 0043 records the lint checker at 19s).
+      # One graph for the three checkers in this job that read it (issue #1061).
+      # A missing or mistyped path fails the checker; it does not rebuild.
+      # The path goes through GITHUB_ENV because job-level `env` cannot read the
+      # `runner` context: `${{ runner.temp }}` there rejects the whole workflow.
       - name: Build the Nx project graph
-        run: corepack yarn nx graph --file "$NX_GRAPH_FILE"
+        run: |
+          echo "NX_GRAPH_FILE=$RUNNER_TEMP/nx-graph.json" >> "$GITHUB_ENV"
+          corepack yarn nx graph --file "$RUNNER_TEMP/nx-graph.json"
 
       # Asserts every project Nx can lint is reachable as `lint`, the target the
       # lint job selects. Five projects were outside it until #426.
