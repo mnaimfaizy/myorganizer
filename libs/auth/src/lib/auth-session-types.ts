@@ -38,13 +38,20 @@ export type RestoreSessionOutcome =
 
 export type SignOutOutcome = { kind: 'signed_out' };
 
+/**
+ * `restore_unavailable`: the Session is a Restorable Session whose restore could
+ * not be completed (`not_restored`). It is not a Guest, so it must not be sent
+ * to sign-in; the guard shows the page it can and retries the restore later.
+ */
 export type InboundGuardOutcome =
   | { kind: 'redirect_dashboard' }
-  | { kind: 'show_guest' };
+  | { kind: 'show_guest' }
+  | { kind: 'restore_unavailable' };
 
 export type OutboundGuardOutcome =
   | { kind: 'allow' }
-  | { kind: 'redirect_login' };
+  | { kind: 'redirect_login' }
+  | { kind: 'restore_unavailable' };
 
 export interface AuthSessionData {
   token: string;

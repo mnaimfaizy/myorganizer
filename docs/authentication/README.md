@@ -101,6 +101,18 @@ still has a recoverable identity on disk. That is the `restorable` session state
 
 If the server refuses the refresh (a 4xx other than `408` or `429`), the session is cleared and the session-ended signal fires once. A refresh that could not be completed — no response, a timeout, a `5xx`, `408` or `429` — keeps the session: the request rejects with the refresh error and the next `401` tries the refresh again.
 
+### Route guards
+
+On load, the route guards in `@myorganiser/auth` (`resolveOutboundGuard` for `/dashboard` and `/admin`, `resolveInboundGuard` for the landing page) restore a `restorable` session before deciding what to show:
+
+| Restore result                                 | Protected page (`DashboardGuard`, `AdminGuard`) | Landing page (`RootAuthRedirect`) |
+| ---------------------------------------------- | ----------------------------------------------- | --------------------------------- |
+| Restored                                       | Shows the page                                  | Redirects to `/dashboard`         |
+| Server refused the refresh (session cleared)   | Redirects to `/login`                           | Shows the landing page            |
+| Could not be completed (`restore_unavailable`) | Shows a "Can't reach the server" notice         | Shows the landing page            |
+
+A refresh that could not be completed leaves a Restorable Session, which is not a Guest and is never sent to sign-in. The guard retries the restore when the user presses **Try again**, when the browser comes back online, and when the window regains focus or becomes visible, then acts on the new result.
+
 ## Configuration
 
 Frontend expects an API base URL. In production, prefer setting `API_BASE_URL` at runtime (cPanel env vars). `NEXT_PUBLIC_API_BASE_URL` is still supported as a fallback.
