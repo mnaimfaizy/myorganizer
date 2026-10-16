@@ -255,7 +255,7 @@ describe('DashboardGuard', () => {
       await waitFor(() => {
         expect(mockResolveOutboundGuard).toHaveBeenCalledTimes(2);
       });
-      const button = screen.getByRole('button', { name: 'Try again' });
+      const button = await screen.findByRole('button', { name: 'Try again' });
       await waitFor(() => {
         expect(button).toBeEnabled();
       });

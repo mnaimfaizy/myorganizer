@@ -4,14 +4,12 @@ import {
   authSession,
   getCurrentUser,
   onSessionEnded,
+  type OutboundGuardOutcome,
   resolveOutboundGuard,
 } from '@myorganiser/auth';
-import {
-  ServerUnreachableNotice,
-  useRetryableCheck,
-} from '@myorganiser/web-ui';
+import { type GateDecision, RetryableGate } from '@myorganiser/web-ui';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import { type ReactNode } from 'react';
 
 import { isPlatformAdmin } from '../lib/isPlatformAdmin';
 
@@ -19,58 +17,37 @@ interface AdminGuardProps {
   children: ReactNode;
 }
 
-type GuardState = 'checking' | 'ready' | 'unavailable';
+// Same outcome table as DashboardGuard. The two live in separate page libs,
+// which cannot import each other.
+const outcomeDecision = {
+  allow: { kind: 'allow' },
+  redirect_login: { kind: 'redirect', to: '/login' },
+  restore_unavailable: { kind: 'unavailable' },
+} as const satisfies Record<OutboundGuardOutcome['kind'], GateDecision>;
+
+// The outbound guard decides the Session; the platform-admin check layers on
+// top of an allowed Session.
+async function checkPlatformAdmin(): Promise<GateDecision> {
+  const outcome = await resolveOutboundGuard(authSession);
+  const decision = outcomeDecision[outcome.kind];
+  if (decision.kind !== 'allow') return decision;
+
+  return isPlatformAdmin(getCurrentUser())
+    ? decision
+    : { kind: 'redirect', to: '/dashboard' };
+}
 
 export default function AdminGuard({ children }: AdminGuardProps) {
   const router = useRouter();
-  const [state, setState] = useState<GuardState>('checking');
 
-  const handleOutcome = useCallback(
-    (outcome: Awaited<ReturnType<typeof resolveOutboundGuard>>) => {
-      if (outcome.kind === 'redirect_login') {
-        setState('checking');
-        router.replace('/login');
-        return;
-      }
-
-      if (outcome.kind === 'restore_unavailable') {
-        setState('unavailable');
-        return;
-      }
-
-      if (isPlatformAdmin(getCurrentUser())) {
-        setState('ready');
-      } else {
-        setState('checking');
-        router.replace('/dashboard');
-      }
-    },
-    [router],
+  return (
+    <RetryableGate
+      check={checkPlatformAdmin}
+      navigate={router.replace}
+      subscribeToEnd={onSessionEnded}
+      endedRedirect="/login"
+    >
+      {children}
+    </RetryableGate>
   );
-
-  const { retry, retrying } = useRetryableCheck(
-    () => resolveOutboundGuard(authSession),
-    handleOutcome,
-    { retryOnReconnect: state === 'unavailable' },
-  );
-
-  // Once the shell is shown or the server is unreachable, a Session ended by a
-  // refused refresh or by another window signing out must stop the shell
-  // rendering before the router navigates away.
-  useEffect(() => {
-    if (state === 'checking') return undefined;
-
-    return onSessionEnded(() => {
-      setState('checking');
-      router.replace('/login');
-    });
-  }, [state, router]);
-
-  if (state === 'unavailable') {
-    return <ServerUnreachableNotice onRetry={retry} retrying={retrying} />;
-  }
-
-  if (state !== 'ready') return null;
-
-  return children;
 }
