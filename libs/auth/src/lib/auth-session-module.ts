@@ -81,7 +81,7 @@ export interface AuthSessionModule {
   getAuthApi(): AuthenticationApi;
   /**
    * Subscribe to the Session ending without this window asking for it: the
-   * server refused a token refresh (HTTP 401 or 403), or another window of
+   * server refused a token refresh (a 4xx other than 408 or 429), or another window of
    * this browser signed out. The Session is already cleared when the listener
    * runs. Returns the function that unsubscribes.
    *
@@ -157,10 +157,13 @@ export function createAuthSessionModule(deps: {
         await refreshSessionViaTransport();
         return { kind: 'authenticated' };
       } catch (err) {
-        storage.clearSession();
-        if (isRefreshRejectedByServer(err)) {
-          sessionEnded.emit({ reason: 'refresh_rejected' });
+        // A refresh that could not be completed is no evidence the Session
+        // ended; leave what is stored for the next attempt (#1082).
+        if (!isRefreshRejectedByServer(err)) {
+          return { kind: 'not_restored' };
         }
+        storage.clearSession();
+        sessionEnded.emit({ reason: 'refresh_rejected' });
         return { kind: 'session_cleared' };
       }
     },

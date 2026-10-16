@@ -138,7 +138,7 @@ describe('createAuthSessionModule', () => {
       expect(listener).not.toHaveBeenCalled();
     });
 
-    it.each([401, 403])(
+    it.each([401, 403, 422])(
       'clears a token that has no user and signals session ended when refresh is rejected with %i',
       async (status) => {
         mockStorage.getAccessToken.mockReturnValue('stale-tab-token');
@@ -178,9 +178,17 @@ describe('createAuthSessionModule', () => {
 
     it.each([
       ['a network failure with no response', new Error('Network Error')],
-      ['a server error', httpError(500)],
+      [
+        'a timeout with no response',
+        Object.assign(new Error('timeout of 0ms exceeded'), {
+          code: 'ECONNABORTED',
+          isAxiosError: true,
+        }),
+      ],
+      ['a service unavailable', httpError(503)],
+      ['a rate limit', httpError(429)],
     ])(
-      'does not signal session ended when refresh fails with %s',
+      'keeps the stored session and returns not_restored when refresh cannot be completed (%s)',
       async (_label, failure) => {
         mockStorage.getAccessToken.mockReturnValue('stale-tab-token');
         mockStorage.getCurrentUser.mockReturnValue(undefined);
@@ -192,10 +200,10 @@ describe('createAuthSessionModule', () => {
 
         const result = await module.restoreSession();
 
-        // Unchanged restore-path behaviour: any failed refresh clears. Only
-        // the signal is reserved for a refusal by the server (#1082).
-        expect(result).toEqual({ kind: 'session_cleared' });
-        expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
+        // Only a refusal by the server ends the Session (#1082). A refresh
+        // that never got an answer leaves it for a later attempt.
+        expect(result).toEqual({ kind: 'not_restored' });
+        expect(mockStorage.clearSession).not.toHaveBeenCalled();
         expect(listener).not.toHaveBeenCalled();
       },
     );
@@ -229,19 +237,17 @@ describe('createAuthSessionModule', () => {
       );
     });
 
-    it('clears session and returns session_cleared on refresh failure', async () => {
+    it('clears session and returns session_cleared when the refresh is rejected', async () => {
       mockStorage.getAccessToken.mockReturnValue(undefined);
       mockStorage.getCurrentUser.mockReturnValue(mockUser);
 
       const mockAuthApi = mockTransport.getAuthApi();
-      (mockAuthApi.refreshToken as jest.Mock).mockRejectedValue(
-        new Error('Refresh failed'),
-      );
+      (mockAuthApi.refreshToken as jest.Mock).mockRejectedValue(httpError(401));
 
       const result = await module.restoreSession();
 
       expect(result).toEqual({ kind: 'session_cleared' });
-      expect(mockStorage.clearSession).toHaveBeenCalled();
+      expect(mockStorage.clearSession).toHaveBeenCalledTimes(1);
     });
   });
 

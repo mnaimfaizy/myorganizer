@@ -99,7 +99,7 @@ still has a recoverable identity on disk. That is the `restorable` session state
   2. Updates stored access token
   3. Retries the original request once
 
-If refresh fails, the session is cleared.
+If the server refuses the refresh (a 4xx other than `408` or `429`), the session is cleared and the session-ended signal fires once. A refresh that could not be completed — no response, a timeout, a `5xx`, `408` or `429` — keeps the session: the request rejects with the refresh error and the next `401` tries the refresh again.
 
 ## Configuration
 
