@@ -12710,7 +12710,7 @@
       "start": "        const res = await fetch(`${apiBase}/auth/verify/email`, {",
       "end": "          method: 'PATCH',"
     },
-    "auth-session-transport-adapter.ts:140-142": {
+    "auth-session-transport-adapter.ts:138-140": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "            storage.clearSession();",
       "end": "              sessionEnded?.emit({ reason: 'refresh_rejected' });"
@@ -12745,22 +12745,22 @@
       "start": "    getSnapshot(): SessionSnapshot {",
       "end": "      return { status: 'guest' };"
     },
-    "auth-session-transport-adapter.ts:106": {
+    "auth-session-transport-adapter.ts:104": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "        if (originalRequest._retry) {",
       "end": "        if (originalRequest._retry) {"
     },
-    "auth-session-transport-adapter.ts:125": {
+    "auth-session-transport-adapter.ts:123": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "          if (!refreshInFlight) {",
       "end": "          if (!refreshInFlight) {"
     },
-    "auth-session-transport-adapter.ts:67-70": {
+    "auth-session-transport-adapter.ts:65-68": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "      url.includes('/auth/login') ||",
       "end": "      url.includes('/auth/verify/resend')"
     },
-    "auth-session-transport-adapter.ts:94-162": {
+    "auth-session-transport-adapter.ts:92-160": {
       "file": "libs/auth/src/lib/auth-session-transport-adapter.ts",
       "start": "    instance.interceptors.response.use(",
       "end": "        return instance(originalRequest);"
@@ -14400,17 +14400,17 @@ data:  { password: hash, reset_password_token: null }
                 </div>
                 <p class="card-body">
                   Single-flight via <code>refreshInFlight</code>
-                  (<code>auth-session-transport-adapter.ts:125</code>), exactly
+                  (<code>auth-session-transport-adapter.ts:123</code>), exactly
                   one retry via <code>_retry</code>
-                  (<code>auth-session-transport-adapter.ts:106</code>), and an
+                  (<code>auth-session-transport-adapter.ts:104</code>), and an
                   exclusion list
-                  (<code>auth-session-transport-adapter.ts:67-70</code>) so a
+                  (<code>auth-session-transport-adapter.ts:65-68</code>) so a
                   401 from <code>/auth/login</code> never starts a refresh loop.
                   When the server itself refuses the refresh — any 4xx other
                   than 408 or 429 — the interceptor clears the stored session
                   and emits a session-ended signal, reason
                   <code>refresh_rejected</code>
-                  (<code>auth-session-transport-adapter.ts:140-142</code>);
+                  (<code>auth-session-transport-adapter.ts:138-140</code>);
                   <code>restoreSession</code> does the same
                   (<code>auth-session-module.ts:159-167</code>). A refresh with
                   no server answer, a 5xx, 408 or 429 keeps the session and
@@ -14429,7 +14429,7 @@ data:  { password: hash, reset_password_token: null }
                   in, and on the signal stop rendering and
                   <code>router.replace('/login')</code>.
                   <span class="text-muted"
-                    >auth-session-transport-adapter.ts:94-162</span
+                    >auth-session-transport-adapter.ts:92-160</span
                   >
                 </p>
               </div>
@@ -14636,7 +14636,7 @@ data:  { password: hash, reset_password_token: null }
           settles: 'Why a burst of stale requests does not stampede.', state: 'authenticated',
           body: 'The access token expires silently; the next two requests both get 401. The interceptor de-duplicates them through a single in-flight promise, retries each original request exactly once, and never refreshes for a 401 that came from an excluded auth path.',
           code: 'refreshInFlight ??= refresh()   // :125 single-flight\nif (config._retry) throw err    // :106 one retry only\nEXCLUDED = [/auth/login, …]     // :67-70',
-          refs: ['auth-session-transport-adapter.ts:94-162'],
+          refs: ['auth-session-transport-adapter.ts:92-160'],
           flow: [{ t: '401 ×2' }, { t: '1 × /auth/refresh', good: true }, { t: 'replay both' }],
           tokens: [
             tok('access', 'access #1', 30, 42, 'expired', 'exp reached — no revocation involved, just time'),
