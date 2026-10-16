@@ -1,4 +1,7 @@
 name: Deploy Staging
+
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 # `release:cut` reads the commit a run uploaded out of this name, by looking
 # for a 40-character SHA (tools/scripts/lib/staging-host-apply-guard.mjs), so
 # the name may only carry a commit the run is certain to upload.
@@ -69,7 +72,7 @@ jobs:
   # does not read this job.
   select:
     name: Select Commit
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # One number for every job in the `staging` environment: the release
     # pipeline page states a single Staging timeout. Each request below is
     # bounded on its own.
@@ -142,7 +145,7 @@ jobs:
     if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}
     needs: select
     name: Prepare Dependency Cache
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     concurrency:
       group: deploy-staging
@@ -182,7 +185,7 @@ jobs:
   deploy-backend:
     if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}
     needs: [select, prepare-dependencies]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: staging
     # Shares `deploy-staging-apply` with host-apply, and never cancels:
@@ -277,7 +280,7 @@ jobs:
   host-apply:
     needs: deploy-backend
     if: ${{ always() && github.event_name == 'workflow_dispatch' && (needs.deploy-backend.result == 'success' || inputs.apply_only) }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: staging
     concurrency:
@@ -395,7 +398,7 @@ jobs:
   deploy-frontend:
     if: ${{ needs.select.outputs.proceed == 'true' && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && !inputs.apply_only)) }}
     needs: [select, prepare-dependencies, deploy-backend]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     environment: staging
     # Its own group, and never cancels: the job writes the web app's tree over

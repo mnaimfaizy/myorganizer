@@ -1,5 +1,7 @@
 name: Golden Replay
 
+# runs-on is pinned to ubuntu-24.04. See docs/deployment/CI_CD_AND_RELEASE_PROCESS.md#runner-image.
+
 # Replays the code reviewer against the golden set (ADR 0071, Consequences):
 # commit ranges from this repository's own history in which a documented
 # incident was merged, and the finding a reviewer should have raised, or
@@ -76,7 +78,7 @@ concurrency:
 jobs:
   cases:
     name: Golden cases
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # A label other than the Request Label is not a request.
     if: github.event_name != 'pull_request' || github.event.label.name == 'golden-replay'
@@ -214,7 +216,7 @@ jobs:
 
   replay:
     name: Replay ${{ matrix.case }} (${{ matrix.repetition }})
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     needs: cases
     if: needs.cases.outputs.has_key == 'true'
@@ -606,7 +608,7 @@ jobs:
 
   verdict:
     name: Golden Replay
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [cases, replay]
     # A label other than golden-replay skipped the cases job; that is not a
@@ -649,7 +651,7 @@ jobs:
   # reasoning, applied here to a commit rather than a GitHub API token).
   record-results:
     name: Record golden replay results
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     needs: [cases, replay]
     if: always() && github.event_name == 'schedule' && needs.cases.outputs.has_key == 'true'
@@ -719,7 +721,7 @@ jobs:
   # item 8). A fork's token could not remove it anyway, hence the || true.
   reset-label:
     name: Reset the golden-replay label
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     needs: [cases, replay]
     if: always() && github.event_name == 'pull_request' && github.event.label.name == 'golden-replay'
