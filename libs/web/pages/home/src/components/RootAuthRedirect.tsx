@@ -5,6 +5,8 @@ import { useRetryableCheck } from '@myorganiser/web-ui';
 import { useRouter } from 'next/navigation';
 import { type ReactNode, useCallback, useState } from 'react';
 
+import { LandingSessionProvider } from './LandingSessionProvider';
+
 type GateState = 'checking' | 'redirecting' | 'guest' | 'unavailable';
 
 interface RootAuthRedirectProps {
@@ -35,8 +37,15 @@ export default function RootAuthRedirect(props: RootAuthRedirectProps) {
     retryOnReconnect: state === 'unavailable',
   });
 
-  // Guests and restore-unavailable Sessions both see the landing page.
+  // Guests and restore-unavailable Sessions both see the landing page. The
+  // provider tells the landing nav which of the two it is showing.
   if (state !== 'guest' && state !== 'unavailable') return null;
 
-  return props.children;
+  return (
+    <LandingSessionProvider
+      view={state === 'unavailable' ? 'session_kept' : 'guest'}
+    >
+      {props.children}
+    </LandingSessionProvider>
+  );
 }

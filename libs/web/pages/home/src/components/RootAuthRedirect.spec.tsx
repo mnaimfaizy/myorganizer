@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import RootAuthRedirect from './RootAuthRedirect';
+import { LandingNavActions } from './LandingNavActions';
 import { resolveInboundGuard } from '@myorganiser/auth';
 
 describe('RootAuthRedirect', () => {
@@ -59,6 +60,28 @@ describe('RootAuthRedirect', () => {
     expect(screen.getByText('landing')).toBeInTheDocument();
   });
 
+  it('should offer the guest sign-in links in the landing nav when guest', async () => {
+    mockResolveInboundGuard.mockResolvedValue({ kind: 'show_guest' });
+
+    render(
+      <RootAuthRedirect>
+        <LandingNavActions />
+      </RootAuthRedirect>,
+    );
+
+    expect(await screen.findByRole('link', { name: 'Login' })).toHaveAttribute(
+      'href',
+      '/login',
+    );
+    expect(screen.getByRole('link', { name: 'Get Started' })).toHaveAttribute(
+      'href',
+      '/signup',
+    );
+    expect(
+      screen.queryByRole('link', { name: 'Open dashboard' }),
+    ).not.toBeInTheDocument();
+  });
+
   describe('when the restore is unavailable', () => {
     function setVisibilityState(state: 'visible' | 'hidden') {
       Object.defineProperty(document, 'visibilityState', {
@@ -80,6 +103,29 @@ describe('RootAuthRedirect', () => {
 
     afterEach(() => {
       setVisibilityState('visible');
+    });
+
+    it('should offer Open dashboard instead of sign-in links in the landing nav', async () => {
+      mockResolveInboundGuard.mockResolvedValue({
+        kind: 'restore_unavailable',
+      });
+
+      render(
+        <RootAuthRedirect>
+          <LandingNavActions />
+        </RootAuthRedirect>,
+      );
+
+      expect(
+        await screen.findByRole('link', { name: 'Open dashboard' }),
+      ).toHaveAttribute('href', '/dashboard');
+      expect(
+        screen.queryByRole('link', { name: 'Login' }),
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole('link', { name: 'Get Started' }),
+      ).not.toBeInTheDocument();
+      expect(mockReplace).not.toHaveBeenCalled();
     });
 
     it('should show the landing page without redirecting', async () => {

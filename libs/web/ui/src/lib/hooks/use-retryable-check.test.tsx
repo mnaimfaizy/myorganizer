@@ -4,14 +4,17 @@ import { useRetryableCheck } from './use-retryable-check';
 interface Deferred<T> {
   promise: Promise<T>;
   resolve: (value: T) => void;
+  reject: (reason: unknown) => void;
 }
 
 function createDeferred<T>(): Deferred<T> {
   let resolve: (value: T) => void = () => undefined;
-  const promise = new Promise<T>((res) => {
+  let reject: (reason: unknown) => void = () => undefined;
+  const promise = new Promise<T>((res, rej) => {
     resolve = res;
+    reject = rej;
   });
-  return { promise, resolve };
+  return { promise, resolve, reject };
 }
 
 interface CheckProps {
@@ -34,6 +37,12 @@ describe('useRetryableCheck', () => {
   async function settle(index: number, value: string) {
     await act(async () => {
       pending[index].resolve(value);
+    });
+  }
+
+  async function rejectAt(index: number, reason: unknown) {
+    await act(async () => {
+      pending[index].reject(reason);
     });
   }
 
@@ -134,6 +143,67 @@ describe('useRetryableCheck', () => {
 
     unmount();
     await settle(0, 'late');
+
+    expect(check).toHaveBeenCalledTimes(1);
+    expect(onResult).not.toHaveBeenCalled();
+  });
+
+  it('treats a rejected mount check as settled with no result, then retry re-runs it', async () => {
+    const { result, check, onResult } = renderCheckHook();
+
+    await rejectAt(0, new Error('offline'));
+
+    expect(onResult).not.toHaveBeenCalled();
+    expect(result.current.retrying).toBe(false);
+
+    act(() => {
+      result.current.retry();
+    });
+
+    expect(check).toHaveBeenCalledTimes(2);
+    expect(result.current.retrying).toBe(true);
+
+    await settle(1, 'recovered');
+
+    expect(result.current.retrying).toBe(false);
+    expect(onResult).toHaveBeenCalledTimes(1);
+    expect(onResult).toHaveBeenCalledWith('recovered');
+  });
+
+  it('clears retrying when a retry rejects, and a later retry runs the check again', async () => {
+    const { result, check, onResult } = renderCheckHook();
+    await settle(0, 'first');
+
+    act(() => {
+      result.current.retry();
+    });
+    expect(result.current.retrying).toBe(true);
+
+    await rejectAt(1, new Error('timeout'));
+
+    expect(result.current.retrying).toBe(false);
+    expect(onResult).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      result.current.retry();
+    });
+
+    expect(check).toHaveBeenCalledTimes(3);
+    expect(result.current.retrying).toBe(true);
+
+    await settle(2, 'third');
+
+    expect(result.current.retrying).toBe(false);
+    expect(onResult).toHaveBeenCalledTimes(2);
+    expect(onResult).toHaveBeenLastCalledWith('third');
+  });
+
+  it('neither calls onResult nor throws when a check rejects after unmount', async () => {
+    const { unmount, check, onResult } = renderCheckHook();
+
+    unmount();
+
+    await expect(rejectAt(0, new Error('late'))).resolves.toBeUndefined();
 
     expect(check).toHaveBeenCalledTimes(1);
     expect(onResult).not.toHaveBeenCalled();

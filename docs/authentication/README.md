@@ -105,13 +105,13 @@ If the server refuses the refresh (a 4xx other than `408` or `429`), the session
 
 On load, the route guards in `@myorganiser/auth` (`resolveOutboundGuard` for `/dashboard` and `/admin`, `resolveInboundGuard` for the landing page) restore a `restorable` session before deciding what to show:
 
-| Restore result                                 | Protected page (`DashboardGuard`, `AdminGuard`) | Landing page (`RootAuthRedirect`) |
-| ---------------------------------------------- | ----------------------------------------------- | --------------------------------- |
-| Restored                                       | Shows the page                                  | Redirects to `/dashboard`         |
-| Server refused the refresh (session cleared)   | Redirects to `/login`                           | Shows the landing page            |
-| Could not be completed (`restore_unavailable`) | Shows a "Can't reach the server" notice         | Shows the landing page            |
+| Restore result                                 | Protected page (`DashboardGuard`, `AdminGuard`) | Landing page (`RootAuthRedirect`)                                                       |
+| ---------------------------------------------- | ----------------------------------------------- | --------------------------------------------------------------------------------------- |
+| Restored                                       | Shows the page                                  | Redirects to `/dashboard`                                                               |
+| Server refused the refresh (session cleared)   | Redirects to `/login`                           | Shows the landing page                                                                  |
+| Could not be completed (`restore_unavailable`) | Shows a "Can't reach the server" notice         | Shows the landing page, with **Open dashboard** in place of **Login** / **Get Started** |
 
-A refresh that could not be completed leaves a Restorable Session, which is not a Guest and is never sent to sign-in. The guard retries the restore when the user presses **Try again**, when the browser comes back online, and when the window regains focus or becomes visible, then acts on the new result.
+A refresh that could not be completed leaves a Restorable Session, which is not a Guest and is never sent to sign-in. The guard retries the restore when the user presses **Try again**, when the browser comes back online, and when the window regains focus or becomes visible, then acts on the new result. The landing page offers no sign-in link while the restore is unavailable.
 
 ## Configuration
 

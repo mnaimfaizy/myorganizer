@@ -286,7 +286,7 @@ describe('DashboardGuard', () => {
 
       fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
 
-      const pendingButton = screen.getByRole('button', { name: 'Try again' });
+      const pendingButton = screen.getByRole('button', { name: 'Retrying…' });
       expect(pendingButton).toBeDisabled();
       expect(pendingButton).toHaveAttribute('aria-busy', 'true');
 

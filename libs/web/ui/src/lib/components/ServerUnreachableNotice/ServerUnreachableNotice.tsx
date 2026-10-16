@@ -48,7 +48,7 @@ const ServerUnreachableNotice = React.forwardRef<
       </CardHeader>
       <CardFooter className="justify-center">
         <Button onClick={onRetry} disabled={retrying} aria-busy={retrying}>
-          Try again
+          {retrying ? 'Retrying…' : 'Try again'}
         </Button>
       </CardFooter>
     </Card>

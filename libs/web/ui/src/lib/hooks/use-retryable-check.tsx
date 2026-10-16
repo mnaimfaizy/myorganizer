@@ -22,6 +22,10 @@ export interface UseRetryableCheckResult {
  * settled result to `onResult`. A check that settles after unmount still clears
  * the in-flight flag but does not call `onResult`.
  *
+ * A check that rejects is treated as settled with no result: `onResult` is not
+ * called, the in-flight and `retrying` flags clear, and a later `retry()` runs
+ * the check again. The rejection is not rethrown.
+ *
  * `retry()` is ignored while a check is in flight, including the initial mount
  * check. `retrying` is true only for a retry-initiated check, not the mount
  * check. `check` and `onResult` are read through refs, so callers need not
@@ -49,7 +53,15 @@ export function useRetryableCheck<T>(
     let cancelled = false;
 
     async function runCheck() {
-      const result = await checkRef.current();
+      let result: T;
+      try {
+        result = await checkRef.current();
+      } catch {
+        // A rejected check settles with no result (see the JSDoc above).
+        inFlightRef.current = false;
+        setRetrying(false);
+        return;
+      }
       inFlightRef.current = false;
       setRetrying(false);
 

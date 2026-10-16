@@ -23,6 +23,7 @@ import {
 } from '@myorganiser/design-tokens';
 import { AppLogo } from '@myorganiser/web-ui';
 
+import { LandingNavActions } from './LandingNavActions';
 import MobileMenu from './MobileMenu';
 import Reveal from './Reveal';
 
@@ -144,20 +145,7 @@ function TopNav() {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <Link
-            href="/login"
-            className="hidden text-sm font-semibold transition-colors hover:opacity-80 md:inline-block"
-            style={{ color: palette.muted }}
-          >
-            Login
-          </Link>
-          <Link
-            href="/signup"
-            className="mo-btn-shimmer hidden rounded-lg px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90 md:inline-block"
-            style={{ background: palette.primary }}
-          >
-            Get Started
-          </Link>
+          <LandingNavActions />
           <MobileMenu
             links={navLinks}
             palette={{
