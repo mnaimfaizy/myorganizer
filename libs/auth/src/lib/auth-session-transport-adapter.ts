@@ -8,10 +8,8 @@ import {
   buildRefreshTokenRequest,
   shouldSendCredentials,
 } from './refresh-client-contract';
-import {
-  isRefreshRejectedByServer,
-  type SessionEndedSignal,
-} from './session-ended-signal';
+import { isRefreshRejectedByServer } from './refresh-rejection';
+import type { SessionEndedSignal } from './session-ended-signal';
 
 export interface AuthSessionTransportAdapter {
   getAuthAxios(): AxiosInstance;
