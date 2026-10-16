@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
 
   title: {
-    default: 'MyOrganiser – Organize Your Life, Secure Your Data',
+    default: 'MyOrganiser – Organise Your Life, Secure Your Data',
     template: '%s | MyOrganiser',
   },
   description:
@@ -54,10 +54,10 @@ export const metadata: Metadata = {
 
   openGraph: {
     type: 'website',
-    locale: 'en_US',
+    locale: 'en_AU',
     url: '/',
     siteName: 'MyOrganiser',
-    title: 'MyOrganiser – Organize Your Life, Secure Your Data',
+    title: 'MyOrganiser – Organise Your Life, Secure Your Data',
     description:
       'The all-in-one workspace for tasks, addresses, contacts, and personal info—protected by client-side end-to-end encryption.',
     images: [
@@ -72,7 +72,7 @@ export const metadata: Metadata = {
 
   twitter: {
     card: 'summary_large_image',
-    title: 'MyOrganiser – Organize Your Life, Secure Your Data',
+    title: 'MyOrganiser – Organise Your Life, Secure Your Data',
     description:
       'The all-in-one workspace for tasks, addresses, contacts, and personal info—protected by client-side end-to-end encryption.',
     images: ['/images/og-image.png'],
