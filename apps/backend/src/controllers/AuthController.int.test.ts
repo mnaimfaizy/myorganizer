@@ -13,7 +13,6 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import request from 'supertest';
 import { ACCESS_TOKEN_EXPIRES_IN_MS } from '../helpers/tokenLifetimes';
-import { attachTsoaErrorHandler } from '../testing/tsoaErrorHandler';
 
 jest.setTimeout(30_000);
 
@@ -254,6 +253,7 @@ function makeApp() {
 
   const { RegisterRoutes } = require('../routes/routes');
   const passport = require('../utils/passport').default;
+  const { attachTsoaErrorHandler } = require('../testing/tsoaErrorHandler');
 
   const app = express();
   app.use(cookieParser());
@@ -761,6 +761,49 @@ describe('Auth HTTP routes (HTTP integration)', () => {
       expect(userService.update).toHaveBeenCalledTimes(1);
       expect(userService.create).not.toHaveBeenCalled();
     });
+    test('returns 422 Validation Failed when firstName is an empty string', async () => {
+      const userService = require('../services/UserService').default;
+
+      const res = await request(app).post('/auth/register').send({
+        firstName: '',
+        lastName: 'Example',
+        email: 'new@example.com',
+        password: 'test-pass-1',
+      });
+
+      expect(res.status).toBe(422);
+      expect(res.body.message).toBe('Validation Failed');
+      expect(res.body.details).toEqual({
+        firstName: {
+          message: 'First name is required',
+          value: 'too_small',
+        },
+      });
+      expect(userService.getByEmail).not.toHaveBeenCalled();
+      expect(userService.create).not.toHaveBeenCalled();
+      expect(userService.sendVerificationMail).not.toHaveBeenCalled();
+    });
+
+    test('returns 422 Validation Failed when password is missing', async () => {
+      const userService = require('../services/UserService').default;
+
+      const res = await request(app).post('/auth/register').send({
+        firstName: 'Bob',
+        lastName: 'Example',
+        email: 'new@example.com',
+      });
+
+      expect(res.status).toBe(422);
+      expect(res.body.message).toBe('Validation Failed');
+      expect(res.body.details).toEqual({
+        'requestBody.password': {
+          message: "'password' is required",
+        },
+      });
+      expect(userService.getByEmail).not.toHaveBeenCalled();
+      expect(userService.create).not.toHaveBeenCalled();
+      expect(userService.sendVerificationMail).not.toHaveBeenCalled();
+    });
   });
 
   describe('PATCH /auth/verify/email', () => {
@@ -787,6 +830,23 @@ describe('Auth HTTP routes (HTTP integration)', () => {
         email_verification_timestamp: expect.any(Date),
         email_verification_token: null,
       });
+    });
+    test('returns 422 Validation Failed when token is an empty string', async () => {
+      const userService = require('../services/UserService').default;
+
+      const res = await request(app)
+        .patch('/auth/verify/email')
+        .send({ token: '' });
+
+      expect(res.status).toBe(422);
+      expect(res.body.message).toBe('Validation Failed');
+      expect(res.body.details).toEqual({
+        token: {
+          message: 'Token field is required',
+          value: 'too_small',
+        },
+      });
+      expect(userService.update).not.toHaveBeenCalled();
     });
   });
 
@@ -1020,6 +1080,25 @@ describe('Auth HTTP routes (HTTP integration)', () => {
 
       expect(res.status).toBe(500);
       expect(res.body).toEqual({ message: 'Failed to reset password' });
+      expect(userService.update).not.toHaveBeenCalled();
+    });
+    test('returns 422 Validation Failed when email is not valid', async () => {
+      const userService = require('../services/UserService').default;
+
+      const res = await request(app)
+        .post('/auth/password/reset')
+        .send({ email: 'not-an-email' });
+
+      expect(res.status).toBe(422);
+      expect(res.body.message).toBe('Validation Failed');
+      expect(res.body.details).toEqual({
+        email: {
+          message: 'Invalid email address',
+          value: 'invalid_format',
+        },
+      });
+      expect(userService.getByEmail).not.toHaveBeenCalled();
+      expect(userService.sendPasswordResetMail).not.toHaveBeenCalled();
       expect(userService.update).not.toHaveBeenCalled();
     });
   });
