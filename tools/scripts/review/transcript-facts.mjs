@@ -37,6 +37,11 @@ export const NOT_A_STANDARDS_SOURCE = Object.freeze([
 /** The tool names a sub-agent dispatch has gone by across CLI versions. */
 const DISPATCH_TOOLS = new Set(['Agent', 'Task']);
 
+// From CLI 2.1.301 a sub-agent can end by calling this tool with its report
+// as `message`. The dispatch's own tool_result then holds only a pointer to
+// that call, so the report is read from the call (run 38809002623).
+const HANDBACK_TOOL = 'SubagentHandback';
+
 const isObject = (v) => typeof v === 'object' && v !== null;
 
 /**
@@ -439,6 +444,15 @@ export const readTranscriptFacts = (text, { index = null } = {}) => {
       )
         replies.set(block.tool_use_id, block.content);
     }
+  }
+  // A hand-back call is the sub-agent's report itself, so it replaces the
+  // pointer the dispatch returned. The last one wins, as a retry's would.
+  for (const id of dispatches.keys()) {
+    const handback = (childCalls.get(id) ?? []).findLast(
+      (call) =>
+        call.name === HANDBACK_TOOL && typeof call.input?.message === 'string',
+    );
+    if (handback) replies.set(id, handback.input.message);
   }
 
   const attributed = [...dispatches.keys()].filter((id) => childCalls.has(id));

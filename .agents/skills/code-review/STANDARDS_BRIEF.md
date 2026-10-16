@@ -240,6 +240,12 @@ You run the commands in this review, so these rules are yours.
   project, so run it with `node --test <file>`: a package script that wraps it, the one
   `AGENTS.md` documents included, is refused (issue #1058). A throwaway reproduction goes in
   `git worktree add tmp/code-review/worktree HEAD`. Nothing from it is committed or pushed.
+- **In CI, some paths in the checkout are the base branch's.** Before you start,
+  `anthropics/claude-code-action` restores `.claude/`, `CLAUDE.md`, `.husky/`, `.mcp.json` and
+  a few other config paths from the base branch. A command run in the checkout sees the base
+  versions of those paths, while `git diff`, `git show <sha>:<path>` and the throwaway worktree
+  see the head. A check that fails in the checkout only on those paths is not a defect at head
+  (run 38809002623): run it again in the worktree before you report it.
 - **Executed evidence quotes what you ran.** `command` is the command as you ran it and `exitCode`
   is the code it returned. In CI both are compared with the transcript of your tool calls, and
   evidence for a command you did not run, or with a code it did not return, fails the check
