@@ -55,6 +55,20 @@ jobs:
         with:
           node-version: '22'
 
+      # Corepack downloads the pinned Yarn from repo.yarnpkg.com on first use.
+      # A connect timeout there failed the chromium leg on 2026-10-13 before a
+      # single test ran, and opened a rot report for a suite that had not
+      # rotted (#1137). The suite is strict about flakiness; the network it
+      # fetches tooling over is not the suite, so only this fetch retries.
+      - name: Fetch Yarn
+        run: |
+          for attempt in 1 2; do
+            corepack yarn --version && exit 0
+            echo "Yarn fetch attempt ${attempt} failed; retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
+          corepack yarn --version
+
       - name: Install dependencies
         run: corepack yarn install --immutable
 
