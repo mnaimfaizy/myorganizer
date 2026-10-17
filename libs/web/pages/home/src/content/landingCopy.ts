@@ -19,6 +19,15 @@ import type { FeatureKey } from './featureClips';
 // Landing copy. Every claim here must stay factual: no ads and no analytics
 // (ADR 0129), no testimonials, no invented figures. YouTube is never mentioned.
 
+// The public source repository. The licence is Elastic License 2.0, which is
+// source-available and not OSI open source, so copy must never call it open source.
+export const GITHUB_REPO_URL = 'https://github.com/mnaimfaizy/myorganiser';
+export const GITHUB_NAV_LABEL = 'MyOrganiser on GitHub';
+export const PUBLIC_CODE_HEADING = "Don't take our word for it.";
+export const PUBLIC_CODE_TEXT =
+  'The code is public on GitHub — including the in-browser encryption.';
+export const PUBLIC_CODE_CTA = 'View the code on GitHub';
+
 export interface NavLink {
   href: string;
   label: string;
@@ -216,6 +225,11 @@ export const FAQ_ITEMS: FaqItem[] = [
       'No. Your vault is encrypted in your browser before it is uploaded. Our servers store ciphertext they cannot decrypt, and not even a platform administrator can open it.',
   },
   {
+    question: 'Can I check how my data is encrypted?',
+    answer:
+      "Yes. MyOrganiser's source code is public on GitHub, including the encryption that runs in your browser.",
+  },
+  {
     question: 'What happens if I forget my passphrase?',
     answer:
       'When you create your vault you get a Recovery Key. It is shown once and only you keep it. It opens your vault if you forget your passphrase, and then you can set a new one. Without either, nobody — including us — can open your vault.',
@@ -253,6 +267,8 @@ export const FAQ_ITEMS: FaqItem[] = [
 export interface FooterLink {
   label: string;
   href: string;
+  /** Opens in a new tab with `rel="noopener noreferrer"`; rendered as a plain anchor. */
+  external?: boolean;
 }
 
 export interface FooterColumnCopy {
@@ -272,6 +288,7 @@ export const FOOTER_COLUMNS: FooterColumnCopy[] = [
       { label: 'Pricing', href: '#pricing' },
       { label: 'FAQ', href: '#faq' },
       { label: 'Mobile app', href: '/download' },
+      { label: 'GitHub', href: GITHUB_REPO_URL, external: true },
     ],
   },
   {

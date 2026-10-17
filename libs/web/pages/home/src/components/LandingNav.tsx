@@ -9,9 +9,14 @@ import {
   shadowPopover,
 } from '@myorganiser/design-tokens';
 import { AppLogo } from '@myorganiser/web-ui';
+import { Github } from 'lucide-react';
 import Link from 'next/link';
 
-import { NAV_LINKS } from '../content/landingCopy';
+import {
+  GITHUB_NAV_LABEL,
+  GITHUB_REPO_URL,
+  NAV_LINKS,
+} from '../content/landingCopy';
 import { LandingNavActions } from './LandingNavActions';
 import MobileMenu from './MobileMenu';
 
@@ -39,6 +44,15 @@ export function LandingNav() {
           ))}
         </div>
         <div className="flex items-center gap-2">
+          <a
+            href={GITHUB_REPO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={GITHUB_NAV_LABEL}
+            className="hidden h-9 w-9 items-center justify-center rounded-lg text-[color:var(--color-muted)] transition-colors hover:text-[color:var(--color-primary)] md:inline-flex"
+          >
+            <Github className="h-5 w-5" aria-hidden="true" />
+          </a>
           <LandingNavActions />
           <MobileMenu
             links={NAV_LINKS}

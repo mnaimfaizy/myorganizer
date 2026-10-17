@@ -63,6 +63,9 @@ import {
 import {
   FAQ_ITEMS,
   FREE_PLAN_CTA,
+  GITHUB_NAV_LABEL,
+  GITHUB_REPO_URL,
+  PUBLIC_CODE_CTA,
   RENTERS_HEADING,
   STAGE_CTA,
   STAGE_HEADLINE,
@@ -220,6 +223,44 @@ describe('LandingContent', () => {
       expect(href).not.toBe('#');
       expect(document.querySelector(href)).not.toBeNull();
     }
+  });
+
+  it('links to the public GitHub repository from the nav, the pillars, and the footer without calling it open source', () => {
+    render(<LandingContent />);
+
+    const expectOpensSafelyToRepo = (link: HTMLElement) => {
+      expect(link).toHaveAttribute('href', GITHUB_REPO_URL);
+      expect(link).toHaveAttribute('target', '_blank');
+      const rel = (link.getAttribute('rel') ?? '').split(' ');
+      expect(rel).toEqual(expect.arrayContaining(['noopener', 'noreferrer']));
+    };
+
+    const nav = screen.getByRole('navigation', { name: 'Main' });
+    expectOpensSafelyToRepo(
+      within(nav).getByRole('link', { name: GITHUB_NAV_LABEL }),
+    );
+    expectOpensSafelyToRepo(
+      screen.getByRole('link', { name: PUBLIC_CODE_CTA }),
+    );
+    expectOpensSafelyToRepo(
+      within(screen.getByRole('contentinfo')).getByRole('link', {
+        name: 'GitHub',
+      }),
+    );
+
+    // The licence is Elastic 2.0, source-available, so copy must not say open source.
+    expect(document.body.textContent ?? '').not.toMatch(/open[ -]source/i);
+  });
+
+  it('lists the encryption-check question in the FAQ', () => {
+    render(<LandingContent />);
+
+    expect(
+      within(sectionById('faq')).getByText(
+        'Can I check how my data is encrypted?',
+        { selector: 'summary' },
+      ),
+    ).toBeInTheDocument();
   });
 
   it('shows a copyright line for the current year', () => {
