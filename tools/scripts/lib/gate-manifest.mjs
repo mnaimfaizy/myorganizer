@@ -202,6 +202,18 @@ export const GATE_MANIFEST = [
     args: [],
   },
   {
+    id: 'web:app-icons:check',
+    npmScript: 'web:app-icons:check',
+    script: 'tools/scripts/check-web-app-icons.mjs',
+    args: [],
+  },
+  {
+    id: 'mobile:app-icon:check',
+    npmScript: 'mobile:app-icon:check',
+    script: 'tools/scripts/check-mobile-app-icon.mjs',
+    args: [],
+  },
+  {
     id: 'mobile-platform:check',
     npmScript: 'mobile-platform:check',
     script: 'tools/scripts/check-mobile-platform.mjs',
