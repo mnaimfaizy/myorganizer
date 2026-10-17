@@ -2,6 +2,7 @@
 
 import { clearAuthSession, getAccessToken, refresh } from '@myorganiser/auth';
 import { getApiBaseUrl } from '@myorganiser/core';
+import { requestYouTubeAvailabilityRecheck } from '@myorganiser/web-youtube';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { didSyncRequestRun } from '../lib/syncProgress';
 import type {
@@ -112,6 +113,9 @@ async function apiFetch<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
+    // A 404 may mean YouTube was taken away from this open page (ADR 0129);
+    // only the availability check can tell, so ask every page to make it.
+    if (res.status === 404) requestYouTubeAvailabilityRecheck();
     await throwFromResponse(res);
   }
   return res.json();
