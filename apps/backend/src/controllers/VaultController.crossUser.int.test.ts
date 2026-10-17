@@ -80,6 +80,14 @@ jest.mock('../services/YouTubeSyncService', () => ({
 }));
 
 function makeApp() {
+  // Other test suites may import the generated routes first, which would cache
+  // VaultService's module-load singleton without this file's prisma mock (the
+  // fake store). Resetting modules ensures require() re-evaluates with
+  // createPrismaClient() bound to `store`. This file is the only vault HTTP
+  // suite that keeps VaultService real; the siblings that mock the service
+  // already reset here (VaultController.int.test.ts).
+  jest.resetModules();
+
   const { RegisterRoutes } = require('../routes/routes');
 
   const app = express();
@@ -312,13 +320,26 @@ describe('Vault cross-user isolation (real service over a fake store)', () => {
     const bAddressesEtag = bRes.body.blobs[0]?.etag;
     expect(bAddressesEtag).not.toBe(aAddressesEtag);
 
-    // Verify by fetching the actual blob: B's blob has B's ciphertext, not A's
+    // Verify by fetching the actual blob: B's blob has B's ciphertext, not A's.
+    // Pin the fake-store oracle first: a 404 with a still-seeded row means the
+    // HTTP path did not read `store` (wrong singleton / cached routes), not a
+    // missing fixture. Issue #1169 saw this GET return 404 once under parallel
+    // nx load; isolation, --runInBand, and CPU-load repeats did not reproduce.
+    expect(store.readBlob('user-b', 'addresses')).not.toBeNull();
+
     const bBlobRes = await request(app)
       .get('/vault/blob/addresses')
       .set('Authorization', 'Bearer token-b');
 
-    expect(bBlobRes.status).toBe(200);
-    expect(bBlobRes.body.blob.ciphertext).toBe(B_CIPHERTEXT);
+    expect({
+      status: bBlobRes.status,
+      message: bBlobRes.body?.message,
+      ciphertext: bBlobRes.body?.blob?.ciphertext,
+    }).toEqual({
+      status: 200,
+      message: undefined,
+      ciphertext: B_CIPHERTEXT,
+    });
     expect(bBlobRes.body.blob.ciphertext).not.toBe(A_CIPHERTEXT);
   });
 });
