@@ -179,8 +179,8 @@ function ConnectedDashboard() {
   return (
     <div className="flex flex-1 flex-col gap-4 p-4 pt-0">
       <Card className="p-4">
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-start justify-between gap-4 sm:flex-nowrap">
+          <div className="flex flex-wrap items-center gap-4 sm:flex-nowrap">
             <CardTitle>Videos</CardTitle>
             <Button
               variant="ghost"
@@ -194,7 +194,7 @@ function ConnectedDashboard() {
               <Link href="/dashboard/youtube/channels">Channels</Link>
             </Button>
           </div>
-          <div className="flex items-start gap-2">
+          <div className="ml-auto flex flex-wrap items-start justify-end gap-2 sm:flex-nowrap">
             <SyncFreshnessIndicator status={syncStatus.status} />
 
             <Button
