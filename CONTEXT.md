@@ -41,7 +41,7 @@ A User blocked from authenticating. Disabling also ends their existing Sessions;
 _Avoid_: Banned user, suspended user, deactivated account, soft-deleted user
 
 **User Deletion**:
-A User's own, immediate, and irreversible removal of themselves and everything they own — Vault Ciphertext, Sessions, and third-party grants — offered after an Escape Copy. Not a Disabled User, and has no pending or recoverable state. The Admin Audit Log keeps its entries about the User, with the User removed from them.
+A User's own, immediate, and irreversible removal of themselves and everything they own — Vault Ciphertext, Sessions, and third-party grants — offered after an Escape Copy. Not a Disabled User, and has no pending or recoverable state. The Admin Audit Log keeps its entries about the User, and Feedback Reports keep their content, each with the User removed from them.
 _Avoid_: account deletion (in domain language), deactivation, closing an account, soft delete
 
 **Admin Audit Log**:
@@ -155,6 +155,52 @@ _Avoid_: marketing email, newsletter, alert, transactional email
 **Email Shell**:
 The shared frame every MyOrganiser email is rendered inside — logo, brand colours, typography, and footer. Each email supplies only its body and declares whether it is a Transactional Email or a Notification Email; the declaration is what decides the footer, so the shell can never put an unsubscribe link on mail a User must not opt out of.
 _Avoid_: email template, layout, wrapper, base template
+
+## Feedback
+
+**Feedback Report**:
+Something a signed-in User sends MyOrganiser about the product itself — a Bug Report or a Suggestion. It is plaintext the server can read, held on MyOrganiser's own infrastructure, and never part of a Vault: it must not carry vault contents, and nothing from the Vault is attached to it on the sender's behalf. It outlives User Deletion with the User removed from it, so it can still be fixed but its sender is never contacted again.
+_Avoid_: ticket, issue, support request, feedback item
+
+**Report Context**:
+The details attached to a Feedback Report besides what its sender typed — which app and version sent it, the browser and operating system, the page path without its query or fragment, and the time. It is shown to the sender before they send, and it never includes screenshots, logs, or anything read from the Vault.
+_Avoid_: diagnostics, telemetry, metadata, device info
+
+**Bug Report**:
+A Feedback Report saying something does not work as it should.
+_Avoid_: bug ticket, defect, issue
+
+**Suggestion**:
+A Feedback Report proposing an improvement or a new feature.
+_Avoid_: feature request, idea, enhancement
+
+**Tracking Issue**:
+The GitHub issue an admin links a Feedback Report to during triage. Many Feedback Reports may share one Tracking Issue; the Tracking Issue is what ties them to the fix, and through it to the Release that makes them Fixed.
+_Avoid_: linked issue, ticket, GitHub link
+
+**Fixed** (of a Bug Report):
+The Bug Report's cause is corrected in a Release, or for a Mobile App-only fault in a published Mobile Release. A merged fix that has not reached either is not yet Fixed, and a Mobile Release fix reaches a reporter only once they install it.
+_Avoid_: resolved, closed, done, merged
+
+**Shipped** (of a Suggestion):
+The Suggestion is delivered in a Release, or for a Mobile App-only change in a published Mobile Release. It is the Suggestion's counterpart of Fixed and is reached the same way, through its Tracking Issue.
+_Avoid_: done, implemented, released, completed
+
+**Report Status**:
+Where a Feedback Report stands as its reporter sees it — Received, Under review, Planned, Fixed or Shipped, Won't do, or Can't reproduce (Bug Reports only). There is no Duplicate status: a duplicate is simply another Feedback Report on the same Tracking Issue, and it moves through the same statuses as the first.
+_Avoid_: state, ticket status, resolution
+
+**Status Note**:
+A short message an admin attaches to a Report Status change for the reporter to read. Won't do and Can't reproduce always carry one.
+_Avoid_: admin comment, reply, response, resolution note
+
+**Follow-up**:
+The one extra message a reporter may add to their own Bug Report while it is Can't reproduce; sending it returns the report to Under review. There is no conversation beyond it.
+_Avoid_: reply, comment, thread, message
+
+**Fix Notice**:
+The Notification Email telling a reporter their Feedback Report is Fixed or Shipped, naming the Release that delivered it. A reporter receives one only if they opted in when sending the report; they can always see the same outcome in the app without it, and a User removed by User Deletion receives none.
+_Avoid_: fix email, resolution email, closed notification
 
 ## YouTube (focused watching)
 
