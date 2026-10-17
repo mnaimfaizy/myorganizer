@@ -2,11 +2,11 @@
 
 import { type ReactNode, useEffect, useRef } from 'react';
 
+import { REDUCED_MOTION_QUERY } from '../hooks/reduced-motion-query';
 import { LANDING_CSS } from '../styles/landingCss';
 
 const SCROLL_DRIVEN_SUPPORT =
   '(animation-timeline: view()) and (animation-range: entry)';
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 const FALLBACK_TARGETS = '.lp-reveal:not(.is-in), .lp-scale:not(.is-in)';
 
 interface LandingMotionProps {

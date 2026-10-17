@@ -1,7 +1,8 @@
 import { useEffect, useState, useSyncExternalStore } from 'react';
 
+import { REDUCED_MOTION_QUERY } from './reduced-motion-query';
+
 const CLIP_STEP_MS = 1100;
-const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
 
 function subscribeReducedMotion(onChange: () => void) {
   const query = window.matchMedia(REDUCED_MOTION_QUERY);

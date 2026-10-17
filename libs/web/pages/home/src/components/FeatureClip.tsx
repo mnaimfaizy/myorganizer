@@ -80,9 +80,18 @@ export function FeatureClip({
           className="flex items-center gap-1.5 border-b px-3 py-2"
           style={{ borderColor: colorBorderVar }}
         >
-          <span className="h-2.5 w-2.5 rounded-full bg-red-400/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-amber-400/80" />
-          <span className="h-2.5 w-2.5 rounded-full bg-emerald-400/80" />
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ background: colorBorderVar }}
+          />
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ background: colorBorderVar }}
+          />
+          <span
+            className="h-2.5 w-2.5 rounded-full"
+            style={{ background: colorBorderVar }}
+          />
           <span
             className="ml-3 truncate text-[11px] font-medium"
             style={{ color: colorMutedVar }}
