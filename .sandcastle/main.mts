@@ -59,6 +59,7 @@ import {
   formatHeldComment,
   judgeRunOutcome,
 } from '../tools/scripts/lib/sandcastle-outcome.mjs';
+import { repairOrphanedWorktree } from '../tools/scripts/lib/sandcastle-worktree-repair.mjs';
 
 const REPO = 'mnaimfaizy/myorganiser';
 const SANDBOX_IMAGE = 'sandcastle:myorganiser';
@@ -1343,6 +1344,31 @@ function staleWorkBranchesFor(issue: Issue): string[] {
     .filter((branch) => gitRefExists(branch));
 }
 
+// A `git worktree prune` inside the sandbox deletes the slice worktree's admin
+// directory (its gitdir names a host path the container cannot see), leaving files
+// git no longer recognises. Re-register before any git call in the directory, or
+// the checkpoint capture and the resume rebuild both fail on "is not a working
+// tree". See tools/scripts/lib/sandcastle-worktree-repair.mjs.
+function ensureWorktreeRegistered(
+  issueNumber: number,
+  worktreePath: string,
+  branch: string,
+): void {
+  const repair = repairOrphanedWorktree({ worktreePath, branch });
+  if (repair.repaired) {
+    console.log(
+      `  [#${issueNumber}] re-registered orphaned worktree ${worktreePath} on ${branch} ` +
+        `(its git admin directory had been pruned).`,
+    );
+  } else if (repair.error) {
+    console.error(
+      `  [#${issueNumber}] worktree ${worktreePath} is orphaned and could not be ` +
+        `re-registered: ${repair.error}. See docs/sandcastle/RUNBOOK.md — ` +
+        `"An orphaned slice worktree".`,
+    );
+  }
+}
+
 // ─── Finalize the agent's local commit ─────────────────────────────────────────
 // Agents run in a credential-less sandbox and only commit locally on their slice
 // branch. Their commit lands on the local slice-branch ref (shared .git), so there
@@ -1359,6 +1385,7 @@ function finalizeSliceBranch(issue: Issue, sliceBranch: string): boolean {
   // If the agent's worktree survived AND has uncommitted changes, capture them.
   // --no-verify skips host husky hooks; the gate is the real check.
   const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
+  ensureWorktreeRegistered(issue.number, worktreePath, sliceBranch);
   if (existsSync(worktreePath)) {
     const dirty = (
       spawnSync('git', ['-C', worktreePath, 'status', '--porcelain'], {
@@ -1629,6 +1656,7 @@ function preserveInterruptedSlice(
   if (!gitRefExists(sliceBranch)) return undefined;
 
   const worktreePath = join(worktreesDir, sliceBranch.replace(/\//g, '-'));
+  ensureWorktreeRegistered(issue.number, worktreePath, sliceBranch);
   if (existsSync(worktreePath)) {
     const dirty = (
       spawnSync('git', ['-C', worktreePath, 'status', '--porcelain'], {
@@ -2196,6 +2224,9 @@ function buildPrompt(
     ...(graphifyNote ? [`- ${graphifyNote}`] : []),
     `- Implement this vertical slice end-to-end (schema → API → UI → tests where applicable).`,
     `- Your working branch is \`${sliceBranch}\` (based on \`${baseRef}\`). Do not switch branches.`,
+    // Slice #1207 pruned its own worktree's admin directory from inside the
+    // sandbox and crashed at the finish line. The image's git shim refuses it too.
+    `- Never run \`git worktree prune\`. Every worktree's admin entry names a host path this sandbox cannot see, so prune deletes your own worktree's registration (and the host's other worktrees') while leaving the files. A worktree you add yourself may be removed with \`git worktree remove <path>\`; leave the rest to the orchestrator.`,
     ...buildGateInstructions(gate),
     // Naming only the runner here left the agent to hand-write the message; the
     // Commit sub-agent was never invoked. Name the drafting hop explicitly.
@@ -2718,6 +2749,7 @@ while (pendingSlices.length > 0) {
       // The branch and its commits stay. Only the worktree is rebuilt, so the agent
       // gets a clean checkout of the checkpoint rather than whatever partial state
       // the interrupted container left on disk.
+      ensureWorktreeRegistered(issue.number, worktreePath, sliceBranch);
       if (existsSync(worktreePath)) {
         spawnSync('git', ['worktree', 'remove', '--force', worktreePath], {
           encoding: 'utf8',
@@ -2737,6 +2769,7 @@ while (pendingSlices.length > 0) {
       const staleBranches = [sliceBranch, ...staleWorkBranchesFor(issue)];
       for (const stale of staleBranches) {
         const stalePath = join(worktreesDir, stale.replace(/\//g, '-'));
+        ensureWorktreeRegistered(issue.number, stalePath, stale);
         if (existsSync(stalePath)) {
           spawnSync('git', ['worktree', 'remove', '--force', stalePath], {
             encoding: 'utf8',
