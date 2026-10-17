@@ -59,9 +59,9 @@ export function SubscriptionManager({
 
   return (
     <Card className="p-4">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <CardTitle>Subscriptions</CardTitle>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
