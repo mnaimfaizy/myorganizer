@@ -75,7 +75,7 @@ describe('guard-orchestration', () => {
       expect(result).toEqual({ kind: 'show_guest' });
     });
 
-    it('returns show_guest when the restore could not be completed', async () => {
+    it('returns restore_unavailable when the restore could not be completed', async () => {
       mockSession.getSnapshot.mockReturnValue({ status: 'restorable' });
       mockSession.restoreSession.mockResolvedValue({
         kind: 'not_restored',
@@ -83,7 +83,7 @@ describe('guard-orchestration', () => {
 
       const result = await resolveInboundGuard(mockSession);
 
-      expect(result).toEqual({ kind: 'show_guest' });
+      expect(result).toEqual({ kind: 'restore_unavailable' });
     });
 
     it('skips restore when authenticated snapshot found', async () => {
@@ -145,7 +145,7 @@ describe('guard-orchestration', () => {
       expect(result).toEqual({ kind: 'redirect_login' });
     });
 
-    it('returns redirect_login when the restore could not be completed', async () => {
+    it('returns restore_unavailable when the restore could not be completed', async () => {
       mockSession.getSnapshot.mockReturnValue({ status: 'restorable' });
       mockSession.restoreSession.mockResolvedValue({
         kind: 'not_restored',
@@ -153,7 +153,7 @@ describe('guard-orchestration', () => {
 
       const result = await resolveOutboundGuard(mockSession);
 
-      expect(result).toEqual({ kind: 'redirect_login' });
+      expect(result).toEqual({ kind: 'restore_unavailable' });
     });
 
     it('skips restore when authenticated snapshot found', async () => {
@@ -233,7 +233,7 @@ describe('guard-orchestration', () => {
   // what a guard actually gets for a Session whose local state is inconsistent
   // (issue #1134): an access token this tab kept after another window signed
   // out and removed the shared user.
-  describe('resolveOutboundGuard over local state the server may reject', () => {
+  describe('guards over local state the server may reject', () => {
     const user: AuthUser = {
       id: 'user-1',
       email: 'test@example.com',
@@ -314,6 +314,42 @@ describe('guard-orchestration', () => {
       expect(refreshToken).toHaveBeenCalledTimes(1);
       expect(storage.getAccessToken()).toBe('fresh-token');
       expect(storage.getCurrentUser()).toEqual(user);
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('returns restore_unavailable and keeps the session when the refresh gets a 503', async () => {
+      const storage = createInMemoryStorage({ token: 'stale-tab-token' });
+      const refreshToken = jest.fn().mockRejectedValue(
+        Object.assign(new Error('Service Unavailable'), {
+          response: { status: 503 },
+        }),
+      );
+      const session = createSession(storage, refreshToken);
+      const listener = jest.fn();
+      session.onSessionEnded(listener);
+
+      const result = await resolveOutboundGuard(session);
+
+      expect(result).toEqual({ kind: 'restore_unavailable' });
+      expect(refreshToken).toHaveBeenCalledTimes(1);
+      expect(storage.getAccessToken()).toBe('stale-tab-token');
+      expect(listener).not.toHaveBeenCalled();
+    });
+
+    it('returns restore_unavailable and keeps the session when the refresh gets no response', async () => {
+      const storage = createInMemoryStorage({ token: 'stale-tab-token' });
+      const refreshToken = jest
+        .fn()
+        .mockRejectedValue(new Error('Network Error'));
+      const session = createSession(storage, refreshToken);
+      const listener = jest.fn();
+      session.onSessionEnded(listener);
+
+      const result = await resolveInboundGuard(session);
+
+      expect(result).toEqual({ kind: 'restore_unavailable' });
+      expect(refreshToken).toHaveBeenCalledTimes(1);
+      expect(storage.getAccessToken()).toBe('stale-tab-token');
       expect(listener).not.toHaveBeenCalled();
     });
 

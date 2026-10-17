@@ -4,6 +4,8 @@ import { Menu, X } from 'lucide-react';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 
+import { useLandingSessionView } from './LandingSessionProvider';
+
 type NavLink = { href: string; label: string };
 
 type Props = {
@@ -19,6 +21,7 @@ type Props = {
 
 export default function MobileMenu({ links, palette }: Props) {
   const [open, setOpen] = useState(false);
+  const view = useLandingSessionView();
 
   useEffect(() => {
     if (!open) return;
@@ -77,22 +80,35 @@ export default function MobileMenu({ links, palette }: Props) {
               </a>
             ))}
             <div className="my-2 h-px" style={{ background: palette.border }} />
-            <Link
-              href="/login"
-              onClick={() => setOpen(false)}
-              className="rounded-lg px-3 py-3 text-base font-medium transition-colors hover:bg-black/5"
-              style={{ color: palette.muted }}
-            >
-              Login
-            </Link>
-            <Link
-              href="/signup"
-              onClick={() => setOpen(false)}
-              className="mt-1 rounded-lg px-3 py-3 text-center text-base font-semibold text-white transition-opacity hover:opacity-90"
-              style={{ background: palette.primary }}
-            >
-              Get Started
-            </Link>
+            {view === 'session_kept' ? (
+              <Link
+                href="/dashboard"
+                onClick={() => setOpen(false)}
+                className="rounded-lg px-3 py-3 text-center text-base font-semibold text-white transition-opacity hover:opacity-90"
+                style={{ background: palette.primary }}
+              >
+                Open dashboard
+              </Link>
+            ) : (
+              <>
+                <Link
+                  href="/login"
+                  onClick={() => setOpen(false)}
+                  className="rounded-lg px-3 py-3 text-base font-medium transition-colors hover:bg-black/5"
+                  style={{ color: palette.muted }}
+                >
+                  Login
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setOpen(false)}
+                  className="mt-1 rounded-lg px-3 py-3 text-center text-base font-semibold text-white transition-opacity hover:opacity-90"
+                  style={{ background: palette.primary }}
+                >
+                  Get Started
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       ) : null}

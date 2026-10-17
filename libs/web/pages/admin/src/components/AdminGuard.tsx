@@ -4,10 +4,12 @@ import {
   authSession,
   getCurrentUser,
   onSessionEnded,
+  type OutboundGuardOutcome,
   resolveOutboundGuard,
 } from '@myorganiser/auth';
+import { type GateDecision, RetryableGate } from '@myorganiser/web-ui';
 import { useRouter } from 'next/navigation';
-import { type ReactNode, useEffect, useState } from 'react';
+import { type ReactNode } from 'react';
 
 import { isPlatformAdmin } from '../lib/isPlatformAdmin';
 
@@ -15,52 +17,37 @@ interface AdminGuardProps {
   children: ReactNode;
 }
 
+// Same outcome table as DashboardGuard. The two live in separate page libs,
+// which cannot import each other.
+const outcomeDecision = {
+  allow: { kind: 'allow' },
+  redirect_login: { kind: 'redirect', to: '/login' },
+  restore_unavailable: { kind: 'unavailable' },
+} as const satisfies Record<OutboundGuardOutcome['kind'], GateDecision>;
+
+// The outbound guard decides the Session; the platform-admin check layers on
+// top of an allowed Session.
+async function checkPlatformAdmin(): Promise<GateDecision> {
+  const outcome = await resolveOutboundGuard(authSession);
+  const decision = outcomeDecision[outcome.kind];
+  if (decision.kind !== 'allow') return decision;
+
+  return isPlatformAdmin(getCurrentUser())
+    ? decision
+    : { kind: 'redirect', to: '/dashboard' };
+}
+
 export default function AdminGuard({ children }: AdminGuardProps) {
   const router = useRouter();
-  const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function ensurePlatformAdmin() {
-      const outcome = await resolveOutboundGuard(authSession);
-
-      if (outcome.kind === 'redirect_login') {
-        if (!cancelled) router.replace('/login');
-        return;
-      }
-
-      if (outcome.kind === 'allow') {
-        const user = getCurrentUser();
-
-        if (isPlatformAdmin(user)) {
-          if (!cancelled) setReady(true);
-        } else if (!cancelled) {
-          router.replace('/dashboard');
-        }
-      }
-    }
-
-    void ensurePlatformAdmin();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [router]);
-
-  // The initial decision above runs once. Once children are rendered, a Session
-  // ended by a refused refresh or by another window signing out must stop the
-  // shell rendering before the router navigates away.
-  useEffect(() => {
-    if (!ready) return undefined;
-
-    return onSessionEnded(() => {
-      setReady(false);
-      router.replace('/login');
-    });
-  }, [ready, router]);
-
-  if (!ready) return null;
-
-  return children;
+  return (
+    <RetryableGate
+      check={checkPlatformAdmin}
+      navigate={router.replace}
+      subscribeToEnd={onSessionEnded}
+      endedRedirect="/login"
+    >
+      {children}
+    </RetryableGate>
+  );
 }

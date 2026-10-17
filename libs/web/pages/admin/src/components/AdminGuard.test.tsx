@@ -12,7 +12,13 @@ jest.mock('@myorganiser/auth', () => ({
   onSessionEnded: jest.fn(),
 }));
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import type {
   AuthUser,
   SessionEndedEvent,
@@ -53,8 +59,18 @@ describe('AdminGuard', () => {
   const mockOnSessionEnded = onSessionEnded as jest.Mock;
   const mockUnsubscribe = jest.fn();
 
+  // Answers each successive guard call with the next outcome; the last one repeats.
+  function mockOutcomes(...outcomes: Array<{ kind: string }>) {
+    let call = 0;
+    (resolveOutboundGuard as jest.Mock).mockImplementation(() =>
+      Promise.resolve(outcomes[Math.min(call++, outcomes.length - 1)]),
+    );
+  }
+
   beforeEach(() => {
     jest.clearAllMocks();
+    (resolveOutboundGuard as jest.Mock).mockReset();
+    (getCurrentUser as jest.Mock).mockReset();
     (useRouter as jest.Mock).mockReturnValue({
       replace: mockReplace,
       push: jest.fn(),
@@ -242,5 +258,171 @@ describe('AdminGuard', () => {
     unmount();
 
     expect(mockUnsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  describe('when the server cannot restore a Restorable Session', () => {
+    function fireReconnectTrigger(
+      trigger: 'online' | 'focus' | 'visibilitychange',
+    ) {
+      act(() => {
+        if (trigger === 'visibilitychange') {
+          Object.defineProperty(document, 'visibilityState', {
+            configurable: true,
+            get: () => 'visible',
+          });
+          document.dispatchEvent(new Event('visibilitychange'));
+        } else {
+          window.dispatchEvent(new Event(trigger));
+        }
+      });
+    }
+
+    afterEach(() => {
+      Reflect.deleteProperty(document, 'visibilityState');
+    });
+
+    it.each<'online' | 'focus' | 'visibilitychange'>([
+      'online',
+      'focus',
+      'visibilitychange',
+    ])(
+      'retries on %s and renders children for a platform admin when the retry resolves to allow',
+      async (trigger) => {
+        mockOutcomes({ kind: 'restore_unavailable' }, { kind: 'allow' });
+        (getCurrentUser as jest.Mock).mockReturnValue(platformAdminUser);
+
+        render(
+          <AdminGuard>
+            <div>admin-content</div>
+          </AdminGuard>,
+        );
+
+        await screen.findByRole('alert');
+        fireReconnectTrigger(trigger);
+
+        expect(await screen.findByText('admin-content')).toBeInTheDocument();
+        expect(resolveOutboundGuard).toHaveBeenCalledTimes(2);
+        expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+        expect(mockReplace).not.toHaveBeenCalled();
+      },
+    );
+
+    it('ignores a second retry while one is in flight', async () => {
+      let resolveRetry!: (outcome: { kind: string }) => void;
+      (resolveOutboundGuard as jest.Mock)
+        .mockImplementationOnce(() =>
+          Promise.resolve({ kind: 'restore_unavailable' }),
+        )
+        .mockImplementationOnce(
+          () =>
+            new Promise<{ kind: string }>((resolve) => {
+              resolveRetry = resolve;
+            }),
+        );
+      (getCurrentUser as jest.Mock).mockReturnValue(platformAdminUser);
+
+      render(
+        <AdminGuard>
+          <div>admin-content</div>
+        </AdminGuard>,
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      const pendingButton = screen.getByRole('button', { name: 'Retrying…' });
+      expect(pendingButton).toBeDisabled();
+      expect(pendingButton).toHaveAttribute('aria-busy', 'true');
+
+      fireReconnectTrigger('focus');
+      fireEvent.click(pendingButton);
+
+      expect(resolveOutboundGuard).toHaveBeenCalledTimes(2);
+
+      act(() => {
+        resolveRetry({ kind: 'allow' });
+      });
+
+      expect(await screen.findByText('admin-content')).toBeInTheDocument();
+      expect(resolveOutboundGuard).toHaveBeenCalledTimes(2);
+    });
+
+    it('shows the unreachable notice without children and does not redirect to login', async () => {
+      mockOutcomes({ kind: 'restore_unavailable' });
+
+      render(
+        <AdminGuard>
+          <div>admin-content</div>
+        </AdminGuard>,
+      );
+
+      expect(await screen.findByRole('alert')).toHaveTextContent(
+        "Can't reach the server",
+      );
+      expect(screen.queryByText('admin-content')).not.toBeInTheDocument();
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('renders children when Try again resolves to allow for a platform admin', async () => {
+      mockOutcomes({ kind: 'restore_unavailable' }, { kind: 'allow' });
+      (getCurrentUser as jest.Mock).mockReturnValue(platformAdminUser);
+
+      render(
+        <AdminGuard>
+          <div>admin-content</div>
+        </AdminGuard>,
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      expect(await screen.findByText('admin-content')).toBeInTheDocument();
+      expect(getCurrentUser).toHaveBeenCalled();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(mockReplace).not.toHaveBeenCalled();
+    });
+
+    it('still applies the platform admin check after Try again resolves to allow', async () => {
+      mockOutcomes({ kind: 'restore_unavailable' }, { kind: 'allow' });
+      (getCurrentUser as jest.Mock).mockReturnValue(normalUser);
+
+      render(
+        <AdminGuard>
+          <div>admin-content</div>
+        </AdminGuard>,
+      );
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+
+      await waitFor(() => {
+        expect(mockReplace).toHaveBeenCalledWith('/dashboard');
+      });
+      expect(screen.queryByText('admin-content')).not.toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(mockReplace).not.toHaveBeenCalledWith('/login');
+    });
+
+    it('removes children and redirects to /login when the session ends while unavailable', async () => {
+      mockOutcomes({ kind: 'restore_unavailable' });
+
+      render(
+        <AdminGuard>
+          <div>admin-content</div>
+        </AdminGuard>,
+      );
+
+      await screen.findByRole('alert');
+      expect(mockOnSessionEnded).toHaveBeenCalledTimes(1);
+
+      const listener = mockOnSessionEnded.mock
+        .calls[0][0] as SessionEndedListener;
+
+      act(() => {
+        listener({ reason: 'signed_out_elsewhere' });
+      });
+
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.queryByText('admin-content')).not.toBeInTheDocument();
+      expect(mockReplace).toHaveBeenCalledTimes(1);
+      expect(mockReplace).toHaveBeenCalledWith('/login');
+    });
   });
 });
