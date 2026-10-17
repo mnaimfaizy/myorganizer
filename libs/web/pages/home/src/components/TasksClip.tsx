@@ -16,7 +16,10 @@ export function TasksClip({ step }: ClipBodyProps) {
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <span className="font-semibold">Today</span>
-        <span className="text-xs" style={{ color: colorMutedVar }}>
+        <span
+          className="whitespace-nowrap text-xs"
+          style={{ color: colorMutedVar }}
+        >
           {done}/{total} done
         </span>
       </div>

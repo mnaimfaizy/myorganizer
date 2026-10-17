@@ -50,7 +50,7 @@ export function ChangeChecklistClip({
       <div className="flex items-baseline justify-between text-xs">
         <span className="font-semibold">{heading}</span>
         <span
-          className="tabular-nums"
+          className="shrink-0 whitespace-nowrap tabular-nums"
           style={{ color: done ? colorSuccessVar : colorMutedVar }}
         >
           {done ? 'All notified ✓' : `${notified} of ${total} notified`}

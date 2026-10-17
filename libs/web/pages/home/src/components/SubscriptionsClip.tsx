@@ -22,9 +22,11 @@ export function SubscriptionsClip({ step }: ClipBodyProps) {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
-        <span className="font-semibold">Monthly equivalent</span>
+        <span className="whitespace-nowrap font-semibold">
+          Monthly equivalent
+        </span>
         <span
-          className="text-2xl font-bold tabular-nums"
+          className="whitespace-nowrap text-2xl font-bold tabular-nums"
           style={{ color: colorPrimaryVar }}
         >
           £{monthlyEquivalent.toFixed(2)}
@@ -40,7 +42,7 @@ export function SubscriptionsClip({ step }: ClipBodyProps) {
             <ClipRow highlight={renewalsFlagged && soon}>
               <span className="flex-1 font-medium">{subscription.name}</span>
               <span
-                className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${renewalsFlagged && soon ? 'motion-safe:animate-pulse' : ''}`}
+                className={`whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold ${renewalsFlagged && soon ? 'motion-safe:animate-pulse' : ''}`}
                 style={{
                   background: soon
                     ? `color-mix(in srgb, ${colorWarningVar} 15%, transparent)`

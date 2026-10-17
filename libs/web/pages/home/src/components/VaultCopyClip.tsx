@@ -45,10 +45,24 @@ export function VaultCopyClip({ step }: ClipBodyProps) {
         className={`flex items-center justify-center gap-2 rounded-xl border px-3 py-2 text-xs transition-all duration-500 ease-out ${copied ? 'opacity-100' : 'opacity-30'}`}
         style={{ borderColor: colorBorderVar, color: colorMutedVar }}
       >
-        <Cloud className="h-4 w-4" style={{ color: colorSuccessVar }} />
-        {copied
-          ? 'Encrypted copy saved to your Google Drive ✓'
-          : 'Copy to your Google Drive'}
+        <Cloud
+          className="h-4 w-4 shrink-0"
+          style={{ color: colorSuccessVar }}
+        />
+        {/* Both captions share one grid cell, so the box keeps the taller
+            caption's height whichever one is showing. */}
+        <span className="grid text-center">
+          <span
+            className={`col-start-1 row-start-1 transition-opacity duration-500 ease-out ${copied ? 'opacity-0' : 'opacity-100'}`}
+          >
+            Copy to your Google Drive
+          </span>
+          <span
+            className={`col-start-1 row-start-1 transition-opacity duration-500 ease-out ${copied ? 'opacity-100' : 'opacity-0'}`}
+          >
+            Encrypted copy saved to your Google Drive ✓
+          </span>
+        </span>
       </div>
     </div>
   );
