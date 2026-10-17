@@ -3,6 +3,7 @@ const mockGetAccessToken = jest.fn();
 const mockRefresh = jest.fn();
 const mockClearAuthSession = jest.fn();
 const mockGetApiBaseUrl = jest.fn(() => 'http://api.test');
+const mockRequestYouTubeAvailabilityRecheck = jest.fn();
 
 jest.mock('@myorganiser/auth', () => ({
   getAccessToken: () => mockGetAccessToken(),
@@ -14,9 +15,16 @@ jest.mock('@myorganiser/core', () => ({
   getApiBaseUrl: () => mockGetApiBaseUrl(),
 }));
 
+jest.mock('@myorganiser/web-youtube', () => ({
+  ...jest.requireActual('@myorganiser/web-youtube'),
+  requestYouTubeAvailabilityRecheck: () =>
+    mockRequestYouTubeAvailabilityRecheck(),
+}));
+
 import { act, renderHook, waitFor } from '@testing-library/react';
 import {
   YouTubeRequestError,
+  updateVideoWatched,
   useYouTubeAcknowledgement,
   useYouTubeConnect,
   useYouTubeSyncStatus,
@@ -807,5 +815,149 @@ describe('useYouTubeAcknowledgement (ADR 0129)', () => {
     });
 
     expect(result.current.acknowledged).toBe(false);
+  });
+});
+
+describe('apiFetch 404 asks for an availability re-check (#1165)', () => {
+  const fetchMock = jest.fn<
+    Promise<Response>,
+    [RequestInfo | URL, RequestInit?]
+  >();
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    fetchMock.mockReset();
+    mockRequestYouTubeAvailabilityRecheck.mockReset();
+    mockGetAccessToken.mockReturnValue('test-token');
+    mockGetApiBaseUrl.mockReturnValue('http://api.test');
+    mockRefresh.mockResolvedValue(undefined);
+    global.fetch = fetchMock as unknown as typeof fetch;
+  });
+
+  it('gate 404 ({"message":"Not Found"}) rejects with its status and asks for one re-check', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        mockResponse({ status: 404, body: { message: 'Not Found' } }),
+      ),
+    );
+
+    const err = await updateVideoWatched('vid-1', true).catch((e) => e);
+
+    expect(err).toBeInstanceOf(YouTubeRequestError);
+    expect(err).toMatchObject({ message: 'Not Found', status: 404 });
+    expect(mockRequestYouTubeAvailabilityRecheck).toHaveBeenCalledTimes(1);
+  });
+
+  it('ordinary 404 keeps its own message and still asks for one re-check', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        mockResponse({
+          status: 404,
+          body: { message: 'Cached Upload not found' },
+        }),
+      ),
+    );
+
+    await expect(updateVideoWatched('vid-1', true)).rejects.toMatchObject({
+      name: 'YouTubeRequestError',
+      message: 'Cached Upload not found',
+      status: 404,
+    });
+    expect(mockRequestYouTubeAvailabilityRecheck).toHaveBeenCalledTimes(1);
+  });
+
+  it('non-404 failure rejects with its status and does not ask for a re-check', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(mockResponse({ status: 500, body: { message: 'boom' } })),
+    );
+
+    await expect(updateVideoWatched('vid-1', true)).rejects.toMatchObject({
+      name: 'YouTubeRequestError',
+      message: 'boom',
+      status: 500,
+    });
+    expect(mockRequestYouTubeAvailabilityRecheck).not.toHaveBeenCalled();
+  });
+
+  it('success resolves to the body, PATCHes the encoded id, and does not ask for a re-check', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        mockResponse({ status: 200, body: { ok: true, watched: true } }),
+      ),
+    );
+
+    await expect(updateVideoWatched('a b', true)).resolves.toEqual({
+      ok: true,
+      watched: true,
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchMock.mock.calls[0];
+    expect(String(url)).toBe('http://api.test/youtube/videos/a%20b/watched');
+    expect(init?.method).toBe('PATCH');
+    expect(init?.body).toBe(JSON.stringify({ watched: true }));
+    expect(mockRequestYouTubeAvailabilityRecheck).not.toHaveBeenCalled();
+  });
+
+  it('404 after a 401 refresh-and-retry asks for one re-check, made after the retry', async () => {
+    let call = 0;
+    let fetchCountAtRecheck = -1;
+    fetchMock.mockImplementation(() => {
+      call += 1;
+      if (call === 1) {
+        return Promise.resolve(
+          mockResponse({ status: 401, body: { message: 'expired' } }),
+        );
+      }
+      return Promise.resolve(
+        mockResponse({ status: 404, body: { message: 'Not Found' } }),
+      );
+    });
+    mockRequestYouTubeAvailabilityRecheck.mockImplementation(() => {
+      fetchCountAtRecheck = fetchMock.mock.calls.length;
+    });
+
+    await expect(updateVideoWatched('vid-1', true)).rejects.toMatchObject({
+      name: 'YouTubeRequestError',
+      message: 'Not Found',
+      status: 404,
+    });
+
+    expect(mockRefresh).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(mockRequestYouTubeAvailabilityRecheck).toHaveBeenCalledTimes(1);
+    expect(fetchCountAtRecheck).toBe(2);
+  });
+
+  it('401 whose refresh rejects clears the session, rejects 401, and does not ask for a re-check', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(
+        mockResponse({ status: 401, body: { message: 'expired' } }),
+      ),
+    );
+    mockRefresh.mockRejectedValue(new Error('refresh failed'));
+
+    await expect(updateVideoWatched('vid-1', true)).rejects.toMatchObject({
+      name: 'YouTubeRequestError',
+      message: 'expired',
+      status: 401,
+    });
+
+    expect(mockClearAuthSession).toHaveBeenCalledTimes(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockRequestYouTubeAvailabilityRecheck).not.toHaveBeenCalled();
+  });
+
+  it('404 with a non-JSON body rejects with the status fallback and asks for one re-check', async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(mockResponse({ status: 404, jsonReject: true })),
+    );
+
+    await expect(updateVideoWatched('vid-1', true)).rejects.toMatchObject({
+      name: 'YouTubeRequestError',
+      message: 'Request failed: 404',
+      status: 404,
+    });
+    expect(mockRequestYouTubeAvailabilityRecheck).toHaveBeenCalledTimes(1);
   });
 });
