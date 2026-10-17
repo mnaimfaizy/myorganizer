@@ -1,5 +1,6 @@
 import {
   colorBorderVar,
+  colorCardVar,
   colorMutedVar,
   colorPrimary,
   colorSurface,
@@ -25,8 +26,12 @@ export function LandingNav() {
   return (
     <nav aria-label="Main" className="fixed inset-x-0 top-2 z-50 px-3">
       <div
-        className="mx-auto flex h-14 max-w-5xl items-center justify-between rounded-2xl border bg-white/85 px-3 pl-5 backdrop-blur-md"
-        style={{ borderColor: colorBorderVar, boxShadow: shadowPopover }}
+        className="mx-auto flex h-14 max-w-5xl items-center justify-between rounded-2xl border px-3 pl-5 backdrop-blur-md"
+        style={{
+          borderColor: colorBorderVar,
+          background: `color-mix(in srgb, ${colorCardVar} 85%, transparent)`,
+          boxShadow: shadowPopover,
+        }}
       >
         <Link href="/" aria-label="MyOrganiser home">
           <AppLogo variant="full" height={26} aria-hidden />
