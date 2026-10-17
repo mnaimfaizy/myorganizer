@@ -951,6 +951,9 @@ jobs:
       - name: Web app icon checker contracts
         run: corepack yarn web:app-icons:test
 
+      - name: Mobile app icon checker contracts
+        run: corepack yarn mobile:app-icon:test
+
       - name: Mobile platform checker contracts
         run: corepack yarn mobile-platform:test
 
@@ -1118,6 +1121,9 @@ jobs:
 
       - name: Check web app icons match the shield and tokens
         run: corepack yarn web:app-icons:check
+
+      - name: Check mobile app icon matches the shield and tokens
+        run: corepack yarn mobile:app-icon:check
 
       - name: Check mobile platform rules
         run: corepack yarn mobile-platform:check

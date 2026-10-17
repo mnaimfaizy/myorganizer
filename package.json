@@ -101,6 +101,8 @@
     "escape-copy-reader:check": "node tools/scripts/check-escape-copy-reader.mjs",
     "escape-copy-reader:test": "node --test tools/scripts/check-escape-copy-reader.test.mjs",
     "mobile:app-icon:generate": "node tools/scripts/generate-mobile-app-icon.mjs",
+    "mobile:app-icon:check": "node tools/scripts/check-mobile-app-icon.mjs",
+    "mobile:app-icon:test": "node --test tools/scripts/check-mobile-app-icon.test.mjs",
     "web:app-icons:generate": "node tools/scripts/generate-web-app-icons.mjs",
     "web:app-icons:check": "node tools/scripts/check-web-app-icons.mjs",
     "web:app-icons:test": "node --test tools/scripts/check-web-app-icons.test.mjs",
