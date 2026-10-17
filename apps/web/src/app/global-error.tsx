@@ -1,7 +1,5 @@
 'use client';
 
-import { useCallback } from 'react';
-
 import { Button, Card, CardContent, CardTitle } from '@myorganiser/web-ui';
 
 import './global.css';
@@ -16,10 +14,6 @@ interface GlobalErrorProps {
 // Replaces the root layout when it throws, so this file must supply its own
 // document. The root layout's global.css is imported above for the same reason.
 export default function GlobalError({ retry }: GlobalErrorProps) {
-  const handleRetry = useCallback(() => {
-    retry();
-  }, [retry]);
-
   return (
     <html lang="en">
       <head>
@@ -35,7 +29,7 @@ export default function GlobalError({ retry }: GlobalErrorProps) {
                 dashboard.
               </p>
               <div className="flex flex-wrap gap-2">
-                <Button type="button" onClick={handleRetry}>
+                <Button type="button" onClick={() => retry()}>
                   Try again
                 </Button>
                 <Button asChild variant="outline">
